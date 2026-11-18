@@ -6,7 +6,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 - **Subscriptions and incremental delivery** (M2) — SSE and
   graphql-transport-ws on Bun's WebSocket, `@defer` and `@stream`, a typed PubSub
-  with an in-memory implementation, and Redis PubSub and cache in `@graxia/redis`.
+  with an in-memory implementation, and Redis PubSub and cache in `@graxia/redis`
+  (shipped within M2, released with 0.2).
 
 ## Next
 

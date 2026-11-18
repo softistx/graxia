@@ -1,9 +1,7 @@
 # @graxia/redis
 
-Redis PubSub and cache adapters for graxia, on Bun.redis.
-
-> Status: scaffold. This package is private and empty until its slice lands; follow the
-> [roadmap](../../docs/roadmap.md).
+Redis PubSub and cache for graxia, on Bun's built-in Redis client (`RedisClient`). No ioredis or
+node-redis: one dependency less, and nothing to install beyond graxia.
 
 ## Install
 
@@ -11,9 +9,75 @@ Redis PubSub and cache adapters for graxia, on Bun.redis.
 bun add @graxia/redis @graxia/core
 ```
 
-The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
-`tsconfig.json`. `nodenext` is not supported.
+The packages are ESM, built for Bun (1.4.4 or later), and resolve with `"moduleResolution": "bundler"`
+in your `tsconfig.json`. `nodenext` is not supported.
+
+## PubSub: swap memory for Redis
+
+`redisPubSub` implements the same `PubSub` contract as `createMemoryPubSub`, so resolvers and
+`filterIterable` do not change. Subscribers in other processes receive what you publish.
+
+```ts
+import { filterIterable } from '@graxia/core';
+import { redisPubSub } from '@graxia/redis';
+
+type Topics = { [k: `post:${string}`]: { id: string; published: boolean } };
+const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
+
+// in a subscription resolver
+const events = filterIterable(
+	pubsub.subscribe('post:42', { signal: ctx.signal }),
+	(post) => post.published,
+);
+
+await pubsub.publish('post:42', { id: '42', published: true });
+await pubsub.dispose(); // on shutdown
+```
+
+Options (all optional):
+
+| Option                      | Default                                    | Meaning                                                      |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
+| `url`                       | `REDIS_URL`, then `redis://localhost:6379` | Connection; the adapter creates and later closes the client  |
+| `client`                    |                                            | A `RedisClient` you own instead of `url`; never closed by us |
+| `prefix`                    | `graxia:`                                  | Prepended to every channel                                   |
+| `bufferSize` / `onOverflow` | 1000                                       | Per subscriber, the oldest event is dropped (same as memory) |
+| `serialize` / `deserialize` | `JSON.stringify` / `JSON.parse`            | Payload codec                                                |
+| `onError`                   |                                            | Connection, subscription and payload errors                  |
+
+## Cache
+
+`redisCache` implements core's `KeyValueCache<string>`; `createMemoryCache` is its in-process twin.
+
+```ts
+import { redisCache } from '@graxia/redis';
+
+const cache = redisCache({
+	url: process.env.REDIS_URL,
+	prefix: 'graxia:cache:',
+});
+await cache.set('greeting', 'hello', { ttlMs: 60_000 }); // SET ... PX 60000
+await cache.get('greeting'); // 'hello'
+await cache.delete('greeting'); // true when a key was removed
+await cache.dispose?.(); // closes only a client it created
+```
+
+## Delivery guarantees
+
+Redis PubSub is at most once, and graxia adds nothing on top:
+
+- One dedicated subscriber connection, opened on the first `subscribe()`, carries one `SUBSCRIBE`
+  per topic, shared by every local subscriber and dropped with the last.
+- Events published while a connection is down are lost. Iterators stay open across a reconnect
+  and receive later events.
+- Events published by another process just after `subscribe()` returns may arrive before the
+  server registered the subscription. `await pubsub.ready()` waits for the `SUBSCRIBE`s issued so
+  far. `publish` on the same instance waits for its own pending subscriptions, so a local
+  subscribe-then-publish is delivered.
+- A payload that fails to deserialize is skipped and reported to `onError`, never thrown into an
+  iterator. Errors of the connection also go to `onError`.
 
 ## Documentation
 
-See [`docs/`](./docs) for the guides, troubleshooting and roadmap of this package.
+See [`docs/`](./docs): the [guide](./docs/guide/redis.md), [troubleshooting](./docs/troubleshooting.md)
+and the [roadmap](./docs/roadmap.md).
