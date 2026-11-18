@@ -5,3 +5,4 @@ Guides, troubleshooting and the roadmap of `@graxia/core` land here with the sli
 ## Guides
 
 - [Plugins](./guide/plugins.md)
+- [Schema](./guide/schema.md)

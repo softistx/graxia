@@ -25,3 +25,16 @@ export type { StageOutcome, StageRunner } from './plugins/stage';
 export type { StateKey } from './plugins/state';
 export { createStateKey, RequestState } from './plugins/state';
 export type * from './plugins/types';
+export { createSchema } from './schema/create-schema';
+export type { TypeDefs } from './schema/typedefs';
+export type {
+	EnumValues,
+	FieldResolver,
+	IsTypeOf,
+	Resolvers,
+	SchemaOptions,
+	SchemaWithContext,
+	SubscriptionFieldResolver,
+	TypeResolver,
+	TypeResolvers,
+} from './schema/types';
