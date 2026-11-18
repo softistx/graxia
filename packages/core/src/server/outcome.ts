@@ -11,6 +11,15 @@ export type Outcome =
 			headers?: HeadersInit;
 	  }
 	| { kind: 'response'; response: Response }
+	| {
+			/** A subscription: results to stream, and how to end and scope them. */
+			kind: 'stream';
+			source: AsyncIterator<unknown>;
+			/** Aborts the operation's signal; ends the source. */
+			stop: AbortController;
+			/** Runs a pull of `source` in the operation's `getContext()` scope. */
+			scope<T>(work: () => T): T;
+	  }
 	| { kind: 'unexpected'; error: unknown };
 
 /** A result made of one error that failed before execution. */

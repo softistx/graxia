@@ -65,6 +65,7 @@ export type {
 	ContextInit,
 	GraxiaLimits,
 	GraxiaOptions,
+	SubscriptionsOptions,
 } from './server/options';
 export type {
 	OnUnexpected,

@@ -1,8 +1,8 @@
 # PubSub
 
 `createMemoryPubSub` is a typed publish/subscribe for subscription resolvers. This release ships
-the PubSub and its helpers; the transports that deliver subscriptions to clients (SSE, WebSocket)
-arrive in a later release.
+the PubSub and its helpers. [Subscriptions over SSE](./subscriptions.md) delivers its events to
+clients; the WebSocket transport (`graphql-transport-ws`) arrives in a later release.
 
 ## Typed topics
 

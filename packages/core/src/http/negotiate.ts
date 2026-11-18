@@ -73,3 +73,28 @@ export function negotiate(accept: string | null): MediaType | undefined {
 	found.sort((a, b) => b.q - a.q || a.exact - b.exact);
 	return found[0]?.media;
 }
+
+/**
+ * Whether an `Accept` header asks for a server-sent event stream: it names
+ * `text/event-stream` (never through a wildcard) with a q above 0, and no
+ * JSON type it names or matches ranks above it. At equal q the range listed
+ * first wins, and a JSON type named exactly beats the stream only when listed
+ * before it.
+ */
+export function prefersEventStream(accept: string | null): boolean {
+	if (accept === null) return false;
+	const ranges = accept
+		.split(',')
+		.map(parseRange)
+		.filter((r): r is Range => r !== undefined);
+	const stream = ranges.findIndex((r) => r.type === 'text/event-stream');
+	const wanted = ranges[stream];
+	if (wanted === undefined || wanted.q <= 0) return false;
+	const json = OFFERED.flatMap((media) => {
+		const c = candidate(media, ranges);
+		return c && c.q > 0 ? [c] : [];
+	});
+	return json.every(
+		(c) => c.q < wanted.q || (c.q === wanted.q && c.exact > stream),
+	);
+}

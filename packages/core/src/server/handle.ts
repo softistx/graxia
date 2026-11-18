@@ -1,6 +1,10 @@
 import { parseBatch } from '../http/batch';
 import { type BodyResult, isJsonContentType, readBody } from '../http/body';
-import { type MediaType, negotiate } from '../http/negotiate';
+import {
+	type MediaType,
+	negotiate,
+	prefersEventStream,
+} from '../http/negotiate';
 import { paramsFromJson, paramsFromUrl } from '../http/params';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
 import type { StateBag } from '../plugins/state';
@@ -9,6 +13,7 @@ import { resultKey } from './execute-state';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
+import { streamResponse } from './subscription';
 
 type Read =
 	| { response: Response }
@@ -35,7 +40,9 @@ export async function dispatch(
 ): Promise<Response> {
 	try {
 		state.responseHeaders.append('vary', 'Accept');
-		const media = negotiate(request.headers.get('accept'));
+		const accept = request.headers.get('accept');
+		const sse = rt.options.sse && prefersEventStream(accept);
+		const media = sse ? 'application/json' : negotiate(accept);
 		if (media === undefined)
 			return refusal(
 				406,
@@ -47,13 +54,22 @@ export async function dispatch(
 		if ('response' in read) return read.response;
 		const call: Call = { request, state, serverContext, method };
 		if ('single' in read) {
+			const operation = state.fork();
 			const outcome = await runOperation(rt, {
 				...call,
-				state: state.fork(),
+				state: operation,
 				params: read.single,
+				sse,
 			});
-			return encode(rt, state, outcome, media);
+			return sse
+				? encodeSse(rt, { ...call, state: operation }, outcome)
+				: encode(rt, state, outcome, media);
 		}
+		if (sse)
+			return refusal(
+				400,
+				'Batched operations cannot be sent over text/event-stream.',
+			);
 		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {
 		return rt.unexpected.respond(error, state);
@@ -118,9 +134,31 @@ async function runBatch(
 		if (outcome.kind === 'unexpected') {
 			rt.unexpected.report(outcome.error, state, 'execution');
 			results.push(rt.unexpected.body(state));
-		} else results.push(rt.maskResult(outcome.result, state));
+		} else if (outcome.kind === 'result')
+			results.push(rt.maskResult(outcome.result, state));
+		else results.push(rt.unexpected.body(state));
 	}
 	return jsonResponse(results, 200, media);
+}
+
+/**
+ * The answer over `text/event-stream`: the operation's results as events.
+ * What fails before an operation exists (a status was chosen: bad params,
+ * mutation over GET, aborted) keeps its plain HTTP answer; a parse, validation
+ * or execution error is a `next` event, as the protocol asks.
+ */
+function encodeSse(rt: Runtime, call: Call, outcome: Outcome): Response {
+	if (outcome.kind === 'response') return outcome.response;
+	if (outcome.kind === 'unexpected')
+		return rt.unexpected.respond(outcome.error, call.state, 'execution');
+	if (outcome.kind === 'result' && outcome.status !== undefined)
+		return jsonResponse(
+			outcome.result,
+			outcome.status,
+			'application/json',
+			outcome.headers,
+		);
+	return streamResponse(rt, call, outcome);
 }
 
 function encode(
@@ -132,6 +170,12 @@ function encode(
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
 		return rt.unexpected.respond(outcome.error, state, 'execution');
+	if (outcome.kind === 'stream')
+		return rt.unexpected.respond(
+			new Error('A stream outcome needs an event-stream request'),
+			state,
+			'execution',
+		);
 	const result = rt.maskResult(outcome.result, state);
 	state.set(resultKey, result);
 	return jsonResponse(

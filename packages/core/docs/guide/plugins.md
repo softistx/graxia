@@ -52,12 +52,13 @@ answers a 500.
 error) and replaces the response with `setResponse`. `onResponse` hooks run in plugin order on the
 final response.
 
-## Stages that do not run yet
+## Stages that run over event streams
 
-`onSubscribe` and `onResultChunk` are declared so that plugins can be written against the final
-shape, but nothing calls them in 0.1.0: subscriptions and incremental delivery (`@defer`,
-`@stream`) arrive in a later release (see the [roadmap](../roadmap.md)). Over plain HTTP they
-are never invoked.
+`onSubscribe` and `onResultChunk` run for operations served over server-sent events (see
+[Subscriptions](./subscriptions.md)): `onSubscribe` around `subscribe` for a subscription, and
+`onResultChunk` for every payload sent (a query's single result too), before masking. Over plain JSON
+HTTP they are not invoked. Incremental delivery (`@defer`, `@stream`) arrives in a later release (see
+the [roadmap](../roadmap.md)).
 
 ## Short-circuit and replacing steps
 

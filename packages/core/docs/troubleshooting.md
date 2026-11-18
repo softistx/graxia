@@ -116,6 +116,46 @@ The document parsed but does not validate against the schema. Every such error c
 
 `batching: { limit }` needs an integer of at least 1.
 
+## Subscriptions are served over server-sent events: send "Accept: text/event-stream".
+
+A subscription arrived without an `Accept` that prefers `text/event-stream` (`SUBSCRIPTION_NOT_SUPPORTED`).
+Request the stream (a `graphql-sse` client does), or call it over GET with that header:
+
+```ts
+await fetch('http://localhost:3000/graphql', {
+	method: 'POST',
+	headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
+	body: JSON.stringify({ query: 'subscription { tick }' }),
+});
+```
+
+`graxia.execute` and the test client never run subscriptions, so they always get this refusal.
+
+## Subscriptions are not supported over this transport (subscriptions.sse is false)
+
+`createGraxia({ subscriptions: { sse: false } })` turns the event stream off. Remove the option (it is
+`true` by default).
+
+## subscriptions.keepAliveMs must be a finite number above 0 (milliseconds)
+
+Pass a count of milliseconds such as `12_000`.
+
+## Batched operations cannot be sent over text/event-stream.
+
+A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
+request, or ask for `application/json`.
+
+## An event stream stops after about 10 seconds with my own `Bun.serve`
+
+If it happens, `Bun.serve` closes a silent connection after `idleTimeout` seconds (10 by default). `graxia.serve()`
+disables it for each stream; with your own server, pass it:
+
+```ts
+Bun.serve({ fetch: (request, server) => graxia.fetch(request, { server }) });
+```
+
+Keep `subscriptions.keepAliveMs` below the idle timeout of any proxy in front of the server.
+
 ## path must start with "/" (or be false)
 
 `path` is a URL path such as `/graphql`, or `false` to serve any path.

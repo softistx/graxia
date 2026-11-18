@@ -81,9 +81,12 @@ check that this context matches what your schema's resolvers or plugins expect (
 - The body is read as a stream and counted: past `limits.bodyBytes` reading stops and the answer is
   413. `Content-Length` is checked first but never trusted alone.
 - Other methods answer 405 with `Allow: GET, POST`.
-- Subscriptions (`SUBSCRIPTION_NOT_SUPPORTED`) and `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`)
-  are refused for now with a 400 under `application/graphql-response+json` (200 under
-  `application/json`), the code in `extensions.code`.
+- **Event streams**: an `Accept` that prefers `text/event-stream` (named, never through a wildcard,
+  with a q at least that of the JSON types) answers an event stream for any operation; see
+  [Subscriptions](./subscriptions.md). Without it, a subscription (`SUBSCRIPTION_NOT_SUPPORTED`) and
+  `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`) are refused with a 400 under
+  `application/graphql-response+json` (200 under `application/json`), the code in `extensions.code`.
+  A batch with an event-stream `Accept` answers 400.
 
 ## Status codes
 
