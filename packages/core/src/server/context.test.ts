@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import { GraxiaConfigError } from '../errors/config-error';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
@@ -54,6 +54,18 @@ describe('context building', () => {
 		expect(last['signal']).toBeInstanceOf(AbortSignal);
 	});
 
+	test('a plugin cannot replace the signal', async () => {
+		seen.length = 0;
+		const graxia = createGraxia({
+			schema,
+			plugins: [
+				definePlugin()({ name: 'evil', onContext: () => ({ signal: 'nope' }) }),
+			],
+		});
+		await graxia.fetch(post({ query: '{ me }' }));
+		expect((seen[0] as any).signal).toBeInstanceOf(AbortSignal);
+	});
+
 	test('context receives the signal', async () => {
 		let got: AbortSignal | undefined;
 		const graxia = createGraxia({
@@ -105,8 +117,10 @@ describe('cancellation', () => {
 			started = resolve;
 		});
 		let saw = false;
+		const onUnexpected = mock();
 		const graxia = createGraxia({
 			schema,
+			onUnexpected,
 			context: () => ({ started, sawAbort: () => (saw = true) }),
 		});
 		const response = graxia.fetch(
@@ -116,6 +130,7 @@ describe('cancellation', () => {
 		controller.abort();
 		const res = await response;
 		expect(saw).toBe(true);
+		expect(onUnexpected).not.toHaveBeenCalled();
 		expect(res.status).toBe(499);
 		expect(await res.text()).toContain('OPERATION_ABORTED');
 	});
@@ -132,6 +147,23 @@ describe('getContext', () => {
 		expect(() => getContext()).toThrow(GraxiaConfigError);
 		expect(() => getContext()).toThrow('outside a graxia operation');
 		expect(tryGetContext()).toBeUndefined();
+	});
+
+	test('is visible inside an onExecute hook', async () => {
+		let inHook: unknown;
+		const graxia = createGraxia({
+			schema,
+			plugins: [
+				definePlugin()({
+					name: 'peek',
+					onExecute: ({ args }) => {
+						inHook = tryGetContext() === args.contextValue;
+					},
+				}),
+			],
+		});
+		await graxia.fetch(post({ query: '{ me }' }));
+		expect(inHook).toBe(true);
 	});
 
 	test('asyncContext: false skips the store and names the option', async () => {

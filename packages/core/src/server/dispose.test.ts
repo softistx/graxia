@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
+import { GraxiaConfigError } from '../errors/config-error';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
@@ -123,5 +124,110 @@ describe('dispose', () => {
 			expect(graxia).toBeDefined();
 		}
 		expect(ran).toBe(true);
+	});
+});
+
+describe('dispose edge cases', () => {
+	test('an operation that ignores the signal is reported and does not block', async () => {
+		const { schema } = slowSchema();
+		const onUnexpected = mock();
+		const stuck = definePlugin()({
+			name: 'stuck',
+			onExecute: ({ setExecuteFn }) =>
+				setExecuteFn(() => new Promise(() => {})),
+		});
+		const graxia = createGraxia({ schema, onUnexpected, plugins: [stuck] });
+		void graxia.fetch(post('{ slow }'));
+		await Bun.sleep(10);
+		await graxia.dispose({ timeout: 20 });
+		expect(onUnexpected).toHaveBeenCalledTimes(1);
+		expect(String(onUnexpected.mock.calls[0]?.[0])).toContain(
+			'dispose: 1 operation(s) did not settle after abort',
+		);
+	});
+
+	test('nothing stays in flight after a thrown hook, a short-circuit or a batch', async () => {
+		const { schema } = slowSchema();
+		const onUnexpected = mock();
+		const plugin = definePlugin()({
+			name: 'p',
+			onRequest: ({ request, respond }) => {
+				const q = new URL(request.url).searchParams;
+				if (q.has('throw')) throw new Error('x');
+				if (q.has('short')) respond(new Response('s'));
+			},
+		});
+		const graxia = createGraxia({
+			schema,
+			onUnexpected,
+			plugins: [plugin],
+			batching: { limit: 2 },
+		});
+		await graxia.fetch(
+			new Request('http://localhost/graphql?throw=1', { method: 'GET' }),
+		);
+		await graxia.fetch(
+			new Request('http://localhost/graphql?short=1', { method: 'GET' }),
+		);
+		const batch = new Request('http://localhost/graphql', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify([
+				{ query: '{ __typename }' },
+				{ query: '{ __typename }' },
+			]),
+		});
+		await graxia.fetch(batch);
+		onUnexpected.mockClear();
+		await graxia.dispose({ timeout: 20 });
+		expect(onUnexpected).not.toHaveBeenCalled();
+	});
+
+	test('a request arriving while onDispose runs gets 503', async () => {
+		const { schema } = slowSchema();
+		let during: Response | undefined;
+		let graxia!: ReturnType<typeof createGraxia>;
+		graxia = createGraxia({
+			schema,
+			plugins: [
+				definePlugin()({
+					name: 'late',
+					onDispose: async () => {
+						during = await graxia.fetch(post('{ slow }'));
+					},
+				}),
+			],
+		});
+		await graxia.dispose();
+		expect(during?.status).toBe(503);
+	});
+
+	test('onDispose runs after an async setup finished', async () => {
+		const { schema } = slowSchema();
+		const order: string[] = [];
+		const graxia = createGraxia({
+			schema,
+			plugins: [
+				definePlugin()({
+					name: 'slow-setup',
+					setup: async () => {
+						await Bun.sleep(30);
+						order.push('setup');
+					},
+					onDispose: () => {
+						order.push('dispose');
+					},
+				}),
+			],
+		});
+		await graxia.dispose();
+		expect(order).toEqual(['setup', 'dispose']);
+	});
+
+	test.each([-1, 1.5, Number.NaN])('shutdownTimeout %p throws', (value) => {
+		const { schema } = slowSchema();
+		expect(() => createGraxia({ schema, shutdownTimeout: value })).toThrow(
+			GraxiaConfigError,
+		);
 	});
 });

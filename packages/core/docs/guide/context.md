@@ -62,7 +62,7 @@ const resolvers = {
 ```
 
 An aborted operation answers `{"errors":[{"message":"The operation was aborted.","extensions":{"code":"OPERATION_ABORTED"}}]}`
-with status 499 (the client left) or 503 (the server is shutting down). It is not an unexpected
+with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
 ## `getContext()` without passing the context down
@@ -113,8 +113,10 @@ process.on('SIGTERM', async () => {
    `connection: close`.
 2. Calls `server.stop()` (not forced) on every server started with `serve()`.
 3. Waits for the in-flight operations to settle, up to `timeout` milliseconds (default
-   `shutdownTimeout`, 10 000). Then it aborts their `signal` and waits for the rest to settle.
-4. Runs every plugin's `onDispose()` in reverse plugin order. Every hook runs even when one throws;
+   `shutdownTimeout`, 10 000). Then it aborts their `signal` and waits at most `timeout` more. An
+   operation that ignores its signal and is still pending then is reported through `onUnexpected`
+   (one error, "dispose: N operation(s) did not settle after abort") and does not block the rest.
+4. Waits for the plugins' `setup` to finish, then runs every plugin's `onDispose()` in reverse plugin order. Every hook runs even when one throws;
    the first error is rethrown afterwards.
 
 A second call returns the same promise. `graxia` also implements `Symbol.asyncDispose`:

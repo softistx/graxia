@@ -134,16 +134,18 @@ async function executeOperation(
 	});
 	const ctxError = await settle(ctx, undefined);
 	if (ctxError !== undefined) return unexpected(ctxError);
+	const contextValue = { ...ctx.out.context, signal };
 	const args: ExecutionArgs = {
 		schema: rt.schema,
 		document,
-		contextValue: ctx.out.context,
+		// `signal` is set again: a plugin cannot make it diverge from `abortSignal`.
+		contextValue,
 		abortSignal: signal,
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
 	const run = () => execution(rt, { request, state }, args);
-	return rt.options.asyncContext ? runWithContext(ctx.out.context, run) : run();
+	return rt.options.asyncContext ? runWithContext(contextValue, run) : run();
 }
 
 async function execution(
@@ -178,8 +180,8 @@ async function execution(
 	if (aborted)
 		return failure('The operation was aborted.', {
 			code: 'OPERATION_ABORTED',
-			// 503 when the server shut down, 499 (client closed request) otherwise.
-			status: rt.lifecycle.shutdown.aborted ? 503 : 499,
+			// 499 (client closed request) when the client left, 503 otherwise (shutdown).
+			status: request.signal.aborted ? 499 : 503,
 		});
 	if (!isSingleResult(result)) {
 		await release(result);

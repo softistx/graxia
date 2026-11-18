@@ -8,8 +8,12 @@ export interface Lifecycle {
 	track<T>(work: Promise<T>): Promise<T>;
 	/** Stops accepting work (`closing`). */
 	close(): void;
-	/** Waits for tracked work up to `timeout` ms, then aborts `shutdown` and waits for the rest. */
-	drain(timeout: number): Promise<void>;
+	/**
+	 * Waits for tracked work up to `timeout` ms, then aborts `shutdown` and
+	 * waits at most `timeout` ms more. Resolves to the number of operations
+	 * still pending.
+	 */
+	drain(timeout: number): Promise<number>;
 }
 
 /** @internal Tracks in-flight requests and owns the shutdown signal. */
@@ -35,19 +39,20 @@ export function createLifecycle(): Lifecycle {
 			closing = true;
 		},
 		async drain(timeout) {
-			let timer: ReturnType<typeof setTimeout> | undefined;
-			const expired = new Promise<'timeout'>((resolve) => {
-				timer = setTimeout(resolve, timeout, 'timeout');
-			});
-			const winner = await Promise.race([
-				settled().then(() => 'done'),
-				expired,
-			]);
-			clearTimeout(timer);
-			if (winner === 'timeout') {
+			const within = async (ms: number) => {
+				let timer: ReturnType<typeof setTimeout> | undefined;
+				const expired = new Promise<void>((resolve) => {
+					timer = setTimeout(resolve, ms);
+				});
+				await Promise.race([settled(), expired]);
+				clearTimeout(timer);
+				return inflight.size === 0;
+			};
+			if (!(await within(timeout))) {
 				controller.abort(new Error('graxia is shutting down'));
-				await settled();
+				await within(timeout);
 			}
+			return inflight.size;
 		},
 	};
 }

@@ -5,6 +5,7 @@ import { createRequestId, requestIdKey } from '../http/request-id';
 import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
 import { RequestState } from '../plugins/state';
+import { createDispose } from './dispose';
 import { dispatch } from './handle';
 import { createLifecycle } from './lifecycle';
 import type { GraxiaOptions, ResolvedOptions } from './options';
@@ -107,19 +108,14 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			return seal(rt.unexpected.respond(error, state), state);
 		}
 	};
-	let disposed: Promise<void> | undefined;
-	const dispose = (disposeOptions?: { timeout?: number }) => {
-		disposed ??= (async () => {
-			lifecycle.close();
-			const stopped = servers.map((server) => server.stop());
-			await lifecycle.drain(
-				disposeOptions?.timeout ?? resolved.shutdownTimeout,
-			);
-			await Promise.all(stopped);
-			await engine.dispose();
-		})();
-		return disposed;
-	};
+	const dispose = createDispose({
+		lifecycle,
+		engine,
+		ready,
+		servers,
+		unexpected: rt.unexpected,
+		timeout: resolved.shutdownTimeout,
+	});
 	return {
 		fetch: (request, serverContext) =>
 			handleWith(request, { ...serverContext }),
