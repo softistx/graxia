@@ -28,9 +28,14 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 | `path`            | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                                                     |
 | `context`         | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run                                     |
 | `plugins`         | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                             |
-| `limits`          | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, see [Limits](./limits-and-caches.md)                                                                                     |
+| `limits`          | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md)                                                                                     |
 | `caches`          | on                                                | parse and validation caches, or `false`                                                                                                                 |
 | `batching`        | `false`                                           | `false`, or `{ limit: n }`                                                                                                                              |
+| `csrf`            | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                     |
+| `trustedDocuments` | absent                                           | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                         |
+| `telemetry`       | on when `@opentelemetry/api` is installed         | OpenTelemetry spans, or `false`, see [Telemetry](./telemetry.md)                                                                                        |
+| `introspection`   | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                         |
+| `suggestions`     | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                              |
 | `asyncContext`    | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                 |
 | `shutdownTimeout` | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                                                 |
 | `onUnexpected`    | `console.error` outside production                | `(error, { requestId, correlationId, phase }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed |
@@ -76,6 +81,10 @@ check that this context matches what your schema's resolvers or plugins expect (
 
 ## Requests
 
+- **CSRF and origin**: before anything else (and before any plugin), a `GET`, or a `POST` that is not
+  JSON, needs one of the CSRF headers, otherwise 403 `CSRF_HEADER_REQUIRED`: a non-JSON `POST` without
+  it is a 403, not a 415. A browser `Origin` that does not match is 403 `FORBIDDEN_ORIGIN`. See
+  [Security](./security.md).
 - **POST** needs `Content-Type: application/json` (a charset, if given, must be UTF-8), otherwise 415.
   The body is `{ query, variables?, operationName?, extensions? }`; `null` means absent.
 - **GET** reads `query`, `operationName`, and `variables` / `extensions` as URL-encoded JSON. A
@@ -107,6 +116,11 @@ check that this context matches what your schema's resolvers or plugins expect (
 | subscription, `@defer` / `@stream` (without an event-stream or multipart `Accept`) | 400                                                                                       | 200                |
 | mutation over GET                                                                  | 405 (`Allow: POST`)                                                                       | 405                |
 | path / method / `Accept` / `Content-Type` / size                                   | 404 / 405 / 406 / 415 / 413                                                               | same               |
+| missing CSRF header (`CSRF_HEADER_REQUIRED`), foreign `Origin` (`FORBIDDEN_ORIGIN`) | 403                                                                                     | same               |
+| a `fieldRateLimit` limit exceeded (`RATE_LIMITED`, `Retry-After`)                  | 429                                                                                       | same               |
+| a `single` rate-limited field selected twice (`FIELD_SELECTED_ONCE`)               | 400                                                                                       | same               |
+| `PERSISTED_QUERY_ONLY`, `PERSISTED_QUERY_NOT_FOUND` for a `documentId`, a `documentId` sent with a `query` | 400                                                                      | same               |
+| APQ hash: `PERSISTED_QUERY_NOT_FOUND`, `_NOT_SUPPORTED`, `_VERSION_NOT_SUPPORTED`, `PROVIDED_SHA_DOESNT_MATCH` | 400                                                                   | 200 (the retry protocol) |
 | client left, or shutdown past its timeout (`OPERATION_ABORTED`)                    | 499 / 503                                                                                 | same               |
 | `dispose()` started (`SHUTTING_DOWN`)                                              | 503 (`connection: close`)                                                                 | same               |
 | plugin hook threw, `context` threw, `execute` threw                                | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same               |

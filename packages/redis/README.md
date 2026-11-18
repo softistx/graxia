@@ -69,7 +69,7 @@ Options (all optional):
 Options: `url`, `client` (as above) and `prefix` (default `graxia:cache:`).
 
 `redisCache` implements core's `KeyValueCache<string>`; `createMemoryCache` is its in-process twin. It is also the store of core's automatic persisted
-queries: `trustedDocuments: { store: redisCache() }` shares registrations across processes.
+queries: `trustedDocuments: { store: redisCache({ url }) }` shares (`url` is optional: without it Bun's default connection is used)  registrations across processes.
 
 ```ts
 import { redisCache } from '@graxia/redis';

@@ -2,8 +2,8 @@
 
 A checklist to ship a graxia server: what `NODE_ENV=production` changes, a complete configuration,
 what to set behind a proxy, how to shut down, and what to check before the first deploy. Every
-default below is checked by `src/production.test.ts` and `src/development.test.ts`, which run the
-same instance with `NODE_ENV` set and unset.
+default below is checked by the package's own test suite, which runs the same instance with
+`NODE_ENV` set and unset.
 
 ## What `NODE_ENV=production` changes
 
@@ -140,6 +140,11 @@ export const apqStore = redisCache({ prefix: 'graxia:pq:' });
 `redisCache` sets no expiry on a registration, so give that Redis a `maxmemory` and an eviction
 policy (`allkeys-lru`) and keep the prefix apart from your other keys. In `strict` mode APQ is
 off and the store is only read, so most deployments need none.
+
+Strict mode also trusts every document found in the store, whoever registered it. A strict
+instance must therefore use a store (or a prefix) that no `mixed` instance ever wrote to, such as
+a new prefix when you move from `mixed` to `strict`; otherwise documents registered by arbitrary
+clients stay allowed. `graxia.execute` documents are not part of this: they are never stored.
 
 ## Behind a proxy
 

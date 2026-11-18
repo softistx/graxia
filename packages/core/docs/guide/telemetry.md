@@ -59,6 +59,8 @@ named once the operation is chosen (`query GetUser`, `mutation`, `subscription T
 that does not parse stays `graphql.operation`). A batch has one request span and one operation span
 per entry, in order. `graxia.execute` goes through the same request, so it has both.
 
+The operation span's name uses the `operationName` the client sent, which is unbounded in `mixed` trusted-documents mode (or with no trusted documents): a backend that indexes span names can see its cardinality explode. `strict` trusted documents bound it, since only your manifest's operations run.
+
 ## Attributes
 
 | span                | attribute                                                                                                      |
