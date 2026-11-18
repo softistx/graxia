@@ -3,6 +3,10 @@ import type { DocumentCaches, DocumentLimits } from '../document/types';
 import type { MaskError } from '../errors/mask';
 import type { BatchingOption } from '../http/batch';
 import type {
+	OperationLimits,
+	ResolvedOperationLimits,
+} from '../limits/options';
+import type {
 	GraphQLParams,
 	GraxiaPlugin,
 	MaybePromise,
@@ -25,8 +29,8 @@ export interface ContextInit<HostCtx> {
 	signal: AbortSignal;
 }
 
-/** `limits` option: document limits plus the request body limit. */
-export interface GraxiaLimits extends DocumentLimits {
+/** `limits` option: document limits, operation limits and the request body limit. */
+export interface GraxiaLimits extends DocumentLimits, OperationLimits {
 	/** The most bytes of a request body read. 1 MiB by default; more answers 413. */
 	bodyBytes?: number;
 }
@@ -123,6 +127,8 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 export interface ResolvedOptions {
 	path: string | false;
 	bodyBytes: number;
+	/** Depth, aliases, directives, root fields and cost limits. */
+	operationLimits: ResolvedOperationLimits;
 	batching: BatchingOption;
 	asyncContext: boolean;
 	shutdownTimeout: number;

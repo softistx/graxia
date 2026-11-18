@@ -4,7 +4,8 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Secure by default** — operation limits, CSRF and same-origin checks (WebSocket upgrades
+- **Secure by default** — operation limits (depth, aliases, directives, root fields and cost;
+  shipped as the operation limits slice), CSRF and same-origin checks (WebSocket upgrades
   included), an introspection policy, trusted documents and a field rate limit, in progress.
 
 ## Later

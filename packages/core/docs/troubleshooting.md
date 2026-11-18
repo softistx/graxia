@@ -103,6 +103,49 @@ A document under `limits.nesting` still overflowed the parser's stack (`nesting:
 very high limit make it likely). It is a `GRAPHQL_PARSE_FAILED` error with a `fix`, never
 `Unexpected error.`, and is not cached. Flatten the document, or lower `limits.nesting`.
 
+## Operation depth N exceeds the limit of M.
+
+The operation selects fields nested deeper than `limits.depth` (12 by default), fragments
+expanded. A `GRAPHQL_VALIDATION_FAILED` error (HTTP 400) with `extensions.limit`
+(`{ name: 'depth', max, actual }`) and `fix`. Ask for fewer nested fields, or raise it:
+
+```ts
+createGraxia({ schema, limits: { depth: 16 } }); // or false
+```
+
+## Operation has N aliases, over the limit of M.
+
+More aliased fields than `limits.aliases` (30). Use fewer aliases or raise `limits.aliases`.
+`extensions.limit.name` is `aliases`.
+
+## Operation has N directives, over the limit of M.
+
+More directive usages than `limits.directives` (50). `extensions.limit.name` is `directives`.
+
+## Operation has N root fields, over the limit of M.
+
+More root fields than `limits.rootFields` (20), `__typename` excluded. Split the operation
+or raise it. `extensions.limit.name` is `rootFields`.
+
+## Operation cost N exceeds the limit of M.
+
+The cost of the operation is over `limits.cost.max` (5 000). The cost multiplies list fields
+by their size: a slicing argument (`first: 100`), `assumedSize` or `limits.cost.defaultListSize`.
+Request fewer items, give the field `@listSize(slicingArguments: ["first"])`, or raise it. The
+check reads variables, so `first: $n` counts. `extensions.limit.name` is `cost`.
+
+```ts
+createGraxia({ schema, limits: { cost: { max: 20_000 } } }); // or cost: false
+```
+
+## limits.depth must be a positive integer (or false)
+
+Also `limits.aliases`, `limits.directives` and `limits.rootFields`: pass an integer of at least
+1, or `false`. `limits.cost` must be `false` or an object, and its `max` and `defaultListSize` must be positive
+integers (`limits.cost.max must be a positive integer`, `limits.cost.defaultListSize must be a positive integer`),
+its `objectCost` and `scalarCost` non-negative integers (`limits.cost.objectCost must be a non-negative integer`,
+`limits.cost.scalarCost must be a non-negative integer`).
+
 ## Cannot query field "x" on type "Query".  (`GRAPHQL_VALIDATION_FAILED`)
 
 The document parsed but does not validate against the schema. Every such error carries

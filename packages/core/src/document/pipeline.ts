@@ -38,6 +38,8 @@ export interface DocumentPipelineOptions {
 	limits?: DocumentLimits;
 	/** Cache sizes, or `false` to disable both caches. */
 	caches?: DocumentCaches;
+	/** Validation rules added to graphql's (the operation limits). */
+	rules?: readonly ValidationRule[];
 }
 
 /** Outcome of a pipeline step. `error` is a value thrown by a plugin hook, unmasked. */
@@ -83,6 +85,7 @@ interface Ctx {
 	schema: GraphQLSchema;
 	engine: PluginEngine;
 	limits: ResolvedLimits;
+	rules: readonly ValidationRule[];
 	parseCache: LruCache<string, ParseResult> | undefined;
 	validationCache: ValidationCache | undefined;
 }
@@ -103,6 +106,7 @@ export function createDocumentPipeline(
 		schema: options.schema,
 		engine: options.engine,
 		limits: resolveLimits(options.limits),
+		rules: options.rules ?? [],
 		parseCache:
 			off || caches.parse === false
 				? undefined
@@ -228,6 +232,7 @@ function check(
 	}
 	const found = (validationFn ?? validate)(schema, document, [
 		...specifiedRules,
+		...ctx.rules,
 		...rules,
 	]);
 	const coded = withCode(found);

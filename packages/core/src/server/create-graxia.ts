@@ -2,6 +2,8 @@ import type { ExecutionResult } from 'graphql';
 import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
+import { resolveOperationLimits } from '../limits/options';
+import { operationLimitRules } from '../limits/rules';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
 import { createDispose } from './dispose';
@@ -107,6 +109,7 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	const bodyBytes = options.limits?.bodyBytes ?? DEFAULT_BODY_BYTES;
 	if (!Number.isInteger(bodyBytes) || bodyBytes < 1)
 		throw new GraxiaConfigError('limits.bodyBytes must be a positive integer');
+	const operationLimits = resolveOperationLimits(options.limits);
 	const batching = options.batching ?? false;
 	if (
 		batching !== false &&
@@ -125,6 +128,7 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	return {
 		path,
 		bodyBytes,
+		operationLimits,
 		batching,
 		asyncContext,
 		shutdownTimeout,
@@ -146,7 +150,6 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
-	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
 	// Handled here so a failing `setup` is never an unhandled rejection; reported once.
 	ready.catch(() => {});
@@ -160,7 +163,8 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		pipeline: createDocumentPipeline({
 			schema: options.schema,
 			engine,
-			limits,
+			...(options.limits ? { limits: options.limits } : {}),
+			rules: operationLimitRules(resolved.operationLimits),
 			...(options.caches !== undefined ? { caches: options.caches } : {}),
 		}),
 		options: resolved,
