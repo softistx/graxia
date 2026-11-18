@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import {
 	type Body,
 	build,
@@ -47,5 +47,15 @@ describe('development profile (NODE_ENV unset) differs from production', () => {
 	test('errors are still masked, in every environment', async () => {
 		const { body } = await byId(graxia, 'boom');
 		expect(body.errors?.[0]?.message).toBe('Unexpected error.');
+	});
+
+	test('onUnexpected logs to console.error by default', async () => {
+		const spy = spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			await byId(build(undefined, false), 'boom');
+			expect(spy).toHaveBeenCalledTimes(1);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });

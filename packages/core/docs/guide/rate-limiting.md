@@ -118,17 +118,33 @@ Put `request` in the context (`context: ({ request }) => ({ request })`) or use 
   when the call allowed). The policy
   comes from `store.policy`, from `policy`, or both when they agree.
 - Your own: shared state across servers belongs in Redis. `@graxia/redis` ships no rate limiter;
-  this adapter takes a Redis client you provide (with `incrby`, `pexpire` and `pttl`):
+  this one runs a single `EVAL` on the `RedisClient` of Bun, so the count and the window start are
+  atomic across instances. A refused call still adds its cost to the window's count:
 
 ```ts
 import type { FieldLimit } from '@graxia/core';
+import { RedisClient } from 'bun';
 
-const redisLimit = (limit: number, windowMs: number): FieldLimit => ({
+const redis = new RedisClient(process.env['REDIS_URL']);
+
+// One atomic round trip: add the cost, start the window on the first units, read what is left.
+const SCRIPT = `
+local used = redis.call('INCRBY', KEYS[1], ARGV[1])
+if used == tonumber(ARGV[1]) then redis.call('PEXPIRE', KEYS[1], ARGV[2]) end
+return { used, redis.call('PTTL', KEYS[1]) }
+`;
+
+export const redisLimit = (limit: number, windowMs: number): FieldLimit => ({
 	async consume(key, cost) {
-		const used = await redis.incrby(`rl:${key}`, cost);
-		if (used === cost) await redis.pexpire(`rl:${key}`, windowMs);
+		const [used, ttl] = (await redis.eval(
+			SCRIPT,
+			1,
+			`rl:${key}`,
+			cost,
+			windowMs,
+		)) as [number, number];
 		if (used <= limit) return { allowed: true, retryAfter: 0 };
-		return { allowed: false, retryAfter: await redis.pttl(`rl:${key}`) };
+		return { allowed: false, retryAfter: Math.max(ttl, 1) };
 	},
 });
 ```

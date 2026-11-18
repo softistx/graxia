@@ -47,7 +47,11 @@ export const manifest = {
 export type Reported = { error: unknown; phase: string }[];
 
 /** Builds the instance with `NODE_ENV` set around `createGraxia` (read once there), then restores it. */
-export function build(env: string | undefined, reported: Reported = []) {
+export function build(
+	env: string | undefined,
+	reported: Reported | false = [],
+	extra: Record<string, unknown> = {},
+) {
 	const previous = process.env['NODE_ENV'];
 	if (env === undefined) delete process.env['NODE_ENV'];
 	else process.env['NODE_ENV'] = env;
@@ -63,8 +67,11 @@ export function build(env: string | undefined, reported: Reported = []) {
 					},
 				}),
 			],
-			onUnexpected: (error, info) =>
-				reported.push({ error, phase: info.phase }),
+			...(reported !== false && {
+				onUnexpected: (error: unknown, info: { phase: string }) =>
+					reported.push({ error, phase: info.phase }),
+			}),
+			...extra,
 		});
 	} finally {
 		if (previous === undefined) delete process.env['NODE_ENV'];

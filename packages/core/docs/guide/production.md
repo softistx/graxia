@@ -41,16 +41,15 @@ PubSub, OpenTelemetry and an error logger. It needs `@graxia/redis` and the trac
 [OpenTelemetry](./telemetry.md#setup).
 
 ```ts
+// server.ts
 import {
 	createGraxia,
 	createSchema,
 	fieldRateLimit,
-	limitFromStore,
-	type FieldLimit,
 	type PubSub,
 } from '@graxia/core';
 import { redisPubSub } from '@graxia/redis';
-import { RedisClient } from 'bun';
+import { redisLimit } from './redis-limit'; // the adapter of Rate limiting, "Stores"
 
 type Topics = { tick: { n: number } };
 type AppContext = {
@@ -81,23 +80,6 @@ const manifest: Record<string, string> = await Bun.file(
 	'persisted-documents.json',
 ).json();
 
-const redis = new RedisClient(process.env['REDIS_URL']);
-
-// A fixed window shared by every instance, on the counter of one Redis key.
-const redisLimit = (limit: number, windowMs: number): FieldLimit =>
-	limitFromStore(
-		{
-			async consume(key, policy) {
-				const k = `rl:${key}`;
-				const used = await redis.incr(k);
-				if (used === 1) await redis.pexpire(k, policy.windowMs);
-				if (used <= policy.limit) return { allowed: true, retryAfter: 0 };
-				return { allowed: false, retryAfter: Math.max(await redis.pttl(k), 1) };
-			},
-		},
-		{ limit, windowMs },
-	);
-
 const pubsub = redisPubSub<Topics>({ url: process.env['REDIS_URL'] });
 
 export const graxia = createGraxia({
@@ -113,7 +95,7 @@ export const graxia = createGraxia({
 		}),
 	],
 	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } },
-	shutdownTimeout: 10_000,
+	shutdownTimeout: 10_000, // the default; dispose() waits this long, twice at worst
 	onUnexpected: (error, { correlationId, phase }) =>
 		console.error(
 			JSON.stringify({ level: 'error', correlationId, phase }),
@@ -179,20 +161,25 @@ off and the store is only read, so most deployments need none.
 
 ## Shutdown
 
-On `SIGTERM`, stop taking work and let in-flight operations finish:
+On `SIGTERM`, stop taking work and let in-flight operations finish. `server` is the `Bun.serve`
+handle of [Health checks](#health-checks):
 
 ```ts
+// main.ts, after Bun.serve
 process.on('SIGTERM', async () => {
-	await graxia.dispose({ timeout: 8_000 });
+	await graxia.dispose(); // waits up to `shutdownTimeout` (10 s), see below
+	await server.stop();
 	process.exit(0);
 });
 ```
 
-`dispose` refuses new requests with 503 `SHUTTING_DOWN`, stops the servers `serve()` started, ends
-open event streams at once, closes every WebSocket with 1001, waits up to the timeout (`shutdownTimeout`, 10 000 ms by
-default) for the other operations, then aborts their `signal` and waits as long again. Set your
-orchestrator's grace period above twice the timeout. Close what you opened after it
-(`pubsub.dispose()`, the Redis client) so that no event is lost mid-operation. See
+`dispose` makes `graxia.fetch` answer 503 `SHUTTING_DOWN` (your own routes, such as `/healthz`,
+keep answering until `server.stop()`), ends open event streams at once, closes every WebSocket with
+1001, waits up to `shutdownTimeout` (10 000 ms by default; `dispose({ timeout })` overrides it) for
+the other operations, then aborts their `signal` and waits as long again: at most twice the timeout.
+Set your orchestrator's grace period above that (30 s with the default). With `graxia.serve()`,
+`dispose` also stops the server, so `server.stop()` is only for your own `Bun.serve`. Close what you
+opened afterwards (`pubsub.dispose()`, the Redis client). See
 [Context, cancellation and shutdown](./context.md#dispose-and-draining). Pass `signal` to every
 outgoing call in a resolver so an aborted operation stops its work.
 
@@ -215,9 +202,10 @@ graxia has no health route of its own, and introspection is off. Serve plain rou
 (or probe `{ __typename }`, allowed in production but, in `strict` mode, only as a trusted document):
 
 ```ts
+// main.ts
 import { graxia } from './server';
 
-Bun.serve({
+const server = Bun.serve({
 	port: 3000,
 	routes: {
 		'/healthz': () => new Response('ok'), // liveness: the process answers
@@ -226,8 +214,12 @@ Bun.serve({
 				() => new Response('ready'),
 				() => new Response('not ready', { status: 503 }),
 			), // readiness: every plugin's setup ran
-		'/graphql': (request, server) => graxia.fetch(request, { server }),
+		'/graphql': (request, server) =>
+			graxia.isUpgrade(request)
+				? graxia.upgrade(request, server)
+				: graxia.fetch(request, { server }),
 	},
+	websocket: graxia.websocket,
 });
 ```
 
@@ -246,4 +238,4 @@ Bun.serve({
 - [ ] The PubSub and the APQ store (if any) are Redis, not memory, when you run several instances.
 - [ ] Traces reach your collector, and logs carry the `x-request-id` of the response.
 - [ ] `SIGTERM` drains: start a subscription, send the signal, see it complete.
-- [ ] Probes answer, and the orchestrator's grace period exceeds twice the shutdown timeout.
+- [ ] Probes answer, and the orchestrator's grace period exceeds twice `shutdownTimeout`.

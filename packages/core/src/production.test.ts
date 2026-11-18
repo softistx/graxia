@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import {
 	type Body,
 	build,
@@ -137,7 +137,12 @@ describe('production profile: trusted documents', () => {
 describe('production profile: requests', () => {
 	test('batching is off', async () => {
 		const response = await post(graxia, [{ documentId: 'hello' }]);
+		const body = (await response.json()) as Body;
 		expect(response.status).toBe(400);
+		expect(body.data).toBeUndefined();
+		expect(body.errors?.[0]?.message).toBe(
+			'Batching is not enabled on this server.',
+		);
 	});
 
 	test('the request id is generated, never the client header', async () => {
@@ -162,11 +167,26 @@ describe('production profile: rate limit and telemetry', () => {
 		expect(codes(body)).toEqual(['RATE_LIMITED']);
 	});
 
-	test('the no-op tracer path leaves the response unchanged', async () => {
-		const withOtel = await byId(build('production'), 'hello');
-		expect(withOtel.body).toEqual({ data: { hello: 'world' } });
-		expect(withOtel.response.headers.get('content-type')).toContain(
-			'application/json',
+	test('the no-op tracer path answers like telemetry: false', async () => {
+		const plain = await byId(
+			build('production', [], { telemetry: false }),
+			'hello',
 		);
+		const traced = await byId(build('production'), 'hello');
+		expect(traced.response.status).toBe(plain.response.status);
+		expect(traced.body).toEqual(plain.body);
+		const names = (r: Response) =>
+			[...r.headers.keys()].filter((k) => k !== 'x-request-id').sort();
+		expect(names(traced.response)).toEqual(names(plain.response));
+	});
+
+	test('onUnexpected is silent by default in production', async () => {
+		const spy = spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			await byId(build('production', false), 'boom');
+			expect(spy).not.toHaveBeenCalled();
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });
