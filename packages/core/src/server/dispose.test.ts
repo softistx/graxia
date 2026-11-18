@@ -78,7 +78,7 @@ describe('dispose', () => {
 	test('onDispose runs in reverse order, all of them, first error rethrown; idempotent', async () => {
 		const order: string[] = [];
 		const make = (name: string, fail = false) =>
-			definePlugin()({
+			definePlugin({
 				name,
 				onDispose: () => {
 					order.push(name);
@@ -113,7 +113,7 @@ describe('dispose', () => {
 			await using graxia = createGraxia({
 				schema,
 				plugins: [
-					definePlugin()({
+					definePlugin({
 						name: 'p',
 						onDispose: () => {
 							ran = true;
@@ -131,7 +131,7 @@ describe('dispose edge cases', () => {
 	test('an operation that ignores the signal is reported and does not block', async () => {
 		const { schema } = slowSchema();
 		const onUnexpected = mock();
-		const stuck = definePlugin()({
+		const stuck = definePlugin({
 			name: 'stuck',
 			onExecute: ({ setExecuteFn }) =>
 				setExecuteFn(() => new Promise(() => {})),
@@ -154,7 +154,7 @@ describe('dispose edge cases', () => {
 	test('nothing stays in flight after a thrown hook, a short-circuit or a batch', async () => {
 		const { schema } = slowSchema();
 		const onUnexpected = mock();
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'p',
 			onRequest: ({ request, respond }) => {
 				const q = new URL(request.url).searchParams;
@@ -195,7 +195,7 @@ describe('dispose edge cases', () => {
 		graxia = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'late',
 					onDispose: async () => {
 						during = await graxia.fetch(post('{ slow }'));
@@ -213,7 +213,7 @@ describe('dispose edge cases', () => {
 		const graxia = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'slow-setup',
 					setup: async () => {
 						await Bun.sleep(30);

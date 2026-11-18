@@ -57,7 +57,7 @@ after-hook; `onResponse` replaces the response with `setResponse`).
 ```ts
 import { createGraxia, definePlugin } from '@graxia/core';
 
-const timing = definePlugin()({
+const timing = definePlugin({
 	name: 'timing',
 	onRequest: () => {
 		const start = performance.now();
@@ -68,7 +68,9 @@ const timing = definePlugin()({
 createGraxia({ schema, plugins: [timing] });
 ```
 
-See [Plugins](./docs/guide/plugins.md).
+A plugin that reads something from the context declares it with the curried form,
+`definePlugin<{ request: Request }>()({ ... })`, so `onContext` still infers what it adds. See
+[Plugins](./docs/guide/plugins.md) and its [Typed context](./docs/guide/plugins.md#typed-context) section.
 
 ## Context and `getContext`
 
@@ -180,7 +182,7 @@ These are planned (see the [roadmap](./docs/roadmap.md)). Until they land:
 ```ts
 import { definePlugin } from '@graxia/core';
 
-const requireCustomHeader = definePlugin()({
+const requireCustomHeader = definePlugin({
 	name: 'require-custom-header',
 	onRequest: ({ request, respond }) => {
 		if (!request.headers.has('x-requested-with'))
@@ -199,7 +201,7 @@ const requireCustomHeader = definePlugin()({
 ```ts
 const allowed = new Set(['https://app.example.com']);
 
-const checkSocketOrigin = definePlugin()({
+const checkSocketOrigin = definePlugin({
 	name: 'check-socket-origin',
 	onRequest: ({ request, respond }) => {
 		const isUpgrade =

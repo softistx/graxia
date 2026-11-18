@@ -125,7 +125,7 @@ response ends the request, a 413 or a short-circuit included: `set-cookie` and `
 any other header is set only when the response does not already carry it.
 
 ```ts
-const noStore = definePlugin()({
+const noStore = definePlugin({
 	name: 'no-store',
 	onRequest: ({ responseHeaders }) => {
 		responseHeaders.set('cache-control', 'no-store');
@@ -160,7 +160,7 @@ trusted nor echoed, so an invalid or hostile header changes nothing. Plugins rea
 ```ts
 import { getRequestId } from '@graxia/core';
 
-const log = definePlugin()({
+const log = definePlugin({
 	name: 'log',
 	onRequest: ({ state }) => console.log('request', getRequestId(state)),
 });

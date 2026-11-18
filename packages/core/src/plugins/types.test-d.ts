@@ -2,9 +2,11 @@ import {
 	type ContextOf,
 	definePlugin,
 	type PluginContext,
+	type PluginRequires,
 	type RequiresContext,
 } from './define';
 import { createStateKey, StateBag, type StateKey } from './state';
+import type { Empty } from './types';
 
 type Equal<A, B> =
 	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -16,13 +18,18 @@ const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',
 	onContext: async () => ({ user: { id: '1' } }),
 });
-const tenant = definePlugin()({
+const tenant = definePlugin({
 	name: 'tenant',
 	onContext: () => ({ tenant: 'acme' }),
 });
 const needsUser = definePlugin<{ user: { id: string } }>()({
 	name: 'needs-user',
 	onContext: ({ context }) => ({ id: context.user.id }),
+});
+
+const needsFlag = definePlugin<{ flag: boolean }>()({
+	name: 'needs-flag',
+	onContext: () => ({}),
 });
 
 // inference of what one plugin adds
@@ -60,7 +67,7 @@ const chained: RequiresContext<
 
 // onContext must return an object
 // @ts-expect-error a string cannot be merged into the context
-definePlugin()({ name: 'bad', onContext: () => 'x' });
+definePlugin({ name: 'bad', onContext: () => 'x' });
 
 // state keys are typed
 const key: StateKey<number> = createStateKey<number>('n');
@@ -80,8 +87,49 @@ const unmet: RequiresContext<
 export { chained, missing, ok, unmet };
 
 // `onResponse` has no after-hook: returning a function is a type error.
-export const noAfterHookOnResponse = definePlugin()({
+export const noAfterHookOnResponse = definePlugin({
 	name: 'no-after',
 	// @ts-expect-error onResponse returns nothing; use setResponse
 	onResponse: () => () => {},
 });
+
+// direct form: no requirement, `Added` inferred
+const direct = definePlugin({
+	name: 'direct',
+	onContext: () => ({ flag: true }),
+});
+assertType<Equal<PluginContext<typeof direct>, { flag: boolean }>>();
+assertType<Equal<PluginRequires<typeof direct>, Empty>>();
+assertType<
+	Equal<
+		ContextOf<[typeof direct, typeof tenant]>,
+		{ flag: boolean } & { tenant: string }
+	>
+>();
+export const directOk: RequiresContext<[typeof direct], Empty> = [direct];
+export const directThenNeeds: RequiresContext<
+	[typeof direct, typeof needsFlag],
+	Empty
+> = [direct, needsFlag];
+
+// direct form: reading a context field it does not require is a type error
+definePlugin({
+	name: 'direct-bad',
+	onContext: ({ context }) => {
+		// @ts-expect-error `request` is not required by a direct-form plugin
+		void context.request;
+		return {};
+	},
+});
+
+// direct form: a type argument is refused (it would claim `Added` without `onContext`)
+// @ts-expect-error use the curried form `definePlugin<In>()({ ... })`
+definePlugin<{ request: Request }>({ name: 'direct-typed' });
+
+// curried form keeps `In` and infers `Added`
+const curried = definePlugin<{ request: Request }>()({
+	name: 'curried',
+	onContext: ({ context }) => ({ url: context.request.url }),
+});
+assertType<Equal<PluginContext<typeof curried>, { url: string }>>();
+assertType<Equal<PluginRequires<typeof curried>, { request: Request }>>();

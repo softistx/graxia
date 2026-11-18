@@ -22,7 +22,7 @@ describe('validation', () => {
 			schema,
 			onUnexpected: false,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onValidate: ({ addRule }) => {
 						addRule(boom);
@@ -56,7 +56,7 @@ describe('onResponse', () => {
 		const g = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					// A JS caller can return a function; the type forbids it.
 					onResponse: (({ setResponse }: any) => {
@@ -79,7 +79,7 @@ describe('request id', () => {
 		const g = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onRequest: ({ state }) => {
 						seen.push(getRequestId(state));
@@ -101,7 +101,7 @@ describe('request id', () => {
 			schema,
 			onUnexpected: false,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onRequest: ({ respond }) => respond(Response.error()),
 				}),
@@ -136,13 +136,13 @@ describe('setup failure', () => {
 			schema,
 			onUnexpected,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'good',
 					onDispose: () => {
 						disposed.push('good');
 					},
 				}),
-				definePlugin()({
+				definePlugin({
 					name: 'bad',
 					setup: () => {
 						throw new Error('no connection');

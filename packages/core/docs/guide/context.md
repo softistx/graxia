@@ -138,7 +138,7 @@ A second call returns the same promise. `graxia` also implements `Symbol.asyncDi
 A plugin releases what its `setup` opened:
 
 ```ts
-const db = definePlugin()({
+const db = definePlugin({
 	name: 'db',
 	setup: async () => {
 		await pool.connect();

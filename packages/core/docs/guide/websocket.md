@@ -84,7 +84,7 @@ one of two things:
   ```ts
   const allowed = new Set(['https://app.example.com']);
 
-  const checkSocketOrigin = definePlugin()({
+  const checkSocketOrigin = definePlugin({
   	name: 'check-socket-origin',
   	onRequest: ({ request, respond }) => {
   		const isUpgrade = request.headers.get('upgrade')?.toLowerCase() === 'websocket';

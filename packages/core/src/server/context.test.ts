@@ -38,7 +38,7 @@ const schema = createSchema<Record<string, any>>()({
 
 describe('context building', () => {
 	test('serverContext, then context(), then onContext', async () => {
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'add',
 			onContext: () => ({ user: 'from-plugin' }),
 		});
@@ -59,7 +59,7 @@ describe('context building', () => {
 		const graxia = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({ name: 'evil', onContext: () => ({ signal: 'nope' }) }),
+				definePlugin({ name: 'evil', onContext: () => ({ signal: 'nope' }) }),
 			],
 		});
 		await graxia.fetch(post({ query: '{ me }' }));
@@ -154,7 +154,7 @@ describe('getContext', () => {
 		const graxia = createGraxia({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'peek',
 					onExecute: ({ args }) => {
 						inHook = tryGetContext() === args.contextValue;

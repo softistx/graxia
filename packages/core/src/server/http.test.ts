@@ -4,7 +4,7 @@ import { definePlugin } from '../plugins/define';
 import { createGraxia } from './create-graxia';
 import { schema } from './fixtures.test-util';
 
-const plugin = definePlugin()({
+const plugin = definePlugin({
 	name: 'headers',
 	onRequest({ request, responseHeaders, respond, state }) {
 		responseHeaders.set('x-plugin', 'kept');
@@ -264,7 +264,7 @@ describe('host mounting', () => {
 		const g = createGraxia<{ user: string }>({
 			schema,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'peek',
 					onContext: ({ context }) => ({
 						seen: (context as { user: string }).user,

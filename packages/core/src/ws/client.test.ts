@@ -70,7 +70,7 @@ describe('graphql-ws client', () => {
 
 	test('onResultChunk sees a validation error and a single result, with getContext()', async () => {
 		const chunks: { errors?: unknown; who?: unknown }[] = [];
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'chunks',
 			onResultChunk: ({ chunk }) => {
 				let who: string | undefined;
@@ -172,7 +172,7 @@ describe('graphql-ws client', () => {
 	});
 
 	test('an error result a hook emptied falls back to a generic error', async () => {
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'drop-errors',
 			onResultChunk: ({ setChunk }) => setChunk({ data: null }),
 		});
@@ -190,7 +190,7 @@ describe('graphql-ws client', () => {
 	});
 
 	test('masks a thrown resolver error in an event and applies onResultChunk', async () => {
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'chunks',
 			onResultChunk: ({ chunk, setChunk }) =>
 				setChunk({ ...(chunk as object), extensions: { via: 'plugin' } }),

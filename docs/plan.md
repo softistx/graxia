@@ -62,7 +62,7 @@ graxia.websocket: Bun.WebSocketHandler;
 graxia.execute({ query | documentId, variables, operationName }, serverContext?, { signal }): Promise<ExecutionResult | AsyncIterable>;
 graxia.serve(options?): Bun.Server;  graxia.dispose(): Promise<void>;  getContext<C>(): C;
 ```
-Plugin: `{ name, enforce?: 'pre'|'post', setup?, onRequest?, onParams?, onParse?, onValidate?, onContext? (typed extend), onExecute?, onSubscribe?, onResultChunk?, onResponse? }`; `createStateKey<T>(name)`; `definePlugin<In>()({...})` infers additions; compile-time "schema context provided" check.
+Plugin: `{ name, enforce?: 'pre'|'post', setup?, onRequest?, onParams?, onParse?, onValidate?, onContext? (typed extend), onExecute?, onSubscribe?, onResultChunk?, onResponse? }`; `createStateKey<T>(name)`; `definePlugin({...})` (or `definePlugin<In>()({...})` when it requires context) infers additions; compile-time "schema context provided" check.
 Errors: `exposedError(code, message, { extensions?, fix? })` with typed code map; anything else → `Unexpected error.` + `INTERNAL_SERVER_ERROR` + `correlationId` in prod; `originalError` never serialized.
 
 ## 3. Request lifecycle

@@ -5,7 +5,7 @@ A plugin is a plain object with a `name` and the hooks it needs. `definePlugin` 
 ```ts
 import { definePlugin } from '@graxia/core';
 
-export const timing = definePlugin()({
+export const timing = definePlugin({
 	name: 'timing',
 	onRequest: ({ state }) => {
 		const start = performance.now();
@@ -14,6 +14,23 @@ export const timing = definePlugin()({
 	},
 });
 ```
+
+A plugin that needs part of the context uses the curried form, naming what it requires:
+
+```ts
+const auth = definePlugin<{ request: Request }>()({
+	name: 'auth',
+	onContext: ({ context }) => ({
+		ua: context.request.headers.get('user-agent'),
+	}),
+});
+```
+
+Use `definePlugin({ ... })` when the plugin requires nothing (it cannot read a context field, and
+`context.request` is a type error), and `definePlugin<Requires>()({ ... })` when it does. The curried
+form exists because TypeScript has no partial type-argument inference: you cannot give `Requires`
+explicitly and let the compiler infer what `onContext` adds in the same call, so the first call fixes
+`Requires` and the second infers the rest. Both return the same plugin object.
 
 Stages, in order: `onRequest`, `onParams`, `onParse`, `onValidate`, `onContext`, `onExecute` (or
 `onSubscribe`), `onResultChunk`, `onResponse`. `setup(api)` runs once at engine init; `onDispose()` runs once when
@@ -76,7 +93,7 @@ before the context exists (a parse or validation error) has no operation context
 A hook can answer, or replace what a stage does, through its payload.
 
 ```ts
-const gate = definePlugin()({
+const gate = definePlugin({
 	name: 'gate',
 	onRequest: ({ request, respond }) => {
 		if (!request.headers.has('authorization'))
@@ -136,7 +153,7 @@ import { createStateKey, definePlugin } from '@graxia/core';
 
 export const userKey = createStateKey<{ id: string }>('user');
 
-const auth = definePlugin()({
+const auth = definePlugin({
 	name: 'auth',
 	onRequest: ({ state }) => state.set(userKey, { id: '1' }),
 	onParams: ({ state }) => {
@@ -163,7 +180,7 @@ const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',
 	onContext: async () => ({ user: { id: '1' } }),
 });
-const tenant = definePlugin()({
+const tenant = definePlugin({
 	name: 'tenant',
 	onContext: () => ({ tenant: 'acme' }),
 });
