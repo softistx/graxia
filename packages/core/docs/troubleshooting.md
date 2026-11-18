@@ -162,6 +162,17 @@ The instance was created with `incremental: false`. Remove the option (or pass `
 `createGraxia({ incremental: { format } })` got another value. `graphql17` is the default; `legacy`
 is the 2022-08 format older clients read.
 
+## The provided schema unexpectedly contains experimental directives (@defer or @stream). These directives may only be utilized if experimental execution features are explicitly enabled.
+
+Graphql's plain `execute` was given a schema from `createSchema`, which declares `@defer` and
+`@stream`. Run the schema through graxia or `experimentalExecuteIncrementally`, or build it with
+`createSchema()({ typeDefs, resolvers, incremental: false })`.
+
+## Incremental delivery (@defer, @stream) is not supported over this transport yet.
+
+A subscription event used `@defer` or `@stream`; incremental delivery inside subscription events is not
+supported. Code `INCREMENTAL_NOT_SUPPORTED`. Remove the directive from the subscription's selection.
+
 ## Unknown directive "@defer".
 
 The schema is a `GraphQLSchema` you built without the directives (`createSchema` adds them). Add

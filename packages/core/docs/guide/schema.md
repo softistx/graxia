@@ -5,8 +5,9 @@ works wherever graxia expects one; this is only a helper. It is curried so the c
 explicit while `resolvers` infers.
 
 The schema declares the `@defer` and `@stream` directives (see [`@defer` and `@stream`](./incremental.md)),
-so graphql's plain `execute` refuses it with "unexpectedly contains experimental directives": run it
-through graxia, or call `experimentalExecuteIncrementally` yourself.
+so graphql's plain `execute` refuses it with "The provided schema unexpectedly contains experimental directives (@defer or @stream). These directives may only be utilized if experimental execution features are explicitly enabled.": run it
+through graxia, call `experimentalExecuteIncrementally`, or build it with
+`createSchema()({ typeDefs, resolvers, incremental: false })` (no `@defer`, no incremental queries).
 
 ```ts
 import { createSchema } from '@graxia/core';

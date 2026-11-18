@@ -67,3 +67,11 @@ assertType<
 		Resolvers<Ctx> | readonly Resolvers<Ctx>[] | undefined
 	>
 >();
+
+// the incremental opt-out accepts only false
+createSchema()({ typeDefs: 'type Query { a: String }', incremental: false });
+createSchema()({
+	typeDefs: 'type Query { a: String }',
+	// @ts-expect-error only `false` opts out
+	incremental: true,
+});

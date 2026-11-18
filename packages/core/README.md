@@ -263,25 +263,14 @@ for await (const result of client.iterate({
 
 Queries and mutations with `@defer` or `@stream` are delivered incrementally to a client that sends
 `Accept: multipart/mixed` (or `text/event-stream`), on by default; any other `Accept` gets
-`INCREMENTAL_NOT_SUPPORTED`. `incremental: { format: 'legacy' }` speaks the 2022-08 format older
+`INCREMENTAL_NOT_SUPPORTED` (HTTP 400 under `application/graphql-response+json`, 200 under `application/json`). `incremental: { format: 'legacy' }` speaks the 2022-08 format older
 clients read, `incremental: false` turns it off.
 
-```ts
-// bun add -d meros
-import { meros } from 'meros';
+A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-client).
 
-const response = await fetch('http://localhost:3000/graphql', {
-	method: 'POST',
-	headers: {
-		'content-type': 'application/json',
-		accept: 'multipart/mixed;deferSpec=20220824, application/json',
-	},
-	body: JSON.stringify({ query: '{ user { name ... @defer { slow } } }' }),
-});
-for await (const part of await meros(response)) console.log(part.body);
-```
-
-See [`@defer` and `@stream`](./docs/guide/incremental.md).
+**Running the schema elsewhere.** `createSchema` declares `@defer` and `@stream`, so graphql's plain
+`execute` refuses its schemas; use graxia or `experimentalExecuteIncrementally`, or build with
+`createSchema()({ typeDefs, resolvers, incremental: false })` (no incremental queries then).
 
 ## Exports
 

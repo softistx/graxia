@@ -26,7 +26,11 @@ export function createSchema<Ctx = unknown, R = Resolvers<Ctx>>() {
 		const document = toDocument(options.typeDefs);
 		let schema: SchemaWithContext<Ctx>;
 		try {
-			schema = withIncrementalDirectives(buildASTSchema(document));
+			const built = buildASTSchema(document);
+			schema =
+				options.incremental === false
+					? built
+					: withIncrementalDirectives(built);
 		} catch (cause) {
 			throw sdlError(cause);
 		}

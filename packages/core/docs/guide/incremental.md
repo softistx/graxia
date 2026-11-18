@@ -68,8 +68,10 @@ createGraxia({ schema, incremental: { format: 'legacy' } });
   (`GraphQL17Alpha9Handler`).
 - `legacy` is the 2022-08 format (`incremental` entries with `path` and `label`, no ids), which older
   Apollo, urql and Relay clients read. graxia runs graphql's `legacyExecuteIncrementally`.
-- `incremental: false` turns it off: such a query is refused with `INCREMENTAL_NOT_SUPPORTED`, and
-  such a query still runs but is never delivered incrementally.
+- `incremental: false` turns delivery off: an incremental result is released and the query is refused
+  with `INCREMENTAL_NOT_SUPPORTED`. The executor is still graphql's `experimentalExecuteIncrementally`
+  (graphql's plain `execute` throws for a schema that declares `@defer`); a query without `@defer` or
+  `@stream` is answered as usual.
 
 ## A client
 
@@ -88,6 +90,18 @@ const response = await fetch('http://localhost:3000/graphql', {
 const parts = await meros(response);
 for await (const part of parts) console.log(part.body);
 ```
+
+## Running the schema elsewhere
+
+`createSchema` declares `@defer` and `@stream`, and graphql's plain `execute` refuses such a schema
+(`The provided schema unexpectedly contains experimental directives (@defer or @stream). These directives may only be utilized if experimental execution features are explicitly enabled.`). Run it through graxia or `experimentalExecuteIncrementally`, or build it without the
+directives when it only feeds plain `execute`:
+
+```ts
+createSchema()({ typeDefs, resolvers, incremental: false });
+```
+
+Such a schema cannot serve incremental queries.
 
 ## Hooks, masking, context
 
