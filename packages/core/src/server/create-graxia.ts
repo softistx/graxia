@@ -9,6 +9,8 @@ import { StateBag } from '../plugins/state';
 import { csrfHeaderKey } from '../security/header-key';
 import { noIntrospectionRule } from '../security/introspection';
 import { resolveSecurity } from '../security/options';
+import { resolveTrusted } from '../trusted/options';
+import { createTrustedDocuments } from '../trusted/resolve';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
@@ -151,6 +153,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	options: GraxiaOptions<HostCtx>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
+	const trusted = resolveTrusted(options.trustedDocuments);
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
@@ -183,6 +186,11 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			options.schema,
 			unexpected,
 		),
+		trusted:
+			trusted &&
+			createTrustedDocuments(trusted, (error, state) =>
+				unexpected.report(error, state),
+			),
 		context: options.context,
 		lifecycle,
 		ready,

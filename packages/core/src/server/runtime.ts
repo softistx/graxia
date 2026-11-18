@@ -1,6 +1,7 @@
 import type { GraphQLSchema } from 'graphql';
 import type { DocumentPipeline } from '../document/pipeline';
 import type { PluginEngine } from '../plugins/engine';
+import type { TrustedDocuments } from '../trusted/resolve';
 import type { Lifecycle } from './lifecycle';
 import type { ResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
@@ -12,6 +13,8 @@ export interface Runtime {
 	engine: PluginEngine;
 	pipeline: DocumentPipeline;
 	options: ResolvedOptions;
+	/** Trusted documents and persisted queries, or `undefined` when `trustedDocuments` is absent. */
+	trusted: TrustedDocuments | undefined;
 	context: GraxiaOptions<any>['context'];
 	unexpected: UnexpectedHandler;
 	/** Masks the unexpected errors of a result before it is encoded. */

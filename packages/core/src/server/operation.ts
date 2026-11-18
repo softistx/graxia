@@ -64,7 +64,19 @@ async function prepare(
 	rt: Runtime,
 	{ request, state, params, method, sse }: OperationInput,
 ): Promise<Outcome | Prepared> {
-	const stage = await rt.engine.runners.onParams({ request, state, params });
+	const trusted = await rt.trusted?.resolve(params, request, state);
+	if (trusted && !trusted.ok)
+		return failure(trusted.message, {
+			code: trusted.code,
+			...(trusted.status !== undefined ? { status: trusted.status } : {}),
+			...(trusted.fix ? { fix: trusted.fix } : {}),
+		});
+	const register = trusted?.register;
+	const stage = await rt.engine.runners.onParams({
+		request,
+		state,
+		params: trusted ? trusted.params : params,
+	});
 	const error = await settle(stage, { params: stage.out.params });
 	if (error !== undefined) return unexpected(error);
 	if (stage.out.response)
@@ -101,6 +113,8 @@ async function prepare(
 	});
 	if (valid.error !== undefined) return unexpected(valid.error);
 	if (valid.errors) return failed(valid.errors);
+	// Only the query the client sent is registered, never one a plugin rewrote.
+	if (final.query === params.query) register?.();
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
 	const { cost } = rt.options.operationLimits;

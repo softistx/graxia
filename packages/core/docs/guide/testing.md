@@ -47,6 +47,20 @@ is already parsed: it skips the parse limits and both caches (`onParse` still ru
 `onParams` hook that replaces the query makes graxia parse the new text). `variables` travel as
 JSON, as over HTTP: a value `JSON.stringify` refuses (a `BigInt`, a cycle) throws a `TypeError`.
 
+### Persisted documents by id
+
+With `trustedDocuments` configured, run a persisted document by its id instead of a `document`:
+
+```ts
+const { data } = await graxia.execute({
+	documentId: 'a3f1…',
+	variables: { name: 'Ada' },
+});
+```
+
+`document` and `documentId` are exclusive (a type error to pass both or neither). Without
+`trustedDocuments` the id is not understood and the result is `Must provide a query string.`.
+
 ### Typed documents
 
 `TypedDocument<Result, Variables>` is structurally compatible with codegen's `TypedDocumentNode`
@@ -141,8 +155,20 @@ await client.query('{ hello }', { persisted: true });
 await client.query(null, { persisted: { sha256Hash: 'ecf4…' } });
 ```
 
-The server has no persisted-query store today: a hash alone answers `Must provide a query string.`
-(400), and a query sent with its hash runs as a plain query.
+Against a server with `trustedDocuments` (see [Trusted documents](./trusted-documents.md)), a hash
+alone is looked up in the manifest and the store, and a query sent with its hash is registered.
+Without `trustedDocuments` a hash alone answers `Must provide a query string.` (400) and a query
+sent with its hash runs as a plain query.
+
+To send a persisted document by id, pass `null` as the document with `documentId`; it travels as
+the `documentId` field (or the query parameter of a GET):
+
+```ts
+await client.query(null, { documentId: 'a3f1…', variables: { id: 1 } });
+await client.query(null, { documentId: 'a3f1…', method: 'GET' });
+```
+
+`documentId` needs `trustedDocuments`; without it the request answers `Must provide a query string.`
 
 ### Batching
 

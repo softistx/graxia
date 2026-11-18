@@ -5,6 +5,7 @@ import type { TestOperationOptions } from './types';
 /** The GraphQL parameters of one operation, as they travel in a body or a query string. */
 export interface WireParams {
 	query?: string;
+	documentId?: string;
 	variables?: unknown;
 	operationName?: string;
 	extensions?: { persistedQuery: { version: 1; sha256Hash: string } };
@@ -26,9 +27,14 @@ export function wireParams(
 			);
 		hash = sha256Hex(text);
 	}
-	if (text === undefined && hash === undefined)
-		throw new TypeError('A null document needs persisted: { sha256Hash }');
+	if (text === undefined && hash === undefined && !options.documentId)
+		throw new TypeError(
+			'A null document needs persisted: { sha256Hash } or documentId',
+		);
 	return {
+		...(options.documentId !== undefined
+			? { documentId: options.documentId }
+			: {}),
 		...(text !== undefined ? { query: text } : {}),
 		...(options.variables !== undefined
 			? { variables: options.variables }
@@ -46,6 +52,8 @@ export function wireParams(
 export function getUrl(base: string, params: WireParams): string {
 	const url = new URL(base);
 	if (params.query !== undefined) url.searchParams.set('query', params.query);
+	if (params.documentId !== undefined)
+		url.searchParams.set('documentId', params.documentId);
 	if (params.operationName !== undefined)
 		url.searchParams.set('operationName', params.operationName);
 	if (params.variables !== undefined)

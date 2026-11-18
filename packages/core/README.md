@@ -194,13 +194,34 @@ createGraxia({
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
 
+- Trusted documents are opt-in (`trustedDocuments`): see below.
+
 **Not yet**
 
 - A field rate limit.
-- Trusted or persisted documents: any valid document runs.
 
 These are planned (see the [roadmap](./docs/roadmap.md)). Meanwhile put the endpoint behind a proxy
 or gateway that rate-limits and caps request cost.
+
+## Trusted documents
+
+Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
+Apollo format), `documentId`, automatic persisted queries and a strict mode.
+
+```ts
+createGraxia({
+	schema,
+	trustedDocuments: {
+		manifest: await Bun.file('persisted-documents.json').json(),
+		// mode: 'strict' when NODE_ENV=production, 'mixed' otherwise
+		// store: redisCache({ url }) shares APQ registrations across processes
+	},
+});
+// POST { "documentId": "a3f1..." }, GET ?documentId=..., or an APQ hash in extensions.persistedQuery
+```
+
+In `strict` a query sent in full is refused with `PERSISTED_QUERY_ONLY`. Without the option nothing
+changes. See [Trusted documents](./docs/guide/trusted-documents.md).
 
 ## `execute`
 
@@ -214,6 +235,9 @@ const { data, errors } = await graxia.execute({
 	headers: { authorization: 'Bearer test' },
 });
 ```
+
+With `trustedDocuments`, `graxia.execute({ documentId, variables })` runs a persisted document by
+id (without it the result is `Must provide a query string.`).
 
 It rejects with a `GraxiaExecuteError` when a plugin answered with its own response (a 401, for
 example) instead of a result. See [Testing](./docs/guide/testing.md).
@@ -350,6 +374,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
 |                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                |
+|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                    |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
@@ -367,6 +392,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
+- [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 

@@ -15,9 +15,15 @@ const fail = (message: string): ParamsResult => ({ ok: false, message });
  */
 export function paramsFromJson(value: unknown): ParamsResult {
 	if (!isRecord(value)) return fail('The request body must be a JSON object.');
-	const { query, operationName, variables, extensions } = value;
+	const { query, documentId, operationName, variables, extensions } = value;
 	if (query !== undefined && query !== null && typeof query !== 'string')
 		return fail('The "query" parameter must be a string.');
+	if (
+		documentId !== undefined &&
+		documentId !== null &&
+		typeof documentId !== 'string'
+	)
+		return fail('The "documentId" parameter must be a string.');
 	if (
 		operationName !== undefined &&
 		operationName !== null &&
@@ -32,6 +38,7 @@ export function paramsFromJson(value: unknown): ParamsResult {
 		ok: true,
 		params: {
 			...(typeof query === 'string' ? { query } : {}),
+			...(typeof documentId === 'string' ? { documentId } : {}),
 			...(typeof operationName === 'string' ? { operationName } : {}),
 			...(variables != null ? { variables } : {}),
 			...(extensions != null ? { extensions } : {}),
@@ -62,6 +69,7 @@ export function paramsFromUrl(url: URL): ParamsResult {
 	if ('message' in extensions) return fail(extensions.message);
 	return paramsFromJson({
 		query: url.searchParams.get('query') ?? undefined,
+		documentId: url.searchParams.get('documentId') ?? undefined,
 		operationName: url.searchParams.get('operationName') ?? undefined,
 		variables: variables.value,
 		extensions: extensions.value,

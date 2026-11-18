@@ -6,8 +6,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 - **Secure by default** (M3) — operation limits (depth, aliases, cost), CSRF and
   same-origin checks (WebSocket upgrades included), introspection off in production,
-  trusted documents (manifest and automatic persisted queries, strict mode), a field
-  rate limit and OpenTelemetry spans.
+  trusted documents (manifests, `documentId`, automatic persisted queries, strict mode;
+  built), a field rate limit and OpenTelemetry spans.
 
 ## Later
 

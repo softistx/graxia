@@ -54,6 +54,8 @@ export type ExecuteFn = (args: ExecutionArgs) => MaybePromise<ExecutionOutput>;
 /** GraphQL request parameters, as parsed from the transport. */
 export interface GraphQLParams {
 	query?: string;
+	/** A persisted document's id (GraphQL over HTTP `documentId`); with `trustedDocuments` it is replaced by `query` before `onParams`. */
+	documentId?: string;
 	operationName?: string;
 	variables?: Record<string, unknown>;
 	extensions?: Record<string, unknown>;

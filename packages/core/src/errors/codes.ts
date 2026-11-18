@@ -32,6 +32,16 @@ export interface GraxiaErrorCodes {
 	CSRF_HEADER_REQUIRED: true;
 	/** Emitted by core: a request or WebSocket upgrade from a refused origin (403). */
 	FORBIDDEN_ORIGIN: true;
+	/** Emitted by core: a persisted document or an automatic persisted query is not in the manifest or store. */
+	PERSISTED_QUERY_NOT_FOUND: true;
+	/** Emitted by core: a client sent a persisted query hash the server cannot serve (`apq` off, or `strict` mode). */
+	PERSISTED_QUERY_NOT_SUPPORTED: true;
+	/** Emitted by core: the persisted query extension has a `version` other than 1. */
+	PERSISTED_QUERY_VERSION_NOT_SUPPORTED: true;
+	/** Emitted by core: the `sha256Hash` of a persisted query is not the hash of the query sent with it. */
+	PROVIDED_SHA_DOESNT_MATCH: true;
+	/** Emitted by core: `strict` trusted documents refuse a query that is not persisted. */
+	PERSISTED_QUERY_ONLY: true;
 	/** Emitted by core: `dispose()` started. */
 	SHUTTING_DOWN: true;
 	/** Emitted by core: subscriptions over plain HTTP. */

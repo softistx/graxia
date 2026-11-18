@@ -20,6 +20,8 @@ export interface TestOperationOptions<Variables> {
 	 * document to omit the query text.
 	 */
 	persisted?: boolean | { sha256Hash: string };
+	/** Sends this `documentId` (a persisted document) and no query; pass `null` as the document. */
+	documentId?: string;
 }
 
 /** Options of `client.query`. */
@@ -43,7 +45,7 @@ export interface TestBatchEntry<
 	Result = Record<string, any>,
 	Variables = Record<string, any>,
 > extends TestOperationOptions<Variables> {
-	/** The document, or `null` with `persisted: { sha256Hash }`. */
+	/** The document, or `null` with `persisted: { sha256Hash }` or `documentId`. */
 	document: DocumentInput<Result, Variables> | null;
 }
 
