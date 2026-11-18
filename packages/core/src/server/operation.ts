@@ -9,6 +9,7 @@ import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
 import { presetDocumentKey } from './execute-state';
+import { withHttpRefusal } from './http-refusal';
 import { execution } from './incremental';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
@@ -194,15 +195,17 @@ async function executeOperation(
 	const scope = <T>(work: () => T): T =>
 		rt.options.asyncContext ? runWithContext(contextValue, work) : work();
 	const call = { request, state };
-	return operation.operation === 'subscription'
-		? scope(() => subscription(rt, call, args, { stop, scope }))
-		: scope(() =>
-				execution(rt, call, args, {
-					allowed: Boolean(sse || multipart),
-					stop,
-					scope,
-				}),
-			);
+	const outcome =
+		operation.operation === 'subscription'
+			? scope(() => subscription(rt, call, args, { stop, scope }))
+			: scope(() =>
+					execution(rt, call, args, {
+						allowed: Boolean(sse || multipart),
+						stop,
+						scope,
+					}),
+				);
+	return withHttpRefusal(state, await outcome);
 }
 
 /** Why a subscription sent as plain JSON is refused, naming the transports that are on. */

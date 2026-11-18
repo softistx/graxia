@@ -202,10 +202,11 @@ function encode(
 		);
 	const result = rt.maskResult(outcome.result, state);
 	state.set(resultKey, result);
+	const { refusal } = outcome;
 	return jsonResponse(
 		result,
-		outcome.status ?? statusOf(media, result),
+		outcome.status ?? refusal?.status ?? statusOf(media, result),
 		media,
-		outcome.headers,
+		outcome.headers ?? refusal?.headers,
 	);
 }

@@ -42,6 +42,10 @@ export interface GraxiaErrorCodes {
 	PROVIDED_SHA_DOESNT_MATCH: true;
 	/** Emitted by core: `strict` trusted documents refuse a query that is not persisted. */
 	PERSISTED_QUERY_ONLY: true;
+	/** Emitted by `fieldRateLimit`: a field's rate limit is spent (429, `Retry-After`; the code can be changed with `code`). */
+	RATE_LIMITED: true;
+	/** Emitted by `fieldRateLimit`: a `single` field is selected more than once in the operation (400). */
+	FIELD_SELECTED_ONCE: true;
 	/** Emitted by core: `dispose()` started. */
 	SHUTTING_DOWN: true;
 	/** Emitted by core: subscriptions over plain HTTP. */
