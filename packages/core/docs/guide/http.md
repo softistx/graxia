@@ -18,16 +18,18 @@ graxia.serve({ port: 3000 }); // POST/GET http://localhost:3000/graphql
 
 ## Options
 
-| option         | default                                           | what it does                                                                                                                      |
-| -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`       | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                              |
-| `path`         | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                               |
-| `context`      | none                                              | `({ request, serverContext, params }) => object`, merged over `serverContext`, then `onContext` plugins run                       |
-| `plugins`      | `[]`                                              | see [Plugins](./plugins.md)                                                                                                       |
-| `limits`       | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, see [Limits](./limits-and-caches.md)                                                               |
-| `caches`       | on                                                | parse and validation caches, or `false`                                                                                           |
-| `batching`     | `false`                                           | `false`, or `{ limit: n }`                                                                                                        |
-| `onUnexpected` | `console.error` outside production                | `(error, { requestId }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed |
+| option            | default                                           | what it does                                                                                                                      |
+| ----------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`          | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                              |
+| `path`            | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                               |
+| `context`         | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run               |
+| `plugins`         | `[]`                                              | see [Plugins](./plugins.md)                                                                                                       |
+| `limits`          | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, see [Limits](./limits-and-caches.md)                                                               |
+| `caches`          | on                                                | parse and validation caches, or `false`                                                                                           |
+| `batching`        | `false`                                           | `false`, or `{ limit: n }`                                                                                                        |
+| `asyncContext`    | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                           |
+| `shutdownTimeout` | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                           |
+| `onUnexpected`    | `console.error` outside production                | `(error, { requestId }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed |
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
 hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
@@ -74,15 +76,17 @@ graxia answers whatever path it is handed.
 
 ## Status codes
 
-| situation                                                   | `application/graphql-response+json`                  | `application/json` |
-| ----------------------------------------------------------- | ---------------------------------------------------- | ------------------ |
-| result with `data` (field errors included)                  | 200                                                  | 200                |
-| parse or validation error, unknown operation, bad variables | 400                                                  | 200                |
-| missing `query`; malformed JSON; wrong parameter types      | 400                                                  | 400                |
-| subscription, `@defer` / `@stream`                          | 400                                                  | 200                |
-| mutation over GET                                           | 405 (`Allow: POST`)                                  | 405                |
-| path / method / `Accept` / `Content-Type` / size            | 404 / 405 / 406 / 415 / 413                          | same               |
-| plugin hook threw, `context` threw, `execute` threw         | 500 `{ errors: [{ message: "Unexpected error." }] }` | same               |
+| situation                                                       | `application/graphql-response+json`                  | `application/json` |
+| --------------------------------------------------------------- | ---------------------------------------------------- | ------------------ |
+| result with `data` (field errors included)                      | 200                                                  | 200                |
+| parse or validation error, unknown operation, bad variables     | 400                                                  | 200                |
+| missing `query`; malformed JSON; wrong parameter types          | 400                                                  | 400                |
+| subscription, `@defer` / `@stream`                              | 400                                                  | 200                |
+| mutation over GET                                               | 405 (`Allow: POST`)                                  | 405                |
+| path / method / `Accept` / `Content-Type` / size                | 404 / 405 / 406 / 415 / 413                          | same               |
+| client left, or shutdown past its timeout (`OPERATION_ABORTED`) | 499 / 503                                            | same               |
+| `dispose()` started (`SHUTTING_DOWN`)                           | 503 (`connection: close`)                            | same               |
+| plugin hook threw, `context` threw, `execute` threw             | 500 `{ errors: [{ message: "Unexpected error." }] }` | same               |
 
 Unexpected failures never leak their message. The body is generic whatever the cause; the original
 error reaches `onUnexpected` with the request id. `fetch` never rejects: a response Bun would refuse

@@ -16,7 +16,9 @@ export const timing = definePlugin()({
 ```
 
 Stages, in order: `onRequest`, `onParams`, `onParse`, `onValidate`, `onContext`, `onExecute` (or
-`onSubscribe`), `onResultChunk`, `onResponse`. `setup(api)` runs once at engine init.
+`onSubscribe`), `onResultChunk`, `onResponse`. `setup(api)` runs once at engine init; `onDispose()` runs once when
+`graxia.dispose()` has drained, in reverse plugin order (every hook runs even if one throws, the
+first error is rethrown; see [Context and shutdown](./context.md#dispose-and-draining)).
 
 Every payload carries `responseHeaders: Headers`, merged into the final response (see [GraphQL over HTTP](./http.md#plugin-headers)).
 

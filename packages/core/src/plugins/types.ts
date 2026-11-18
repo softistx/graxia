@@ -166,6 +166,11 @@ export interface GraxiaPlugin<Ctx = Empty, Added = Empty> {
 	): HookReturn<OnExecuteDone>;
 	onResultChunk?(payload: OnResultChunkPayload): MaybePromise<void>;
 	onResponse?(payload: OnResponsePayload): MaybePromise<void>;
+	/**
+	 * Runs once when `graxia.dispose()` finishes draining, in reverse plugin
+	 * order: close the connections and timers the plugin opened in `setup`.
+	 */
+	onDispose?(): MaybePromise<void>;
 	/** @internal phantom carriers for type inference. */
 	readonly '~ctx'?: Ctx;
 	readonly '~added'?: Added;
