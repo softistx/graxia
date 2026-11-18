@@ -221,14 +221,34 @@ result.status; // 200
 result.data?.hello; // 'hello world'
 ```
 
+## PubSub
+
+A typed in-memory PubSub for subscription resolvers. It lives in one process; a Redis
+implementation of the same interface is planned. The transports that deliver subscriptions
+to clients (SSE, WebSocket) arrive in a later release: this release ships the PubSub only.
+
+```ts
+import { createMemoryPubSub, filterIterable } from '@graxia/core';
+
+type Post = { id: string; published: boolean };
+const pubsub = createMemoryPubSub<{ [k: `post:${string}`]: Post }>();
+await pubsub.publish('post:42', { id: '42', published: true });
+// in a resolver, pass `ctx.signal`
+const events = filterIterable(
+	pubsub.subscribe('post:42', { signal: new AbortController().signal }),
+	(p) => p.published,
+);
+```
+
 ## Exports
 
-| import                 | what it is                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                              |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                 |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                     |
+| import                 | what it is                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                |
+|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
 
@@ -239,6 +259,7 @@ result.data?.hello; // 'hello world'
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
+- [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
