@@ -163,6 +163,16 @@ export interface GraxiaPlugin<Ctx = Empty, Added = Empty> {
 	enforce?: 'pre' | 'post' | undefined;
 	/** Runs once at engine init, awaited. */
 	setup?(api: SetupApi): MaybePromise<void>;
+	/**
+	 * Exempts a `GET` request from the CSRF header check (and only from it: the
+	 * `Origin` check and the path and method checks still apply). Consulted for
+	 * `GET` only, before `onRequest`. The exempt request must be answered by a
+	 * plugin's `onRequest` through `respond`; if none does, core refuses it with
+	 * the 403 `CSRF_HEADER_REQUIRED` it would have given, so an exempt request
+	 * never executes an operation. A predicate that throws counts as `false`
+	 * (reported to `onUnexpected`).
+	 */
+	csrfExempt?(request: Request): boolean;
 	onRequest?(payload: OnRequestPayload): HookReturn<OnRequestDone>;
 	onParams?(payload: OnParamsPayload): HookReturn<OnParamsDone>;
 	onParse?(payload: OnParsePayload): HookReturn<OnParseDone>;

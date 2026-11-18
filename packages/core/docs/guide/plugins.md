@@ -119,6 +119,12 @@ Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `se
 wins, and the caller skips the step when `out.document`, `out.errors` or `out.result` is set.
 `addRule` accumulates across plugins.
 
+## Exempting a GET from the CSRF header
+
+A plugin field `csrfExempt(request)` (not a hook) lets a plugin serve its own `GET` pages without the
+CSRF header, provided its `onRequest` answers them with `respond`; otherwise core refuses with 403
+`CSRF_HEADER_REQUIRED`. See [Security](./security.md#exempting-a-plugins-own-get-requests).
+
 ## Hook errors
 
 A hook that throws does not abort its stage mid-way: the hooks after the thrower are skipped, the

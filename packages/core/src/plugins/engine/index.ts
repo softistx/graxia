@@ -27,6 +27,11 @@ export interface PluginEngine {
 	init(): Promise<void>;
 	/** Runs every plugin's `onDispose` once, in reverse plugin order; later calls return the same promise. */
 	dispose(): Promise<void>;
+	/**
+	 * Whether a plugin's `csrfExempt` accepts this `GET` request. A throwing
+	 * predicate counts as `false` and is handed to `onError`.
+	 */
+	csrfExempt(request: Request, onError: (error: unknown) => void): boolean;
 	/** The stage runners (see {@link PluginRunners}). */
 	readonly runners: PluginRunners;
 }
@@ -54,6 +59,17 @@ export function createPluginEngine(
 	return {
 		names,
 		runners: buildRunners(hooksOf),
+		csrfExempt: (request, onError) =>
+			request.method === 'GET' &&
+			ordered.some((plugin) => {
+				if (typeof plugin.csrfExempt !== 'function') return false;
+				try {
+					return plugin.csrfExempt(request) === true;
+				} catch (error) {
+					onError(error);
+					return false;
+				}
+			}),
 		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
 		init: createSetup(ordered, names, ready),
 		dispose: createDispose(ordered, ready),
