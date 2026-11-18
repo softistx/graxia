@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	inDependencyOrder,
+	isAlreadyPublishedError,
 	isPublished,
 	releaseBlockers,
 	workspaceRanges,
@@ -46,5 +47,19 @@ describe('publish', () => {
 		expect(
 			releaseBlockers(['README.md'], [{ name: 'b', version: '0.0.0' }]),
 		).toEqual(['b is still 0.0.0: version it before publishing']);
+	});
+
+	test('treats a staged version as already published, nothing else', () => {
+		expect(
+			isAlreadyPublishedError(
+				'npm error code E409\nnpm error 409 Conflict - PUT https://registry.npmjs.org/@graxia%2fcore - Cannot publish over previously staged version "0.2.0".',
+			),
+		).toBe(true);
+		expect(
+			isAlreadyPublishedError('npm error code E403\nnpm error 403 Forbidden'),
+		).toBe(false);
+		expect(isAlreadyPublishedError('npm error code E409\nconflict')).toBe(
+			false,
+		);
 	});
 });
