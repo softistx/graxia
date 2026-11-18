@@ -156,7 +156,7 @@ describe('wire format', () => {
 		);
 		expect(response.headers.get('content-type')).toContain('application/json');
 	});
-	test('sse.keepAliveMs is validated: a non-negative integer', () => {
+	test('sse.keepAliveMs is validated: an integer from 0 to 2147483647', () => {
 		for (const keepAliveMs of [
 			-1,
 			1.5,

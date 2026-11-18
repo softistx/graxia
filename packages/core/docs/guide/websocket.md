@@ -172,7 +172,7 @@ sources (a memory PubSub's `subscriberCount` drops to 0) and clears its timers.
 
 `dispose()` aborts the operations and closes every open socket with **1001**, without waiting
 `shutdownTimeout` for idle ones. The drain that lets an incremental query finish is for HTTP only
-(multipart/mixed, SSE): over WebSocket every operation on the socket ends at once. upgrades during shutdown get the `503 SHUTTING_DOWN` response.
+(multipart/mixed, SSE): over WebSocket every operation on the socket ends at once. Upgrades during shutdown get the `503 SHUTTING_DOWN` response.
 
 ## Errors
 

@@ -219,6 +219,12 @@ An `error` message with this text answers a `subscribe` whose operation a plugin
 carry it. Refuse the connection instead, in `subscriptions.ws.onConnect` (return `false`, close code 4403), or answer in
 `onRequest` on the upgrade request, which refuses the handshake with that `Response`.
 
+## The operation failed.
+
+An `error` message with this text answers a `subscribe` whose parse or validation errors an
+`onResultChunk` hook removed: graphql-transport-ws requires at least one error in an `error` message,
+so graxia sends this generic one. Let the hook keep (or rewrite) the errors instead of dropping them.
+
 ## WebSocket is disabled
 
 Close code **1008**. A socket reached graxia's handler while `subscriptions.ws` is `false`. Your own
