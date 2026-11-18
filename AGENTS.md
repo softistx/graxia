@@ -51,12 +51,14 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
   `changeset publish` either, which falls back to a plain `npm publish` that leaves
   `workspace:^` in the manifest. The script packs each public package with `bun pm pack`,
   asserts the packed manifest holds no `workspace:` range, runs `npm publish <tgz>`
-  (provenance in CI), skips versions already on npm, then `changeset tag`.
+  (provenance in CI), skips versions already on npm. It refuses (dry run too) while unversioned changesets exist
+  or a package is 0.0.0, and it never tags: after the Version PR merges, from an
+  up-to-date `develop`, run `bunx changeset git-tag && git push --follow-tags`.
   `bun run publish:dry-run` packs and asserts only. `publishConfig` is
   `{ "access": "public" }`, and `scripts/artifacts/manifest.ts` `accessProblems` checks
   that instead of `npm.softistx.com` + `restricted`; `verify:artifacts` also fails on a
   `workspace:` range in any packed manifest.
-- **`publish.yml` instead of `release.yml`**: runs `scripts/publish.ts` on tags `v*` (also `release: published` and
+- **`publish.yml` instead of `release.yml`**: runs `scripts/publish.ts` on tags `v*` and `**@*` (also `release: published` and
   `workflow_dispatch`), org secret `NPM_TOKEN`. The "Version packages" PR is made
   locally (`bun run changeset:version`); nothing opens it in CI. The token's npm user
   must be a member of the `graxia` npm org.

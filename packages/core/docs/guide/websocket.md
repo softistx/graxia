@@ -100,7 +100,7 @@ one of two things:
 
 The custom-header CSRF recipe of the [README](../../README.md#security) cannot apply to a browser
 WebSocket: the browser lets a script set no custom header on it. A built-in `Origin` option is
-planned (issue #16).
+planned ([issue #16](https://github.com/softistx/graxia/issues/16)).
 
 ## Options
 
@@ -171,7 +171,8 @@ socket closes, or the server shuts down. The client's `complete` stops the opera
 sources (a memory PubSub's `subscriberCount` drops to 0) and clears its timers.
 
 `dispose()` aborts the operations and closes every open socket with **1001**, without waiting
-`shutdownTimeout` for idle ones; upgrades during shutdown get the `503 SHUTTING_DOWN` response.
+`shutdownTimeout` for idle ones. The drain that lets an incremental query finish is for HTTP only
+(multipart/mixed, SSE): over WebSocket every operation on the socket ends at once. upgrades during shutdown get the `503 SHUTTING_DOWN` response.
 
 ## Errors
 

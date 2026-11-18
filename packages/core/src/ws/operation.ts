@@ -64,7 +64,11 @@ export async function runSubscribe(
 			const prepared = (await scope(() =>
 				preparePayload(rt, request, state, outcome.result),
 			)) as { errors?: readonly unknown[] } | null;
-			return await fail(prepared?.errors ?? []);
+			const errors = prepared?.errors ?? [];
+			// A hook may have dropped every error: never answer with an empty list.
+			return await fail(
+				errors.length > 0 ? errors : [{ message: 'The operation failed.' }],
+			);
 		}
 		const stream = streamOutcome(
 			rt,

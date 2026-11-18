@@ -39,7 +39,7 @@ export interface SubscriptionsOptions {
 	 * default; `false` answers a subscription over HTTP with
 	 * `SUBSCRIPTION_NOT_SUPPORTED`. `{ keepAliveMs }` sets the milliseconds
 	 * between keep-alive comments on an open stream (12 000 by default; `0`
-	 * turns them off; a non-negative integer).
+	 * turns them off; an integer up to 2_147_483_647).
 	 */
 	sse?: boolean | { keepAliveMs?: number };
 	/**

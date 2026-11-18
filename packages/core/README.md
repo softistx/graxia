@@ -194,7 +194,7 @@ const requireCustomHeader = definePlugin()({
   on it). The upgrade request goes through `onRequest`, where its `Upgrade` and `Origin` headers are
   visible; refuse a foreign origin there, or authenticate the socket with `connectionParams` (a
   token in `connection_init`, checked in `subscriptions.ws.onConnect`) instead of the cookie. A
-  built-in `Origin` option is planned (issue #16).
+  built-in `Origin` option is planned ([issue #16](https://github.com/softistx/graxia/issues/16)).
 
 ```ts
 const allowed = new Set(['https://app.example.com']);

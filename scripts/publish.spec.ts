@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { inDependencyOrder, isPublished, workspaceRanges } from './publish';
+import {
+	inDependencyOrder,
+	isPublished,
+	releaseBlockers,
+	workspaceRanges,
+} from './publish';
 
 describe('publish', () => {
 	test('finds a workspace: range a pack left behind', () => {
@@ -28,5 +33,18 @@ describe('publish', () => {
 		expect(await isPublished('@a/b', '0.1.0', ok)).toBe(true);
 		expect(await isPublished('@a/b', '0.2.0', ok)).toBe(false);
 		expect(await isPublished('@a/b', '0.1.0', missing)).toBe(false);
+	});
+
+	test('refuses pending changesets, and a 0.0.0 package', () => {
+		const versioned = [{ name: 'a', version: '1.2.0' }];
+		expect(releaseBlockers(['README.md', 'config.json'], versioned)).toEqual(
+			[],
+		);
+		expect(releaseBlockers(['README.md', 'fix-it.md'], versioned)[0]).toContain(
+			'fix-it.md',
+		);
+		expect(
+			releaseBlockers(['README.md'], [{ name: 'b', version: '0.0.0' }]),
+		).toEqual(['b is still 0.0.0: version it before publishing']);
 	});
 });

@@ -9,9 +9,13 @@ export function resolveStreaming(
 	const givenSse = options.subscriptions?.sse;
 	const keepAliveMs =
 		typeof givenSse === 'object' ? (givenSse.keepAliveMs ?? 12_000) : 12_000;
-	if (!Number.isInteger(keepAliveMs) || keepAliveMs < 0)
+	if (
+		!Number.isInteger(keepAliveMs) ||
+		keepAliveMs < 0 ||
+		keepAliveMs > 2_147_483_647
+	)
 		throw new GraxiaConfigError(
-			'subscriptions.sse.keepAliveMs must be a non-negative integer (milliseconds, 0 turns keep-alive comments off)',
+			'subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)',
 		);
 	const given = options.incremental ?? true;
 	const format =

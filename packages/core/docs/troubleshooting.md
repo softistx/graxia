@@ -145,17 +145,17 @@ The same refusal when `subscriptions.sse` is `false` and WebSocket is on: use a 
 Both `subscriptions: { sse: false, ws: false }` are set, so no transport serves a subscription. Remove one
 (each is on by default).
 
-## subscriptions.sse.keepAliveMs must be a non-negative integer (milliseconds, 0 turns keep-alive comments off)
+## subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)
 
-Pass `12_000`, or `0` to stop the keep-alive comments.
+Pass `12_000`, or `0` to stop the keep-alive comments. The most is `2_147_483_647` (the largest timer delay).
 
 ## subscriptions.ws.connectionInitWaitTimeout must be a positive integer (milliseconds)
 
 Pass a count of milliseconds such as `3_000`. The default is `3_000`.
 
-## subscriptions.ws.keepAliveMs must be a non-negative integer (milliseconds, 0 turns pings off)
+## subscriptions.ws.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns pings off)
 
-Pass `12_000`, or `0` to stop the server's `ping` messages.
+Pass `12_000`, or `0` to stop the server's `ping` messages. The most is `2_147_483_647` (the largest timer delay).
 
 ## subscriptions.ws.maxPayloadBytes must be a positive integer (bytes)
 

@@ -174,8 +174,12 @@ describe('handshake and options', () => {
 			'subscriptions.ws.connectionInitWaitTimeout must be a positive integer (milliseconds)',
 		],
 		[
+			{ keepAliveMs: 2_147_483_648 },
+			'subscriptions.ws.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns pings off)',
+		],
+		[
 			{ keepAliveMs: -1 },
-			'subscriptions.ws.keepAliveMs must be a non-negative integer (milliseconds, 0 turns pings off)',
+			'subscriptions.ws.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns pings off)',
 		],
 		[
 			{ maxPayloadBytes: 1.5 },

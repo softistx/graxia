@@ -23,7 +23,7 @@ export interface WebSocketOptions {
 	connectionInitWaitTimeout?: number;
 	/**
 	 * Milliseconds between the server's `ping` messages. 12 000 by default;
-	 * `0` turns them off. A non-negative integer (as `subscriptions.sse.keepAliveMs`).
+	 * `0` turns them off. An integer from 0 to 2_147_483_647 (as `subscriptions.sse.keepAliveMs`).
 	 */
 	keepAliveMs?: number;
 	/**
@@ -69,9 +69,13 @@ export function resolveWebSocket(
 		throw new GraxiaConfigError(
 			'subscriptions.ws.connectionInitWaitTimeout must be a positive integer (milliseconds)',
 		);
-	if (!Number.isInteger(keepAliveMs) || keepAliveMs < 0)
+	if (
+		!Number.isInteger(keepAliveMs) ||
+		keepAliveMs < 0 ||
+		keepAliveMs > 2_147_483_647
+	)
 		throw new GraxiaConfigError(
-			'subscriptions.ws.keepAliveMs must be a non-negative integer (milliseconds, 0 turns pings off)',
+			'subscriptions.ws.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns pings off)',
 		);
 	if (!positive(maxPayloadBytes))
 		throw new GraxiaConfigError(

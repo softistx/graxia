@@ -171,6 +171,24 @@ describe('graphql-ws client', () => {
 		expect(disconnects).toBe(1);
 	});
 
+	test('an error result a hook emptied falls back to a generic error', async () => {
+		const plugin = definePlugin()({
+			name: 'drop-errors',
+			onResultChunk: ({ setChunk }) => setChunk({ data: null }),
+		});
+		const { url } = start({ plugins: [plugin] });
+		const c = client(url);
+		const error = await new Promise<any>((resolve) =>
+			c.subscribe(
+				{ query: '{ nope }' },
+				{ next: () => {}, error: resolve, complete: () => {} },
+			),
+		);
+		expect(error).toHaveLength(1);
+		expect(error[0].message).toBe('The operation failed.');
+		await c.dispose();
+	});
+
 	test('masks a thrown resolver error in an event and applies onResultChunk', async () => {
 		const plugin = definePlugin()({
 			name: 'chunks',

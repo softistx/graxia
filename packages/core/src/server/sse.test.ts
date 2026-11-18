@@ -157,9 +157,15 @@ describe('wire format', () => {
 		expect(response.headers.get('content-type')).toContain('application/json');
 	});
 	test('sse.keepAliveMs is validated: a non-negative integer', () => {
-		for (const keepAliveMs of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])
+		for (const keepAliveMs of [
+			-1,
+			1.5,
+			Number.NaN,
+			Number.POSITIVE_INFINITY,
+			2_147_483_648,
+		])
 			expect(() => make({ subscriptions: { sse: { keepAliveMs } } })).toThrow(
-				'subscriptions.sse.keepAliveMs must be a non-negative integer (milliseconds, 0 turns keep-alive comments off)',
+				'subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)',
 			);
 		expect(() =>
 			make({ subscriptions: { sse: { keepAliveMs: 0 } } }),

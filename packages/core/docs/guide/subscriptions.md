@@ -69,7 +69,7 @@ createGraxia({
 	subscriptions: {
 		// default `true`; `false` answers SUBSCRIPTION_NOT_SUPPORTED
 		sse: {
-			keepAliveMs: 12_000, // default; keep-alive comments; 0 turns them off; a non-negative integer
+			keepAliveMs: 12_000, // default; keep-alive comments; 0 turns them off; an integer up to 2_147_483_647
 		},
 	},
 });
@@ -111,7 +111,7 @@ cancelled, graxia calls the source iterator's `return()` and clears the keep-ali
 
 `dispose()` stops the open streams first: each sends `complete` and closes, so shutdown does not wait
 for `shutdownTimeout` on subscriptions. A stream whose source ignores the abort is dropped at the end
-of the timeout, like any operation. An incremental query or mutation is not a subscription: it drains
+of the timeout, like any operation. Over HTTP (multipart/mixed, SSE), an incremental query or mutation is not a subscription: it drains
 within `shutdownTimeout` before it is cut (see [`@defer` and `@stream`](./incremental.md)).
 
 A custom source (a `setResult` iterator, or your own `subscribe` function) must settle a pending

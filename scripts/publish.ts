@@ -9,13 +9,16 @@
  * Here each package is packed with `bun pm pack` (which rewrites the range),
  * the packed manifest is asserted to hold no `workspace:` range, and that
  * tarball is what `npm publish` uploads. A version already on npm is skipped,
- * so a re-run is safe; `changeset tag` runs last and tags what is released.
+ * so a re-run is safe. It refuses to run while changesets are pending or a
+ * package is still 0.0.0: the Version PR must be merged first. It does not tag:
+ * after the merge, from an up-to-date `develop`, run
+ * `bunx changeset git-tag && git push --follow-tags`.
  *
- * `--dry-run` packs and asserts, publishes nothing and tags nothing.
+ * `--dry-run` packs and asserts, and publishes nothing; it refuses the same way.
  * Credentials: `NODE_AUTH_TOKEN` (set by `publish.yml`); provenance is on when
  * the workflow has `id-token: write` (`GITHUB_ACTIONS`).
  */
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { $ } from 'bun';
@@ -74,6 +77,26 @@ export async function isPublished(
 	return doc.versions?.[version] !== undefined;
 }
 
+/** Why nothing may be published yet: unversioned changesets, or a package never versioned. */
+export function releaseBlockers(
+	changesetFiles: readonly string[],
+	packages: readonly { name: string; version: string }[],
+): string[] {
+	const pending = changesetFiles.filter(
+		(file) => file.endsWith('.md') && file !== 'README.md',
+	);
+	return [
+		...(pending.length > 0
+			? [
+					`${pending.length} changeset(s) are not versioned yet (${pending.join(', ')}): merge the Version PR (bun run changeset:version) first`,
+				]
+			: []),
+		...packages
+			.filter((p) => p.version === '0.0.0')
+			.map((p) => `${p.name} is still 0.0.0: version it before publishing`),
+	];
+}
+
 type Publishable = Pkg & { deps: string[] };
 
 async function publishable(): Promise<Publishable[]> {
@@ -89,10 +112,19 @@ async function publishable(): Promise<Publishable[]> {
 
 async function main(): Promise<void> {
 	const dryRun = process.argv.includes('--dry-run');
+	const packages = await publishable();
+	const blockers = releaseBlockers(
+		await readdir(join(ROOT, '.changeset')),
+		packages,
+	);
+	if (blockers.length > 0) {
+		for (const blocker of blockers) console.error(`  refused   ${blocker}`);
+		process.exit(1);
+	}
 	const workdir = await mkdtemp(join(tmpdir(), 'graxia-publish-'));
 	let published = 0;
 	try {
-		for (const pkg of await publishable()) {
+		for (const pkg of packages) {
 			if (await isPublished(pkg.name, pkg.version)) {
 				console.log(`  skip      ${pkg.name}@${pkg.version} (already on npm)`);
 				continue;
@@ -119,7 +151,6 @@ async function main(): Promise<void> {
 			published++;
 			console.log(`  published ${pkg.name}@${pkg.version}`);
 		}
-		if (!dryRun && published > 0) await $`bunx changeset tag`.cwd(ROOT);
 	} finally {
 		await rm(workdir, { recursive: true, force: true });
 	}
