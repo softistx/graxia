@@ -61,19 +61,26 @@ On by default, so an operation over them is refused before it executes. Each is 
 integer, or `false` to turn it off; anything else throws a `GraxiaConfigError` when
 `createGraxia` runs.
 
-| Option              | Default | Counts                                                           |
-| ------------------- | ------- | ---------------------------------------------------------------- |
-| `limits.depth`      | 12      | The deepest field selection; root fields are depth 1             |
-| `limits.aliases`    | 30      | Aliased fields                                                   |
-| `limits.directives` | 50      | Directive usages                                                 |
-| `limits.rootFields` | 20      | Fields of the operation's root selection (`__typename` excluded) |
-| `limits.cost`       | on      | The [cost](#cost) of the operation (`false` turns it off)        |
+| Option                        | Default | Constant                  | Counts                                                           |
+| ----------------------------- | ------- | ------------------------- | ---------------------------------------------------------------- |
+| `limits.depth`                | 12      | `DEFAULT_MAX_DEPTH`       | The deepest field selection; root fields are depth 1             |
+| `limits.aliases`              | 30      | `DEFAULT_MAX_ALIASES`     | Aliased fields                                                   |
+| `limits.directives`           | 50      | `DEFAULT_MAX_DIRECTIVES`  | Directive usages                                                 |
+| `limits.rootFields`           | 20      | `DEFAULT_MAX_ROOT_FIELDS` | Fields of the operation's root selection (`__typename` excluded) |
+| `limits.cost.max`             | 5 000   | `DEFAULT_MAX_COST`        | The [cost](#cost) of the operation (`cost: false` turns it off)  |
+| `limits.cost.defaultListSize` | 10      | `DEFAULT_LIST_SIZE`       | Items assumed in a list with no size information                 |
+| `limits.cost.objectCost`      | 1       |                           | Cost of an object with no `@cost`                                |
+| `limits.cost.scalarCost`      | 0       |                           | Cost of a scalar or enum with no `@cost`                         |
 
 All four count through fragments and inline fragments: a fragment spread twice counts twice.
 The walk is memoised per fragment, so a document of fragments that each spread the previous
 one twice stays linear, and a fragment cycle (reported by validation) cannot hang it.
-`__typename` adds no depth, and the `__schema` / `__type` subtrees count for nothing, so GraphiQL's
-introspection query passes the defaults.
+`__typename` adds no depth. An introspection root (`__schema`, `__type`) is a field, an alias and
+directives like any other, and costs `objectCost`; only the depth of its subtree is exempt, so
+GraphiQL's introspection query passes the defaults while 200 aliased `__schema` roots do not.
+`@skip` and `@include` are ignored by the limits (a skipped field still counts: an over-estimate).
+The limits are validation rules added to graphql's: a plugin whose `onValidate` replaces the
+validation function (`setValidationFn`) may drop them.
 
 A refusal is a `GRAPHQL_VALIDATION_FAILED` error (HTTP 400, an `error` message over WebSocket,
 `next` then `complete` over server-sent events), one per limit exceeded, with `extensions.limit`
@@ -136,16 +143,38 @@ createGraxia({
   `assumedSize`, else `defaultListSize`. A weight written on the field itself is paid once; one from
   the type or the defaults is paid per item. `sizedFields` gives the connection's list fields (`edges`,
   `nodes`) that size instead.
-- The slicing arguments read the request's variable values (and the variable defaults), so
+- The slicing arguments read the request's coerced variable values (defaults included), so
   `first: $n` cannot get around the limit. That is why cost is checked per request, after validation
   and before execution, on every transport, rather than as a validation rule.
-- `@defer` and `@stream` cost the full operation. Introspection costs nothing. Cost is a
-  conservative upper bound: fields in every branch of an abstract type are summed.
-- `@cost` on an argument or an input field is accepted by the schema but not counted;
-  `requireOneSlicingArgument` is declared but not enforced.
+- `requireOneSlicingArgument` (true by default) is enforced: a list field whose slicing arguments
+  are all absent, `null`, negative, not an integer or an unprovided variable is refused with
+  `Field Query.users requires one of its slicing arguments (first, last).`, instead of falling back to
+  a default size. Set it to `false` on the `@listSize` to allow the fallback. A huge value
+  (`first: 2147483647`) is just a big cost, refused by `max`.
+- A nested list (`[[User!]!]!`) multiplies per level; the inner levels use `assumedSize`, else
+  `defaultListSize`.
+- Variables that do not coerce are not costed: execution reports them as usual.
+- `@defer` and `@stream` cost the full operation. Introspection roots cost `objectCost` each. Cost
+  is a conservative upper bound: fields in every branch of an abstract type are summed, and
+  `@skip` / `@include` are ignored.
+- `@cost` and `@listSize` are read from the SDL (the `astNode` of the field and type), so a
+  schema built in code without SDL gets the default costs only. `@cost` on an argument or an input
+  field is accepted by the schema but not counted.
 
-The refusal reads `Operation cost 7200 exceeds the limit of 5000.`, with
-`limit: { name: 'cost', max: 5000, actual: 7200 }`.
+With the schema above (a `User` object costs 1, its scalars 0), slicing arguments given as
+variables, or through their default, count the same as literals:
+
+```ts
+const document = parse(`
+  query Users($n: Int = 7) { users(first: $n) { id name } }
+`);
+computeOperationCost({ schema, document }); // 7: the default of $n
+computeOperationCost({ schema, document, variables: { n: 400 } }); // 400
+```
+
+With `limits.cost.max` at 100, a request sending `{ "n": 400 }` is refused with
+`Operation cost 400 exceeds the limit of 100.` and `limit: { name: 'cost', max: 100, actual: 400 }`;
+the default of 7 passes.
 
 `computeOperationCost({ schema, document, operationName?, variables?, options? })` returns the
 number, for a plugin or a test.

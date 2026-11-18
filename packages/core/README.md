@@ -168,7 +168,9 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
   (`limits.tokens`, `limits.nesting`); a failure is `GRAPHQL_PARSE_FAILED`.
 - Operation limits: depth 12, 30 aliases, 50 directives, 20 root fields and a cost of 5 000
   (`limits.depth`, `.aliases`, `.directives`, `.rootFields`, `.cost`), fragments expanded; a refusal is
-  `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`.
+  `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`. Cost follows `@cost` / `@listSize`, which
+  `createSchema` adds to your SDL (`costDirectives` does for a schema you build yourself);
+  `computeOperationCost` returns an operation's cost for plugins and tests.
 - Batching is off unless you set `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's

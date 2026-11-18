@@ -18,9 +18,9 @@ export type { MaskError, MaskInfo } from './errors/mask';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type { BatchingOption } from './http/batch';
 export { getRequestId } from './http/request-id';
-export type { ComputeCostArgs } from './limits/cost';
-export { computeOperationCost } from './limits/cost';
 export { costDirectives } from './limits/directives';
+export type { ComputeCostArgs } from './limits/operation-cost';
+export { computeOperationCost } from './limits/operation-cost';
 export type {
 	CostOptions,
 	OperationLimits,

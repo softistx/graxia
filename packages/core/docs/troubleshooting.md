@@ -138,13 +138,44 @@ check reads variables, so `first: $n` counts. `extensions.limit.name` is `cost`.
 createGraxia({ schema, limits: { cost: { max: 20_000 } } }); // or cost: false
 ```
 
+## Field Query.users requires one of its slicing arguments (first, last).
+
+A list field declared with `@listSize(slicingArguments: [...])` was asked for without any of them
+holding a valid value (absent, `null`, negative, not an integer, or an unprovided variable).
+Pass one, or set `requireOneSlicingArgument: false` on the `@listSize` to fall back to
+`assumedSize` / `limits.cost.defaultListSize`. `extensions.limit.name` is `cost`.
+
 ## limits.depth must be a positive integer (or false)
 
-Also `limits.aliases`, `limits.directives` and `limits.rootFields`: pass an integer of at least
-1, or `false`. `limits.cost` must be `false` or an object, and its `max` and `defaultListSize` must be positive
-integers (`limits.cost.max must be a positive integer`, `limits.cost.defaultListSize must be a positive integer`),
-its `objectCost` and `scalarCost` non-negative integers (`limits.cost.objectCost must be a non-negative integer`,
-`limits.cost.scalarCost must be a non-negative integer`).
+`limits.depth` is not an integer of at least 1. Pass one, or `false`.
+
+## limits.aliases must be a positive integer (or false)
+
+Same for `limits.aliases`.
+
+## limits.directives must be a positive integer (or false)
+
+Same for `limits.directives`.
+
+## limits.rootFields must be a positive integer (or false)
+
+Same for `limits.rootFields`.
+
+## limits.cost must be false or an object ({ max, defaultListSize, objectCost, scalarCost })
+
+`limits.cost` is neither `false` nor an object. Pass `false`, or the settings you want:
+
+```ts
+createGraxia({ schema, limits: { cost: { max: 10_000 } } });
+```
+
+## limits.cost.max must be a positive integer
+
+Also `limits.cost.defaultListSize must be a positive integer`.
+
+## limits.cost.objectCost must be a non-negative integer
+
+Also `limits.cost.scalarCost must be a non-negative integer`.
 
 ## Cannot query field "x" on type "Query".  (`GRAPHQL_VALIDATION_FAILED`)
 

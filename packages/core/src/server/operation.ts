@@ -4,7 +4,7 @@ import {
 	Kind,
 	type OperationDefinitionNode,
 } from 'graphql';
-import { costRefusal } from '../limits/cost';
+import { costRefusal } from '../limits/operation-cost';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';

@@ -1,14 +1,11 @@
-import {
-	type DocumentNode,
+import type {
+	DocumentNode,
 	GraphQLError,
-	type GraphQLSchema,
-	specifiedRules,
-	type ValidationRule,
-	validate,
+	GraphQLSchema,
+	ValidationRule,
 } from 'graphql';
 import type { PluginEngine } from '../plugins/engine';
 import type { RequestState } from '../plugins/state';
-import type { ValidationFn } from '../plugins/types';
 import {
 	createDocumentCache,
 	createValidationCache,
@@ -22,11 +19,8 @@ import {
 	type ResolvedLimits,
 	resolveLimits,
 } from './parse';
-import {
-	type DocumentCaches,
-	type DocumentLimits,
-	VALIDATION_FAILED,
-} from './types';
+import type { DocumentCaches, DocumentLimits } from './types';
+import { checkDocument } from './validate';
 
 /** Options of {@link createDocumentPipeline}. */
 export interface DocumentPipelineOptions {
@@ -195,7 +189,7 @@ async function runValidate(
 		try {
 			errors = out.errors
 				? out.errors
-				: check(ctx, document, cacheKey, out.validationFn, out.rules);
+				: checkDocument(ctx, document, cacheKey, out.validationFn, out.rules);
 		} catch (caught) {
 			// A throwing rule or validation function: the after-hooks still run.
 			thrown = caught;
@@ -209,51 +203,6 @@ async function runValidate(
 		...(errors.length > 0 || failure !== undefined ? { errors } : { document }),
 		...(failure !== undefined ? { error: failure } : {}),
 	};
-}
-
-function check(
-	ctx: Ctx,
-	document: DocumentNode,
-	cacheKey: string | undefined,
-	validationFn: ValidationFn | undefined,
-	rules: readonly ValidationRule[],
-): readonly GraphQLError[] {
-	const { schema, validationCache } = ctx;
-	const key =
-		validationCache &&
-		cacheKey !== undefined &&
-		!validationFn &&
-		rules.length === 0
-			? cacheKey
-			: undefined;
-	if (key !== undefined) {
-		const hit = validationCache?.get(schema, key);
-		if (hit) return hit;
-	}
-	const found = (validationFn ?? validate)(schema, document, [
-		...specifiedRules,
-		...ctx.rules,
-		...rules,
-	]);
-	const coded = withCode(found);
-	if (key !== undefined) validationCache?.set(schema, key, coded);
-	return coded;
-}
-
-/** Stamps `extensions.code: GRAPHQL_VALIDATION_FAILED` on the errors that carry no code. */
-function withCode(errors: readonly GraphQLError[]): readonly GraphQLError[] {
-	return errors.map((error) =>
-		error.extensions['code'] !== undefined
-			? error
-			: new GraphQLError(error.message, {
-					nodes: error.nodes,
-					source: error.source,
-					positions: error.positions,
-					path: error.path,
-					originalError: error.originalError ?? error,
-					extensions: { ...error.extensions, code: VALIDATION_FAILED },
-				}),
-	);
 }
 
 async function finish<D>(

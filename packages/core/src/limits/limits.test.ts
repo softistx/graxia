@@ -138,6 +138,32 @@ describe('rootFields', () => {
 	});
 });
 
+describe('introspection roots', () => {
+	const roots = (n: number) =>
+		`{ ${Array.from({ length: n }, (_, i) => `a${i}: __schema { queryType { name } }`).join(' ')} }`;
+	test('aliased roots are refused on aliases and rootFields', async () => {
+		const { body } = await run(roots(40));
+		expect(body.errors.map((e: any) => e.extensions.limit.name).sort()).toEqual(
+			['aliases', 'rootFields'],
+		);
+	});
+	test('and on cost', async () => {
+		const { body } = await run(roots(5), { cost: { max: 4 } });
+		expect(body.errors[0].extensions.limit).toEqual({
+			name: 'cost',
+			max: 4,
+			actual: 5,
+		});
+	});
+	test('a deep introspection subtree adds no depth', async () => {
+		const { status } = await run(
+			'{ __type(name: "Query") { fields { type { ofType { ofType { ofType { ofType { name } } } } } } } }',
+			{ depth: 1 },
+		);
+		expect(status).toBe(200);
+	});
+});
+
 describe('several limits at once', () => {
 	test('one error per limit exceeded', async () => {
 		const { body } = await run('{ x: a y: b z: c }', {

@@ -67,15 +67,19 @@ export function createWalker(
 			total.directives += child.directives;
 		};
 		for (const node of set.selections) {
-			if (node.kind === Kind.FIELD && introspection.has(node.name.value))
-				continue;
 			total.directives += node.directives?.length ?? 0;
 			if (node.kind === Kind.FIELD) {
 				const name = node.name.value;
 				if (node.alias) total.aliases++;
 				if (name === '__typename') continue;
 				total.fields++;
-				merge(node.selectionSet ? selection(node.selectionSet) : empty(), 1);
+				const child = node.selectionSet
+					? selection(node.selectionSet)
+					: empty();
+				// An introspection root is a field, an alias and directives like any
+				// other; only the depth of its subtree is exempt.
+				if (introspection.has(name)) child.depth = 0;
+				merge(child, 1);
 			} else {
 				const child =
 					node.kind === Kind.FRAGMENT_SPREAD

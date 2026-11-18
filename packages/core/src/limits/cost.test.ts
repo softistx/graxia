@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { GraphQLSchema, parse } from 'graphql';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
-import { computeOperationCost } from './cost';
 import { costDirectives } from './directives';
+import { computeOperationCost } from './operation-cost';
 
 const schema = createSchema()({
 	typeDefs: `
@@ -16,7 +16,9 @@ const schema = createSchema()({
 			conn(first: Int): Conn @listSize(slicingArguments: ["first"], sizedFields: ["edges"])
 			plain: String
 			weighted: Weighted
+			grid: [[User!]!]!
 		}
+		type Subscription { feed(first: Int): [User!]! @listSize(slicingArguments: ["first"]) }
 		type Weighted @cost(weight: 7) { id: ID }
 		input Page { size: Int }
 		type User { id: ID name: String posts: [Post!]! }
@@ -41,6 +43,23 @@ const cost = (
 	});
 
 describe('computeOperationCost', () => {
+	test('nested lists multiply per level', () => {
+		expect(cost('{ grid { id } }')).toBe(10 * 10);
+	});
+	test('introspection roots cost like objects', () => {
+		expect(
+			cost('{ a: __schema { types { name } } b: __schema { types { name } } }'),
+		).toBe(2);
+	});
+	test('exponential fragments under a sizedFields field stay fast', () => {
+		let query =
+			'{ conn(first: 5) { edges { ...F59 } } }\nfragment F0 on Edge { node { id } }\n';
+		for (let i = 1; i < 60; i++)
+			query += `fragment F${i} on Edge { ...F${i - 1} ...F${i - 1} }\n`;
+		const started = performance.now();
+		expect(cost(query)).toBeGreaterThan(1e15);
+		expect(performance.now() - started).toBeLessThan(200);
+	});
 	test('scalars cost scalarCost, objects objectCost', () => {
 		expect(cost('{ plain }')).toBe(0);
 		expect(cost('{ plain }', undefined, { scalarCost: 2 })).toBe(2);
@@ -80,7 +99,7 @@ describe('computeOperationCost', () => {
 				'{ ...F ... on Query { sized { id } } } fragment F on Query { heavy }',
 			),
 		).toBe(53);
-		expect(cost('{ __schema { types { name } } __typename }')).toBe(0);
+		expect(cost('{ __schema { types { name } } __typename }')).toBe(1);
 	});
 	test('a fragment cycle terminates', () => {
 		expect(
@@ -170,6 +189,65 @@ describe('limits.cost', () => {
 			document: '{ sliced(first: 500) { id } }',
 		});
 		expect(result.errors?.[0]?.message).toBe(
+			'Operation cost 500 exceeds the limit of 100.',
+		);
+		await graxia.dispose({ timeout: 10 });
+	});
+});
+
+describe('requireOneSlicingArgument and variables', () => {
+	const refused = (body: any) => body.errors?.[0];
+	test('a missing, null or unprovided slicing argument is refused', async () => {
+		const message =
+			'Field Query.sliced requires one of its slicing arguments (first, last).';
+		for (const [query, variables] of [
+			['{ sliced { id } }', undefined],
+			['{ sliced(first: null) { id } }', undefined],
+			['query($n: Int) { sliced(first: $n) { id } }', {}],
+			['{ sliced(first: -1) { id } }', undefined],
+		] as const) {
+			const { status, body } = await post(query, variables);
+			expect(status).toBe(400);
+			expect(refused(body).message).toBe(message);
+			expect(refused(body).extensions.limit.name).toBe('cost');
+			expect(refused(body).extensions.fix).toContain('slicing arguments');
+		}
+	});
+	test('a variable default is read', async () => {
+		const q = 'query($n: Int = 500) { sliced(first: $n) { id } }';
+		expect(refused((await post(q)).body).message).toBe(
+			'Operation cost 500 exceeds the limit of 100.',
+		);
+	});
+	test('variables that do not coerce are left to execution', async () => {
+		const q = 'query($n: Int) { sliced(first: $n) { id } }';
+		const { body } = await post(q, { n: '99999' });
+		expect(refused(body).message).toContain('has invalid value');
+		expect(refused(body).extensions?.limit).toBeUndefined();
+	});
+	test('a huge size is a big cost, never NaN', async () => {
+		const { body } = await post('{ sliced(first: 2147483647) { id } }');
+		expect(refused(body).extensions.limit.actual).toBe(2147483647);
+	});
+	test('a subscription is refused too', async () => {
+		const graxia = createGraxia({
+			schema,
+			limits: { cost: { max: 100 } },
+			onUnexpected: false,
+		});
+		const response = await graxia.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					accept: 'text/event-stream',
+				},
+				body: JSON.stringify({
+					query: 'subscription { feed(first: 500) { id } }',
+				}),
+			}),
+		);
+		expect(await response.text()).toContain(
 			'Operation cost 500 exceeds the limit of 100.',
 		);
 		await graxia.dispose({ timeout: 10 });
