@@ -20,10 +20,14 @@ import type { Empty, GraxiaPlugin } from './types';
  *   name: "auth",
  *   onContext: async ({ context }) => ({ user: { agent: context.request.headers.get("user-agent") } }),
  * });
+ *
+ * The direct form takes no type argument: `definePlugin<{ request: Request }>({ ... })`
+ * is refused, since it would claim the plugin adds `request`. Use the curried form.
  */
-export function definePlugin<Added extends object = Empty>(
-	plugin: GraxiaPlugin<Empty, Added>,
-): GraxiaPlugin<Empty, Added>;
+export function definePlugin<
+	_NoTypeArgument extends never = never,
+	Added extends object = Empty,
+>(plugin: GraxiaPlugin<Empty, Added>): GraxiaPlugin<Empty, Added>;
 export function definePlugin<In = Empty>(): <Added extends object = Empty>(
 	plugin: GraxiaPlugin<In, Added>,
 ) => GraxiaPlugin<In, Added>;

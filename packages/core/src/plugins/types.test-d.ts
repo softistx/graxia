@@ -122,6 +122,10 @@ definePlugin({
 	},
 });
 
+// direct form: a type argument is refused (it would claim `Added` without `onContext`)
+// @ts-expect-error use the curried form `definePlugin<In>()({ ... })`
+definePlugin<{ request: Request }>({ name: 'direct-typed' });
+
 // curried form keeps `In` and infers `Added`
 const curried = definePlugin<{ request: Request }>()({
 	name: 'curried',

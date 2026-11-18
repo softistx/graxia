@@ -2,4 +2,4 @@
 '@graxia/core': minor
 ---
 
-definePlugin takes the plugin directly when it requires no context
+`definePlugin({ ... })` now takes a plugin that requires no context directly, inferring what its `onContext` adds; `definePlugin<In>()({ ... })` stays for plugins that require a context. `definePlugin()({ ... })` keeps working.

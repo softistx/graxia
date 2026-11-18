@@ -68,7 +68,9 @@ const timing = definePlugin({
 createGraxia({ schema, plugins: [timing] });
 ```
 
-See [Plugins](./docs/guide/plugins.md).
+A plugin that reads something from the context declares it with the curried form,
+`definePlugin<{ request: Request }>()({ ... })`, so `onContext` still infers what it adds. See
+[Plugins](./docs/guide/plugins.md) and its [Typed context](./docs/guide/plugins.md#typed-context) section.
 
 ## Context and `getContext`
 
