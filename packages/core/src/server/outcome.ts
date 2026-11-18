@@ -29,14 +29,26 @@ export type Outcome =
 /** A result made of one error that failed before execution. */
 export function failure(
 	message: string,
-	options: { status?: number; headers?: HeadersInit; code?: string } = {},
+	options: {
+		status?: number;
+		headers?: HeadersInit;
+		code?: string;
+		fix?: string;
+	} = {},
 ): Outcome {
 	return {
 		kind: 'result',
 		result: {
 			errors: [
 				new GraphQLError(message, {
-					...(options.code ? { extensions: { code: options.code } } : {}),
+					...(options.code
+						? {
+								extensions: {
+									code: options.code,
+									...(options.fix ? { fix: options.fix } : {}),
+								},
+							}
+						: {}),
 				}),
 			],
 		},

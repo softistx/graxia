@@ -8,7 +8,4 @@ export function documentText(document: DocumentInput<any, any>): string {
 		: print(document as DocumentNode);
 }
 
-/** The lowercase hex SHA-256 of `text`, as the APQ `sha256Hash`. */
-export function sha256Hex(text: string): string {
-	return new Bun.CryptoHasher('sha256').update(text).digest('hex');
-}
+export { sha256Hex } from '../trusted/apq';

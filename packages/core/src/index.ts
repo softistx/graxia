@@ -98,4 +98,9 @@ export type {
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
+export type {
+	ApolloPersistedQueryManifest,
+	TrustedDocumentsOptions,
+	TrustedManifest,
+} from './trusted/types';
 export type { WebSocketContext, WebSocketOptions } from './ws/options';

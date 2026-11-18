@@ -579,3 +579,93 @@ An entry must be exactly `scheme://host[:port]`: no path, no trailing slash, not
 ## suggestions must be a boolean
 
 Both options take `true` or `false`; leave them out to follow `NODE_ENV`.
+
+## Only persisted documents are allowed.
+
+`trustedDocuments` is in `strict` mode (the default when `NODE_ENV=production`) and the request sent
+a query in full with no id that resolves. The response is 400 with code `PERSISTED_QUERY_ONLY` and
+a `fix`. Send the `documentId` (or APQ hash) from your manifest, or run `mode: 'mixed'` where
+arbitrary queries are fine.
+
+## Persisted document <id> not found.
+
+A `documentId` (or an `extractKey` id) is in neither the manifest nor the `store`. Regenerate the
+manifest and redeploy the server before the clients that use it. 400, code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotFound
+
+An APQ client sent a hash alone that the server never saw. It is the first step of the protocol:
+the client sends the query and the hash again and the server registers it. If it loops, the `store`
+loses entries (a short TTL, an eviction) or differs between processes: use `redisCache()`. Code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotSupported
+
+A client sent `extensions.persistedQuery` and the server cannot serve or register it: `apq` is
+`false`, or the mode is `strict` and the hash is not in the manifest. Apollo Client then drops the
+extension and sends the query, which `strict` refuses with `Only persisted documents are allowed.`
+Code `PERSISTED_QUERY_NOT_SUPPORTED`.
+
+## provided sha does not match query
+
+The `sha256Hash` is not the lower-case hex SHA-256 of the `query` sent with it (UTF-8, as sent).
+The client hashes a different text from the one it sends (a transform after hashing). Code
+`PROVIDED_SHA_DOESNT_MATCH`.
+
+## Unsupported persisted query version
+
+`extensions.persistedQuery.version` is not `1`. Code `PERSISTED_QUERY_VERSION_NOT_SUPPORTED`.
+
+## Send either documentId or query, not both.
+
+A request has a `documentId` (or an id from `extractKey`) and a `query`. Send one. 400.
+
+## The "persistedQuery" extension must be { version: 1, sha256Hash: string }.
+
+`extensions.persistedQuery` is not an object with a string `sha256Hash`. 400.
+
+## The "documentId" parameter must be a string.
+
+The `documentId` of a body or a WebSocket payload is not a string. 400.
+
+## trustedDocuments must be an object ({ manifest, store, apq, mode, extractKey })
+
+The option is not an object. Leave it out to turn trusted documents off.
+
+## trustedDocuments.mode must be "strict" or "mixed"
+
+## trustedDocuments.apq must be a boolean
+
+## trustedDocuments.store must be a KeyValueCache (get, set and delete)
+
+## trustedDocuments.extractKey must be a function (params, request) => string | undefined
+
+Each option takes only the value named.
+
+## trustedDocuments.mode "strict" needs a manifest, or extractKey with a store: no document could ever run
+
+`strict` runs only persisted documents, and none can exist. In production the mode is `strict` by
+default, so `trustedDocuments: {}` fails there. Add a `manifest`, or `extractKey` with a `store`, or
+set `mode: 'mixed'`.
+
+## trustedDocuments.manifest must be a Map, an object of id to source, or an Apollo persisted query manifest
+
+The manifest is none of the three formats. Pass the parsed JSON of `persisted-queries.json`,
+`persisted-documents.json` or the Apollo manifest, not its text.
+
+## trustedDocuments.manifest: the entry "<id>" must map to a GraphQL source string
+
+An entry's source is not a non-blank string. Regenerate the manifest.
+
+## trustedDocuments.manifest: every id must be a non-empty string
+
+An Apollo operation without an `id`, or a `Map` key that is not a string.
+
+## trustedDocuments.manifest: the Apollo manifest "version" must be 1
+
+Only version 1 of `apollo-persisted-query-manifest` is read.
+
+## trustedDocuments.manifest: the Apollo manifest "operations" must be a list of { id, body }
+
+The Apollo manifest has no `operations` list, or an entry is not an object.

@@ -12,6 +12,7 @@ import type {
 	MaybePromise,
 } from '../plugins/types';
 import type { CsrfOptions, ResolvedCsrf } from '../security/options';
+import type { TrustedDocumentsOptions } from '../trusted/types';
 import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
@@ -107,6 +108,12 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 * another origin is refused. `false` turns all of it off.
 	 */
 	csrf?: false | CsrfOptions;
+	/**
+	 * Trusted documents: a manifest of allowed documents (Relay, graphql-codegen or Apollo),
+	 * `documentId`, automatic persisted queries and a `strict` mode (on in production).
+	 * Absent: no persisted documents and no APQ, queries run as sent.
+	 */
+	trustedDocuments?: TrustedDocumentsOptions;
 	/**
 	 * Answers `__schema` and `__type` queries. `true` unless `NODE_ENV` is `production`.
 	 */

@@ -7,8 +7,10 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **Secure by default** — operation limits (depth, aliases, directives, root fields and a
   `@cost` / `@listSize` cost limit), CSRF prevention (a header on a `GET` or a non-JSON `POST`),
   same-origin checks, a WebSocket `Origin` check, and introspection and "Did you mean" suggestions
-  off in production are in this release (see [Security](./guide/security.md)). Still to come:
-  trusted documents and a field rate limit.
+  off in production are in this release (see [Security](./guide/security.md)), and so are
+  trusted documents: manifests (Relay, graphql-codegen, Apollo), `documentId`, automatic
+  persisted queries and a strict mode (see
+  [Trusted documents](./guide/trusted-documents.md)). Still to come: a field rate limit.
 
 ## Later
 
