@@ -26,21 +26,21 @@ export type PluginRequires<P> = P extends { readonly '~ctx'?: infer C }
 	? NonNullable<C>
 	: Empty;
 
-/** The intersection of everything a tuple of plugins adds to the context. */
+/** The intersection of everything a tuple of plugins adds to the context. Tuples only: pass `[a, b]`, not `Plugin[]`. */
 export type ContextOf<Plugins extends readonly unknown[]> =
 	Plugins extends readonly [infer Head, ...infer Tail]
 		? PluginContext<Head> & ContextOf<Tail>
 		: unknown;
 
 /**
- * Resolves to `Plugins` when the host context (plus what earlier plugins add)
+ * Tuples only. Resolves to `Plugins` when the host context (plus what earlier plugins add)
  * satisfies every plugin's requirement, and to `never` otherwise.
  */
 export type RequiresContext<
 	Plugins extends readonly unknown[],
 	HostCtx,
 > = Plugins extends readonly [infer Head, ...infer Tail]
-	? HostCtx extends PluginRequires<Head>
+	? [HostCtx] extends [PluginRequires<Head>]
 		? Tail extends readonly unknown[]
 			? RequiresContext<Tail, HostCtx & PluginContext<Head>> extends never
 				? never

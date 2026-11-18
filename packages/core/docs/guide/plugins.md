@@ -61,8 +61,24 @@ const gate = definePlugin()({
 | `onResultChunk`            | `setChunk(chunk)`                                                                                      |
 | `onResponse`               | `setResponse(response)`                                                                                |
 
-A throwing hook rejects its stage with the original error. Only a `setup` error is wrapped, in a
-`GraxiaPluginError` that names the plugin.
+Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `setParseFn`,
+`setValidationFn`, `setResult`, `setChunk`, `setResponse`) leave later hooks running: the last write
+wins, and the caller skips the step when `out.document`, `out.errors` or `out.result` is set.
+`addRule` accumulates across plugins.
+
+## Hook errors
+
+A stage runner never rejects for a hook error. It returns `{ out, error?, runAfter }`: hooks after
+the thrower are skipped, `error` is the original thrown value (not wrapped), and `runAfter(done)`
+still unwinds the after-hooks of the hooks that ran before it, in reverse order. The caller decides
+what to do with `error`. Only a `setup` error is wrapped, in a `GraxiaPluginError` that names the
+plugin.
+
+```ts
+const outcome = await engine.runners.onRequest({ request, state });
+if (outcome.error) console.error(outcome.error);
+await outcome.runAfter({ response: outcome.out.response });
+```
 
 ## Per-request state
 
@@ -103,7 +119,7 @@ const tenant = definePlugin()({
 type Ctx = ContextOf<[typeof auth, typeof tenant]>; // { user: { id: string } } & { tenant: string }
 ```
 
-`RequiresContext<Plugins, HostCtx>` resolves to `never` when a plugin needs context the host (and
+`ContextOf` and `RequiresContext` take tuples (`[a, b]`, not `Plugin[]`). `RequiresContext<Plugins, HostCtx>` resolves to `never` when a plugin needs context the host (and
 the plugins before it) do not provide. Returning something other than an object or nothing from
 `onContext` throws a `GraxiaConfigError`.
 

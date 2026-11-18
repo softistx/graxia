@@ -11,7 +11,13 @@ type AnyHook = (
 export interface StageOutcome<Out, Done> {
 	/** Accumulated decisions of the hooks (short-circuit values, merged context, …). */
 	readonly out: Out;
-	/** Runs the after-hooks (reverse order), awaited sequentially. */
+	/**
+	 * The original value thrown by a hook, unwrapped. The runner never rejects
+	 * for a hook error: hooks after the thrower are skipped and the caller
+	 * decides what to do with `error`.
+	 */
+	readonly error?: unknown;
+	/** Runs the after-hooks of the hooks that ran before any error (reverse order), awaited sequentially. */
 	runAfter(done: Done): Promise<void>;
 }
 
@@ -54,16 +60,27 @@ export function createStageRunner<Input, Out, Done>(
 		const stop = () => {
 			stopped = true;
 		};
+		let error: unknown;
+		let failed = false;
 		for (const hook of hooks) {
-			let returned: unknown = hook.run(spec.payload(input, out, stop) as never);
-			if (isThenable(returned)) returned = await returned;
-			if (typeof returned === 'function')
-				afters.push(returned as (done: Done) => MaybePromise<void>);
-			else spec.collect?.(out, returned, hook.plugin);
+			try {
+				let returned: unknown = hook.run(
+					spec.payload(input, out, stop) as never,
+				);
+				if (isThenable(returned)) returned = await returned;
+				if (typeof returned === 'function')
+					afters.push(returned as (done: Done) => MaybePromise<void>);
+				else spec.collect?.(out, returned, hook.plugin);
+			} catch (thrown) {
+				error = thrown;
+				failed = true;
+				break;
+			}
 			if (stopped) break;
 		}
 		return {
 			out,
+			...(failed ? { error } : {}),
 			async runAfter(done) {
 				for (let i = afters.length - 1; i >= 0; i--) {
 					const after = afters[i] as (done: Done) => MaybePromise<void>;

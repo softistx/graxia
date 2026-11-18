@@ -70,4 +70,11 @@ assertType<Equal<ReturnType<typeof state.get<number>>, number | undefined>>();
 // @ts-expect-error a string is not a number
 state.set(key, '1');
 
-export { chained, missing, ok };
+// a chained requirement that no earlier plugin satisfies
+// @ts-expect-error `user` is added only after `needsUser` runs
+const unmet: RequiresContext<
+	[typeof needsUser, typeof auth],
+	{ request: Request }
+> = [needsUser, auth];
+
+export { chained, missing, ok, unmet };

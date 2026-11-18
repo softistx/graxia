@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parse } from 'graphql';
+import { GraphQLError, parse } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
 import { GraxiaPluginError } from '../errors/plugin-error';
 import { definePlugin } from './define';
@@ -204,26 +204,16 @@ describe('onContext', () => {
 	test('a non-object return throws a config error naming the plugin', async () => {
 		const bad = { name: 'bad', onContext: () => 5 } as unknown as GraxiaPlugin;
 		const engine = createPluginEngine([bad]);
-		const run = engine.runners.onContext({ ...base(), context: {} });
-		await expect(run).rejects.toBeInstanceOf(GraxiaConfigError);
-		await expect(run).rejects.toThrow(/"bad"/);
+		const { error } = await engine.runners.onContext({
+			...base(),
+			context: {},
+		});
+		expect(error).toBeInstanceOf(GraxiaConfigError);
+		expect((error as Error).message).toMatch(/"bad"/);
 	});
 });
 
 describe('errors, fast path, setup', () => {
-	test('a throwing hook rejects with the original error', async () => {
-		const boom = new Error('boom');
-		const engine = createPluginEngine([
-			plain({
-				name: 't',
-				onRequest: () => {
-					throw boom;
-				},
-			}),
-		]);
-		await expect(engine.runners.onRequest(base())).rejects.toBe(boom);
-	});
-
 	test('has() and the no-hook fast path', async () => {
 		const engine = createPluginEngine([
 			plain({ name: 'a', onRequest: () => {} }),
@@ -270,5 +260,187 @@ describe('errors, fast path, setup', () => {
 		expect(error.plugin).toBe('db');
 		expect(error.message).toContain('"db"');
 		expect(error.cause).toBe(cause);
+	});
+});
+
+describe('hook errors', () => {
+	test('the runner does not reject: earlier after-hooks unwind, later hooks are skipped', async () => {
+		const boom = new Error('boom');
+		const log: string[] = [];
+		const mk = (name: string, fail = false) =>
+			plain({
+				name,
+				onRequest: () => {
+					if (fail) throw boom;
+					log.push(`${name}:before`);
+					return () => void log.push(`${name}:after`);
+				},
+			});
+		const engine = createPluginEngine([
+			mk('a'),
+			mk('b'),
+			mk('c', true),
+			mk('d'),
+		]);
+		const outcome = await engine.runners.onRequest(base());
+		expect(outcome.error).toBe(boom);
+		await outcome.runAfter({ response: undefined });
+		expect(log).toEqual(['a:before', 'b:before', 'b:after', 'a:after']);
+	});
+
+	test('an async hook rejection is reported the same way', async () => {
+		const boom = new Error('async boom');
+		const engine = createPluginEngine([
+			plain({ name: 't', onParse: async () => Promise.reject(boom) }),
+		]);
+		expect(
+			(await engine.runners.onParse({ ...base(), params: {} })).error,
+		).toBe(boom);
+	});
+
+	test('no error key when all hooks pass', async () => {
+		const engine = createPluginEngine([
+			plain({ name: 't', onRequest: () => {} }),
+		]);
+		expect('error' in (await engine.runners.onRequest(base()))).toBe(false);
+	});
+});
+
+describe('setters do not stop the stage', () => {
+	test('last write wins across plugins for document, result and parse fn', async () => {
+		const d1 = parse('{ a }');
+		const d2 = parse('{ b }');
+		const f1 = () => d1;
+		const f2 = () => d2;
+		const engine = createPluginEngine([
+			plain({
+				name: 'a',
+				onParse: (p) => {
+					p.setDocument(d1);
+					p.setParseFn(f1);
+				},
+				onValidate: (p) => p.setResult([]),
+			}),
+			plain({
+				name: 'b',
+				onParse: (p) => {
+					p.setDocument(d2);
+					p.setParseFn(f2);
+				},
+				onValidate: (p) => p.setResult([new GraphQLError('x')]),
+			}),
+		]);
+		const parsed = (await engine.runners.onParse({ ...base(), params: {} }))
+			.out;
+		expect(parsed.document).toBe(d2);
+		expect(parsed.parseFn).toBe(f2);
+		const validated = await engine.runners.onValidate({
+			...base(),
+			schema: {} as never,
+			document: d1,
+		});
+		expect(validated.out.errors).toHaveLength(1);
+	});
+
+	test('addRule accumulates across plugins', async () => {
+		const r1 = () => ({});
+		const r2 = () => ({});
+		const engine = createPluginEngine([
+			plain({ name: 'a', onValidate: (p) => p.addRule(r1) }),
+			plain({ name: 'b', onValidate: (p) => p.addRule(r2) }),
+		]);
+		const { out } = await engine.runners.onValidate({
+			...base(),
+			schema: {} as never,
+			document: parse('{ a }'),
+		});
+		expect(out.rules).toEqual([r1, r2]);
+	});
+});
+
+describe('more stages', () => {
+	test('onParams respond() short-circuits', async () => {
+		const log: string[] = [];
+		const engine = createPluginEngine([
+			plain({
+				name: 'a',
+				onParams: ({ respond }) => respond(new Response('no', { status: 400 })),
+			}),
+			plain({ name: 'b', onParams: () => void log.push('b') }),
+		]);
+		const { out } = await engine.runners.onParams({ ...base(), params: {} });
+		expect(out.response?.status).toBe(400);
+		expect(log).toEqual([]);
+	});
+
+	test('onSubscribe has its own runner', async () => {
+		const engine = createPluginEngine([
+			plain({
+				name: 's',
+				onSubscribe: ({ setResult }) => setResult({ data: { s: 1 } }),
+			}),
+			plain({
+				name: 'e',
+				onExecute: ({ setResult }) => setResult({ data: { e: 1 } }),
+			}),
+		]);
+		const { out } = await engine.runners.onSubscribe({
+			...base(),
+			args: {} as never,
+		});
+		expect(out.result).toEqual({ data: { s: 1 } });
+		expect(engine.has('onSubscribe')).toBe(true);
+	});
+
+	test('async after-hooks are awaited in reverse order', async () => {
+		const log: string[] = [];
+		const mk = (name: string, ms: number) =>
+			plain({
+				name,
+				onRequest: () => async () => {
+					await Bun.sleep(ms);
+					log.push(name);
+				},
+			});
+		const outcome = await createPluginEngine([
+			mk('a', 15),
+			mk('b', 1),
+		]).runners.onRequest(base());
+		await outcome.runAfter({ response: undefined });
+		expect(log).toEqual(['b', 'a']);
+	});
+
+	test('a promise resolving to an after-hook registers it', async () => {
+		const log: string[] = [];
+		const engine = createPluginEngine([
+			plain({
+				name: 'a',
+				onRequest: async () => {
+					await Bun.sleep(1);
+					return () => void log.push('after');
+				},
+			}),
+		]);
+		const outcome = await engine.runners.onRequest(base());
+		await outcome.runAfter({ response: undefined });
+		expect(log).toEqual(['after']);
+	});
+
+	test('onContext rejects null and arrays', async () => {
+		for (const [value, word] of [
+			[null, 'null'],
+			[[1], 'array'],
+		] as const) {
+			const bad = {
+				name: 'bad',
+				onContext: () => value,
+			} as unknown as GraxiaPlugin;
+			const { error } = await createPluginEngine([bad]).runners.onContext({
+				...base(),
+				context: {},
+			});
+			expect(error).toBeInstanceOf(GraxiaConfigError);
+			expect((error as Error).message).toContain(`got ${word}`);
+		}
 	});
 });
