@@ -4,22 +4,19 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Releasing `@graxia/core` 0.1.0** (M1) — the first npm release, with the docs
-  and troubleshooting pages that go with it. See the
-  [package roadmap](../packages/core/docs/roadmap.md).
-
-## Next
-
 - **Subscriptions and incremental delivery** (M2) — SSE and
   graphql-transport-ws on Bun's WebSocket, `@defer` and `@stream`, a typed PubSub
   with an in-memory implementation, and Redis PubSub and cache in `@graxia/redis`.
 
-## Later
+## Next
 
 - **Secure by default** (M3) — operation limits (depth, aliases, cost), CSRF and
   same-origin checks, introspection off in production, trusted documents (manifest
   and automatic persisted queries, strict mode), a field rate limit and
   OpenTelemetry spans.
+
+## Later
+
 - **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
   content security policy, and an Apollo Sandbox option, both development-only.
 - **Ready for agents** (M5) — an MCP server over Streamable HTTP with schema,

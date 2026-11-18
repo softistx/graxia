@@ -4,13 +4,11 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **The first public release (0.1.0)** — the M1 feature set below, on npm. The API is pre-1.0
-  and still settling: pin a minor.
+- **Subscriptions over SSE and WebSocket** — `subscribe` operations over server-sent events and
+  `graphql-transport-ws` on Bun's WebSocket, with a typed PubSub and an in-memory implementation.
 
 ## Next
 
-- **Subscriptions over SSE and WebSocket** — `subscribe` operations over server-sent events and
-  `graphql-transport-ws` on Bun's WebSocket, with a typed PubSub and an in-memory implementation.
 - **`@defer` and `@stream`** — incremental delivery over HTTP, tracking graphql 17.
 - **Redis PubSub and cache** — a separate `@graxia/redis` package on Bun's built-in Redis client,
   so subscriptions and caches work across several instances.
