@@ -15,6 +15,8 @@ export interface ValidationCtx {
 	schema: GraphQLSchema;
 	/** Rules added to graphql's (the operation limits). */
 	rules: readonly ValidationRule[];
+	/** Omits "Did you mean ..." hints (the default validation only). */
+	hideSuggestions: boolean;
 	validationCache: ValidationCache | undefined;
 }
 
@@ -41,11 +43,10 @@ export function checkDocument(
 		const hit = validationCache?.get(schema, key);
 		if (hit) return hit;
 	}
-	const found = (validationFn ?? validate)(schema, document, [
-		...specifiedRules,
-		...ctx.rules,
-		...rules,
-	]);
+	const all = [...specifiedRules, ...ctx.rules, ...rules];
+	const found = validationFn
+		? validationFn(schema, document, all)
+		: validate(schema, document, all, { hideSuggestions: ctx.hideSuggestions });
 	const coded = withCode(found);
 	if (key !== undefined) validationCache?.set(schema, key, coded);
 	return coded;

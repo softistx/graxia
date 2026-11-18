@@ -67,6 +67,12 @@ export type {
 	TypeResolver,
 	TypeResolvers,
 } from './schema/types';
+export type {
+	CrossOrigin,
+	CsrfOptions,
+	SameOriginOptions,
+} from './security/options';
+export { DEFAULT_CSRF_HEADERS } from './security/options';
 export { getContext, tryGetContext } from './server/context';
 export type {
 	Graxia,

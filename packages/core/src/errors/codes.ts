@@ -28,6 +28,10 @@ export interface GraxiaErrorCodes {
 	GRAPHQL_VALIDATION_FAILED: true;
 	/** Emitted by core: the client left or the server shut down. */
 	OPERATION_ABORTED: true;
+	/** Emitted by core: a request a browser can send without a preflight carries no CSRF header (403). */
+	CSRF_HEADER_REQUIRED: true;
+	/** Emitted by core: a request or WebSocket upgrade from a refused origin (403). */
+	FORBIDDEN_ORIGIN: true;
 	/** Emitted by core: `dispose()` started. */
 	SHUTTING_DOWN: true;
 	/** Emitted by core: subscriptions over plain HTTP. */

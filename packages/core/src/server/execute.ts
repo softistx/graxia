@@ -3,6 +3,7 @@ import type { DocumentInput } from '../document/typed';
 import { GraxiaExecuteError } from '../errors/execute-error';
 import { StateBag } from '../plugins/state';
 import {
+	inProcessKey,
 	presetDocumentKey,
 	resultKey,
 	unexpectedErrorKey,
@@ -58,6 +59,7 @@ export function createExecute<HostCtx extends object>(parts: ExecuteParts) {
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>> {
 		const state = new StateBag();
+		state.set(inProcessKey, true);
 		const document =
 			typeof args.document === 'string'
 				? undefined

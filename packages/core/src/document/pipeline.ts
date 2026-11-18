@@ -34,6 +34,8 @@ export interface DocumentPipelineOptions {
 	caches?: DocumentCaches;
 	/** Validation rules added to graphql's (the operation limits). */
 	rules?: readonly ValidationRule[];
+	/** Omits "Did you mean ..." hints from validation errors (not for a plugin's own validation function). */
+	hideSuggestions?: boolean;
 }
 
 /** Outcome of a pipeline step. `error` is a value thrown by a plugin hook, unmasked. */
@@ -80,6 +82,7 @@ interface Ctx {
 	engine: PluginEngine;
 	limits: ResolvedLimits;
 	rules: readonly ValidationRule[];
+	hideSuggestions: boolean;
 	parseCache: LruCache<string, ParseResult> | undefined;
 	validationCache: ValidationCache | undefined;
 }
@@ -101,6 +104,7 @@ export function createDocumentPipeline(
 		engine: options.engine,
 		limits: resolveLimits(options.limits),
 		rules: options.rules ?? [],
+		hideSuggestions: options.hideSuggestions ?? false,
 		parseCache:
 			off || caches.parse === false
 				? undefined

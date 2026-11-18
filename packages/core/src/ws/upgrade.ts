@@ -1,6 +1,7 @@
 import { REQUEST_ID_HEADER, requestIdKey } from '../http/request-id';
 import { refusal } from '../http/respond';
 import type { StateBag } from '../plugins/state';
+import { checkUpgrade } from '../security/check';
 import type { Runtime } from '../server/runtime';
 import type { SocketData } from './connection';
 import { SUBPROTOCOL } from './protocol';
@@ -44,6 +45,8 @@ export async function upgradeRequest(
 		return refusal(405, 'A WebSocket upgrade must be a GET request.', {
 			allow: 'GET',
 		});
+	const forbidden = checkUpgrade(rt, request);
+	if (forbidden) return forbidden;
 	try {
 		await rt.ready;
 		const entered = await rt.engine.runners.onRequest({ request, state });

@@ -508,3 +508,74 @@ Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted t
 operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
 context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
 cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
+
+## This request requires one of the headers x-graphql-csrf, graphql-require-preflight, apollo-require-preflight, x-apollo-operation-name (CSRF prevention).
+
+The server answered 403 `CSRF_HEADER_REQUIRED`. The request is one a browser can send cross-site
+without a CORS preflight (a `GET`, or a `POST` with no `Content-Type` or a `text/plain`,
+`application/x-www-form-urlencoded` or `multipart/form-data` one) and carries none of the listed
+headers. Send a JSON `POST`, or add a header with any non-empty value; a client library has a
+setting for it (see [Security](./guide/security.md)).
+
+```ts
+await fetch(url, {
+	method: 'POST',
+	headers: { 'content-type': 'application/json', 'x-graphql-csrf': '1' },
+	body: JSON.stringify({ query: '{ hello }' }),
+});
+```
+
+A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
+custom `requireHeader` list the message names your headers instead.
+
+## Cross-origin request refused from <origin>.
+
+403 `FORBIDDEN_ORIGIN`. Either `csrf.sameOrigin` is on and the request's `Origin` is not the
+server's own origin or in `allowedOrigins`, or a WebSocket upgrade came from such an origin (this
+check is on even with `sameOrigin` off). The origin is compared with the request URL graxia sees,
+so behind a proxy pass the public URL, or list the public origin. The message ends with
+`from a null origin.` for `Origin: null` (a sandboxed frame, a `file:` page; always refused) and
+`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` with no `Origin`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } },
+});
+```
+
+## GraphQL introspection is not allowed, but the query contained __schema or __type.
+
+`GRAPHQL_VALIDATION_FAILED` with a `fix`: `introspection` is `false`, or `NODE_ENV` is `production`
+and you did not set it. Set `introspection: true` to allow it (a code generator or an explorer
+needs it); `__typename` is always allowed.
+
+## csrf must be false or an object ({ requireHeader, sameOrigin })
+
+`createGraxia` throws a `GraxiaConfigError`. Pass `csrf: false` or an object, not `true`.
+
+## csrf.requireHeader must be a boolean or a non-empty list of header names
+
+`requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
+
+## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
+
+Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
+
+## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
+
+Pick one of the three modes (see [Security](./guide/security.md)).
+
+## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
+
+`allowedOrigins` is an array of strings.
+
+## csrf.sameOrigin.allowedOrigins entry "x" is not an origin (use scheme, host and optional port, no path: "https://app.example.com")
+
+An entry must be exactly `scheme://host[:port]`: no path, no trailing slash, not `null`.
+
+## introspection must be a boolean
+
+## suggestions must be a boolean
+
+Both options take `true` or `false`; leave them out to follow `NODE_ENV`.

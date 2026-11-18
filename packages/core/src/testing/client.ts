@@ -1,5 +1,6 @@
 import type { DocumentInput } from '../document/typed';
 import { isRecord } from '../http/record';
+import { DEFAULT_CSRF_HEADERS } from '../security/options';
 import type { Graxia } from '../server/create-graxia';
 import type { OptionsArg, WithServerContext } from '../server/host-context';
 import { getUrl, type WireParams, wireParams } from './request';
@@ -84,6 +85,9 @@ export function createTestClient<HostCtx extends object>(
 	): Promise<{ response: Response; body: unknown }> => {
 		const merged = new Headers(options.headers);
 		for (const [name, value] of new Headers(headers)) merged.set(name, value);
+		// A browserless client sends a CSRF header on a GET (the server's default asks for one).
+		if (method === 'GET' && !DEFAULT_CSRF_HEADERS.some((n) => merged.has(n)))
+			merged.set('x-graphql-csrf', '1');
 		if (!merged.has('accept')) merged.set('accept', accept ?? DEFAULT_ACCEPT);
 		else if (accept !== undefined) merged.set('accept', accept);
 		const request =

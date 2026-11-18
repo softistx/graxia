@@ -176,59 +176,32 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
   path; turn either off with `false`.
 
+- CSRF prevention: a request a browser can send cross-site without a preflight (a `GET`, or a
+  `POST` with a `text/plain`, form or multipart body) is refused with 403 unless it carries one of
+  `x-graphql-csrf`, `graphql-require-preflight`, `apollo-require-preflight` or
+  `x-apollo-operation-name`. A JSON `POST` needs nothing.
+- WebSocket origin check: an upgrade whose `Origin` is `null` or another site's is refused with
+  403; list the browser origins that may connect in `csrf.sameOrigin.allowedOrigins`.
+- Introspection and "Did you mean" suggestions are on in development and off when
+  `NODE_ENV=production` (`introspection`, `suggestions`).
+
+```ts
+createGraxia({
+	schema,
+	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } }, // also checks Origin over HTTP
+	introspection: false,
+});
+```
+
+See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
+
 **Not yet**
 
-- CSRF prevention: a browser can send a simple cross-site `GET` or a form-encoded request to
-  the endpoint with the user's cookies. graxia does not check `Origin` or require a preflight header.
-- WebSocket origin check: a page on another site can open a socket to the endpoint, and the browser
-  sends the user's cookies with the upgrade. graxia does not check `Origin` on the upgrade.
-- Introspection control: introspection is always on.
 - A field rate limit.
 - Trusted or persisted documents: any valid document runs.
 
-These are planned (see the [roadmap](./docs/roadmap.md)). Until they land:
-
-- Put the endpoint behind a proxy or gateway that rate-limits and caps request cost, and do not
-  expose it to browsers with cookie auth without your own CSRF check.
-- Add a plugin whose `onRequest` refuses requests that lack a header a browser cannot send
-  cross-site without a preflight:
-
-```ts
-import { definePlugin } from '@graxia/core';
-
-const requireCustomHeader = definePlugin({
-	name: 'require-custom-header',
-	onRequest: ({ request, respond }) => {
-		if (!request.headers.has('x-requested-with'))
-			respond(new Response('Missing x-requested-with', { status: 403 }));
-	},
-});
-```
-
-- **Cookie-authenticated browser apps must check `Origin` on the WebSocket upgrade.** The
-  custom-header recipe above cannot apply to a browser WebSocket (the browser sets no custom header
-  on it). The upgrade request goes through `onRequest`, where its `Upgrade` and `Origin` headers are
-  visible; refuse a foreign origin there, or authenticate the socket with `connectionParams` (a
-  token in `connection_init`, checked in `subscriptions.ws.onConnect`) instead of the cookie. A
-  built-in `Origin` option is planned ([issue #16](https://github.com/softistx/graxia/issues/16)).
-
-```ts
-const allowed = new Set(['https://app.example.com']);
-
-const checkSocketOrigin = definePlugin({
-	name: 'check-socket-origin',
-	onRequest: ({ request, respond }) => {
-		const isUpgrade =
-			request.headers.get('upgrade')?.toLowerCase() === 'websocket';
-		const origin = request.headers.get('origin'); // browsers always send it; other clients may not
-		if (isUpgrade && origin !== null && !allowed.has(origin))
-			respond(new Response('Forbidden origin', { status: 403 }));
-	},
-});
-```
-
-- Add a validation rule with `onValidate` (`addRule`) to reject introspection or deep documents
-  in production.
+These are planned (see the [roadmap](./docs/roadmap.md)). Meanwhile put the endpoint behind a proxy
+or gateway that rate-limits and caps request cost.
 
 ## `execute`
 
