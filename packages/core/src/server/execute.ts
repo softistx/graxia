@@ -1,7 +1,7 @@
 import { type DocumentNode, type ExecutionResult, print } from 'graphql';
 import type { DocumentInput } from '../document/typed';
 import { GraxiaExecuteError } from '../errors/execute-error';
-import { RequestState } from '../plugins/state';
+import { StateBag } from '../plugins/state';
 import {
 	presetDocumentKey,
 	resultKey,
@@ -9,8 +9,19 @@ import {
 } from './execute-state';
 import type { Lifecycle } from './lifecycle';
 
-/** Arguments of {@link Graxia.execute}. */
-export interface ExecuteArgs<Result, Variables, HostCtx> {
+/** Arguments of {@link Graxia.execute}: `serverContext` is required when `HostCtx` has required keys. */
+export type ExecuteArgs<
+	Result,
+	Variables,
+	HostCtx extends object,
+> = ExecuteBase<Result, Variables> &
+	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+	({} extends HostCtx
+		? { serverContext?: HostCtx }
+		: { serverContext: HostCtx });
+
+/** The arguments of {@link Graxia.execute} that do not depend on the host context. */
+export interface ExecuteBase<Result, Variables> {
 	/**
 	 * A typed document, a `DocumentNode` or a string. A string is parsed under
 	 * the parse limits and goes through both caches; a `DocumentNode` skips the
@@ -23,8 +34,6 @@ export interface ExecuteArgs<Result, Variables, HostCtx> {
 	operationName?: string;
 	/** Headers of the synthetic request (what `onRequest` and `context` see). */
 	headers?: HeadersInit;
-	/** Merged into the operation's context, as `fetch(request, serverContext)`. */
-	serverContext?: HostCtx;
 	/** Aborts the operation, like a client leaving. */
 	signal?: AbortSignal;
 }
@@ -35,7 +44,7 @@ export interface ExecuteParts {
 	run(
 		request: Request,
 		serverContext: Record<string, unknown>,
-		state: RequestState,
+		state: StateBag,
 	): Promise<Response>;
 	lifecycle: Lifecycle;
 	/** The served path; any path when the instance serves `false`. */
@@ -51,7 +60,7 @@ export function createExecute<HostCtx extends object>(parts: ExecuteParts) {
 	return async function execute<Result, Variables>(
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>> {
-		const state = new RequestState();
+		const state = new StateBag();
 		const document =
 			typeof args.document === 'string'
 				? undefined

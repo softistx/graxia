@@ -1,4 +1,8 @@
-import { REQUEST_ID_HEADER, requestIdKey } from '../http/request-id';
+import {
+	createRequestId,
+	REQUEST_ID_HEADER,
+	requestIdKey,
+} from '../http/request-id';
 import type { RequestState } from '../plugins/state';
 
 /** Headers a plugin adds that stack instead of replacing. */
@@ -23,7 +27,7 @@ export function seal(response: Response, state: RequestState): Response {
 	}
 	for (const cookie of state.responseHeaders.getSetCookie())
 		headers.append('set-cookie', cookie);
-	headers.set(REQUEST_ID_HEADER, state.require(requestIdKey));
+	headers.set(REQUEST_ID_HEADER, state.get(requestIdKey) ?? createRequestId());
 	// Rebuilt rather than mutated: a Response from `fetch` or `Response.redirect` is immutable.
 	return new Response(response.body, {
 		status: response.status,

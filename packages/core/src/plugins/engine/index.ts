@@ -50,11 +50,12 @@ export function createPluginEngine(
 			const fn = plugin[stage] as ((p: never) => never) | undefined;
 			return fn ? [{ plugin: plugin.name, run: fn.bind(plugin) }] : [];
 		});
+	const ready = new Set<GraxiaPlugin<any, any>>();
 	return {
 		names,
 		runners: buildRunners(hooksOf),
 		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
-		init: createSetup(ordered, names),
-		dispose: createDispose(ordered),
+		init: createSetup(ordered, names, ready),
+		dispose: createDispose(ordered, ready),
 	};
 }

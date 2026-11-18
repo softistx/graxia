@@ -5,15 +5,15 @@ import type { RequestState } from '../plugins/state';
 import { unexpectedErrorKey } from './execute-state';
 
 /** Where an unexpected failure happened. */
-export type UnexpectedPhase = 'request' | 'execution' | 'dispose';
+export type UnexpectedPhase = 'request' | 'execution' | 'dispose' | 'setup';
 
 /** What `onUnexpected` is told about the failure. */
 export interface UnexpectedInfo {
-	/** The request's id (`x-request-id`); `undefined` for a `dispose` report. */
+	/** The request's id (`x-request-id`); `undefined` for a `dispose` or `setup` report. */
 	requestId: string | undefined;
 	/** The id the client got in the body; always equal to `requestId`. */
 	correlationId: string | undefined;
-	/** `request`: a hook or the transport; `execution`: an operation; `dispose`: shutdown leftovers. */
+	/** `request`: a hook or the transport; `execution`: an operation; `dispose`: shutdown leftovers; `setup`: a plugin's `setup` failed (reported once). */
 	phase: UnexpectedPhase;
 }
 

@@ -17,8 +17,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Later
 
-- **Secure by default** — operation limits (depth, aliases, cost), CSRF and same-origin checks,
-  introspection off in production, trusted documents (manifest and automatic persisted queries),
+- **Secure by default** — none of this is in 0.1.0 (see "Security in 0.1.0" in the README):
+  operation limits (depth, aliases, cost), CSRF prevention and same-origin checks, an
+  introspection policy (off in production), trusted documents (manifest and automatic persisted queries),
   and a field rate limit.
 - **OpenTelemetry** — spans for each stage of an operation.
 - **A built-in explorer** — GraphiQL, bundled with no CDN and development-only.
@@ -42,9 +43,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **`createSchema`** — a `GraphQLSchema` from SDL and typed resolvers: merged arrays, custom
   scalars, enum values, `__resolveType`, `extend type`, optional codegen resolver types.
 - **A parse and validation pipeline with caches** — token and nesting limits, a weighted LRU parse
-  cache, a per-schema validation cache, and `createDocumentPipeline`.
+  cache and a per-schema validation cache.
 - **GraphQL over HTTP** — `createGraxia` with `fetch` and `serve`, GET and POST, content
-  negotiation, correct status codes, a body size limit, opt-in batching and a request id; passes
+  negotiation, correct status codes, a body size limit, opt-in batching and a request id and `graxia.ready`; passes
   the `graphql-http` server audits.
 - **Context and cancellation** — one context per operation, `getContext()`, a `signal` that aborts
   on client disconnect or shutdown, and `dispose()` that drains in-flight operations.

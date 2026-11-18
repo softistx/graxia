@@ -5,7 +5,7 @@ import { DEFAULT_BODY_BYTES } from '../http/body';
 import { createRequestId, requestIdKey } from '../http/request-id';
 import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
-import { RequestState } from '../plugins/state';
+import { StateBag } from '../plugins/state';
 import { createDispose } from './dispose';
 import { createExecute, type ExecuteArgs } from './execute';
 import { dispatch } from './handle';
@@ -19,14 +19,39 @@ import { createUnexpectedHandler } from './unexpected';
 /** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
 export type GraxiaServeOptions = Bun.Serve.HostnamePortServeOptions<undefined>;
 
+/**
+ * The `serverContext` argument list of `fetch`: optional when `HostCtx` has no
+ * required key, required otherwise.
+ */
+export type ServerContextArgs<HostCtx extends object> =
+	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+	{} extends HostCtx ? [serverContext?: HostCtx] : [serverContext: HostCtx];
+
+/** The options of `serve()`: `serverContext` is required when `HostCtx` has required keys. */
+export type ServeOptions<HostCtx extends object> = GraxiaServeOptions &
+	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+	({} extends HostCtx
+		? { serverContext?: HostCtx }
+		: { serverContext: HostCtx });
+
+/** The argument list of `serve`: the options are required when `HostCtx` has required keys. */
+// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+export type ServeArgs<HostCtx extends object> = {} extends HostCtx
+	? [options?: ServeOptions<HostCtx>]
+	: [options: ServeOptions<HostCtx>];
+
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
 	/**
 	 * Handles one request: a Web `Request` in, a `Response` out. Mount it in
 	 * your own `Bun.serve` routes. `serverContext` is merged into every
-	 * operation's context. Never rejects.
+	 * operation's context; it is required when `HostCtx` has required keys.
+	 * Never rejects.
 	 */
-	fetch(request: Request, serverContext?: HostCtx): Promise<Response>;
+	fetch(
+		request: Request,
+		...serverContext: ServerContextArgs<HostCtx>
+	): Promise<Response>;
 	/**
 	 * Runs one operation in process (tests, server-side jobs): a synthetic
 	 * `POST` request goes through the same pipeline as HTTP (plugins, context,
@@ -44,8 +69,19 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	execute<Result = Record<string, any>, Variables = Record<string, any>>(
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>>;
-	/** Starts `Bun.serve` with this instance as its `fetch`. */
-	serve(options?: GraxiaServeOptions): Bun.Server<undefined>;
+	/**
+	 * Resolves once every plugin's `setup` ran; rejects with the
+	 * `GraxiaPluginError` of the first one that failed (also reported once
+	 * through `onUnexpected`, phase `setup`). Await it at startup to fail fast;
+	 * until then requests wait for it, and answer a 500 when it rejected.
+	 */
+	readonly ready: Promise<void>;
+	/**
+	 * Starts `Bun.serve` with this instance as its `fetch`. The context of each
+	 * operation holds `serverContext` (required when `HostCtx` has required keys)
+	 * and `server`, the `Bun.Server`.
+	 */
+	serve(...options: ServeArgs<HostCtx>): Bun.Server<undefined>;
 	/**
 	 * Shuts down: stops accepting requests (new ones answer 503
 	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
@@ -96,8 +132,12 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const engine = createPluginEngine(options.plugins ?? []);
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
+	// Handled here so a failing `setup` is never an unhandled rejection; reported once.
 	ready.catch(() => {});
 	const unexpected = createUnexpectedHandler(options.onUnexpected);
+	ready.catch((error: unknown) =>
+		unexpected.report(error, new StateBag(), 'setup'),
+	);
 	const rt: Runtime = {
 		schema: options.schema,
 		engine,
@@ -122,7 +162,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const handleWith = async (
 		request: Request,
 		serverContext: Record<string, unknown>,
-		state = new RequestState(),
+		state = new StateBag(),
 	) => {
 		state.set(requestIdKey, createRequestId());
 		if (lifecycle.closing) return seal(shuttingDown(), state);
@@ -132,7 +172,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 				state,
 			);
 		} catch (error) {
-			return seal(rt.unexpected.respond(error, state), state);
+			return lastResort(rt, error, state);
 		}
 	};
 	const dispose = createDispose({
@@ -149,13 +189,16 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		path: resolved.path,
 	});
 	return {
+		ready,
 		execute,
-		fetch: (request, serverContext) =>
+		fetch: (request, ...[serverContext]) =>
 			handleWith(request, { ...serverContext }),
-		serve: (serveOptions) => {
+		serve: (...[serveOptions]) => {
+			const { serverContext, ...bunOptions } = serveOptions ?? {};
 			const server = Bun.serve<undefined>({
-				...serveOptions,
-				fetch: (request, server) => handleWith(request, { server }),
+				...(bunOptions as GraxiaServeOptions),
+				fetch: (request, server) =>
+					handleWith(request, { ...serverContext, server }),
 			});
 			servers.push(server);
 			return server;
@@ -163,6 +206,19 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
+}
+
+/**
+ * The answer when sealing the response failed (a plugin produced a response
+ * Bun refuses): the generic 500, sealed; if even that fails, a bare 500.
+ * `fetch` never rejects.
+ */
+function lastResort(rt: Runtime, error: unknown, state: StateBag): Response {
+	try {
+		return seal(rt.unexpected.respond(error, state), state);
+	} catch {
+		return new Response(null, { status: 500 });
+	}
 }
 
 /** What a request arriving after `dispose()` started gets. */
@@ -180,7 +236,7 @@ async function handle(
 	rt: Runtime,
 	request: Request,
 	serverContext: Record<string, unknown>,
-	state: RequestState,
+	state: StateBag,
 ): Promise<Response> {
 	const { path } = rt.options;
 	if (path !== false && new URL(request.url).pathname !== path)

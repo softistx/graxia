@@ -42,8 +42,19 @@ onContext: () => ({ user: null }); // not `null`
 
 ## Plugin "x" failed during setup: …
 
-The plugin's `setup` threw; the original error is the `cause` and its message follows. Fix the cause
-(a missing peer, a bad option). The instance cannot serve until every `setup` ran.
+The plugin's `setup` threw; the original error is the `cause` and its message follows. The first
+failing `setup` stops the sequence (later plugins never ran theirs). Nothing is thrown at creation:
+`graxia.ready` rejects, the failure is reported once through `onUnexpected` with `phase: "setup"`,
+and every request answers the generic 500 until the process is fixed. Fail fast at startup by
+awaiting it:
+
+```ts
+const graxia = createGraxia({ schema, plugins: [db] });
+await graxia.ready; // rejects with the GraxiaPluginError
+```
+
+Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
+runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
 
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
 
@@ -85,6 +96,17 @@ createGraxia({ schema, limits: { tokens: 30_000 } });
 
 The query nests deeper than `limits.nesting` (1 000 by default). Same code and `fix`; flatten the
 document or raise `limits.nesting`. See [Limits and caches](./guide/limits-and-caches.md).
+
+## Document is nested too deeply to parse.
+
+A document under `limits.nesting` still overflowed the parser's stack (`nesting: false` or a
+very high limit make it likely). It is a `GRAPHQL_PARSE_FAILED` error with a `fix`, never
+`Unexpected error.`, and is not cached. Flatten the document, or lower `limits.nesting`.
+
+## Cannot query field "x" on type "Query".  (`GRAPHQL_VALIDATION_FAILED`)
+
+The document parsed but does not validate against the schema. Every such error carries
+`extensions.code: "GRAPHQL_VALIDATION_FAILED"`, with `locations`. Fix the query, or the schema.
 
 ## limits.bodyBytes must be a positive integer
 

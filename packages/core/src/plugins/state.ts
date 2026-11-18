@@ -22,17 +22,34 @@ export function createStateKey<T>(name: string): StateKey<T> {
 }
 
 /** Per-request typed bag shared by every hook of one request. */
-export class RequestState {
+export interface RequestState {
+	/**
+	 * Headers added to whatever response the request ends with (a plugin's
+	 * `respond`, a 413, the result), merged by the transport.
+	 */
+	readonly responseHeaders: Headers;
+	/** Stores a value under the key. */
+	set<T>(key: StateKey<T>, value: T): void;
+	/** Reads the value, or `undefined` when none was set. */
+	get<T>(key: StateKey<T>): T | undefined;
+	/** Whether a value was set under the key. */
+	has(key: StateKey<unknown>): boolean;
+	/** Reads the value; throws {@link GraxiaConfigError} naming the key when absent. */
+	require<T>(key: StateKey<T>): T;
+}
+
+/** @internal The implementation of {@link RequestState}; only the transport creates and forks it. */
+export class StateBag implements RequestState {
 	/**
 	 * Headers added to whatever response the request ends with (a plugin's
 	 * `respond`, a 413, the result), merged by the transport.
 	 */
 	readonly responseHeaders: Headers;
 	readonly #map = new Map<symbol, unknown>();
-	readonly #parent: RequestState | undefined;
+	readonly #parent: StateBag | undefined;
 
-	/** @param parent internal: use {@link RequestState.fork}. */
-	constructor(parent?: RequestState) {
+	/** @param parent internal: use {@link StateBag.fork}. */
+	constructor(parent?: StateBag) {
 		this.#parent = parent;
 		this.responseHeaders = parent ? parent.responseHeaders : new Headers();
 	}
@@ -42,8 +59,8 @@ export class RequestState {
 	 * reads fall through to this state, writes stay in the child, and
 	 * `responseHeaders` is shared. Two forks never see each other's writes.
 	 */
-	fork(): RequestState {
-		return new RequestState(this);
+	fork(): StateBag {
+		return new StateBag(this);
 	}
 
 	/** Stores a value under the key. */

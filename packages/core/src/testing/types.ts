@@ -39,8 +39,10 @@ export interface TestMutateOptions<Variables>
 }
 
 /** One batch entry: a document and its options. */
-export interface TestBatchEntry<Result = any, Variables = any>
-	extends TestOperationOptions<Variables> {
+export interface TestBatchEntry<
+	Result = Record<string, any>,
+	Variables = Record<string, any>,
+> extends TestOperationOptions<Variables> {
 	/** The document, or `null` with `persisted: { sha256Hash }`. */
 	document: DocumentInput<Result, Variables> | null;
 }

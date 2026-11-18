@@ -1,6 +1,6 @@
 import {
 	type DocumentNode,
-	type GraphQLError,
+	GraphQLError,
 	type GraphQLSchema,
 	specifiedRules,
 	type ValidationRule,
@@ -16,8 +16,17 @@ import {
 	type ValidationCache,
 } from './caches';
 import type { LruCache } from './lru';
-import { parseWithLimits, type ResolvedLimits, resolveLimits } from './parse';
-import type { DocumentCaches, DocumentLimits } from './types';
+import {
+	isOverflow,
+	parseWithLimits,
+	type ResolvedLimits,
+	resolveLimits,
+} from './parse';
+import {
+	type DocumentCaches,
+	type DocumentLimits,
+	VALIDATION_FAILED,
+} from './types';
 
 /** Options of {@link createDocumentPipeline}. */
 export interface DocumentPipelineOptions {
@@ -154,9 +163,7 @@ function parseDefault(ctx: Ctx, source: string): ParseResult {
 	const hit = parseCache.get(source);
 	if (hit) return hit;
 	const result = parseWithLimits(source, ctx.limits);
-	const overflow =
-		'errors' in result &&
-		result.errors.some((e) => e.originalError instanceof RangeError);
+	const overflow = 'errors' in result && result.errors.some(isOverflow);
 	if (!overflow) parseCache.set(source, result);
 	return result;
 }
@@ -178,14 +185,22 @@ async function runValidate(
 		document,
 	});
 	const { out, error } = outcome;
-	let errors: readonly GraphQLError[];
-	if (error !== undefined) errors = [];
-	else if (out.errors) errors = out.errors;
-	else errors = check(ctx, document, cacheKey, out.validationFn, out.rules);
+	let errors: readonly GraphQLError[] = [];
+	let thrown: unknown;
+	if (error === undefined) {
+		try {
+			errors = out.errors
+				? out.errors
+				: check(ctx, document, cacheKey, out.validationFn, out.rules);
+		} catch (caught) {
+			// A throwing rule or validation function: the after-hooks still run.
+			thrown = caught;
+		}
+	}
 	const afterError = await finish(outcome.runAfter, {
-		errors: error === undefined ? errors : undefined,
+		errors: error === undefined && thrown === undefined ? errors : undefined,
 	});
-	const failure = error ?? afterError;
+	const failure = error ?? thrown ?? afterError;
 	return {
 		...(errors.length > 0 || failure !== undefined ? { errors } : { document }),
 		...(failure !== undefined ? { error: failure } : {}),
@@ -215,8 +230,25 @@ function check(
 		...specifiedRules,
 		...rules,
 	]);
-	if (key !== undefined) validationCache?.set(schema, key, found);
-	return found;
+	const coded = withCode(found);
+	if (key !== undefined) validationCache?.set(schema, key, coded);
+	return coded;
+}
+
+/** Stamps `extensions.code: GRAPHQL_VALIDATION_FAILED` on the errors that carry no code. */
+function withCode(errors: readonly GraphQLError[]): readonly GraphQLError[] {
+	return errors.map((error) =>
+		error.extensions['code'] !== undefined
+			? error
+			: new GraphQLError(error.message, {
+					nodes: error.nodes,
+					source: error.source,
+					positions: error.positions,
+					path: error.path,
+					originalError: error.originalError ?? error,
+					extensions: { ...error.extensions, code: VALIDATION_FAILED },
+				}),
+	);
 }
 
 async function finish<D>(

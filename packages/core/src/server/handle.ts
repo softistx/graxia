@@ -3,7 +3,7 @@ import { type BodyResult, isJsonContentType, readBody } from '../http/body';
 import { type MediaType, negotiate } from '../http/negotiate';
 import { paramsFromJson, paramsFromUrl } from '../http/params';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
-import type { RequestState } from '../plugins/state';
+import type { StateBag } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { resultKey } from './execute-state';
 import { runOperation } from './operation';
@@ -18,7 +18,7 @@ type Read =
 interface Call {
 	request: Request;
 	/** The request's state (what `onRequest` saw). */
-	state: RequestState;
+	state: StateBag;
 	serverContext: Record<string, unknown>;
 	method: 'GET' | 'POST';
 }
@@ -31,7 +31,7 @@ export async function dispatch(
 	rt: Runtime,
 	request: Request,
 	serverContext: Record<string, unknown>,
-	state: RequestState,
+	state: StateBag,
 ): Promise<Response> {
 	try {
 		state.responseHeaders.append('vary', 'Accept');
@@ -125,7 +125,7 @@ async function runBatch(
 
 function encode(
 	rt: Runtime,
-	state: RequestState,
+	state: StateBag,
 	outcome: Outcome,
 	media: MediaType,
 ): Response {

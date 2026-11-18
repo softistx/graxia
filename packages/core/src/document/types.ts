@@ -29,6 +29,9 @@ export type DocumentCaches =
 /** Machine-readable code of a parse failure (Apollo and Yoga compatible). */
 export const PARSE_FAILED = 'GRAPHQL_PARSE_FAILED';
 
+/** Machine-readable code of a validation failure (Apollo compatible). */
+export const VALIDATION_FAILED = 'GRAPHQL_VALIDATION_FAILED';
+
 /** Default {@link DocumentLimits.tokens}. */
 export const DEFAULT_MAX_TOKENS = 15_000;
 /** Default {@link DocumentLimits.nesting}. */

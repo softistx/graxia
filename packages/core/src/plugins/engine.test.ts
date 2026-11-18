@@ -4,12 +4,12 @@ import { GraxiaConfigError } from '../errors/config-error';
 import { GraxiaPluginError } from '../errors/plugin-error';
 import { definePlugin } from './define';
 import { createPluginEngine } from './engine';
-import { RequestState } from './state';
+import { StateBag } from './state';
 import type { GraxiaPlugin } from './types';
 
 const base = () => ({
 	request: new Request('http://localhost/graphql'),
-	state: new RequestState(),
+	state: new StateBag(),
 });
 const plain = definePlugin();
 

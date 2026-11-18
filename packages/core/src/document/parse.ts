@@ -29,6 +29,12 @@ export function resolveLimits(limits: DocumentLimits = {}): ResolvedLimits {
 	};
 }
 
+const overflows = new WeakSet<GraphQLError>();
+
+/** Whether the failure is a stack overflow (such a failure is not cached). */
+export const isOverflow = (error: GraphQLError): boolean =>
+	overflows.has(error);
+
 /** A parse failure as the GraphQLError a client sees. */
 export function parseFailure(
 	message: string,
@@ -110,17 +116,12 @@ export function parseWithLimits(
 		return { document };
 	} catch (error) {
 		if (error instanceof RangeError) {
-			return {
-				errors: [
-					parseFailure(
-						'Document is nested too deeply to parse.',
-						{
-							fix: 'Flatten the operation.',
-						},
-						error,
-					),
-				],
-			};
+			// No `originalError`: masking would turn it into "Unexpected error.".
+			const failure = parseFailure('Document is nested too deeply to parse.', {
+				fix: 'Flatten the operation.',
+			});
+			overflows.add(failure);
+			return { errors: [failure] };
 		}
 		if (
 			limits.tokens !== false &&

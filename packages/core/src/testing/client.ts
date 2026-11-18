@@ -10,25 +10,30 @@ import {
 	type TestResult,
 } from './types';
 
-/** Options of {@link createTestClient}. */
-export interface TestClientOptions<HostCtx extends object> {
+/** Options of {@link createTestClient}: `serverContext` is required when `HostCtx` has required keys. */
+export type TestClientOptions<HostCtx extends object> = TestClientBase &
+	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+	({} extends HostCtx
+		? { serverContext?: HostCtx }
+		: { serverContext: HostCtx });
+
+/** The options of {@link createTestClient} that do not depend on the host context. */
+export interface TestClientBase {
 	/** The path requests go to; `/graphql` by default. */
 	path?: string;
 	/** Headers sent with every request; a request's own headers win. */
 	headers?: HeadersInit;
-	/** Passed to `graxia.fetch` as the `serverContext` of every request. */
-	serverContext?: HostCtx;
 }
 
 /** A client that talks to a graxia instance through `graxia.fetch`, in process. */
 export interface TestClient {
 	/** Runs a query (POST by default, or GET). */
-	query<Result = any, Variables = any>(
+	query<Result = Record<string, any>, Variables = Record<string, any>>(
 		document: DocumentInput<Result, Variables> | null,
 		options?: TestQueryOptions<Variables>,
 	): Promise<TestResult<Result>>;
 	/** Runs a mutation (always POST). */
-	mutate<Result = any, Variables = any>(
+	mutate<Result = Record<string, any>, Variables = Record<string, any>>(
 		document: DocumentInput<Result, Variables> | null,
 		options?: TestMutateOptions<Variables>,
 	): Promise<TestResult<Result>>;
@@ -38,6 +43,12 @@ export interface TestClient {
 		options?: { headers?: HeadersInit; accept?: string },
 	): Promise<TestBatchResult>;
 }
+
+/** The options argument: required when `HostCtx` has required keys (they need a `serverContext`). */
+// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
+type ClientArgs<HostCtx extends object> = {} extends HostCtx
+	? [options?: TestClientOptions<HostCtx>]
+	: [options: TestClientOptions<HostCtx>];
 
 const isRecord = (value: unknown): value is Record<string, any> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -69,9 +80,11 @@ function picks(body: unknown) {
  * const { data, status } = await client.query<{ hello: string }>('{ hello }');
  */
 export function createTestClient<HostCtx extends object>(
-	graxia: Pick<Graxia<HostCtx>, 'fetch'>,
-	options: TestClientOptions<HostCtx> = {},
+	graxia: Graxia<HostCtx>,
+	...[clientOptions]: ClientArgs<HostCtx>
 ): TestClient {
+	const options: TestClientBase & { serverContext?: HostCtx } =
+		clientOptions ?? {};
 	const base = `http://graxia.local${options.path ?? '/graphql'}`;
 	const send = async (
 		method: 'GET' | 'POST',
@@ -97,7 +110,9 @@ export function createTestClient<HostCtx extends object>(
 						]),
 						body: JSON.stringify(payload),
 					});
-		const response = await graxia.fetch(request, options.serverContext);
+		const response = await (
+			graxia.fetch as (r: Request, c?: object) => Promise<Response>
+		)(request, options.serverContext);
 		return { response, body: await readBody(response) };
 	};
 	const one = async (

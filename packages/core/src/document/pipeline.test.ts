@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { buildSchema, GraphQLError, parse } from 'graphql';
 import { createPluginEngine } from '../plugins/engine';
-import { RequestState } from '../plugins/state';
+import { StateBag } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
 import { createDocumentPipeline } from './pipeline';
 import type { DocumentCaches, DocumentLimits } from './types';
@@ -21,13 +21,13 @@ const make = (
 	});
 const input = (source: string) => ({
 	source,
-	state: new RequestState(),
+	state: new StateBag(),
 	request,
 });
 const vin = (source: string, document = parse(source)) => ({
 	document,
 	cacheKey: source,
-	state: new RequestState(),
+	state: new StateBag(),
 	request,
 });
 
