@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, "feat/**"]
+
+# A pull request's new push supersedes its run in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ONE light job per pull request: Biome, build, type checking, the tests of the
+# members the change touches and of those that depend on them
+# (`scripts/affected.ts`), the artifacts check, and the changeset check. The
+# extra matrices (newest graphql, newest Bun) run on a nightly schedule.
+jobs:
+  ci:
+    name: CI
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LIBS || '"ubuntu-latest"') }}
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # `scripts/affected.ts` and `changeset status` diff against the base.
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Lint code
+        run: bun run lint
+      # Build first: every package's `exports` points at `dist/`.
+      - name: Build packages
+        run: bun run build
+      - name: Select the affected members
+        run: bun scripts/affected.ts --since="origin/$BASE" --github-output
+        id: affected
+        env:
+          BASE: ${{ github.base_ref }}
+      - name: Type checking
+        run: bun run typecheck
+      - name: Run tests
+        run: |
+          bun scripts/affected.ts --since="origin/$BASE" --run test
+          bun test ./scripts/
+        env:
+          BASE: ${{ github.base_ref }}
+      - name: Verify the built artifacts load
+        if: steps.affected.outputs.packages != '0'
+        run: bun run verify:artifacts
+      - name: Changeset present
+        if: github.head_ref != 'changeset-release/develop'
+        run: bun run changeset:status

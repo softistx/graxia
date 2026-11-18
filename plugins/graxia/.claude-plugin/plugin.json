@@ -1,0 +1,6 @@
+{
+	"name": "graxia",
+	"displayName": "graxia",
+	"description": "For applications that use graxia, the Bun-native GraphQL server engine: a skill that picks the package by need and points at the README and docs each package ships, and an agent that upgrades an app between two versions.",
+	"author": { "name": "softistx" }
+}
