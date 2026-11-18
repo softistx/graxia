@@ -26,7 +26,7 @@ const input = (source: string) => ({
 });
 const vin = (source: string, document = parse(source)) => ({
 	document,
-	source,
+	cacheKey: source,
 	state: new RequestState(),
 	request,
 });
@@ -192,11 +192,11 @@ describe('validation', () => {
 		const doc = parse('{ zzz }');
 		const a = await p.validate({
 			...vin('{ zzz }', doc),
-			source: undefined,
+			cacheKey: undefined,
 		} as never);
 		const b = await p.validate({
 			...vin('{ zzz }', doc),
-			source: undefined,
+			cacheKey: undefined,
 		} as never);
 		expect(a.errors).not.toBe(b.errors as never);
 		const boom = new Error('x');
@@ -207,5 +207,76 @@ describe('validation', () => {
 			},
 		};
 		expect((await make([bad]).validate(vin('{ a }'))).error).toBe(boom);
+	});
+});
+
+describe('cache contracts', () => {
+	test('parse returns cacheKey only for the default parse', async () => {
+		expect((await make().parse(input('{ a }'))).cacheKey).toBe('{ a }');
+		const p = make([
+			{ name: 'p', onParse: ({ setParseFn }) => setParseFn((s) => parse(s)) },
+		]);
+		expect((await p.parse(input('{ a }'))).cacheKey).toBeUndefined();
+	});
+
+	test('a plugin parse fn returning another document neither reads nor poisons the cache', async () => {
+		const swap: GraxiaPlugin = {
+			name: 'swap',
+			onParse: ({ setParseFn }) => setParseFn(() => parse('{ zzz }')),
+		};
+		const evil = make([swap]);
+		const r = await evil.parse(input('{ a }'));
+		const v = await evil.validate({
+			...vin('{ a }', r.document),
+			cacheKey: r.cacheKey,
+		});
+		expect(v.errors?.length).toBe(1);
+		// same pipeline shape, default parse of the same source: still valid
+		const plain = await make().validate(vin('{ a }'));
+		expect(plain.errors).toBeUndefined();
+	});
+
+	test('a stack overflow failure is not cached', async () => {
+		const p = make([], { nesting: false, tokens: false });
+		const q = `{ a(x: ${'['.repeat(200_000)}${']'.repeat(200_000)}) }`;
+		const a = await p.parse(input(q));
+		const b = await p.parse(input(q));
+		expect(a.errors?.[0]?.extensions['limit']).toBeUndefined();
+		expect(String(a.errors?.[0]?.extensions['fix'])).toBeTruthy();
+		expect(b.errors).not.toBe(a.errors as never);
+	});
+
+	test('a throwing runAfter surfaces as error', async () => {
+		const boom = new Error('after');
+		const p = make([
+			{
+				name: 'a',
+				onParse: () => () => {
+					throw boom;
+				},
+			},
+		]);
+		const r = await p.parse(input('{ a }'));
+		expect(r.error).toBe(boom);
+	});
+
+	test('a hook error on a cached parse hit surfaces and keeps the cache', async () => {
+		let fail = false;
+		const boom = new Error('hook');
+		const p = make([
+			{
+				name: 'h',
+				onParse: () => {
+					if (fail) throw boom;
+				},
+			},
+		]);
+		const first = await p.parse(input('{ a }'));
+		fail = true;
+		expect((await p.parse(input('{ a }'))).error).toBe(boom);
+		fail = false;
+		expect((await p.parse(input('{ a }'))).document).toBe(
+			first.document as never,
+		);
 	});
 });

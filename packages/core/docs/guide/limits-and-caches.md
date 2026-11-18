@@ -15,7 +15,12 @@ const pipeline = createDocumentPipeline({
 
 const parsed = await pipeline.parse({ source, state, request });
 if (parsed.errors) return reply(parsed.errors); // GRAPHQL_PARSE_FAILED
-const checked = await pipeline.validate({ document: parsed.document!, source, state, request });
+const checked = await pipeline.validate({
+  document: parsed.document!,
+  cacheKey: parsed.cacheKey, // set only for the default parse
+  state,
+  request,
+});
 ```
 
 A step returns `{ document }` or `{ errors }`. `error` carries a value thrown by a plugin
@@ -30,9 +35,10 @@ outcome.
 | `limits.nesting` | 1 000   | Most `{`, `(`, `[` levels, counted on the raw source before parse |
 
 `false` turns a limit off. Strings, block strings and comments are not counted for nesting.
-Every failure is a `GraphQLError` with `extensions.code = 'GRAPHQL_PARSE_FAILED'`; the token
+Every failure is a `GraphQLError` with `extensions.code = 'GRAPHQL_PARSE_FAILED'` (exported as `PARSE_FAILED`); the token
 and nesting cases add `extensions.limit` and `extensions.fix`. A parser stack overflow
-(`RangeError`) is reported the same way, never thrown.
+(`RangeError`) is reported the same way, never thrown; it carries `fix` but no `limit`, and is
+not cached.
 
 ## Caches
 
@@ -47,10 +53,13 @@ and nesting cases add `extensions.limit` and `extensions.fix`. A parser stack ov
 
 - The parse cache is keyed by the source string and also keeps parse failures, so a bad
   document is not lexed again. A source heavier than `maxBytes / 8` is not cached.
+- The validation cache budget is per schema: N schemas can hold N x `maxBytes`.
 - The weight is an estimate of the key only; a parsed document costs several times its
   source, so size `maxBytes` with that in mind.
 - A parse function set by a plugin (`setParseFn`) bypasses the parse cache, because its output
   is not a function of the source alone. The limits still apply.
+- `validate` uses the cache only with the `cacheKey` that `parse` returned, which exists only
+  for the default parse of the source (not after `setParseFn` or `setDocument`).
 - The validation cache is skipped when a plugin adds rules (`addRule`), swaps the validation
   function, or when the document did not come from a source string.
 - `setDocument` skips parsing and `setResult` skips validation.
