@@ -535,7 +535,7 @@ server's own origin or in `allowedOrigins`, or a WebSocket upgrade came from suc
 check is on even with `sameOrigin` off). The origin is compared with the request URL graxia sees,
 so behind a proxy pass the public URL, or list the public origin. The message ends with
 `from a null origin.` for `Origin: null` (a sandboxed frame, a `file:` page; always refused) and
-`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` with no `Origin`.
+`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin`.
 
 ```ts
 createGraxia({

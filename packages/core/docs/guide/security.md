@@ -43,7 +43,7 @@ new HttpLink({ uri: url, headers: { 'x-graphql-csrf': '1' } });
 createClient({ url, fetchOptions: { headers: { 'x-graphql-csrf': '1' } } });
 ```
 
-`createTestClient` adds `x-graphql-csrf` to its `GET` requests, so tests need no change.
+`createTestClient` adds the instance's CSRF header (the first of its list) to its `GET` requests, so tests need no change.
 
 ## Same-origin check
 
@@ -51,8 +51,8 @@ createClient({ url, fetchOptions: { headers: { 'x-graphql-csrf': '1' } } });
 `{ crossOrigin: 'refuse' }`). A request with no `Origin` and no cross-site signal is not a
 browser's and passes. A request is same-origin when `Origin` equals the origin of the request URL
 (behind a proxy, graxia must see the public URL, or list that origin) or is in `allowedOrigins`.
-`Origin: null` is always refused. `Sec-Fetch-Site: cross-site` with no `Origin` counts as a
-cross-origin request. A refusal is 403 `FORBIDDEN_ORIGIN`.
+`Origin: null` is always refused. `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin` counts as a
+cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`.
 
 | `crossOrigin`      | A request from another origin                                               |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -79,7 +79,7 @@ Each entry of `allowedOrigins` is an origin: scheme, host and optional port, no 
 A browser sends the user's cookies with a WebSocket upgrade to any site, and cannot add a custom
 header, so the header check does not apply. graxia checks the upgrade's `Origin` instead, even with
 `sameOrigin` off (unless `csrf: false`): `null` or another site's origin is refused with 403
-before the socket is upgraded; no `Origin` (a non-browser client) is allowed. `crossOrigin` does
+before the socket is upgraded. A missing `Origin` (a non-browser client) is allowed, except when `Sec-Fetch-Site` marks the request as cross-site or same-site. `crossOrigin` does
 not apply to an upgrade: `json` and `allow` count as `refuse`.
 
 **Breaking change.** A browser page on another origin that opens a socket must be listed:
@@ -100,6 +100,13 @@ createGraxia({
   hints from validation errors and from variable coercion errors, so a client cannot learn the
   schema from typos. It does not cover a validation function a plugin replaces with
   `setValidationFn`, which receives no option.
+
+Introspection and suggestions are enforced only on the default validation path: a plugin's
+`setValidationFn`, or an `onValidate` that sets `out.errors` (even `[]`), bypasses them. That is
+the plugin trust model: a plugin runs with the server's authority.
+
+When `NODE_ENV` is unset both default to on, so set `NODE_ENV=production` (or
+`introspection: false` and `suggestions: false`) in production.
 
 `NODE_ENV` is read once, when `createGraxia` runs. Set `introspection: true` or
 `suggestions: true` to keep them in production.

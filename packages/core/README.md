@@ -175,11 +175,10 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
   path; turn either off with `false`.
-
 - CSRF prevention: a request a browser can send cross-site without a preflight (a `GET`, or a
   `POST` with a `text/plain`, form or multipart body) is refused with 403 unless it carries one of
-  `x-graphql-csrf`, `graphql-require-preflight`, `apollo-require-preflight` or
-  `x-apollo-operation-name`. A JSON `POST` needs nothing.
+  `DEFAULT_CSRF_HEADERS` (`x-graphql-csrf`, `graphql-require-preflight`,
+  `apollo-require-preflight`, `x-apollo-operation-name`). A JSON `POST` needs nothing.
 - WebSocket origin check: an upgrade whose `Origin` is `null` or another site's is refused with
   403; list the browser origins that may connect in `csrf.sameOrigin.allowedOrigins`.
 - Introspection and "Did you mean" suggestions are on in development and off when
@@ -323,7 +322,7 @@ live.serve({ port: 3000 }); // ws://localhost:3000/graphql
 //   websocket: live.websocket
 ```
 
-A cookie-authenticated browser app must also check `Origin` on the upgrade: see [Security](#security).
+The upgrade's `Origin` is checked by default; list the browser origins that may connect in `csrf.sameOrigin.allowedOrigins`: see [Security](#security).
 
 See [Subscriptions over WebSocket](./docs/guide/websocket.md): auth, close codes, keep-alive, limits.
 
@@ -350,6 +349,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
 |                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
+|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
@@ -366,6 +366,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
+- [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 

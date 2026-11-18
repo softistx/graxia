@@ -115,6 +115,8 @@ when execution failed and `undefined` when the request was refused before it.
 
 ### Methods, status codes and `Accept`
 
+Over `GET` the client adds the instance's CSRF header (the first of `csrf.requireHeader`, `x-graphql-csrf` by default) so the request is not refused; it adds nothing when `csrf` is `false` or `requireHeader` is `false`. See [Security](./security.md).
+
 ```ts
 await client.query('{ hello }', { method: 'GET' }); // query string: query, variables, operationName, extensions
 await client.mutate('mutation { bump }'); // POST only

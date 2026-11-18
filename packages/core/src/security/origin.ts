@@ -27,14 +27,19 @@ export function checkOrigin(
 			FIX,
 		);
 	if (origin === null)
-		return request.headers.get('sec-fetch-site') === 'cross-site' &&
-			!permits(request, csrf, websocket)
+		return crossSite(request) && !permits(request, csrf, websocket)
 			? refuse('an unknown origin')
 			: undefined;
 	if (origin === 'null') return refuse('a null origin');
 	if (origin === new URL(request.url).origin || csrf.allowedOrigins.has(origin))
 		return undefined;
 	return permits(request, csrf, websocket) ? undefined : refuse(origin);
+}
+
+/** `Sec-Fetch-Site` says a browser sent the request from another site (`same-origin` and `none` are fine). */
+function crossSite(request: Request): boolean {
+	const site = request.headers.get('sec-fetch-site');
+	return site === 'cross-site' || site === 'same-site';
 }
 
 /** Whether `crossOrigin` lets a request from another origin through. */

@@ -104,6 +104,12 @@ describe('csrf sameOrigin', () => {
 		);
 	});
 
+	test('Sec-Fetch-Site: same-site without Origin fails closed; same-origin and none pass', async () => {
+		expect(await status(on, { 'sec-fetch-site': 'same-site' })).toBe(403);
+		expect(await status(on, { 'sec-fetch-site': 'none' })).toBe(200);
+		expect(await status(on, { 'sec-fetch-site': 'same-origin' })).toBe(200);
+	});
+
 	test('it is off by default and with csrf: false', async () => {
 		const origin = { origin: 'https://evil.test' };
 		expect(await status(undefined, origin)).toBe(200);
