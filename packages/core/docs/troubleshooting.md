@@ -150,3 +150,82 @@ has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
 
 `variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
 to a string) before calling `execute`.
+
+## Resolvers for X are defined more than once
+
+Two resolver maps given to `createSchema` define a non-object type (a scalar or an enum, say) under
+the same name. Keep one definition. For object types the message names the field instead
+(`Resolver Query.foo is defined more than once`).
+
+## Resolvers for X must be an object
+
+The resolvers of an object, interface, union or enum type must be a plain object of fields (or
+values). A function, string or array was given:
+
+```ts
+resolvers: {
+	Query: {
+		hello: () => 'hi';
+	}
+} // not `Query: () => 'hi'`
+```
+
+## Resolvers for X are defined but X is an input type
+
+Input types have no resolvers. Remove the entry; defaults and validation belong in the SDL.
+
+## Resolvers for X is a GraphQLScalarType but X is not a scalar
+
+A `GraphQLScalarType` was given under the name of a type that the SDL declares as something else.
+Declare `scalar X` in the SDL, or move the entry to the right name.
+
+## Resolvers for scalar X must be a GraphQLScalarType
+
+A scalar's entry is a graphql `GraphQLScalarType` (`new GraphQLScalarType({ name, parseValue, ... })`),
+not a plain object or function.
+
+## Resolvers for scalar X is a GraphQLScalarType named Y; the names must match
+
+The `name` of the `GraphQLScalarType` differs from the key it sits under. Make them equal.
+
+## Resolver X.y is not valid on an object type
+
+## Resolver X.y is not valid on an interface type
+
+A key starting with `__` that this kind of type does not take: `__isTypeOf` is for object types and
+`__resolveType` for interfaces and unions. Move it to the right type, or rename the field (names
+starting with `__` are reserved by GraphQL).
+
+## Resolver X.y must be a function or { resolve, subscribe }
+
+A field's resolver is a function, or an object with `resolve` and/or `subscribe` functions. Anything
+else (a value, `null`) is refused. For a constant, write `() => value`.
+
+## persisted: true needs a document; pass { sha256Hash } to send a hash alone
+
+Thrown by the `@graxia/core/testing` client: `persisted: true` computes the hash from the document,
+so the document cannot be `null`.
+
+```ts
+await client.query('{ hello }', { persisted: true }); // sends the hash and the text
+await client.query(null, { persisted: { sha256Hash: 'ecf4…' } }); // sends the hash alone
+```
+
+## A null document needs persisted: { sha256Hash }
+
+The test client was given `null` as the document without a hash to send. Pass
+`{ persisted: { sha256Hash } }`, or a document.
+
+## Expected no GraphQL errors, got N:
+
+`expectNoErrors(result)` found errors in the result. Each following line is
+`- message [CODE] at path`; fix the cause (a masked error shows `Unexpected error.` and its
+correlation id, which `onUnexpected` matches to the original). To assert an error on purpose, check
+`result.errors` yourself.
+
+## dispose: N operation(s) did not settle after abort
+
+Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted the in-flight
+operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
+context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
+cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
