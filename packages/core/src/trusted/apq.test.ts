@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { createMemoryCache } from '../cache/memory';
 import type { KeyValueCache } from '../cache/types';
+import { definePlugin } from '../plugins/define';
+import { createGraxia } from '../server/create-graxia';
+import { schema } from '../server/fixtures.test-util';
+import { createTestClient } from '../testing/client';
 import { sha256Hex } from './apq';
 import { codes, HELLO, hash, setup } from './trusted.test-util';
 
@@ -107,6 +111,39 @@ describe('automatic persisted queries', () => {
 		const { client } = setup({ store }, { reported });
 		const result = await client.query(HELLO, { persisted: true });
 		expect(result.data).toEqual({ hello: 'world' });
+		await Bun.sleep(5); // the registration runs in the background
 		expect(reported).toHaveLength(1);
+	});
+
+	test('a registration never blocks the request', async () => {
+		const store: KeyValueCache<string> = {
+			get: () => Promise.resolve(undefined),
+			set: () => new Promise(() => {}),
+			delete: () => Promise.resolve(false),
+		};
+		const { client } = setup({ store });
+		const result = await client.query(HELLO, { persisted: true });
+		expect(result.data).toEqual({ hello: 'world' });
+	});
+
+	test('a query an onParams plugin rewrote is not registered', async () => {
+		const store = createMemoryCache<string>();
+		const graxia = createGraxia({
+			schema,
+			trustedDocuments: { store },
+			plugins: [
+				definePlugin({
+					name: 'rewrite',
+					onParams: ({ params, setParams }) =>
+						setParams({ ...params, query: '{ who: hello }' }),
+				}),
+			],
+		});
+		const result = await createTestClient(graxia).query(HELLO, {
+			persisted: true,
+		});
+		expect(result.data).toEqual({ who: 'world' });
+		await Bun.sleep(5);
+		expect(await store.get(`pq:${hash}`)).toBeUndefined();
 	});
 });

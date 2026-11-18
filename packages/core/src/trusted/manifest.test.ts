@@ -63,6 +63,15 @@ describe('normalizeManifest', () => {
 	});
 });
 
+describe('manifest hash ids', () => {
+	test('an upper-case hex id is indexed in lower case', () => {
+		const hex = sha256Hex('{ hello }');
+		const map = normalizeManifest({ [hex.toUpperCase()]: '{ hello }' });
+		expect(map.get(hex)).toBe('{ hello }');
+		expect(map.has(hex.toUpperCase())).toBe(false);
+	});
+});
+
 describe('hash keys', () => {
 	const hex = sha256Hex('{ hello }');
 

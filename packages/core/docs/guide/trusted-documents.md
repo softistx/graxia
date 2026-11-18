@@ -15,8 +15,9 @@ const graxia = createGraxia({
 });
 ```
 
-Without `trustedDocuments` nothing changes: every valid document runs, and a `documentId` or APQ
-extension is not understood (so existing servers are not affected by this feature).
+Without `trustedDocuments` nothing changes: every valid request runs as before. A `documentId` is
+not understood (a request with only an id answers `Must provide a query string.`, and `execute`
+with a `documentId` fails the same way), and an APQ hash beside a query is ignored.
 
 ## Options
 
@@ -52,7 +53,10 @@ is checked against it.
 
 **Hashes.** A hash (an APQ `sha256Hash`, or a `documentId` of the form `sha256:<hex>`) is looked up
 in the manifest as `<hex>` and as `sha256:<hex>` (lower case), and in the store under one key
-whichever spelling the client used. Any other id is looked up exactly as given.
+whichever spelling the client used. A manifest id that is a 64-character hex (with or without
+`sha256:`) is indexed in lower case, so an upper-case manifest still matches. Any other id is
+looked up exactly as given. The manifest wins: when a hash id maps to a source whose hash is
+different, a client that sends that hash gets the manifest's source.
 
 ## Manifest formats
 
@@ -79,23 +83,65 @@ The Apollo `id` is the SHA-256 of the operation, so `createPersistedQueryLink` f
 
 ## Client setup
 
+**Apollo Client 4** (`@apollo/client` 4.x), automatic persisted queries:
+
 ```ts
-// Apollo Client: automatic persisted queries, and a manifest in production
+import { PersistedQueryLink } from '@apollo/client/link/persisted-queries';
+import { sha256 } from 'crypto-hash';
+
+const link = new PersistedQueryLink({ sha256 }).concat(httpLink);
+```
+
+**Apollo Client 3** (3.x) has a function instead of a class:
+
+```ts
 import { createPersistedQueryLink } from '@apollo/client/link/persisted-queries';
 import { sha256 } from 'crypto-hash';
-const link = createPersistedQueryLink({ sha256 }).concat(httpLink);
 
-// urql
+const link = createPersistedQueryLink({ sha256 }).concat(httpLink);
+```
+
+With an Apollo manifest, send the ids from the manifest (no hashing at runtime) through
+`@apollo/persisted-query-lists`; the server needs the same manifest in `trustedDocuments.manifest`:
+
+```ts
+import { generatePersistedQueryIdsFromManifest } from '@apollo/persisted-query-lists';
+
+// Apollo Client 3: createPersistedQueryLink(...); Apollo Client 4: new PersistedQueryLink(...)
+const link = createPersistedQueryLink(
+	generatePersistedQueryIdsFromManifest({
+		loadManifest: () => import('./persisted-query-manifest.json'),
+	}),
+).concat(httpLink);
+```
+
+**urql**: the persisted exchange goes after the cache exchange and before `fetchExchange`:
+
+```ts
+import { cacheExchange, fetchExchange } from '@urql/core';
 import { persistedExchange } from '@urql/exchange-persisted';
+
 const exchanges = [
+	cacheExchange,
 	persistedExchange({ preferGetMethod: 'within-url-limit' }),
 	fetchExchange,
 ];
 ```
 
-Relay's network layer sends `documentId: operation.id` and no `query` (see its persisted queries
-guide). A CDN can cache a `GET /graphql?documentId=...&variables=...`; add one of the CSRF headers
-(see [Security](./security.md)).
+**Relay** and plain `fetch`: send `documentId` and no `query` (in Relay's network layer,
+`documentId: operation.id`):
+
+```ts
+const body = JSON.stringify({ documentId: operation.id, variables });
+const response = await fetch(url, {
+	method: 'POST',
+	headers: { 'content-type': 'application/json' },
+	body,
+});
+```
+
+A CDN can cache a `GET /graphql?documentId=...&variables=...`; add one of the CSRF headers (see
+[Security](./security.md)).
 
 ## Automatic persisted queries
 
@@ -123,6 +169,14 @@ createGraxia({
 	},
 });
 ```
+
+A registration runs in the background: the request never waits for the store. A query an
+`onParams` plugin rewrote is not registered, only the one the client sent.
+
+The default memory store keeps 1 000 entries, so it holds up to 1 000 times the largest accepted
+query (`limits.bodyBytes`, 1 MiB by default). In `mixed` mode anyone can register documents, so
+junk registrations can evict real ones: give a public endpoint a `redisCache()` with a time to
+live, or run `strict`.
 
 A store that throws (a Redis outage) never fails the request: a failing `get` is reported through
 `onUnexpected` and answers as not found (the client then sends the query, which works in `mixed`);

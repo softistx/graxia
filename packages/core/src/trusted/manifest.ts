@@ -1,5 +1,6 @@
 import { GraxiaConfigError } from '../errors/config-error';
 import { isRecord } from '../http/record';
+import { hashOf } from './apq';
 
 const APOLLO_FORMAT = 'apollo-persisted-query-manifest';
 
@@ -12,7 +13,8 @@ function entry(map: Map<string, string>, id: unknown, source: unknown): void {
 		throw new GraxiaConfigError(
 			`trustedDocuments.manifest: the entry "${id}" must map to a GraphQL source string`,
 		);
-	map.set(id, source);
+	// A hash id is indexed in lower case, the way APQ clients send it.
+	map.set(hashOf(id) === undefined ? id : id.toLowerCase(), source);
 }
 
 function fromApollo(manifest: Record<string, any>): Map<string, string> {

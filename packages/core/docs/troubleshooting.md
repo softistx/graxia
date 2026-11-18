@@ -490,10 +490,10 @@ await client.query('{ hello }', { persisted: true }); // sends the hash and the 
 await client.query(null, { persisted: { sha256Hash: 'ecf4…' } }); // sends the hash alone
 ```
 
-## A null document needs persisted: { sha256Hash }
+## A null document needs persisted: { sha256Hash } or documentId
 
-The test client was given `null` as the document without a hash to send. Pass
-`{ persisted: { sha256Hash } }`, or a document.
+The test client was given `null` as the document without a hash or an id to send. Pass
+`{ persisted: { sha256Hash } }`, `{ documentId }`, or a document.
 
 ## Expected no GraphQL errors, got N:
 
@@ -635,13 +635,19 @@ The option is not an object. Leave it out to turn trusted documents off.
 
 ## trustedDocuments.mode must be "strict" or "mixed"
 
+`mode` is something else (a typo, a boolean). Use `'strict'` or `'mixed'`, or leave it out to follow `NODE_ENV`.
+
 ## trustedDocuments.apq must be a boolean
+
+`apq` is not `true` or `false`. Pass a boolean, or leave it out (on in `mixed`, off in `strict`).
 
 ## trustedDocuments.store must be a KeyValueCache (get, set and delete)
 
+`store` lacks `get`, `set` or `delete`. Pass `createMemoryCache()` or `redisCache()`, or any object with the three methods.
+
 ## trustedDocuments.extractKey must be a function (params, request) => string | undefined
 
-Each option takes only the value named.
+`extractKey` is not a function. Pass `(params, request) => string | undefined`, returning `undefined` when the request names no document.
 
 ## trustedDocuments.mode "strict" needs a manifest, or extractKey with a store: no document could ever run
 

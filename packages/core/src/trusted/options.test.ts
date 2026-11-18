@@ -31,6 +31,11 @@ describe('trustedDocuments options', () => {
 			'trustedDocuments.store must be a KeyValueCache (get, set and delete)',
 		],
 		[
+			'a store without delete',
+			{ store: { get() {}, set() {} } },
+			'trustedDocuments.store must be a KeyValueCache',
+		],
+		[
 			'a bad extractKey',
 			{ extractKey: 1 },
 			'trustedDocuments.extractKey must be a function',

@@ -25,8 +25,9 @@ outcome and run even when a validation rule throws.
 ## A key-value cache for your own code
 
 `createMemoryCache` is a small asynchronous key-value store (LRU, per-entry time to live) behind the
-`KeyValueCache` contract. Nothing in graxia consumes it yet; upcoming features (persisted queries,
-response caching) take one, and your own plugins can use it today. `redisCache` from
+`KeyValueCache` contract. The store of automatic persisted queries is one (`trustedDocuments.store`, see
+[Trusted documents](./trusted-documents.md)); upcoming features (response caching) take one too,
+and your own plugins can use it today. `redisCache` from
 `@graxia/redis` implements the same contract across processes.
 
 ```ts

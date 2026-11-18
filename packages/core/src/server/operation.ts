@@ -113,7 +113,8 @@ async function prepare(
 	});
 	if (valid.error !== undefined) return unexpected(valid.error);
 	if (valid.errors) return failed(valid.errors);
-	await register?.();
+	// Only the query the client sent is registered, never one a plugin rewrote.
+	if (final.query === params.query) register?.();
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
 	const { cost } = rt.options.operationLimits;

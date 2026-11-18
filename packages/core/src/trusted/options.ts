@@ -18,7 +18,8 @@ export interface ResolvedTrusted {
 const isStore = (value: unknown): value is KeyValueCache<string> =>
 	isRecord(value) &&
 	typeof value['get'] === 'function' &&
-	typeof value['set'] === 'function';
+	typeof value['set'] === 'function' &&
+	typeof value['delete'] === 'function';
 
 /**
  * Applies the defaults of `trustedDocuments`; `undefined` when it is absent

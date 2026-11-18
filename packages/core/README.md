@@ -236,6 +236,9 @@ const { data, errors } = await graxia.execute({
 });
 ```
 
+With `trustedDocuments`, `graxia.execute({ documentId, variables })` runs a persisted document by
+id (without it the result is `Must provide a query string.`).
+
 It rejects with a `GraxiaExecuteError` when a plugin answered with its own response (a 401, for
 example) instead of a result. See [Testing](./docs/guide/testing.md).
 
