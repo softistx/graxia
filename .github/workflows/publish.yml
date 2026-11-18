@@ -3,7 +3,7 @@ name: Publish
 # npm publishing runs here only, from a tag. Versions are made locally
 # (`bun run changeset:version`, merged as a "Version packages" PR); pushing the
 # tag `v<x.y.z>` publishes every package whose version is not on npm yet.
-# `changeset publish` skips versions already published, so a re-run is safe.
+# scripts/publish.ts skips versions already on npm, so a re-run is safe.
 on:
   push:
     tags: ["v*"]
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
-      # Builds, checks the artifacts, then `changeset publish`.
+      # Builds, checks the artifacts, then scripts/publish.ts (pack, assert, npm publish).
       - name: Publish
         run: bun run changeset:publish
         env:

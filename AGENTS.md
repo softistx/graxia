@@ -24,7 +24,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                        |
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
-publish with 0.2); the other packages stay `"private": true` until their own slice, and removing it is
+publish 0.1.0, released with core 0.2.0); the other packages stay `"private": true` until their own slice, and removing it is
 a deliberate commit of its own.
 
 ## Scripts
@@ -47,11 +47,16 @@ a deliberate commit of its own.
 Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differences:
 
 - **No `bunfig.toml`**: no private registry; everything resolves from npmjs.
-- **Public npm, `changeset publish`**: no `scripts/publish.ts` (nxgt-data's dual
-  registry publisher). `publishConfig` is `{ "access": "public" }`, and
-  `scripts/artifacts/manifest.ts` `accessProblems` checks that instead of
-  `npm.softistx.com` + `restricted`.
-- **`publish.yml` instead of `release.yml`**: tags `v*` (also `release: published` and
+- **Public npm, `scripts/publish.ts`**: not nxgt-data's dual registry publisher, and not
+  `changeset publish` either, which falls back to a plain `npm publish` that leaves
+  `workspace:^` in the manifest. The script packs each public package with `bun pm pack`,
+  asserts the packed manifest holds no `workspace:` range, runs `npm publish <tgz>`
+  (provenance in CI), skips versions already on npm, then `changeset tag`.
+  `bun run publish:dry-run` packs and asserts only. `publishConfig` is
+  `{ "access": "public" }`, and `scripts/artifacts/manifest.ts` `accessProblems` checks
+  that instead of `npm.softistx.com` + `restricted`; `verify:artifacts` also fails on a
+  `workspace:` range in any packed manifest.
+- **`publish.yml` instead of `release.yml`**: runs `scripts/publish.ts` on tags `v*` (also `release: published` and
   `workflow_dispatch`), org secret `NPM_TOKEN`. The "Version packages" PR is made
   locally (`bun run changeset:version`); nothing opens it in CI. The token's npm user
   must be a member of the `graxia` npm org.

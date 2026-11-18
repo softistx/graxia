@@ -78,6 +78,9 @@
         "@graxia/core": "workspace:^",
         "typescript": "^6.0.3 || ^7.0.0",
       },
+      "optionalPeers": [
+        "typescript",
+      ],
     },
   },
   "overrides": {
