@@ -13,6 +13,12 @@ const base = () => ({
 });
 const plain = definePlugin();
 
+test('direct and curried definePlugin return the plugin itself', () => {
+	const spec = { name: 'same', onContext: () => ({ a: 1 }) };
+	expect(definePlugin(spec)).toBe(spec);
+	expect(definePlugin<{ request: Request }>()(spec)).toBe(spec);
+});
+
 describe('ordering and onion', () => {
 	test('before-hooks in order, after-hooks reversed', async () => {
 		const log: string[] = [];

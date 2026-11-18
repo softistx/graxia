@@ -87,7 +87,7 @@ describe('graxia.execute', () => {
 			schema,
 			...quiet,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'spy',
 					onRequest: ({ request }) => {
 						seen.push(request);
@@ -120,7 +120,7 @@ describe('graxia.execute', () => {
 			schema,
 			...quiet,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'gate',
 					onRequest: ({ respond }: any) =>
 						respond(new Response('no', { status: 401 })),
@@ -185,7 +185,7 @@ describe('graxia.execute', () => {
 			schema,
 			...quiet,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'rewrite',
 					onParams: ({ setParams }: any) => setParams({ query: '{ who }' }),
 				}),
@@ -213,7 +213,7 @@ describe('graxia.execute', () => {
 			schema,
 			...quiet,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'bad',
 					onRequest: () => {
 						throw boom;

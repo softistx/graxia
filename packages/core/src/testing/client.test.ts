@@ -67,7 +67,7 @@ describe('createTestClient', () => {
 			...quiet,
 			path: '/api',
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'spy',
 					onRequest: ({ request }) => {
 						seen.push(request.headers);
@@ -93,7 +93,7 @@ describe('createTestClient', () => {
 			schema,
 			...quiet,
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'spy',
 					onParams: ({ params, request }: any) => {
 						bodies.push(params);

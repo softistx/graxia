@@ -56,7 +56,7 @@ const request = (query: string, signal?: AbortSignal) =>
 	});
 
 test('a source whose return() throws still lets dispose() resolve promptly', async () => {
-	const stuck = definePlugin()({
+	const stuck = definePlugin({
 		name: 'stuck',
 		onSubscribe: ({ setResult }) => {
 			setResult({
@@ -84,7 +84,7 @@ test('a source whose return() throws still lets dispose() resolve promptly', asy
 
 test('getContext() works inside onResultChunk hooks of a stream', async () => {
 	let seen: unknown;
-	const plugin = definePlugin()({
+	const plugin = definePlugin({
 		name: 'ctx',
 		onContext: () => ({ user: 'ada' }),
 		onResultChunk: () => {
@@ -101,7 +101,7 @@ test('getContext() works inside onResultChunk hooks of a single SSE result', asy
 	let seen: unknown;
 	const graxia = make({
 		plugins: [
-			definePlugin()({
+			definePlugin({
 				name: 'ctx',
 				onContext: () => ({ user: 'ada' }),
 				onResultChunk: () => {

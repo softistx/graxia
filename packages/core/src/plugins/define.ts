@@ -1,19 +1,36 @@
 import type { Empty, GraxiaPlugin } from './types';
 
 /**
- * Defines a plugin with typed context. Curried so `Added` is inferred from
- * `onContext`'s return value; `In` is the context the plugin requires.
+ * Defines a plugin with typed context. Two forms:
  *
- * @example
+ * - **Direct**, `definePlugin({ ... })`, for a plugin that requires nothing from
+ *   the context. `Added` is inferred from `onContext`'s return value.
+ * - **Curried**, `definePlugin<In>()({ ... })`, for a plugin that requires `In`
+ *   from the context. TypeScript cannot take `In` explicitly and infer `Added`
+ *   in one call (no partial type-argument inference), hence the two calls.
+ *
+ * @example Direct, no requirement
+ * const tenant = definePlugin({
+ *   name: "tenant",
+ *   onContext: () => ({ tenant: "acme" }),
+ * });
+ *
+ * @example Curried, requires `request`
  * const auth = definePlugin<{ request: Request }>()({
  *   name: "auth",
- *   onContext: async () => ({ user: { id: "1" } }),
+ *   onContext: async ({ context }) => ({ user: { agent: context.request.headers.get("user-agent") } }),
  * });
  */
-export function definePlugin<In = Empty>() {
-	return <Added extends object = Empty>(
-		plugin: GraxiaPlugin<In, Added>,
-	): GraxiaPlugin<In, Added> => plugin;
+export function definePlugin<Added extends object = Empty>(
+	plugin: GraxiaPlugin<Empty, Added>,
+): GraxiaPlugin<Empty, Added>;
+export function definePlugin<In = Empty>(): <Added extends object = Empty>(
+	plugin: GraxiaPlugin<In, Added>,
+) => GraxiaPlugin<In, Added>;
+export function definePlugin(plugin?: GraxiaPlugin<unknown, object>) {
+	return plugin === undefined
+		? (p: GraxiaPlugin<unknown, object>) => p
+		: plugin;
 }
 
 /** What one plugin adds to the context. */

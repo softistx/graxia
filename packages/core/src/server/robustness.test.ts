@@ -30,7 +30,7 @@ const make = (plugins: GraxiaPlugin<any, any>[], extra: object = {}) =>
 describe('fetch never rejects', () => {
 	test('a plugin answering Response.error() becomes a 500', async () => {
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onRequest: ({ respond }) => respond(Response.error()),
 			}),
@@ -42,7 +42,7 @@ describe('fetch never rejects', () => {
 	});
 	test('onResponse setResponse(Response.error()) becomes a 500', async () => {
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onResponse: ({ setResponse }) => setResponse(Response.error()),
 			}),
@@ -56,7 +56,7 @@ const counting = (counts: Counts) => {
 	const bump = (name: string) => () => {
 		counts[name] = (counts[name] ?? 0) + 1;
 	};
-	return definePlugin()({
+	return definePlugin({
 		name: 'counter',
 		enforce: 'pre',
 		onRequest: () => bump('request'),
@@ -77,7 +77,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'onRequest respond',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onRequest: ({ respond }) => respond(new Response('x')),
 				}),
@@ -97,7 +97,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'hook error',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onExecute: () => {
 						throw new Error('x');
@@ -123,7 +123,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'thrown executeFn',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onExecute: ({ setExecuteFn }) =>
 						setExecuteFn(() => {
@@ -138,7 +138,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'onResponse setResponse',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onResponse: ({ setResponse }) =>
 						setResponse(new Response('y', { status: 201 })),
@@ -151,7 +151,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'onResponse hook error',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onResponse: () => {
 						throw new Error('x');
@@ -165,7 +165,7 @@ describe('after-hooks run exactly once on every path', () => {
 		[
 			'onParams respond',
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'b',
 					onParams: ({ respond }) =>
 						respond(new Response('x', { status: 202 })),
@@ -200,7 +200,7 @@ describe('batching under failure', () => {
 		let n = 0;
 		const g = make(
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onExecute: ({ args, setExecuteFn }) => {
 						n++;
@@ -233,7 +233,7 @@ describe('batching under failure', () => {
 		let n = 0;
 		const g = make(
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onParams: ({ respond }) => {
 						if (++n === 2) respond(new Response('stop', { status: 429 }));
@@ -253,7 +253,7 @@ describe('batching under failure', () => {
 		const seen: (string | undefined)[] = [];
 		const g = make(
 			[
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onRequest: ({ state }) => state.set(reqKey, 'req'),
 					onParams: ({ state }) => {
@@ -272,7 +272,7 @@ describe('batching under failure', () => {
 describe('response headers', () => {
 	test('negotiated responses vary by Accept; plugin vary is appended', async () => {
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onRequest: ({ responseHeaders }) =>
 					responseHeaders.append('vary', 'Origin'),
@@ -284,7 +284,7 @@ describe('response headers', () => {
 	});
 	test('a plugin cannot override content-type; set-cookie stacks', async () => {
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onRequest: ({ responseHeaders }) => {
 					responseHeaders.set('content-type', 'text/plain');
@@ -320,7 +320,7 @@ describe('operation selection and executors', () => {
 			},
 		};
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onExecute: ({ setResult }) =>
 					setResult({
@@ -344,7 +344,7 @@ describe('operation selection and executors', () => {
 	test('serve forwards the Bun server in the context', async () => {
 		let seen: unknown;
 		const g = make([
-			definePlugin()({
+			definePlugin({
 				name: 'p',
 				onContext: ({ context }) => {
 					seen = (context as { server?: unknown }).server;
@@ -373,7 +373,7 @@ describe('onUnexpected', () => {
 			schema,
 			onUnexpected: (error, { requestId }) => calls.push({ error, requestId }),
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onExecute: () => {
 						throw boom;
@@ -391,7 +391,7 @@ describe('onUnexpected', () => {
 		const spy = spyOn(console, 'error').mockImplementation(() => {});
 		try {
 			const plugins = [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onExecute: () => {
 						throw new Error('x');

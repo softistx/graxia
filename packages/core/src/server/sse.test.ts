@@ -262,7 +262,7 @@ describe('subscriptions', () => {
 	});
 	test('onResultChunk setChunk applies before masking, query included', async () => {
 		const order: string[] = [];
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'chunks',
 			onResultChunk: ({ chunk, setChunk }) => {
 				order.push('chunk');
@@ -276,7 +276,7 @@ describe('subscriptions', () => {
 	});
 	test('onSubscribe setResult short-circuits with a single result, after-hook runs', async () => {
 		let after: unknown;
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'sub',
 			onSubscribe: ({ setResult }) => {
 				setResult({ data: { tick: 7 } });
@@ -298,7 +298,7 @@ describe('subscriptions', () => {
 		expect(pubsub.subscriberCount('tick')).toBe(0);
 	});
 	test('getContext() works inside a per-event resolve', async () => {
-		const plugin = definePlugin()({
+		const plugin = definePlugin({
 			name: 'user',
 			onContext: () => ({ user: 'ada' }),
 		});

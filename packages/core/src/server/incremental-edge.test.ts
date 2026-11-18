@@ -9,7 +9,7 @@ describe('hooks, masking and context', () => {
 		const seen: unknown[] = [];
 		const g = make({
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'p',
 					onResultChunk: ({ chunk, setChunk }) => {
 						seen.push(chunk);
@@ -57,7 +57,7 @@ describe('cancellation and shutdown', () => {
 		returned = 0;
 		const g = make({
 			plugins: [
-				definePlugin()({
+				definePlugin({
 					name: 'spy',
 					onExecute: ({ setExecuteFn }) =>
 						setExecuteFn(async (args) => {
