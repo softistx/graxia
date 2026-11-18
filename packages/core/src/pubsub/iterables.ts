@@ -44,34 +44,53 @@ function derive<T, U>(
 	step: (value: T) => Promise<{ value: U } | undefined>,
 ): AsyncIterableIterator<U> {
 	const inner = source[Symbol.asyncIterator]();
+	const done = { done: true, value: undefined } as const;
 	let finished = false;
+	let chain: Promise<unknown> = Promise.resolve();
+
 	const close = async (): Promise<void> => {
 		if (finished) return;
 		finished = true;
 		await inner.return?.();
 	};
-	return {
-		async next() {
-			while (!finished) {
-				const result = await inner.next();
-				if (result.done) {
-					finished = true;
-					break;
-				}
-				let boxed: { value: U } | undefined;
-				try {
-					boxed = await step(result.value);
-				} catch (error) {
-					await close();
-					throw error;
-				}
-				if (boxed) return { done: false, value: boxed.value };
+
+	async function pull(): Promise<IteratorResult<U>> {
+		while (!finished) {
+			let result: IteratorResult<T>;
+			try {
+				result = await inner.next();
+			} catch (error) {
+				finished = true; // the source failed: it is already closed
+				throw error;
 			}
-			return { done: true, value: undefined };
+			if (result.done) {
+				finished = true;
+				break;
+			}
+			if (finished) break; // return() ran during the await
+			let boxed: { value: U } | undefined;
+			try {
+				boxed = await step(result.value);
+			} catch (error) {
+				await close();
+				throw error;
+			}
+			if (finished) break;
+			if (boxed) return { done: false, value: boxed.value };
+		}
+		return done;
+	}
+
+	return {
+		next() {
+			// serialised: concurrent calls resolve in call order
+			const run = chain.then(pull, pull);
+			chain = run.catch(() => undefined);
+			return run;
 		},
 		async return() {
 			await close();
-			return { done: true, value: undefined };
+			return done;
 		},
 		async throw(error?: unknown) {
 			await close();

@@ -2,7 +2,7 @@
 
 `createMemoryPubSub` is a typed publish/subscribe for subscription resolvers. This release ships
 the PubSub and its helpers; the transports that deliver subscriptions to clients (SSE, WebSocket)
-arrive later in 0.2.
+arrive in a later release.
 
 ## Typed topics
 
@@ -11,10 +11,11 @@ A topic map gives each topic its payload type. Keys may be template literals.
 ```ts
 import { createMemoryPubSub } from '@graxia/core';
 
+type Post = { id: string; published: boolean };
 type Topics = { [k: `post:${string}`]: Post; tick: number };
 const pubsub = createMemoryPubSub<Topics>();
 
-await pubsub.publish('post:42', post); // payload checked against Post
+await pubsub.publish('post:42', { id: '42', published: true }); // checked against Post
 await pubsub.publish('tick', 'x'); // type error
 ```
 
@@ -28,7 +29,10 @@ once the event is queued for every current subscriber, not once they consume it.
 per subscriber.
 
 ```ts
-for await (const post of pubsub.subscribe('post:42')) {
+const controller = new AbortController();
+for await (const post of pubsub.subscribe('post:42', {
+	signal: controller.signal,
+})) {
 	console.log(post.id);
 }
 ```
@@ -64,7 +68,8 @@ const resolvers = {
 Pass the request's `signal` to `subscribe`. When it aborts, a pending `next()` resolves
 `{ done: true }` and the subscriber is removed. An already aborted signal gives a finished
 iterator and registers nothing. `return()`, `throw()` and a `break` in `for await` also remove
-the subscriber, and no listener is left on the signal.
+the subscriber, and no listener is left on the signal. Abort, `return()` and `dispose()` stop
+at once: events still buffered are discarded, so a later `next()` returns `{ done: true }`.
 
 `pubsub.subscriberCount(topic)` (memory implementation only) reports open subscriptions, which is
 handy in tests.
@@ -72,8 +77,8 @@ handy in tests.
 ## Buffer and overflow
 
 Each subscriber has a buffer, 1000 events by default (`bufferSize` on `createMemoryPubSub` or per
-`subscribe`). When it is full the oldest event is dropped and `onOverflow({ topic, dropped })` is
-called once per drop. A slow subscriber never blocks or rejects `publish`.
+`subscribe`; a value that is not a finite number of at least 1 falls back to the default). When it is full the oldest event is dropped and `onOverflow({ topic, dropped })` is
+called once per drop. A slow subscriber never blocks or rejects `publish`, and an `onOverflow` that throws is ignored.
 
 ```ts
 const pubsub = createMemoryPubSub<Topics>({

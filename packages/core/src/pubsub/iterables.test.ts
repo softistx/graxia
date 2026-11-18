@@ -68,3 +68,66 @@ describe('mapIterable', () => {
 		expect(pubsub.subscriberCount('tick')).toBe(0);
 	});
 });
+
+describe('derived iterator ordering and closing', () => {
+	test('return() during an in-flight async predicate yields done', async () => {
+		const pubsub = createMemoryPubSub<{ tick: number }>();
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const events = filterIterable(pubsub.subscribe('tick'), async () => {
+			await gate;
+			return true;
+		});
+		await pubsub.publish('tick', 1);
+		const pending = events.next();
+		await Bun.sleep(5);
+		await events.return?.();
+		release();
+		expect((await pending).done).toBe(true);
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+	});
+
+	test('concurrent next() calls keep order under async predicates', async () => {
+		const events = filterIterable(numbers(1, 2, 3), async (n) => {
+			await Bun.sleep(4 - n);
+			return true;
+		});
+		const results = await Promise.all([
+			events.next(),
+			events.next(),
+			events.next(),
+		]);
+		expect(results.map((r) => r.value)).toEqual([1, 2, 3]);
+	});
+
+	test('throw() closes the source and rejects, on both iterators', async () => {
+		const pubsub = createMemoryPubSub<{ tick: number }>();
+		const filtered = filterIterable(pubsub.subscribe('tick'), () => true);
+		await expect(filtered.throw?.(new Error('f'))).rejects.toThrow('f');
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+		const mapped = mapIterable(pubsub.subscribe('tick'), (n) => n);
+		await expect(mapped.throw?.(new Error('m'))).rejects.toThrow('m');
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+	});
+
+	test('a failing source marks the iterator finished without a second return', async () => {
+		let returned = 0;
+		const failing: AsyncIterable<number> = {
+			[Symbol.asyncIterator]: () => ({
+				next: async () => {
+					throw new Error('source');
+				},
+				return: async () => {
+					returned++;
+					return { done: true, value: undefined };
+				},
+			}),
+		};
+		const events = mapIterable(failing, (n) => n);
+		await expect(events.next()).rejects.toThrow('source');
+		expect((await events.next()).done).toBe(true);
+		expect(returned).toBe(0);
+	});
+});

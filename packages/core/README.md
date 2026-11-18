@@ -225,28 +225,30 @@ result.data?.hello; // 'hello world'
 
 A typed in-memory PubSub for subscription resolvers. It lives in one process; a Redis
 implementation of the same interface is planned. The transports that deliver subscriptions
-to clients (SSE, WebSocket) arrive later in 0.2: this release ships the PubSub only.
+to clients (SSE, WebSocket) arrive in a later release: this release ships the PubSub only.
 
 ```ts
 import { createMemoryPubSub, filterIterable } from '@graxia/core';
 
+type Post = { id: string; published: boolean };
 const pubsub = createMemoryPubSub<{ [k: `post:${string}`]: Post }>();
-await pubsub.publish('post:42', post);
+await pubsub.publish('post:42', { id: '42', published: true });
+// in a resolver, pass `ctx.signal`
 const events = filterIterable(
-	pubsub.subscribe('post:42', { signal }),
+	pubsub.subscribe('post:42', { signal: new AbortController().signal }),
 	(p) => p.published,
 );
 ```
 
 ## Exports
 
-| import                 | what it is                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                              |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`                                                                                          |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                 |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                     |
+| import                 | what it is                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                |
+|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
 

@@ -22,10 +22,87 @@ interface Subscriber {
 
 const DONE = { done: true, value: undefined } as const;
 
+/** A usable buffer size: finite, floored, at least 1; otherwise `fallback`. */
+function toBufferSize(value: number | undefined, fallback: number): number {
+	if (value === undefined || !Number.isFinite(value)) return fallback;
+	const size = Math.floor(value);
+	return size >= 1 ? size : fallback;
+}
+
+interface SubscriberInit {
+	topic: string;
+	limit: number;
+	signal: AbortSignal | undefined;
+	onOverflow: MemoryPubSubOptions['onOverflow'];
+	/** Removes the subscriber from the registry. */
+	detach(subscriber: Subscriber): void;
+}
+
+/** One subscriber: its bounded buffer, its pending readers and its iterator. */
+function createSubscriber<T>(init: SubscriberInit): {
+	subscriber: Subscriber;
+	iterator: AsyncIterableIterator<T>;
+} {
+	const { topic, limit, signal, onOverflow } = init;
+	const buffer: T[] = [];
+	const waiting: ((result: IteratorResult<T>) => void)[] = [];
+	let ended = false;
+
+	const subscriber: Subscriber = {
+		push(value) {
+			const waiter = waiting.shift();
+			if (waiter) return waiter({ done: false, value: value as T });
+			if (buffer.length >= limit) {
+				const dropped = buffer.shift();
+				try {
+					onOverflow?.({ topic, dropped });
+				} catch {
+					// a faulty observer never breaks publishing
+				}
+			}
+			buffer.push(value as T);
+		},
+		end,
+	};
+
+	function end(): void {
+		if (ended) return;
+		ended = true;
+		signal?.removeEventListener('abort', end);
+		buffer.length = 0;
+		init.detach(subscriber);
+		for (const waiter of waiting.splice(0)) waiter(DONE);
+	}
+	signal?.addEventListener('abort', end, { once: true });
+
+	const iterator: AsyncIterableIterator<T> = {
+		next() {
+			if (buffer.length > 0)
+				return Promise.resolve({ done: false, value: buffer.shift() as T });
+			if (ended) return Promise.resolve(DONE);
+			return new Promise((resolve) => waiting.push(resolve));
+		},
+		async return() {
+			end();
+			return DONE;
+		},
+		async throw(error?: unknown) {
+			end();
+			throw error;
+		},
+		[Symbol.asyncIterator]() {
+			return this;
+		},
+	};
+	return { subscriber, iterator };
+}
+
 /**
  * Creates an in-memory PubSub. It lives in one process: use a networked
  * implementation to fan out across processes. A slow subscriber never blocks
- * `publish`; its oldest events are dropped past `bufferSize`.
+ * `publish`; its oldest events are dropped past `bufferSize`. Aborting a
+ * signal, `return()` or `dispose()` stop a subscription at once: buffered
+ * events are discarded.
  *
  * @example
  * const pubsub = createMemoryPubSub<{ tick: number }>();
@@ -36,7 +113,7 @@ const DONE = { done: true, value: undefined } as const;
 export function createMemoryPubSub<Topics extends PubSubTopics>(
 	options: MemoryPubSubOptions = {},
 ): MemoryPubSub<Topics> {
-	const defaultSize = options.bufferSize ?? 1000;
+	const defaultSize = toBufferSize(options.bufferSize, 1000);
 	const topics = new Map<string, Set<Subscriber>>();
 	let disposed = false;
 
@@ -57,64 +134,22 @@ export function createMemoryPubSub<Topics extends PubSubTopics>(
 	): AsyncIterableIterator<Topics[K]> {
 		const { signal } = subscribeOptions;
 		if (disposed || signal?.aborted) return finishedIterator();
-		const limit = Math.max(1, subscribeOptions.bufferSize ?? defaultSize);
-		const buffer: Topics[K][] = [];
-		const waiting: ((r: IteratorResult<Topics[K]>) => void)[] = [];
-		let ended = false;
-
-		const subscriber: Subscriber = {
-			push(value) {
-				const waiter = waiting.shift();
-				if (waiter) return waiter({ done: false, value: value as Topics[K] });
-				if (buffer.length >= limit) {
-					const dropped = buffer.shift();
-					options.onOverflow?.({ topic, dropped });
-				}
-				buffer.push(value as Topics[K]);
+		const { subscriber, iterator } = createSubscriber<Topics[K]>({
+			topic,
+			limit: toBufferSize(subscribeOptions.bufferSize, defaultSize),
+			signal,
+			onOverflow: options.onOverflow,
+			detach(done) {
+				const set = topics.get(topic);
+				set?.delete(done);
+				if (set?.size === 0) topics.delete(topic);
 			},
-			end,
-		};
-
-		function end(): void {
-			if (ended) return;
-			ended = true;
-			signal?.removeEventListener('abort', end);
-			const set = topics.get(topic);
-			set?.delete(subscriber);
-			if (set?.size === 0) topics.delete(topic);
-			for (const waiter of waiting.splice(0)) waiter(DONE);
-		}
-
+		});
 		const existing = topics.get(topic);
 		const set = existing ?? new Set<Subscriber>();
 		if (!existing) topics.set(topic, set);
 		set.add(subscriber);
-		signal?.addEventListener('abort', end, { once: true });
-
-		return {
-			next() {
-				if (buffer.length > 0)
-					return Promise.resolve({
-						done: false,
-						value: buffer.shift() as Topics[K],
-					});
-				if (ended) return Promise.resolve(DONE);
-				return new Promise((resolve) => waiting.push(resolve));
-			},
-			async return() {
-				end();
-				buffer.length = 0;
-				return DONE;
-			},
-			async throw(error?: unknown) {
-				end();
-				buffer.length = 0;
-				throw error;
-			},
-			[Symbol.asyncIterator]() {
-				return this;
-			},
-		};
+		return iterator;
 	}
 
 	return {
