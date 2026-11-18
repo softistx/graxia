@@ -39,7 +39,10 @@ What is exposed as is, and what is masked:
 | graphql's own errors: validation, variable coercion, non-null violation | unchanged                                                    |
 | a plain `Error`, a thrown string, a library error                       | `Unexpected error.`, `INTERNAL_SERVER_ERROR`, correlation id |
 
-`path` and `locations` are always kept. `originalError` and stacks are never serialized.
+The rule, exactly: an error is **exposed** when it has no `originalError` (graphql's own: validation,
+coercion), when it is a genuine non-null violation, or when its original is a `GraphQLError` of any
+origin (`exposedError` included). Everything else (a plain `Error`, a thrown string, a library error)
+is **masked**. `path` and `locations` are always kept. `originalError` and stacks are never serialized.
 
 ## Typed codes
 
@@ -89,7 +92,7 @@ A user who reports the id lets you find the original error in your logs (see
 
 `onUnexpected(error, { requestId, correlationId, phase })` receives the original, unmasked error of
 every unexpected failure. `requestId` and `correlationId` are the same value; `phase` is `request`
-(a hook or the transport failed), `execution` (a resolver threw, or `execute` or `context` failed) or
+(transport and `onRequest`-level failures), `execution` (a hook, `context` or `execute` failing inside an operation, or a resolver that threw) or
 `dispose` (operations left after shutdown, which have no id).
 
 ```ts
@@ -125,9 +128,24 @@ createGraxia({
 `maskErrors: false` turns masking off: every resolver error reaches the client with its message.
 It is unsafe and meant for tests only.
 
+A `maskError` that throws is replaced by the default masker for that error: the client still gets a
+masked error, and both the original and the masker's own error reach `onUnexpected`.
+
 ## The `GraphQLError` trap
 
 A plain `GraphQLError` thrown from a resolver is **exposed**, not masked (this matches GraphQL Yoga
 and eases migration). A library that throws `GraphQLError` with internal details would therefore
 leak them. Throw `exposedError` for errors you mean to show, and never put secrets in the message of
 a `GraphQLError`. If a dependency throws `GraphQLError` you cannot trust, catch it and rethrow.
+
+Any `GraphQLError` is exposed by design, including one that comes from an upstream client or a
+gateway you call: its message and extensions reach your clients. Catch and rethrow such errors as
+`exposedError` (or let a plain `Error` be masked).
+
+## Known behaviour: scalar coercion
+
+graphql itself reports a custom scalar's `parseValue` or `parseLiteral` that throws a plain `Error`
+as a coercion error with that message, before any resolver runs. Graxia does not mask it (it has no
+`originalError` it can tell from a client's mistake). From a scalar, throw
+`exposedError('BAD_USER_INPUT', 'Invalid date.')` or a `GraphQLError` with a safe message, never a
+message that names internals.

@@ -64,8 +64,11 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 */
 	onUnexpected?: OnUnexpected | false;
 	/**
-	 * Replaces the masker of unexpected resolver errors (anything that is not a
-	 * `GraphQLError`). The default answers `Unexpected error.` with
+	 * Replaces the masker of unexpected resolver errors. Exposed (never
+	 * masked): graphql's own errors, `exposedError`, any `GraphQLError` and a
+	 * genuine non-null violation. Masked: everything else (a plain `Error`, a
+	 * thrown string, a library error). If it throws, the default masker is used
+	 * and its error is reported too. The default answers `Unexpected error.` with
 	 * `INTERNAL_SERVER_ERROR` and the correlation id.
 	 */
 	maskError?: MaskError;

@@ -93,6 +93,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		maskResult: createResultMasker(
 			options.maskError,
 			options.maskErrors ?? true,
+			options.schema,
 			unexpected,
 		),
 		context: options.context,

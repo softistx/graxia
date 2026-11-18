@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GraphQLError } from 'graphql';
 import { exposedError, isGraxiaError } from '../errors/exposed';
+import { defaultMask, maskResult } from '../errors/mask';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
 
@@ -12,6 +13,8 @@ const schema = createSchema()({
 			exposed: String
 			gql: String
 			nonNull: String!
+			nullable: String
+			forgedNonNull: String!
 			hello(n: Int!): String
 			list: [String]
 		}
@@ -34,6 +37,16 @@ const schema = createSchema()({
 				throw new GraphQLError('plain gql', { extensions: { code: 'X' } });
 			},
 			nonNull: () => null as never,
+			nullable: () => {
+				throw new Error(
+					'Cannot return null for non-nullable field Query.nullable.',
+				);
+			},
+			forgedNonNull: () => {
+				throw new Error(
+					'Cannot return null for non-nullable field Query.nope.',
+				);
+			},
 			hello: () => 'hi',
 			list: () => ['a'],
 		},
@@ -193,5 +206,67 @@ describe('the generic 500', () => {
 			correlationId: id,
 			phase: 'request',
 		});
+	});
+});
+
+describe('forged and inherited', () => {
+	test('forged non-null texts are masked and reported', async () => {
+		const { graxia, seen } = make();
+		const a = await run(graxia, { query: '{ nullable }' });
+		expect(a.body.errors[0].message).toBe('Unexpected error.');
+		const b = await run(graxia, { query: '{ forgedNonNull }' });
+		expect(b.body.errors[0].message).toBe('Unexpected error.');
+		expect(seen).toHaveLength(2);
+	});
+	test('inherited extensions are dropped from an exposed error', () => {
+		const message = 'Cannot return null for non-nullable field Query.nonNull.';
+		const cause = Object.assign(new Error(message), {
+			extensions: { secret: 1 },
+		});
+		const error = new GraphQLError(message, {
+			originalError: cause,
+			path: ['nonNull'],
+		});
+		expect(error.extensions).toBe(cause.extensions);
+		const out = maskResult(
+			{ errors: [error] },
+			defaultMask,
+			{ correlationId: 'i' },
+			schema,
+		);
+		expect(out.unexpected).toHaveLength(0);
+		expect(out.result.errors?.[0]?.extensions).toEqual({});
+	});
+});
+
+describe('a throwing maskError', () => {
+	const bad = {
+		maskError: () => {
+			throw new Error('masker broke');
+		},
+	};
+	test('falls back to the default masker and reports both', async () => {
+		const { graxia, seen } = make(bad);
+		const { res, body } = await run(graxia, { query: '{ plain }' });
+		expect(body.errors[0].extensions.correlationId).toBe(
+			res.headers.get('x-request-id'),
+		);
+		expect(seen.map((x) => (x.error as Error).message)).toEqual([
+			'secret detail',
+			'masker broke',
+		]);
+		expect(
+			seen.every((x) => (x.info as { phase: string }).phase === 'execution'),
+		).toBe(true);
+	});
+	test('in a batch only the affected entry is degraded', async () => {
+		const { graxia, seen } = make(bad);
+		const { body } = await run(graxia, [
+			{ query: '{ plain }' },
+			{ query: '{ exposed }' },
+		]);
+		expect(body[0].errors[0].message).toBe('Unexpected error.');
+		expect(body[1].errors[0].extensions.code).toBe('NOT_FOUND');
+		expect(seen).toHaveLength(2);
 	});
 });

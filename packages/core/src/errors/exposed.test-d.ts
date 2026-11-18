@@ -1,5 +1,7 @@
 import { exposedError } from './exposed';
 
+// `PAYMENT_REQUIRED` is visible repo-wide while the type check runs: this file is
+// excluded from the build, so it never reaches the shipped types.
 // An app's own codes, as a consumer writes them (here against the declaring file).
 declare module './codes' {
 	interface GraxiaErrorCodes {

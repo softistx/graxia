@@ -1,4 +1,4 @@
-import type { ExecutionResult } from 'graphql';
+import type { ExecutionResult, GraphQLSchema } from 'graphql';
 import { defaultMask, type MaskError, maskResult } from '../errors/mask';
 import { requestIdKey } from '../http/request-id';
 import type { RequestState } from '../plugins/state';
@@ -18,14 +18,20 @@ export type ResultMasker = (
 export function createResultMasker(
 	maskError: MaskError | undefined,
 	enabled: boolean,
+	schema: GraphQLSchema,
 	unexpected: UnexpectedHandler,
 ): ResultMasker {
 	if (!enabled) return (result) => result;
 	const mask = maskError ?? defaultMask;
 	return (result, state) => {
-		const masked = maskResult(result, mask, {
-			correlationId: state.get(requestIdKey),
-		});
+		const masked = maskResult(
+			result,
+			mask,
+			{
+				correlationId: state.get(requestIdKey),
+			},
+			schema,
+		);
 		for (const error of masked.unexpected)
 			unexpected.report(error, state, 'execution');
 		return masked.result;

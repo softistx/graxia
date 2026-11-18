@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Every message a consumer can hit, as it appears.
+The errors a consumer can hit, headed by the message as it appears.
 
 ## Unexpected error.
 
@@ -85,3 +85,38 @@ createGraxia({ schema, limits: { tokens: 30_000 } });
 
 The query nests deeper than `limits.nesting` (1 000 by default). Same code and `fix`; flatten the
 document or raise `limits.nesting`. See [Limits and caches](./guide/limits-and-caches.md).
+
+## limits.bodyBytes must be a positive integer
+
+`limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
+
+## batching.limit must be a positive integer
+
+`batching: { limit }` needs an integer of at least 1.
+
+## path must start with "/" (or be false)
+
+`path` is a URL path such as `/graphql`, or `false` to serve any path.
+
+## shutdownTimeout must be a non-negative integer (milliseconds)
+
+Pass a count of milliseconds (`0` aborts at once), such as `10_000`.
+
+## Resolver Color.PURPLE is defined but enum Color has no value PURPLE
+
+An enum resolver map names a value the SDL does not declare. Fix the name or add the value to the SDL.
+
+## Resolver Pet.name is defined but a union has no fields; only __resolveType is allowed
+
+A union has no fields: give it only `__resolveType`, and put field resolvers on its member types.
+
+## A response cannot have status N
+
+A plugin answered with a response whose status is outside 200 to 599 (`Response.error()` has status 0).
+The client gets the generic 500 instead. Answer with a real HTTP status.
+
+## A custom scalar's message reaches the client
+
+graphql reports a `parseValue` that throws a plain `Error` as a coercion error, unmasked. Throw
+`exposedError('BAD_USER_INPUT', …)` or a `GraphQLError` with a safe message. See
+[Errors](./guide/errors.md#known-behaviour-scalar-coercion).
