@@ -1,0 +1,56 @@
+{
+	"name": "@graxia/envelop",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Run Envelop plugins inside graxia with one adapter",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"graphql",
+		"envelop",
+		"bun"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/graxia.git",
+		"directory": "packages/envelop"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test --pass-with-no-tests src",
+		"typecheck": "bun check"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts"
+		]
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.4",
+		"@graxia/core": "workspace:^"
+	},
+	"peerDependencies": {
+		"@graxia/core": "workspace:^",
+		"typescript": "^6.0.3 || ^7.0.0"
+	}
+}
