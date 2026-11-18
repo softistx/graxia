@@ -40,6 +40,7 @@ afterAll(() => {
 });
 
 const json = { 'content-type': 'application/json' };
+const csrf = { headers: { 'x-graphql-csrf': '1' } };
 const post = (url: string, body: unknown, headers: HeadersInit = json) =>
 	fetch(url, {
 		method: 'POST',
@@ -69,12 +70,14 @@ describe('requests', () => {
 		expect(await res.json()).toEqual({ data: { hello: 'world' } });
 		const get = await fetch(
 			`${main}/graphql?query=${encodeURIComponent('{ hello }')}`,
+			csrf,
 		);
 		expect(await get.json()).toEqual({ data: { hello: 'world' } });
 	});
 	test('415 on a non-JSON content type, keeps the plugin header', async () => {
 		const res = await post(`${main}/graphql`, '{ hello }', {
 			'content-type': 'text/plain',
+			'x-graphql-csrf': '1',
 		});
 		expect(res.status).toBe(415);
 		expect(res.headers.get('x-plugin')).toBe('kept');
@@ -106,6 +109,7 @@ describe('requests', () => {
 	test('a mutation over GET is 405 with Allow: POST', async () => {
 		const res = await fetch(
 			`${batch}/graphql?query=${encodeURIComponent('mutation { bump }')}`,
+			csrf,
 		);
 		expect(res.status).toBe(405);
 		expect(res.headers.get('allow')).toBe('POST');
@@ -174,8 +178,8 @@ describe('request id', () => {
 		expect(id).not.toBe('client-chosen');
 	});
 	test('the id is in request state and differs per request', async () => {
-		const a = await (await fetch(`${main}/graphql?id=1`)).text();
-		const res = await fetch(`${main}/graphql?id=1`);
+		const a = await (await fetch(`${main}/graphql?id=1`, csrf)).text();
+		const res = await fetch(`${main}/graphql?id=1`, csrf);
 		expect(await res.text()).toBe(res.headers.get('x-request-id') as string);
 		expect(a).not.toBe(res.headers.get('x-request-id'));
 	});
@@ -183,14 +187,14 @@ describe('request id', () => {
 
 describe('plugins', () => {
 	test('onRequest respond short-circuits and keeps headers', async () => {
-		const res = await fetch(`${main}/graphql?short=1`);
+		const res = await fetch(`${main}/graphql?short=1`, csrf);
 		expect(res.status).toBe(202);
 		expect(await res.text()).toBe('short');
 		expect(res.headers.get('x-plugin')).toBe('kept');
 		expect(res.headers.get('x-request-id')).toBeTruthy();
 	});
 	test('a hook error is a generic 500', async () => {
-		const res = await fetch(`${main}/graphql?throw=1`);
+		const res = await fetch(`${main}/graphql?throw=1`, csrf);
 		expect(res.status).toBe(500);
 		expect(await res.json()).toEqual({
 			errors: [

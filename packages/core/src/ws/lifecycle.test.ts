@@ -88,6 +88,7 @@ describe('own Bun.serve', () => {
 			});
 			const http = await fetch(
 				`http://localhost:${server.port}/graphql?query={hello}`,
+				{ headers: { 'x-graphql-csrf': '1' } },
 			);
 			expect(await http.json()).toEqual({ data: { hello: 'world' } });
 		} finally {
@@ -113,7 +114,13 @@ describe('own Bun.serve', () => {
 		});
 		const base = `http://localhost:${server.port}/graphql`;
 		try {
-			expect((await fetch(`${base}?query={hello}`)).status).toBe(200);
+			expect(
+				(
+					await fetch(`${base}?query={hello}`, {
+						headers: { 'x-graphql-csrf': '1' },
+					})
+				).status,
+			).toBe(200);
 			expect(seen).toBe(1);
 			const refused = await fetch(base, {
 				headers: {

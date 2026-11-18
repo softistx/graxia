@@ -18,6 +18,21 @@ export type { MaskError, MaskInfo } from './errors/mask';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type { BatchingOption } from './http/batch';
 export { getRequestId } from './http/request-id';
+export { costDirectives } from './limits/directives';
+export type { ComputeCostArgs } from './limits/operation-cost';
+export { computeOperationCost } from './limits/operation-cost';
+export type {
+	CostOptions,
+	OperationLimits,
+} from './limits/options';
+export {
+	DEFAULT_LIST_SIZE,
+	DEFAULT_MAX_ALIASES,
+	DEFAULT_MAX_COST,
+	DEFAULT_MAX_DEPTH,
+	DEFAULT_MAX_DIRECTIVES,
+	DEFAULT_MAX_ROOT_FIELDS,
+} from './limits/options';
 export type {
 	ContextOf,
 	PluginContext,
@@ -39,6 +54,17 @@ export type {
 	PubSubTopics,
 	SubscribeOptions,
 } from './pubsub/types';
+export { fieldRateLimit } from './rate-limit/plugin';
+export type { MemoryFieldLimitOptions } from './rate-limit/store';
+export { limitFromStore, memoryFieldLimit } from './rate-limit/store';
+export type {
+	CostlessStore,
+	FieldDecision,
+	FieldLimit,
+	FieldRateLimitOptions,
+	FieldRule,
+} from './rate-limit/types';
+export { DEFAULT_LIMIT_CODE } from './rate-limit/types';
 export { createSchema } from './schema/create-schema';
 export type { TypeDefs } from './schema/typedefs';
 export type {
@@ -52,6 +78,12 @@ export type {
 	TypeResolver,
 	TypeResolvers,
 } from './schema/types';
+export type {
+	CrossOrigin,
+	CsrfOptions,
+	SameOriginOptions,
+} from './security/options';
+export { DEFAULT_CSRF_HEADERS } from './security/options';
 export { getContext, tryGetContext } from './server/context';
 export type {
 	Graxia,
@@ -77,4 +109,10 @@ export type {
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
+export type { TelemetryOptions } from './telemetry';
+export type {
+	ApolloPersistedQueryManifest,
+	TrustedDocumentsOptions,
+	TrustedManifest,
+} from './trusted/types';
 export type { WebSocketContext, WebSocketOptions } from './ws/options';

@@ -12,6 +12,8 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
+- `@opentelemetry/api` `^1` is an optional peer: with it installed graxia emits OpenTelemetry spans,
+  without it tracing is off (see [OpenTelemetry](#opentelemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
   both resolutions), but the sources are written for a bundler.
@@ -20,6 +22,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 ```sh
 bun add @graxia/core graphql@^17
+bun add @opentelemetry/api  # optional, enables OpenTelemetry spans
 ```
 
 The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
@@ -131,14 +134,23 @@ See [Errors](./docs/guide/errors.md).
 
 ## Limits and caches
 
-Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, and parsed and validated documents are
-cached. Both are options. These limits bound parsing and the body, not what an operation costs
-to execute: see [Security](#security).
+Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, operations are refused over
+a depth, alias, directive, root field or cost limit (all on by default), and parsed and validated documents are cached.
+See [Security](#security).
 
 ```ts
 createGraxia({
 	schema,
-	limits: { tokens: 15_000, nesting: 1_000, bodyBytes: 1_048_576 },
+	limits: {
+		tokens: 15_000,
+		nesting: 1_000,
+		bodyBytes: 1_048_576,
+		depth: 12,
+		aliases: 30,
+		directives: 50,
+		rootFields: 20,
+		cost: { max: 5_000 }, // @cost / @listSize; `false` turns a limit off
+	},
 	caches: { parse: { max: 1024, ttlMs: 3_600_000 } }, // or `false`
 	batching: { limit: 10 }, // off by default
 });
@@ -157,64 +169,110 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
 - A request body limit (`limits.bodyBytes`, 1 MiB; more answers 413).
 - Document limits before parsing: at most 15 000 tokens and 1 000 nesting levels
   (`limits.tokens`, `limits.nesting`); a failure is `GRAPHQL_PARSE_FAILED`.
+- Operation limits: depth 12, 30 aliases, 50 directives, 20 root fields and a cost of 5 000
+  (`limits.depth`, `.aliases`, `.directives`, `.rootFields`, `.cost`), fragments expanded; a refusal is
+  `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`. Cost follows `@cost` / `@listSize`, which
+  `createSchema` adds to your SDL (`costDirectives` does for a schema you build yourself);
+  `computeOperationCost` returns an operation's cost for plugins and tests.
 - Batching is off unless you set `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
   path; turn either off with `false`.
-
-**Not yet**
-
-- CSRF prevention: a browser can send a simple cross-site `GET` or a form-encoded request to
-  the endpoint with the user's cookies. graxia does not check `Origin` or require a preflight header.
-- WebSocket origin check: a page on another site can open a socket to the endpoint, and the browser
-  sends the user's cookies with the upgrade. graxia does not check `Origin` on the upgrade.
-- Introspection control: introspection is always on.
-- Operation limits: no depth, alias, directive or complexity limit, and no field rate limit.
-- Trusted or persisted documents: any valid document runs.
-
-These are planned (see the [roadmap](./docs/roadmap.md)). Until they land:
-
-- Put the endpoint behind a proxy or gateway that rate-limits and caps request cost, and do not
-  expose it to browsers with cookie auth without your own CSRF check.
-- Add a plugin whose `onRequest` refuses requests that lack a header a browser cannot send
-  cross-site without a preflight:
+- CSRF prevention: a request a browser can send cross-site without a preflight (a `GET`, or a
+  `POST` with a `text/plain`, form or multipart body) is refused with 403 unless it carries one of
+  `DEFAULT_CSRF_HEADERS` (`x-graphql-csrf`, `graphql-require-preflight`,
+  `apollo-require-preflight`, `x-apollo-operation-name`). A JSON `POST` needs nothing.
+- WebSocket origin check: an upgrade whose `Origin` is `null` or another site's is refused with
+  403; list the browser origins that may connect in `csrf.sameOrigin.allowedOrigins`.
+- Introspection and "Did you mean" suggestions are on in development and off when
+  `NODE_ENV=production` (`introspection`, `suggestions`).
 
 ```ts
-import { definePlugin } from '@graxia/core';
-
-const requireCustomHeader = definePlugin({
-	name: 'require-custom-header',
-	onRequest: ({ request, respond }) => {
-		if (!request.headers.has('x-requested-with'))
-			respond(new Response('Missing x-requested-with', { status: 403 }));
-	},
+createGraxia({
+	schema,
+	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } }, // also checks Origin over HTTP
+	introspection: false,
 });
 ```
 
-- **Cookie-authenticated browser apps must check `Origin` on the WebSocket upgrade.** The
-  custom-header recipe above cannot apply to a browser WebSocket (the browser sets no custom header
-  on it). The upgrade request goes through `onRequest`, where its `Upgrade` and `Origin` headers are
-  visible; refuse a foreign origin there, or authenticate the socket with `connectionParams` (a
-  token in `connection_init`, checked in `subscriptions.ws.onConnect`) instead of the cookie. A
-  built-in `Origin` option is planned ([issue #16](https://github.com/softistx/graxia/issues/16)).
+See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
+
+**Opt-in**
+
+- Trusted documents (`trustedDocuments`): see below.
+- Field rate limits (`fieldRateLimit`): see below.
+
+Rate-limit the endpoint as a whole in a proxy or gateway.
+
+## Rate limiting fields
+
+Limit how often a client selects chosen fields, counted across aliases and fragments (three aliased
+`signIn` in one request spend 3 units). Past a limit nothing executes: `429` with `Retry-After`.
 
 ```ts
-const allowed = new Set(['https://app.example.com']);
+import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
 
-const checkSocketOrigin = definePlugin({
-	name: 'check-socket-origin',
-	onRequest: ({ request, respond }) => {
-		const isUpgrade =
-			request.headers.get('upgrade')?.toLowerCase() === 'websocket';
-		const origin = request.headers.get('origin'); // browsers always send it; other clients may not
-		if (isUpgrade && origin !== null && !allowed.has(origin))
-			respond(new Response('Forbidden origin', { status: 403 }));
-	},
+createGraxia({
+	schema,
+	plugins: [
+		fieldRateLimit({
+			fields: {
+				signIn: {
+					limit: memoryFieldLimit({ limit: 5, windowMs: 60_000 }),
+					single: true,
+				},
+			},
+			// key: (ctx) => ctx.userId, ipv6Prefix: 64, code: 'RATE_LIMITED'
+		}),
+	],
 });
 ```
 
-- Add a validation rule with `onValidate` (`addRule`) to reject introspection or deep documents
-  in production.
+`single: true` also refuses the field selected twice in one operation (`400`,
+`FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
+proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
+[Rate limiting fields](./docs/guide/rate-limiting.md).
+
+## OpenTelemetry
+
+Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits spans for each
+request, parse, validation and operation, and the original exception of an unexpected error.
+Without the peer, nothing is wrapped and nothing runs.
+
+```ts
+createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
+```
+
+Setup, the span tree, attributes and every option: [OpenTelemetry](./docs/guide/telemetry.md).
+
+## Trusted documents
+
+Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
+Apollo format), `documentId`, automatic persisted queries and a strict mode.
+
+```ts
+createGraxia({
+	schema,
+	trustedDocuments: {
+		manifest: await Bun.file('persisted-documents.json').json(),
+		// mode: 'strict' when NODE_ENV=production, 'mixed' otherwise
+		// store: redisCache({ url }) shares APQ registrations across processes
+	},
+});
+// POST { "documentId": "a3f1..." }, GET ?documentId=..., or an APQ hash in extensions.persistedQuery
+```
+
+In `strict` a query sent in full is refused with `PERSISTED_QUERY_ONLY`. Without the option nothing
+changes. See [Trusted documents](./docs/guide/trusted-documents.md).
+
+## Production
+
+Set `NODE_ENV=production`: introspection and "Did you mean" hints go off, trusted documents run in
+`strict` mode, and the unexpected-error log goes quiet. Masked errors, CSRF checks, operation
+limits, no batching and a server-made request id are on in every environment. Give
+`trustedDocuments` your manifest, share the rate-limit and PubSub state across instances, set
+`csrf.sameOrigin.allowedOrigins` and call `graxia.dispose()` on `SIGTERM`. The
+[production guide](./docs/guide/production.md) has the full configuration and a checklist.
 
 ## `execute`
 
@@ -228,6 +286,9 @@ const { data, errors } = await graxia.execute({
 	headers: { authorization: 'Bearer test' },
 });
 ```
+
+With `trustedDocuments`, `graxia.execute({ documentId, variables })` runs a persisted document by
+id (without it the result is `Must provide a query string.`).
 
 It rejects with a `GraxiaExecuteError` when a plugin answered with its own response (a 401, for
 example) instead of a result. See [Testing](./docs/guide/testing.md).
@@ -336,7 +397,7 @@ live.serve({ port: 3000 }); // ws://localhost:3000/graphql
 //   websocket: live.websocket
 ```
 
-A cookie-authenticated browser app must also check `Origin` on the upgrade: see [Security](#security).
+The upgrade's `Origin` is checked by default; list the browser origins that may connect in `csrf.sameOrigin.allowedOrigins`: see [Security](#security).
 
 See [Subscriptions over WebSocket](./docs/guide/websocket.md): auth, close codes, keep-alive, limits.
 
@@ -355,15 +416,20 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 ## Exports
 
-| import                 | what it is                                                                                                                                               |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
-|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                     |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
+| import                 | what it is                                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
+|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                                              |
+|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
+|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
+|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
+|                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
+|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                                                             |
+|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
 ## Documentation
 
@@ -379,6 +445,11 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
+- [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
+- [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
+- [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
+- [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
+- [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 

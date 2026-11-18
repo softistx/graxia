@@ -1,14 +1,11 @@
-import {
-	type DocumentNode,
+import type {
+	DocumentNode,
 	GraphQLError,
-	type GraphQLSchema,
-	specifiedRules,
-	type ValidationRule,
-	validate,
+	GraphQLSchema,
+	ValidationRule,
 } from 'graphql';
 import type { PluginEngine } from '../plugins/engine';
 import type { RequestState } from '../plugins/state';
-import type { ValidationFn } from '../plugins/types';
 import {
 	createDocumentCache,
 	createValidationCache,
@@ -22,11 +19,8 @@ import {
 	type ResolvedLimits,
 	resolveLimits,
 } from './parse';
-import {
-	type DocumentCaches,
-	type DocumentLimits,
-	VALIDATION_FAILED,
-} from './types';
+import type { DocumentCaches, DocumentLimits } from './types';
+import { type CacheTrace, checkDocument } from './validate';
 
 /** Options of {@link createDocumentPipeline}. */
 export interface DocumentPipelineOptions {
@@ -38,6 +32,10 @@ export interface DocumentPipelineOptions {
 	limits?: DocumentLimits;
 	/** Cache sizes, or `false` to disable both caches. */
 	caches?: DocumentCaches;
+	/** Validation rules added to graphql's (the operation limits). */
+	rules?: readonly ValidationRule[];
+	/** Omits "Did you mean ..." hints from validation errors (not for a plugin's own validation function). */
+	hideSuggestions?: boolean;
 }
 
 /** Outcome of a pipeline step. `error` is a value thrown by a plugin hook, unmasked. */
@@ -48,6 +46,8 @@ export interface StepResult {
 	errors?: readonly GraphQLError[];
 	/** A value thrown by a plugin hook, never masked here. */
 	error?: unknown;
+	/** Whether a cache served the step (the default parse or validation of a cached source). Absent when no cache was consulted. */
+	cacheHit?: boolean;
 	/**
 	 * Set by `parse` only when the document is the default parse of the source
 	 * (no `setParseFn`, no `setDocument`). Pass it to `validate` as `cacheKey`.
@@ -83,6 +83,8 @@ interface Ctx {
 	schema: GraphQLSchema;
 	engine: PluginEngine;
 	limits: ResolvedLimits;
+	rules: readonly ValidationRule[];
+	hideSuggestions: boolean;
 	parseCache: LruCache<string, ParseResult> | undefined;
 	validationCache: ValidationCache | undefined;
 }
@@ -103,6 +105,8 @@ export function createDocumentPipeline(
 		schema: options.schema,
 		engine: options.engine,
 		limits: resolveLimits(options.limits),
+		rules: options.rules ?? [],
+		hideSuggestions: options.hideSuggestions ?? false,
 		parseCache:
 			off || caches.parse === false
 				? undefined
@@ -136,13 +140,14 @@ async function runParse(
 	const { out, error } = outcome;
 	let result: ParseResult;
 	let cacheKey: string | undefined;
+	const trace: CacheTrace = {};
 	if (error !== undefined) result = { errors: [] };
 	else if (out.document) result = { document: out.document };
 	else if (input.document) result = { document: input.document };
 	else if (out.parseFn)
 		result = parseWithLimits(source, ctx.limits, out.parseFn);
 	else {
-		result = parseDefault(ctx, source);
+		result = parseDefault(ctx, source, trace);
 		if ('document' in result) cacheKey = source;
 	}
 	const afterError = await finish(outcome.runAfter, {
@@ -152,15 +157,21 @@ async function runParse(
 	return {
 		...result,
 		...(cacheKey !== undefined ? { cacheKey } : {}),
+		...(trace.hit !== undefined ? { cacheHit: trace.hit } : {}),
 		...(failure !== undefined ? { error: failure } : {}),
 	};
 }
 
 /** Default parse through the cache; stack-overflow failures are not cached. */
-function parseDefault(ctx: Ctx, source: string): ParseResult {
+function parseDefault(
+	ctx: Ctx,
+	source: string,
+	trace: CacheTrace,
+): ParseResult {
 	const { parseCache } = ctx;
 	if (!parseCache) return parseWithLimits(source, ctx.limits);
 	const hit = parseCache.get(source);
+	trace.hit = hit !== undefined;
 	if (hit) return hit;
 	const result = parseWithLimits(source, ctx.limits);
 	const overflow = 'errors' in result && result.errors.some(isOverflow);
@@ -187,11 +198,19 @@ async function runValidate(
 	const { out, error } = outcome;
 	let errors: readonly GraphQLError[] = [];
 	let thrown: unknown;
+	const trace: CacheTrace = {};
 	if (error === undefined) {
 		try {
 			errors = out.errors
 				? out.errors
-				: check(ctx, document, cacheKey, out.validationFn, out.rules);
+				: checkDocument(
+						ctx,
+						document,
+						cacheKey,
+						out.validationFn,
+						out.rules,
+						trace,
+					);
 		} catch (caught) {
 			// A throwing rule or validation function: the after-hooks still run.
 			thrown = caught;
@@ -203,52 +222,9 @@ async function runValidate(
 	const failure = error ?? thrown ?? afterError;
 	return {
 		...(errors.length > 0 || failure !== undefined ? { errors } : { document }),
+		...(trace.hit !== undefined ? { cacheHit: trace.hit } : {}),
 		...(failure !== undefined ? { error: failure } : {}),
 	};
-}
-
-function check(
-	ctx: Ctx,
-	document: DocumentNode,
-	cacheKey: string | undefined,
-	validationFn: ValidationFn | undefined,
-	rules: readonly ValidationRule[],
-): readonly GraphQLError[] {
-	const { schema, validationCache } = ctx;
-	const key =
-		validationCache &&
-		cacheKey !== undefined &&
-		!validationFn &&
-		rules.length === 0
-			? cacheKey
-			: undefined;
-	if (key !== undefined) {
-		const hit = validationCache?.get(schema, key);
-		if (hit) return hit;
-	}
-	const found = (validationFn ?? validate)(schema, document, [
-		...specifiedRules,
-		...rules,
-	]);
-	const coded = withCode(found);
-	if (key !== undefined) validationCache?.set(schema, key, coded);
-	return coded;
-}
-
-/** Stamps `extensions.code: GRAPHQL_VALIDATION_FAILED` on the errors that carry no code. */
-function withCode(errors: readonly GraphQLError[]): readonly GraphQLError[] {
-	return errors.map((error) =>
-		error.extensions['code'] !== undefined
-			? error
-			: new GraphQLError(error.message, {
-					nodes: error.nodes,
-					source: error.source,
-					positions: error.positions,
-					path: error.path,
-					originalError: error.originalError ?? error,
-					extensions: { ...error.extensions, code: VALIDATION_FAILED },
-				}),
-	);
 }
 
 async function finish<D>(

@@ -1,5 +1,6 @@
 import { type ExecutionResult, GraphQLError } from 'graphql';
 import type { StageOutcome } from '../plugins/stage';
+import type { HttpRefusal } from './http-refusal';
 
 /** How one operation ended, before it is encoded as a response. */
 export type Outcome =
@@ -9,6 +10,8 @@ export type Outcome =
 			/** Overrides the status the negotiated media type would give. */
 			status?: number;
 			headers?: HeadersInit;
+			/** What a plugin asked of the plain JSON response (not of a batch entry, SSE or WebSocket). */
+			refusal?: HttpRefusal;
 			/** The operation's `getContext()` scope, set once its context exists (not for a failure before it). */
 			scope?: <T>(work: () => T) => T;
 	  }
@@ -29,14 +32,26 @@ export type Outcome =
 /** A result made of one error that failed before execution. */
 export function failure(
 	message: string,
-	options: { status?: number; headers?: HeadersInit; code?: string } = {},
+	options: {
+		status?: number;
+		headers?: HeadersInit;
+		code?: string;
+		fix?: string;
+	} = {},
 ): Outcome {
 	return {
 		kind: 'result',
 		result: {
 			errors: [
 				new GraphQLError(message, {
-					...(options.code ? { extensions: { code: options.code } } : {}),
+					...(options.code
+						? {
+								extensions: {
+									code: options.code,
+									...(options.fix ? { fix: options.fix } : {}),
+								},
+							}
+						: {}),
 				}),
 			],
 		},

@@ -1,5 +1,6 @@
 import { assertValidSchema, buildASTSchema } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
+import { withCostDefinitions } from '../limits/directives';
 import { attachResolvers } from './attach';
 import { withIncrementalDirectives } from './directives';
 import { mergeResolvers } from './merge';
@@ -23,7 +24,7 @@ import type { Resolvers, SchemaOptions, SchemaWithContext } from './types';
  */
 export function createSchema<Ctx = unknown, R = Resolvers<Ctx>>() {
 	return (options: SchemaOptions<R>): SchemaWithContext<Ctx> => {
-		const document = toDocument(options.typeDefs);
+		const document = withCostDefinitions(toDocument(options.typeDefs));
 		let schema: SchemaWithContext<Ctx>;
 		try {
 			const built = buildASTSchema(document);

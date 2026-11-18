@@ -12,7 +12,10 @@ export function jsonResponse(
 ): Response {
 	const out = new Headers(headers);
 	out.set('content-type', media + charset);
-	return new Response(JSON.stringify(body), { status, headers: out });
+	const text = JSON.stringify(body);
+	// Declared so the telemetry can tell a small refusal from a big result without reading it.
+	out.set('content-length', String(Buffer.byteLength(text)));
+	return new Response(text, { status, headers: out });
 }
 
 /** An error body: `{ errors: [{ message }] }`. */

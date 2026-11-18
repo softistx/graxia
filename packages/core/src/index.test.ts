@@ -28,6 +28,8 @@ describe('public exports', () => {
 			'exposedError',
 			'createMemoryPubSub',
 			'createMemoryCache',
+			'computeOperationCost',
+			'costDirectives',
 			'filterIterable',
 			'mapIterable',
 		])

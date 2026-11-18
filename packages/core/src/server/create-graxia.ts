@@ -1,17 +1,21 @@
 import type { ExecutionResult } from 'graphql';
-import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
+import { assertCostDirectives } from '../limits/clash';
+import { resolveOperationLimits } from '../limits/options';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
+import { exposeCsrfHeader } from '../security/header-key';
+import { resolveSecurity } from '../security/options';
+import { createTelemetry } from '../telemetry';
+import { resolveTrusted } from '../trusted/options';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
-import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
-import type { Runtime } from './runtime';
+import { buildRuntime } from './runtime';
 import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
 import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
@@ -107,6 +111,8 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	const bodyBytes = options.limits?.bodyBytes ?? DEFAULT_BODY_BYTES;
 	if (!Number.isInteger(bodyBytes) || bodyBytes < 1)
 		throw new GraxiaConfigError('limits.bodyBytes must be a positive integer');
+	const operationLimits = resolveOperationLimits(options.limits);
+	if (operationLimits.cost) assertCostDirectives(options.schema);
 	const batching = options.batching ?? false;
 	if (
 		batching !== false &&
@@ -125,9 +131,11 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	return {
 		path,
 		bodyBytes,
+		operationLimits,
 		batching,
 		asyncContext,
 		shutdownTimeout,
+		...resolveSecurity(options),
 		...resolveStreaming(options),
 	};
 }
@@ -143,10 +151,12 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	options: GraxiaOptions<HostCtx>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
+	const trusted = resolveTrusted(options.trustedDocuments);
+	// Before `engine.init()`: a bad option throws before any plugin's setup runs.
+	const telemetry = createTelemetry(options.telemetry, options.schema);
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
-	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
 	// Handled here so a failing `setup` is never an unhandled rejection; reported once.
 	ready.catch(() => {});
@@ -154,27 +164,15 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	ready.catch((error: unknown) =>
 		unexpected.report(error, new StateBag(), 'setup'),
 	);
-	const rt: Runtime = {
-		schema: options.schema,
+	const rt = buildRuntime(options, {
+		resolved,
+		trusted,
+		telemetry,
 		engine,
-		pipeline: createDocumentPipeline({
-			schema: options.schema,
-			engine,
-			limits,
-			...(options.caches !== undefined ? { caches: options.caches } : {}),
-		}),
-		options: resolved,
 		unexpected,
-		maskResult: createResultMasker(
-			options.maskError,
-			options.maskErrors ?? true,
-			options.schema,
-			unexpected,
-		),
-		context: options.context,
 		lifecycle,
 		ready,
-	};
+	});
 	const entry = createEntry<HostCtx>(rt, servers);
 	const dispose = createDispose({
 		lifecycle,
@@ -189,7 +187,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		lifecycle,
 		path: resolved.path,
 	});
-	return {
+	const graxia: Graxia<HostCtx> = {
 		ready,
 		execute,
 		fetch: entry.fetch,
@@ -200,4 +198,6 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
+	exposeCsrfHeader(graxia, resolved.csrf);
+	return graxia;
 }

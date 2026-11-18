@@ -1,5 +1,7 @@
 import { refusal } from '../http/respond';
 import type { StateBag } from '../plugins/state';
+import { checkRequest } from '../security/check';
+import { inProcessKey } from './execute-state';
 import { dispatch } from './handle';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
@@ -45,20 +47,21 @@ export async function handle(
 		return refusal(405, 'Only GET and POST are allowed.', {
 			allow: 'GET, POST',
 		});
+	return rt.telemetry.request(request, state, () =>
+		respond(rt, request, serverContext, state),
+	);
+}
+
+/** The answer of a request on the GraphQL path, `onResponse` hooks included. */
+async function respond(
+	rt: Runtime,
+	request: Request,
+	serverContext: Record<string, unknown>,
+	state: StateBag,
+): Promise<Response> {
 	try {
 		await rt.ready;
-		const entered = await rt.engine.runners.onRequest({ request, state });
-		let response =
-			entered.error !== undefined
-				? rt.unexpected.respond(entered.error, state)
-				: (entered.out.response ??
-					(await dispatch(rt, request, serverContext, state)));
-		const afterError = await entered.runAfter({ response }).then(
-			() => undefined,
-			(error: unknown) => error,
-		);
-		if (afterError !== undefined && entered.error === undefined)
-			response = rt.unexpected.respond(afterError, state);
+		const response = await answer(rt, request, serverContext, state);
 		const last = await rt.engine.runners.onResponse({
 			request,
 			state,
@@ -70,4 +73,34 @@ export async function handle(
 	} catch (error) {
 		return rt.unexpected.respond(error, state);
 	}
+}
+
+/**
+ * The response before `onResponse`: the built-in security refusals first (a
+ * forged request never reaches a plugin), then `onRequest`, the dispatch and
+ * the after-hooks.
+ */
+async function answer(
+	rt: Runtime,
+	request: Request,
+	serverContext: Record<string, unknown>,
+	state: StateBag,
+): Promise<Response> {
+	const forbidden = state.get(inProcessKey)
+		? undefined
+		: checkRequest(rt, request);
+	if (forbidden) return forbidden;
+	const entered = await rt.engine.runners.onRequest({ request, state });
+	let response =
+		entered.error !== undefined
+			? rt.unexpected.respond(entered.error, state)
+			: (entered.out.response ??
+				(await dispatch(rt, request, serverContext, state)));
+	const afterError = await entered.runAfter({ response }).then(
+		() => undefined,
+		(error: unknown) => error,
+	);
+	if (afterError !== undefined && entered.error === undefined)
+		response = rt.unexpected.respond(afterError, state);
+	return response;
 }

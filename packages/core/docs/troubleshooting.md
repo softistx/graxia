@@ -103,6 +103,92 @@ A document under `limits.nesting` still overflowed the parser's stack (`nesting:
 very high limit make it likely). It is a `GRAPHQL_PARSE_FAILED` error with a `fix`, never
 `Unexpected error.`, and is not cached. Flatten the document, or lower `limits.nesting`.
 
+## Operation depth N exceeds the limit of M.
+
+The operation selects fields nested deeper than `limits.depth` (12 by default), fragments
+expanded. A `GRAPHQL_VALIDATION_FAILED` error (HTTP 400) with `extensions.limit`
+(`{ name: 'depth', max, actual }`) and `fix`. Ask for fewer nested fields, or raise it:
+
+```ts
+createGraxia({ schema, limits: { depth: 16 } }); // or false
+```
+
+## Operation has N aliases, over the limit of M.
+
+More aliased fields than `limits.aliases` (30). Use fewer aliases or raise `limits.aliases`.
+`extensions.limit.name` is `aliases`.
+
+## Operation has N directives, over the limit of M.
+
+More directive usages than `limits.directives` (50). `extensions.limit.name` is `directives`.
+
+## Operation has N root fields, over the limit of M.
+
+More root fields than `limits.rootFields` (20), `__typename` excluded. Split the operation
+or raise it. `extensions.limit.name` is `rootFields`.
+
+## The schema declares @cost(…) but graxia's limits.cost reads @cost(weight: Int!)
+
+Your schema declares `@cost` or `@listSize` with another shape than graxia's (for example the IBM
+form `directive @cost(weight: String!) on FIELD_DEFINITION`). The cost limit reads those directives
+with its own definitions and would fail on every operation, so `createGraxia` throws a
+`GraxiaConfigError`: `The schema declares @cost(<your arguments, with defaults>) but graxia's limits.cost reads @cost(weight: Int!). Rename or drop your directive, …`. The same message exists for `@listSize` (graxia reads `@listSize(assumedSize: Int, requireOneSlicingArgument: Boolean = true, sizedFields: [String!], slicingArguments: [String!])`); a different argument name, type or default value is a clash. Rename or drop your directive, or turn the
+cost limit off:
+
+```ts
+createGraxia({ schema, limits: { cost: false } });
+```
+
+## Operation cost N exceeds the limit of M.
+
+The cost of the operation is over `limits.cost.max` (5 000). The cost multiplies list fields
+by their size: a slicing argument (`first: 100`), `assumedSize` or `limits.cost.defaultListSize`.
+Request fewer items, give the field `@listSize(slicingArguments: ["first"])`, or raise it. The
+check reads variables, so `first: $n` counts. `extensions.limit.name` is `cost`.
+
+```ts
+createGraxia({ schema, limits: { cost: { max: 20_000 } } }); // or cost: false
+```
+
+## Field Query.users requires one of its slicing arguments (first, last).
+
+A list field declared with `@listSize(slicingArguments: [...])` was asked for without any of them
+holding a valid value (absent, `null`, negative, not an integer, or an unprovided variable).
+Pass one, or set `requireOneSlicingArgument: false` on the `@listSize` to fall back to
+`assumedSize` / `limits.cost.defaultListSize`. `extensions.limit.name` is `cost`.
+
+## limits.depth must be a positive integer (or false)
+
+`limits.depth` is not an integer of at least 1. Pass one, or `false`.
+
+## limits.aliases must be a positive integer (or false)
+
+Same for `limits.aliases`.
+
+## limits.directives must be a positive integer (or false)
+
+Same for `limits.directives`.
+
+## limits.rootFields must be a positive integer (or false)
+
+Same for `limits.rootFields`.
+
+## limits.cost must be false or an object ({ max, defaultListSize, objectCost, scalarCost })
+
+`limits.cost` is neither `false` nor an object. Pass `false`, or the settings you want:
+
+```ts
+createGraxia({ schema, limits: { cost: { max: 10_000 } } });
+```
+
+## limits.cost.max must be a positive integer
+
+Also `limits.cost.defaultListSize must be a positive integer`.
+
+## limits.cost.objectCost must be a non-negative integer
+
+Also `limits.cost.scalarCost must be a non-negative integer`.
+
 ## Cannot query field "x" on type "Query".  (`GRAPHQL_VALIDATION_FAILED`)
 
 The document parsed but does not validate against the schema. Every such error carries
@@ -416,10 +502,10 @@ await client.query('{ hello }', { persisted: true }); // sends the hash and the 
 await client.query(null, { persisted: { sha256Hash: 'ecf4…' } }); // sends the hash alone
 ```
 
-## A null document needs persisted: { sha256Hash }
+## A null document needs persisted: { sha256Hash } or documentId
 
-The test client was given `null` as the document without a hash to send. Pass
-`{ persisted: { sha256Hash } }`, or a document.
+The test client was given `null` as the document without a hash or an id to send. Pass
+`{ persisted: { sha256Hash } }`, `{ documentId }`, or a document.
 
 ## Expected no GraphQL errors, got N:
 
@@ -434,3 +520,264 @@ Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted t
 operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
 context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
 cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
+
+## This request requires one of the headers x-graphql-csrf, graphql-require-preflight, apollo-require-preflight, x-apollo-operation-name (CSRF prevention).
+
+The server answered 403 `CSRF_HEADER_REQUIRED`. The request is one a browser can send cross-site
+without a CORS preflight (a `GET`, or a `POST` with no `Content-Type` or a `text/plain`,
+`application/x-www-form-urlencoded` or `multipart/form-data` one) and carries none of the listed
+headers. Send a JSON `POST`, or add a header with any non-empty value; a client library has a
+setting for it (see [Security](./guide/security.md)).
+
+```ts
+await fetch(url, {
+	method: 'POST',
+	headers: { 'content-type': 'application/json', 'x-graphql-csrf': '1' },
+	body: JSON.stringify({ query: '{ hello }' }),
+});
+```
+
+A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
+custom `requireHeader` list the message names your headers instead.
+
+## Cross-origin request refused from <origin>.
+
+403 `FORBIDDEN_ORIGIN`. Either `csrf.sameOrigin` is on and the request's `Origin` is not the
+server's own origin or in `allowedOrigins`, or a WebSocket upgrade came from such an origin (this
+check is on even with `sameOrigin` off). The origin is compared with the request URL graxia sees,
+so behind a proxy pass the public URL, or list the public origin. The message ends with
+`from a null origin.` for `Origin: null` (a sandboxed frame, a `file:` page; always refused) and
+`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } },
+});
+```
+
+## GraphQL introspection is not allowed, but the query contained __schema or __type.
+
+`GRAPHQL_VALIDATION_FAILED` with a `fix`: `introspection` is `false`, or `NODE_ENV` is `production`
+and you did not set it. Set `introspection: true` to allow it (a code generator or an explorer
+needs it); `__typename` is always allowed.
+
+## csrf must be false or an object ({ requireHeader, sameOrigin })
+
+`createGraxia` throws a `GraxiaConfigError`. Pass `csrf: false` or an object, not `true`.
+
+## csrf.requireHeader must be a boolean or a non-empty list of header names
+
+`requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
+
+## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
+
+Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
+
+## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
+
+Pick one of the three modes (see [Security](./guide/security.md)).
+
+## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
+
+`allowedOrigins` is an array of strings.
+
+## csrf.sameOrigin.allowedOrigins entry "x" is not an origin (use scheme, host and optional port, no path: "https://app.example.com")
+
+An entry must be exactly `scheme://host[:port]`: no path, no trailing slash, not `null`.
+
+## introspection must be a boolean
+
+## suggestions must be a boolean
+
+Both options take `true` or `false`; leave them out to follow `NODE_ENV`.
+
+## Only persisted documents are allowed.
+
+`trustedDocuments` is in `strict` mode (the default when `NODE_ENV=production`) and the request sent
+a query in full with no id that resolves. The response is 400 with code `PERSISTED_QUERY_ONLY` and
+a `fix`. Send the `documentId` (or APQ hash) from your manifest, or run `mode: 'mixed'` where
+arbitrary queries are fine.
+
+## Persisted document <id> not found.
+
+A `documentId` (or an `extractKey` id) is in neither the manifest nor the `store`. Regenerate the
+manifest and redeploy the server before the clients that use it. 400, code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotFound
+
+An APQ client sent a hash alone that the server never saw. It is the first step of the protocol:
+the client sends the query and the hash again and the server registers it. If it loops, the `store`
+loses entries (a short TTL, an eviction) or differs between processes: use `redisCache()`. Code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotSupported
+
+A client sent `extensions.persistedQuery` and the server cannot serve or register it: `apq` is
+`false`, or the mode is `strict` and the hash is not in the manifest. Apollo Client then drops the
+extension and sends the query, which `strict` refuses with `Only persisted documents are allowed.`
+Code `PERSISTED_QUERY_NOT_SUPPORTED`.
+
+## provided sha does not match query
+
+The `sha256Hash` is not the lower-case hex SHA-256 of the `query` sent with it (UTF-8, as sent).
+The client hashes a different text from the one it sends (a transform after hashing). Code
+`PROVIDED_SHA_DOESNT_MATCH`.
+
+## Unsupported persisted query version
+
+`extensions.persistedQuery.version` is not `1`. Code `PERSISTED_QUERY_VERSION_NOT_SUPPORTED`.
+
+## Send either documentId or query, not both.
+
+A request has a `documentId` (or an id from `extractKey`) and a `query`. Send one. 400.
+
+## The "persistedQuery" extension must be { version: 1, sha256Hash: string }.
+
+`extensions.persistedQuery` is not an object with a string `sha256Hash`. 400.
+
+## The "documentId" parameter must be a string.
+
+The `documentId` of a body or a WebSocket payload is not a string. 400.
+
+## trustedDocuments must be an object ({ manifest, store, apq, mode, extractKey })
+
+The option is not an object. Leave it out to turn trusted documents off.
+
+## trustedDocuments.mode must be "strict" or "mixed"
+
+`mode` is something else (a typo, a boolean). Use `'strict'` or `'mixed'`, or leave it out to follow `NODE_ENV`.
+
+## trustedDocuments.apq must be a boolean
+
+`apq` is not `true` or `false`. Pass a boolean, or leave it out (on in `mixed`, off in `strict`).
+
+## trustedDocuments.store must be a KeyValueCache (get, set and delete)
+
+`store` lacks `get`, `set` or `delete`. Pass `createMemoryCache()` or `redisCache()`, or any object with the three methods.
+
+## trustedDocuments.extractKey must be a function (params, request) => string | undefined
+
+`extractKey` is not a function. Pass `(params, request) => string | undefined`, returning `undefined` when the request names no document.
+
+## trustedDocuments.mode "strict" needs a manifest, or extractKey with a store: no document could ever run
+
+`strict` runs only persisted documents, and none can exist. In production the mode is `strict` by
+default, so `trustedDocuments: {}` fails there. Add a `manifest`, or `extractKey` with a `store`, or
+set `mode: 'mixed'`.
+
+## trustedDocuments.manifest must be a Map, an object of id to source, or an Apollo persisted query manifest
+
+The manifest is none of the three formats. Pass the parsed JSON of `persisted-queries.json`,
+`persisted-documents.json` or the Apollo manifest, not its text.
+
+## trustedDocuments.manifest: the entry "<id>" must map to a GraphQL source string
+
+An entry's source is not a non-blank string. Regenerate the manifest.
+
+## trustedDocuments.manifest: every id must be a non-empty string
+
+An Apollo operation without an `id`, or a `Map` key that is not a string.
+
+## trustedDocuments.manifest: the Apollo manifest "version" must be 1
+
+Only version 1 of `apollo-persisted-query-manifest` is read.
+
+## trustedDocuments.manifest: the Apollo manifest "operations" must be a list of { id, body }
+
+The Apollo manifest has no `operations` list, or an entry is not an object.
+
+## Too many requests, try again later.
+
+A client spent a `fieldRateLimit` limit. HTTP `429`, code `RATE_LIMITED` (or your `code`),
+`extensions.retryAfter` and a `Retry-After` header in seconds. Wait that long. If real users hit
+it, raise the limit's `limit`, or check that `key` is not the proxy's address for everyone (see
+[Rate limiting fields](./guide/rate-limiting.md)). Nothing counts when the key is `undefined`.
+
+## <field> may be selected once per operation.
+
+A field configured with `single: true` appears at two different places of one operation, for
+example `{ a: signIn b: signIn }`. HTTP `400`, code `FIELD_SELECTED_ONCE`. Send one operation per
+call, or drop `single`.
+
+## fieldRateLimit: fields must be an object with at least one field name
+
+`fields` is missing, empty or not an object. Pass `{ signIn: limit }`.
+
+## fieldRateLimit: fields.<name> must be a limit ({ consume }) or { limit, single? }
+
+The rule of `<name>` has no `consume` function, or `single` is not a boolean. Use
+`memoryFieldLimit(...)`, `limitFromStore(...)`, your own `{ consume }`, or `{ limit, single: true }`.
+
+## fieldRateLimit: ipv6Prefix must be an integer from 0 to 128
+
+```ts
+fieldRateLimit({ fields, ipv6Prefix: 64 });
+```
+
+## fieldRateLimit: ipv6Prefix only applies to the default key; reduce the address inside key() instead
+
+`ipv6Prefix` reduces the address the default key reads. With your own `key`, drop `ipv6Prefix` and
+reduce the address in `key`.
+
+## fieldRateLimit: code must be a non-empty string
+
+`code` is the `extensions.code` of a refusal: give a string, or leave it out for `RATE_LIMITED`.
+
+## memoryFieldLimit: limit must be an integer of 1 or more
+
+Also `windowMs` and `maxKeys`: `memoryFieldLimit: windowMs must be an integer of 1 or more`,
+`memoryFieldLimit: maxKeys must be an integer of 1 or more`. Pass whole numbers (windows in milliseconds).
+
+## limitFromStore: no policy; pass { limit, windowMs } or give the store a policy
+
+The store has no `policy`: `limitFromStore(store, { limit: 10, windowMs: 60_000 })`.
+
+## limitFromStore: limit <n> differs from the store policy's limit <m>
+
+The same for `windowMs`. The store counts with its own policy; pass the same numbers or none.
+
+## limitFromStore: limit must be an integer of 1 or more
+
+Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, `windowMs` in milliseconds.
+
+## telemetry must be false or an object
+
+`telemetry` was `true`, a string or an array. Omit it (on when `@opentelemetry/api` is installed),
+pass `false`, or pass an options object.
+
+## telemetry.tracer must be an OpenTelemetry Tracer
+
+`tracer` has no `startSpan` method. Pass what `trace.getTracer(...)` or your provider's
+`getTracer(...)` returns.
+
+## telemetry.document must be a boolean
+
+Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
+
+## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
+
+Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fields with no resolver.
+
+## No spans appear
+
+The server answers but your backend shows nothing. In order:
+
+1. `@opentelemetry/api` is not installed next to `@graxia/core`. It is an optional peer: graxia
+   traces nothing without it. `bun add @opentelemetry/api`.
+2. No SDK is registered, or it is registered after `createGraxia`. Without an SDK the API's tracer
+   is a no-op. Register the provider (or pass `telemetry: { tracer }`) before creating the server.
+3. Two copies of `@opentelemetry/api`: your SDK registers on one and graxia reads the other.
+   The API shares its global through a version-keyed symbol, so a major mismatch or a nested
+   `node_modules` copy of another major breaks it. Check `bun pm ls @opentelemetry/api` shows one version
+   (`^1`).
+4. `telemetry: false` is set.
+5. A request outside the GraphQL path (`path`) is not traced.
+
+## A resolver span has no child spans of mine
+
+A span you start inside a resolver nests under the active span, which needs a context manager
+registered. Without one, `trace.getActiveSpan()` returns `undefined` in a resolver; graxia's own
+spans are still parented correctly. Register `AsyncLocalStorageContextManager` as in the
+[Setup](./guide/telemetry.md#setup) snippet.

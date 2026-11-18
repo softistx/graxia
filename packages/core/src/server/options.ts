@@ -3,10 +3,17 @@ import type { DocumentCaches, DocumentLimits } from '../document/types';
 import type { MaskError } from '../errors/mask';
 import type { BatchingOption } from '../http/batch';
 import type {
+	OperationLimits,
+	ResolvedOperationLimits,
+} from '../limits/options';
+import type {
 	GraphQLParams,
 	GraxiaPlugin,
 	MaybePromise,
 } from '../plugins/types';
+import type { CsrfOptions, ResolvedCsrf } from '../security/options';
+import type { TelemetryOptions } from '../telemetry';
+import type { TrustedDocumentsOptions } from '../trusted/types';
 import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
@@ -25,8 +32,8 @@ export interface ContextInit<HostCtx> {
 	signal: AbortSignal;
 }
 
-/** `limits` option: document limits plus the request body limit. */
-export interface GraxiaLimits extends DocumentLimits {
+/** `limits` option: document limits, operation limits and the request body limit. */
+export interface GraxiaLimits extends DocumentLimits, OperationLimits {
 	/** The most bytes of a request body read. 1 MiB by default; more answers 413. */
 	bodyBytes?: number;
 }
@@ -97,6 +104,33 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 */
 	incremental?: boolean | IncrementalOptions;
 	/**
+	 * CSRF prevention and origin checks. On by default: a GET, or a POST that is not
+	 * JSON, needs a CSRF header (see `DEFAULT_CSRF_HEADERS`); a WebSocket upgrade from
+	 * another origin is refused. `false` turns all of it off.
+	 */
+	csrf?: false | CsrfOptions;
+	/**
+	 * Trusted documents: a manifest of allowed documents (Relay, graphql-codegen or Apollo),
+	 * `documentId`, automatic persisted queries and a `strict` mode (on in production).
+	 * Absent: no persisted documents and no APQ, queries run as sent.
+	 */
+	trustedDocuments?: TrustedDocumentsOptions;
+	/**
+	 * OpenTelemetry spans (`graphql.request`, `graphql.parse`, `graphql.validate`, one per
+	 * operation, optional resolver spans). On when `@opentelemetry/api` (an optional peer) is
+	 * installed, a no-op otherwise; `false` turns it off.
+	 */
+	telemetry?: false | TelemetryOptions;
+	/**
+	 * Answers `__schema` and `__type` queries. `true` unless `NODE_ENV` is `production`.
+	 */
+	introspection?: boolean;
+	/**
+	 * Keeps "Did you mean ..." hints in validation and variable errors. `true` unless
+	 * `NODE_ENV` is `production`.
+	 */
+	suggestions?: boolean;
+	/**
 	 * Receives the original error of every unexpected failure (a hook or
 	 * `execute` threw, a resolver threw a plain error). The response stays a
 	 * generic 500 or a masked error. Default: `console.error`, silent when
@@ -123,6 +157,8 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 export interface ResolvedOptions {
 	path: string | false;
 	bodyBytes: number;
+	/** Depth, aliases, directives, root fields and cost limits. */
+	operationLimits: ResolvedOperationLimits;
 	batching: BatchingOption;
 	asyncContext: boolean;
 	shutdownTimeout: number;
@@ -130,6 +166,10 @@ export interface ResolvedOptions {
 	keepAliveMs: number;
 	/** The WebSocket settings, or `false` when it is off. */
 	ws: ResolvedWebSocket | false;
+	/** The CSRF and origin checks, or `false` when they are off. */
+	csrf: ResolvedCsrf | false;
+	introspection: boolean;
+	suggestions: boolean;
 	/** The incremental delivery format, or `false` when it is off. */
 	incremental: false | 'graphql17' | 'legacy';
 }

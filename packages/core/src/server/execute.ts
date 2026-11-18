@@ -3,6 +3,7 @@ import type { DocumentInput } from '../document/typed';
 import { GraxiaExecuteError } from '../errors/execute-error';
 import { StateBag } from '../plugins/state';
 import {
+	inProcessKey,
 	presetDocumentKey,
 	resultKey,
 	unexpectedErrorKey,
@@ -18,13 +19,26 @@ export type ExecuteArgs<
 > = ExecuteBase<Result, Variables> & WithServerContext<HostCtx>;
 
 /** The arguments of {@link Graxia.execute} that do not depend on the host context. */
-export interface ExecuteBase<Result, Variables> {
-	/**
-	 * A typed document, a `DocumentNode` or a string. A string is parsed under
-	 * the parse limits and goes through both caches; a `DocumentNode` skips the
-	 * parse limits and both caches (it is already parsed). `onParse` runs for both.
-	 */
-	document: DocumentInput<Result, Variables>;
+export type ExecuteBase<Result, Variables> = ExecuteOptions<Variables> &
+	(
+		| {
+				/**
+				 * A typed document, a `DocumentNode` or a string. A string is parsed under
+				 * the parse limits and goes through both caches; a `DocumentNode` skips the
+				 * parse limits and both caches (it is already parsed). `onParse` runs for both.
+				 */
+				document: DocumentInput<Result, Variables>;
+				documentId?: never;
+		  }
+		| {
+				/** A persisted document's id (needs `trustedDocuments`); sent as `documentId`, with no query. */
+				documentId: string;
+				document?: never;
+		  }
+	);
+
+/** The arguments of {@link Graxia.execute} that do not name the document. */
+export interface ExecuteOptions<Variables> {
 	/** The operation's variables; they travel as JSON, so they must be JSON-serializable. */
 	variables?: Variables;
 	/** Which operation to run when the document has several. */
@@ -58,15 +72,20 @@ export function createExecute<HostCtx extends object>(parts: ExecuteParts) {
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>> {
 		const state = new StateBag();
+		state.set(inProcessKey, true);
+		const given = args.document as DocumentInput<any, any> | undefined;
 		const document =
-			typeof args.document === 'string'
+			given === undefined || typeof given === 'string'
 				? undefined
-				: (args.document as DocumentNode);
+				: (given as DocumentNode);
 		const query =
-			typeof args.document === 'string'
-				? (args.document as string)
-				: print(document as DocumentNode);
-		if (document) state.set(presetDocumentKey, { node: document, text: query });
+			given === undefined
+				? undefined
+				: typeof given === 'string'
+					? given
+					: print(document as DocumentNode);
+		if (document && query !== undefined)
+			state.set(presetDocumentKey, { node: document, text: query });
 		const headers = new Headers({
 			'content-type': 'application/json',
 			accept: 'application/graphql-response+json, application/json',
@@ -76,7 +95,7 @@ export function createExecute<HostCtx extends object>(parts: ExecuteParts) {
 		let body: string;
 		try {
 			body = JSON.stringify({
-				query,
+				...(query !== undefined ? { query } : { documentId: args.documentId }),
 				...(args.variables !== undefined ? { variables: args.variables } : {}),
 				...(args.operationName !== undefined
 					? { operationName: args.operationName }
