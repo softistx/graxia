@@ -14,8 +14,9 @@ redisPubSub({ client: myRedisClient });
 
 ## Connection closed (`ERR_REDIS_CONNECTION_CLOSED`)
 
-Redis is unreachable (wrong `url`, server down, connection refused). Bun's `RedisError` says
-`Connection closed`, or `Max reconnection attempts reached` once it has retried `maxRetries` times
+Redis is unreachable (wrong `url`, server down, connection refused). Bun's `RedisError` (code
+`ERR_REDIS_CONNECTION_CLOSED`) says `Connection has failed`, `Connection closed`, or
+`Max reconnection attempts reached` once it has retried `maxRetries` times
 (default 20). `publish()` and the cache methods reject with it; for `redisPubSub` the same error also
 reaches `onError`, since the subscriber connection fails too. Check the `url` (or `REDIS_URL`) and that
 the server listens there.
