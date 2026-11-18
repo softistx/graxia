@@ -44,7 +44,7 @@ export interface Env {
 /** A started span and the context that has it active. */
 export interface Live {
 	span: SpanLike;
-	ctx: any;
+	ctx: unknown;
 }
 
 /** @internal The request span of an HTTP request, and the streams that keep it open. */
@@ -53,7 +53,7 @@ export const requestKey = createStateKey<{
 	held: Promise<unknown>[];
 }>('graxia.telemetry.request');
 /** @internal The context an operation is parented to when there is no request span (a WebSocket). */
-export const parentKey = createStateKey<any>('graxia.telemetry.parent');
+export const parentKey = createStateKey<unknown>('graxia.telemetry.parent');
 /** @internal The operation span of the operation a state belongs to. */
 export const operationKey = createStateKey<Operation>(
 	'graxia.telemetry.operation',
@@ -74,7 +74,7 @@ export function start(
 	env: Env,
 	name: string,
 	kind: number,
-	parent: any,
+	parent: unknown,
 	attributes?: Record<string, string | number>,
 ): Live {
 	const span = env.tracer.startSpan(

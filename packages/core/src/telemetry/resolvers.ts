@@ -9,7 +9,7 @@ import { ATTR, type Env, fail, SPAN, start } from './spans';
 interface Bound {
 	env: Env;
 	/** The operation span's context: resolver spans hang under it. */
-	parent: any;
+	parent: unknown;
 	trivial: boolean;
 }
 
@@ -22,7 +22,7 @@ const WRAPPED = Symbol.for('graxia.telemetry.wrapped');
 export function bindResolvers(
 	contextValue: object,
 	env: Env,
-	parent: any,
+	parent: unknown,
 	trivial: boolean,
 ): void {
 	bound.set(contextValue, { env, parent, trivial });

@@ -1,5 +1,6 @@
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
+import { inProcessKey } from '../server/execute-state';
 import { manifestKeys, sha256Hex, storeKey } from './apq';
 import { hasQuery, keyOf, refuse, type TrustedRefusal } from './key';
 import type { ResolvedTrusted } from './options';
@@ -118,7 +119,10 @@ export function createTrustedDocuments(
 			const key = keyOf(params, request, rt);
 			const env: Env = { rt, report, state };
 			if (key === undefined)
-				return rt.mode === 'strict' && hasQuery(params)
+				// `execute` runs in-process: the caller is the host's own code, not a client.
+				return rt.mode === 'strict' &&
+					hasQuery(params) &&
+					!state.get(inProcessKey)
 					? refuse(
 							'Only persisted documents are allowed.',
 							'PERSISTED_QUERY_ONLY',

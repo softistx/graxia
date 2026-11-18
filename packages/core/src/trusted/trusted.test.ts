@@ -22,6 +22,16 @@ describe('strict and mixed', () => {
 		});
 	});
 
+	test('strict still runs a document given to execute, and refuses it over HTTP', async () => {
+		const { graxia, client } = setup({ manifest, mode: 'strict' });
+		expect((await graxia.execute({ document: '{ hello }' })).data).toEqual({
+			hello: 'world',
+		});
+		expect(codes((await client.query('{ hello }')).errors)).toEqual([
+			'PERSISTED_QUERY_ONLY',
+		]);
+	});
+
 	test('strict refuses APQ registration, and serves a hash from the manifest', async () => {
 		const { client } = setup({ manifest: { [hash]: HELLO }, mode: 'strict' });
 		const other = '{ who }';

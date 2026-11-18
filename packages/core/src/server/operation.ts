@@ -73,8 +73,6 @@ async function prepare(
 	if (isOutcome(parsed)) return parsed;
 	const refused = await validateStep(rt, input, parsed);
 	if (refused) return refused;
-	// Only the query the client sent is registered, never one a plugin rewrote.
-	if (final.query === input.params.query) settled.register?.();
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
 	const { cost } = rt.options.operationLimits;
@@ -93,6 +91,9 @@ async function prepare(
 			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
 			{ code: 'SUBSCRIPTION_NOT_SUPPORTED' },
 		);
+	// Only a document that passed every check is stored, and only the query the
+	// client sent, never one a plugin rewrote.
+	if (final.query === input.params.query) settled.register?.();
 	return { params: final, document: parsed.document, operation };
 }
 
