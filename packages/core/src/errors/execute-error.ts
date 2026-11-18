@@ -2,7 +2,8 @@
  * Thrown by `graxia.execute` when the request did not end in an execution
  * result: a plugin answered with `respond(...)`, the server is shutting down,
  * or something failed unexpectedly (a 500). `response` is what HTTP would
- * have sent.
+ * have sent. `cause` holds the original error of an unexpected failure (the
+ * 500 path) when there is one; it is never serialized into a response.
  */
 export class GraxiaExecuteError extends Error {
 	/** Stable machine-readable code. */

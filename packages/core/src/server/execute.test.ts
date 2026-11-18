@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { parse } from 'graphql';
 import type { TypedDocument } from '../document/typed';
 import { GraxiaExecuteError } from '../errors/execute-error';
+import * as entry from '../index';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
 import { getContext } from './context';
@@ -169,5 +170,79 @@ describe('graxia.execute', () => {
 			signal: controller.signal,
 		});
 		expect(result.errors?.[0]?.extensions?.['code']).toBe('OPERATION_ABORTED');
+	});
+
+	test('the package entry exports GraxiaExecuteError', () => {
+		expect(entry.GraxiaExecuteError).toBe(GraxiaExecuteError);
+		const args: entry.ExecuteArgs<unknown, unknown, object> = {
+			document: '{ hello }',
+		};
+		expect(args.document).toBe('{ hello }');
+	});
+
+	test('a query replaced by onParams runs on the DocumentNode path', async () => {
+		const graxia = createGraxia({
+			schema,
+			...quiet,
+			plugins: [
+				definePlugin()({
+					name: 'rewrite',
+					onParams: ({ setParams }: any) => setParams({ query: '{ who }' }),
+				}),
+			],
+			context: () => ({ user: 'ada' }),
+		});
+		const viaNode = await graxia.execute({ document: parse('{ hello }') });
+		const viaString = await graxia.execute({ document: '{ hello }' });
+		expect(viaNode.data).toEqual({ who: 'ada' });
+		expect(viaString.data).toEqual(viaNode.data);
+	});
+
+	test('non-serializable variables throw a TypeError', async () => {
+		const graxia = createGraxia({ schema, ...quiet });
+		const error = await graxia
+			.execute({ document: '{ hello }', variables: { n: 1n } })
+			.catch((e) => e);
+		expect(error).toBeInstanceOf(TypeError);
+		expect(error.message).toContain('JSON-serializable');
+	});
+
+	test('an unexpected failure rejects with the original error as cause', async () => {
+		const boom = new Error('hook failed');
+		const graxia = createGraxia({
+			schema,
+			...quiet,
+			plugins: [
+				definePlugin()({
+					name: 'bad',
+					onRequest: () => {
+						throw boom;
+					},
+				}),
+			],
+		});
+		const error = await graxia
+			.execute({ document: '{ hello }' })
+			.catch((e) => e);
+		expect(error).toBeInstanceOf(GraxiaExecuteError);
+		expect(error.status).toBe(500);
+		expect(error.cause).toBe(boom);
+		expect(await error.response.text()).not.toContain('hook failed');
+	});
+
+	test('works with batching on', async () => {
+		const graxia = createGraxia({ schema, ...quiet, batching: { limit: 3 } });
+		const result = await graxia.execute({ document: '{ hello }' });
+		expect(result.data).toEqual({ hello: 'world' });
+	});
+
+	test('the dispose rejection is a sealed response with a request id', async () => {
+		const graxia = createGraxia({ schema, ...quiet });
+		await graxia.dispose();
+		const error = await graxia
+			.execute({ document: '{ hello }' })
+			.catch((e) => e);
+		expect(error.message).toBe('Server is shutting down.');
+		expect(error.response.headers.get('x-request-id')).toBeTruthy();
 	});
 });

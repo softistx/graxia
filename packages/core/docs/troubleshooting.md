@@ -121,7 +121,7 @@ graphql reports a `parseValue` that throws a plain `Error` as a coercion error, 
 `exposedError('BAD_USER_INPUT', …)` or a `GraphQLError` with a safe message. See
 [Errors](./guide/errors.md#known-behaviour-scalar-coercion).
 
-## graxia.execute: the request ended with an HTTP N response instead of a result
+## graxia.execute: the request ended with an HTTP N response instead of a result; see error.response.
 
 `graxia.execute` rejects with a `GraxiaExecuteError` when the pipeline answered with something other
 than an execution result: a plugin returned `respond(...)` (for example a 401 from an auth plugin),
@@ -139,3 +139,14 @@ try {
 
 Pass the headers the plugin expects (`headers: { authorization: … }`). See
 [Testing](./guide/testing.md).
+
+## Server is shutting down.
+
+`graxia.execute` rejects with this `GraxiaExecuteError` (status 503, `SHUTTING_DOWN`) once `dispose()`
+has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
+[Context, cancellation and shutdown](./guide/context.md).
+
+## graxia.execute: variables must be JSON-serializable
+
+`variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
+to a string) before calling `execute`.

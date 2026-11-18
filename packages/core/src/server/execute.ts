@@ -2,14 +2,22 @@ import { type DocumentNode, type ExecutionResult, print } from 'graphql';
 import type { DocumentInput } from '../document/typed';
 import { GraxiaExecuteError } from '../errors/execute-error';
 import { RequestState } from '../plugins/state';
-import { presetDocumentKey, resultKey } from './execute-state';
+import {
+	presetDocumentKey,
+	resultKey,
+	unexpectedErrorKey,
+} from './execute-state';
 import type { Lifecycle } from './lifecycle';
 
 /** Arguments of {@link Graxia.execute}. */
 export interface ExecuteArgs<Result, Variables, HostCtx> {
-	/** A typed document, a `DocumentNode` (parse is skipped) or a string (parsed through the cache). */
+	/**
+	 * A typed document, a `DocumentNode` or a string. A string is parsed under
+	 * the parse limits and goes through both caches; a `DocumentNode` skips the
+	 * parse limits and both caches (it is already parsed). `onParse` runs for both.
+	 */
 	document: DocumentInput<Result, Variables>;
-	/** The operation's variables. */
+	/** The operation's variables; they travel as JSON, so they must be JSON-serializable. */
 	variables?: Variables;
 	/** Which operation to run when the document has several. */
 	operationName?: string;
@@ -32,8 +40,6 @@ export interface ExecuteParts {
 	lifecycle: Lifecycle;
 	/** The served path; any path when the instance serves `false`. */
 	path: string | false;
-	/** The status and body of the refusal sent after `dispose()`. */
-	closed(): Response;
 }
 
 /**
@@ -45,48 +51,58 @@ export function createExecute<HostCtx extends object>(parts: ExecuteParts) {
 	return async function execute<Result, Variables>(
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>> {
-		if (parts.lifecycle.closing)
-			throw new GraxiaExecuteError('Server is shutting down.', parts.closed());
 		const state = new RequestState();
 		const document =
 			typeof args.document === 'string'
 				? undefined
 				: (args.document as DocumentNode);
-		if (document) state.set(presetDocumentKey, document);
 		const query =
 			typeof args.document === 'string'
 				? (args.document as string)
 				: print(document as DocumentNode);
+		if (document) state.set(presetDocumentKey, { node: document, text: query });
 		const headers = new Headers({
 			'content-type': 'application/json',
 			accept: 'application/graphql-response+json, application/json',
 		});
 		for (const [name, value] of new Headers(args.headers))
 			headers.set(name, value);
+		let body: string;
+		try {
+			body = JSON.stringify({
+				query,
+				...(args.variables !== undefined ? { variables: args.variables } : {}),
+				...(args.operationName !== undefined
+					? { operationName: args.operationName }
+					: {}),
+			});
+		} catch (error) {
+			throw new TypeError(
+				'graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)',
+				{ cause: error },
+			);
+		}
 		const request = new Request(
 			`http://graxia.local${parts.path === false ? '/' : parts.path}`,
 			{
 				method: 'POST',
 				headers,
-				body: JSON.stringify({
-					query,
-					...(args.variables !== undefined
-						? { variables: args.variables }
-						: {}),
-					...(args.operationName !== undefined
-						? { operationName: args.operationName }
-						: {}),
-				}),
+				body,
 				...(args.signal ? { signal: args.signal } : {}),
 			},
 		);
 		const response = await parts.run(request, { ...args.serverContext }, state);
 		const result = state.get(resultKey);
-		if (result === undefined)
+		if (result === undefined) {
+			const cause = state.get(unexpectedErrorKey);
 			throw new GraxiaExecuteError(
-				`graxia.execute: the request ended with an HTTP ${response.status} response instead of a result; see error.response.`,
+				response.status === 503 && parts.lifecycle.closing
+					? 'Server is shutting down.'
+					: `graxia.execute: the request ended with an HTTP ${response.status} response instead of a result; see error.response.`,
 				response,
+				cause ? { cause: cause.error } : undefined,
 			);
+		}
 		return result as ExecutionResult<Result>;
 	};
 }

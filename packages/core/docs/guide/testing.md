@@ -41,8 +41,11 @@ const { data, errors } = await graxia.execute({
 });
 ```
 
-`document` is a string (through the parse cache), a `DocumentNode` (parse is skipped; `onParse`
-still runs) or a typed document.
+`document` is a string, a `DocumentNode` or a typed document. A **string** is parsed under the
+parse limits and goes through the parse and validation caches, as over HTTP. A **`DocumentNode`**
+is already parsed: it skips the parse limits and both caches (`onParse` still runs, and an
+`onParams` hook that replaces the query makes graxia parse the new text). `variables` travel as
+JSON, as over HTTP: a value `JSON.stringify` refuses (a `BigInt`, a cycle) throws a `TypeError`.
 
 ### Typed documents
 
@@ -55,16 +58,16 @@ the variables are inferred, and wrong variables fail to compile:
 import type { TypedDocument } from '@graxia/core';
 import { parse } from 'graphql';
 
-const Hello = parse('{ hello }') as TypedDocument<
-	{ hello: string },
-	{ id: string }
->;
+const Greet = parse(
+	'query Greet($name: String!) { greet(name: $name) }',
+) as TypedDocument<{ greet: string }, { name: string }>;
 const result = await graxia.execute({
-	document: Hello,
-	variables: { id: '1' },
+	document: Greet,
+	variables: { name: 'Ada' },
 });
-result.data?.hello; // string
-// graxia.execute({ document: Hello, variables: { id: 1 } }); // type error
+result.data?.greet; // string
+// @ts-expect-error `name` must be a string
+await graxia.execute({ document: Greet, variables: { name: 1 } });
 ```
 
 ### What it does not do
@@ -72,8 +75,9 @@ result.data?.hello; // string
 - Subscriptions and `@defer` / `@stream` return their usual refusal error in the result
   (`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`); `execute` does not throw for them.
 - When the request ends without a result, `execute` rejects with a `GraxiaExecuteError` carrying
-  `response`, the HTTP response the pipeline produced: a plugin answered with `respond(...)`, a hook
-  failed unexpectedly (500), or the instance was disposed (503, `SHUTTING_DOWN`).
+  `response`, the HTTP response the pipeline produced (sealed, with `x-request-id`): a plugin
+  answered with `respond(...)`, a hook failed unexpectedly (500, the original error is the error's
+  `cause`, never in the response), or the instance was disposed (503, `SHUTTING_DOWN`).
 
 ```ts
 import { GraxiaExecuteError } from '@graxia/core';
@@ -134,8 +138,8 @@ await client.query('{ hello }', { persisted: true });
 await client.query(null, { persisted: { sha256Hash: 'ecf4…' } });
 ```
 
-The server side (trusted documents, APQ errors) arrives with the trusted-documents slice; until
-then a hash alone answers `Must provide a query string.` (400).
+The server has no persisted-query store today: a hash alone answers `Must provide a query string.`
+(400), and a query sent with its hash runs as a plain query.
 
 ### Batching
 

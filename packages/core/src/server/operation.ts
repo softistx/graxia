@@ -31,6 +31,12 @@ interface Prepared {
 const isPrepared = (value: Outcome | Prepared): value is Prepared =>
 	!('kind' in value);
 
+/** The pre-parsed document `execute` gave, while the query is still the text it printed. */
+function presetFor(state: RequestState, query: string) {
+	const preset = state.get(presetDocumentKey);
+	return preset?.text === query ? preset.node : undefined;
+}
+
 /**
  * Runs one operation through the pipeline (onParams, parse, validate,
  * operation selection, context, onExecute, execute). Never rejects: a hook
@@ -65,7 +71,7 @@ async function prepare(
 		source: final.query,
 		state,
 		request,
-		document: state.get(presetDocumentKey),
+		document: presetFor(state, final.query),
 	});
 	if (parsed.error !== undefined) return unexpected(parsed.error);
 	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);

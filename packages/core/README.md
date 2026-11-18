@@ -14,6 +14,13 @@ bun add @graxia/core graphql@^17
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported.
 
+## Exports
+
+| import                 | what it is                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `@graxia/core`         | `createGraxia` (`fetch`, `serve`, `execute`, `dispose`), plugins, schema, errors |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                               |
+
 ## Documentation
 
 - [GraphQL over HTTP](./docs/guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.

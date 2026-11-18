@@ -32,7 +32,8 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * `POST` request goes through the same pipeline as HTTP (plugins, context,
 	 * request id, `dispose` tracking, masking) and the masked result comes
 	 * back as an object, with no content negotiation or HTTP encoding.
-	 * Subscriptions and incremental results return their usual refusal error
+	 * A string document gets the parse limits and both caches; a `DocumentNode`
+	 * skips them. Variables travel as JSON. Subscriptions and incremental results return their usual refusal error
 	 * in the result. Rejects with a {@link GraxiaExecuteError} when the request
 	 * ends without a result (a plugin's `respond`, an unexpected failure) and
 	 * after `dispose()`.
@@ -146,7 +147,6 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		run: handleWith,
 		lifecycle,
 		path: resolved.path,
-		closed: shuttingDown,
 	});
 	return {
 		execute,
