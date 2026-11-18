@@ -73,7 +73,8 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 ### What it does not do
 
 - Subscriptions (served over SSE by `fetch`, not by `execute`) and `@defer` / `@stream` return their usual refusal error in the result
-  (`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`); `execute` does not throw for them.
+  (`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`); `execute` does not throw for them. Incremental
+  delivery is served over `fetch` only (see [`@defer` and `@stream`](./incremental.md)).
 - When the request ends without a result, `execute` rejects with a `GraxiaExecuteError` carrying
   `response`, the HTTP response the pipeline produced (sealed, with `x-request-id`): a plugin
   answered with `respond(...)`, a hook failed unexpectedly (500, the original error is the error's

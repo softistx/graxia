@@ -1,6 +1,7 @@
 import { assertValidSchema, buildASTSchema } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
 import { attachResolvers } from './attach';
+import { withIncrementalDirectives } from './directives';
 import { mergeResolvers } from './merge';
 import { sdlError, toDocument } from './typedefs';
 import type { Resolvers, SchemaOptions, SchemaWithContext } from './types';
@@ -25,7 +26,7 @@ export function createSchema<Ctx = unknown, R = Resolvers<Ctx>>() {
 		const document = toDocument(options.typeDefs);
 		let schema: SchemaWithContext<Ctx>;
 		try {
-			schema = buildASTSchema(document);
+			schema = withIncrementalDirectives(buildASTSchema(document));
 		} catch (cause) {
 			throw sdlError(cause);
 		}

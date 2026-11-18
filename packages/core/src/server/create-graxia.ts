@@ -14,6 +14,7 @@ import type { GraxiaOptions, ResolvedOptions } from './options';
 import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
+import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
 
 /** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
@@ -94,20 +95,13 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		throw new GraxiaConfigError(
 			'shutdownTimeout must be a non-negative integer (milliseconds)',
 		);
-	const keepAliveMs = options.subscriptions?.keepAliveMs ?? 12_000;
-	if (!Number.isFinite(keepAliveMs) || keepAliveMs <= 0)
-		throw new GraxiaConfigError(
-			'subscriptions.keepAliveMs must be a finite number above 0 (milliseconds)',
-		);
-	const sse = options.subscriptions?.sse ?? true;
 	return {
 		path,
 		bodyBytes,
 		batching,
 		asyncContext,
 		shutdownTimeout,
-		sse,
-		keepAliveMs,
+		...resolveStreaming(options),
 	};
 }
 

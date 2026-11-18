@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
-	execute,
+	type ExecutionArgs,
+	type ExecutionResult,
+	experimentalExecuteIncrementally,
 	GraphQLError,
 	GraphQLScalarType,
 	Kind,
@@ -10,9 +12,13 @@ import {
 import { GraxiaConfigError } from '../errors/config-error';
 import { createSchema } from './create-schema';
 
+// graphql's plain `execute` throws for a schema that declares `@defer`.
+const execute = (args: ExecutionArgs) =>
+	experimentalExecuteIncrementally(args) as Promise<ExecutionResult>;
+
 type Ctx = { user: string };
 const ctx: Ctx = { user: 'ada' };
-const run = (schema: Parameters<typeof execute>[0]['schema'], query: string) =>
+const run = (schema: ExecutionArgs['schema'], query: string) =>
 	execute({ schema, document: parse(query), contextValue: ctx });
 
 describe('createSchema typeDefs', () => {

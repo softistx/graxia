@@ -259,6 +259,30 @@ for await (const result of client.iterate({
 `onSubscribe` and `onResultChunk` plugin hooks run on these streams. See
 [Subscriptions](./docs/guide/subscriptions.md); WebSocket (`graphql-transport-ws`) comes later.
 
+## `@defer` and `@stream`
+
+Queries and mutations with `@defer` or `@stream` are delivered incrementally to a client that sends
+`Accept: multipart/mixed` (or `text/event-stream`), on by default; any other `Accept` gets
+`INCREMENTAL_NOT_SUPPORTED`. `incremental: { format: 'legacy' }` speaks the 2022-08 format older
+clients read, `incremental: false` turns it off.
+
+```ts
+// bun add -d meros
+import { meros } from 'meros';
+
+const response = await fetch('http://localhost:3000/graphql', {
+	method: 'POST',
+	headers: {
+		'content-type': 'application/json',
+		accept: 'multipart/mixed;deferSpec=20220824, application/json',
+	},
+	body: JSON.stringify({ query: '{ user { name ... @defer { slow } } }' }),
+});
+for await (const part of await meros(response)) console.log(part.body);
+```
+
+See [`@defer` and `@stream`](./docs/guide/incremental.md).
+
 ## Exports
 
 | import                 | what it is                                                                                                                                               |
@@ -267,7 +291,7 @@ for await (const result of client.iterate({
 |                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
-|                        | Options: `SubscriptionsOptions` (the `subscriptions` option of `createGraxia`)                                                                           |
+|                        | Options: `SubscriptionsOptions`, `IncrementalOptions` (the `subscriptions` and `incremental` options)                                                    |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
@@ -280,6 +304,7 @@ for await (const result of client.iterate({
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
+- [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.

@@ -4,6 +4,10 @@
 works wherever graxia expects one; this is only a helper. It is curried so the context type is
 explicit while `resolvers` infers.
 
+The schema declares the `@defer` and `@stream` directives (see [`@defer` and `@stream`](./incremental.md)),
+so graphql's plain `execute` refuses it with "unexpectedly contains experimental directives": run it
+through graxia, or call `experimentalExecuteIncrementally` yourself.
+
 ```ts
 import { createSchema } from '@graxia/core';
 

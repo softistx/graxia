@@ -37,3 +37,28 @@ export function createResultMasker(
 		return masked.result;
 	};
 }
+
+/**
+ * Masks one payload of a stream: the result itself, and the `errors` of each
+ * entry of `incremental` and `completed` (the graphql 17 shapes, and the
+ * legacy `incremental` entries). A payload without errors is returned as is.
+ */
+export function maskPayload(
+	mask: ResultMasker,
+	payload: ExecutionResult,
+	state: RequestState,
+): ExecutionResult {
+	const top = mask(payload, state);
+	const out: Record<string, unknown> = { ...top };
+	let changed = top !== payload;
+	for (const key of ['incremental', 'completed'] as const) {
+		const entries = (payload as Record<string, unknown>)[key];
+		if (!Array.isArray(entries)) continue;
+		const masked = entries.map((entry) => mask(entry, state));
+		if (masked.some((entry, i) => entry !== entries[i])) {
+			out[key] = masked;
+			changed = true;
+		}
+	}
+	return changed ? (out as ExecutionResult) : payload;
+}

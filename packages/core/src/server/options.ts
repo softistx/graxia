@@ -42,6 +42,18 @@ export interface SubscriptionsOptions {
 	keepAliveMs?: number;
 }
 
+/** The `incremental` option of {@link createGraxia}: `@defer` and `@stream` delivery. */
+export interface IncrementalOptions {
+	/**
+	 * The wire format of the payloads. `graphql17` (default) is graphql 17's:
+	 * `pending` / `incremental` / `completed` with ids, what the current
+	 * incremental-delivery RFC and Apollo Client 4 read. `legacy` is the
+	 * 2022-08 format (`path` and `label` on each payload) that older Apollo,
+	 * urql and Relay clients read.
+	 */
+	format?: 'graphql17' | 'legacy';
+}
+
 /** Options of {@link createGraxia}. */
 export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	/** The schema to serve (a `SchemaWithContext<Ctx>` from `createSchema` is accepted). */
@@ -70,6 +82,12 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	batching?: BatchingOption;
 	/** Subscriptions over server-sent events (the `graphql-sse` distinct connections mode). */
 	subscriptions?: SubscriptionsOptions;
+	/**
+	 * `@defer` and `@stream` over `multipart/mixed` and server-sent events.
+	 * Enabled by default (`true` or an object); `false` answers such a query
+	 * with `INCREMENTAL_NOT_SUPPORTED` and runs graphql's plain `execute`.
+	 */
+	incremental?: boolean | IncrementalOptions;
 	/**
 	 * Receives the original error of every unexpected failure (a hook or
 	 * `execute` threw, a resolver threw a plain error). The response stays a
@@ -102,4 +120,6 @@ export interface ResolvedOptions {
 	shutdownTimeout: number;
 	sse: boolean;
 	keepAliveMs: number;
+	/** The incremental delivery format, or `false` when it is off. */
+	incremental: false | 'graphql17' | 'legacy';
 }
