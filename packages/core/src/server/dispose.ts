@@ -1,5 +1,5 @@
 import type { PluginEngine } from '../plugins/engine';
-import { RequestState } from '../plugins/state';
+import { StateBag } from '../plugins/state';
 import type { Lifecycle } from './lifecycle';
 import type { UnexpectedHandler } from './unexpected';
 
@@ -35,7 +35,7 @@ export function createDispose(
 			if (left > 0)
 				unexpected.report(
 					new Error(`dispose: ${left} operation(s) did not settle after abort`),
-					new RequestState(),
+					new StateBag(),
 					'dispose',
 				);
 			await Promise.all(stopped);

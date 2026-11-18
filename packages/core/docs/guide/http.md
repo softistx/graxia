@@ -16,6 +16,10 @@ const graxia = createGraxia({ schema });
 graxia.serve({ port: 3000 }); // POST/GET http://localhost:3000/graphql
 ```
 
+`graxia.ready` is a promise that resolves once every plugin's `setup` ran and rejects with the
+error of the first one that failed; `await graxia.ready` at startup to fail fast (see
+[Plugins](./plugins.md#setup-and-dispose)).
+
 ## Options
 
 | option            | default                                           | what it does                                                                                                                                            |
@@ -56,6 +60,13 @@ Bun.serve({
 
 The second argument is the `serverContext`, merged into every operation's context. With `path: false`
 graxia answers whatever path it is handed.
+
+The host context is typed by `createGraxia<HostCtx>`: when `HostCtx` has a required key, the
+`serverContext` of `fetch`, of `graxia.execute` and of `serve` (`graxia.serve({ serverContext })`)
+is required too, and leaving it out is a type error; when every key is optional (or there is no
+`HostCtx`) it stays optional. `serve` adds `server` (Bun's server) to it. The compiler does not
+check that this context matches what your schema's resolvers or plugins expect (see
+[Context](./context.md#how-the-context-is-built)).
 
 ## Requests
 
@@ -129,15 +140,16 @@ not seen by the next, reads fall through to what `onRequest` set.
 
 ## Request id
 
-Each request gets `crypto.randomUUID()`, stored in the request state under `requestIdKey` and sent
+Each request gets `crypto.randomUUID()`, kept in the request state and sent
 as the `x-request-id` response header, on every response. A client's `x-request-id` is never
-trusted nor echoed.
+trusted nor echoed, so an invalid or hostile header changes nothing. Plugins read the id with
+`getRequestId(state)`; they cannot set it.
 
 ```ts
-import { requestIdKey } from '@graxia/core';
+import { getRequestId } from '@graxia/core';
 
 const log = definePlugin()({
 	name: 'log',
-	onRequest: ({ state }) => console.log('request', state.get(requestIdKey)),
+	onRequest: ({ state }) => console.log('request', getRequestId(state)),
 });
 ```

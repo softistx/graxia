@@ -1,4 +1,11 @@
-export * from './document';
+export type {
+	DocumentCacheOptions,
+	DocumentCaches,
+	DocumentInput,
+	DocumentLimits,
+	TypedDocument,
+	TypedString,
+} from './document';
 export type { GraxiaErrorCode, GraxiaErrorCodes } from './errors/codes';
 export { GraxiaConfigError } from './errors/config-error';
 export { GraxiaExecuteError } from './errors/execute-error';
@@ -7,7 +14,7 @@ export { exposedError, GraxiaError, isGraxiaError } from './errors/exposed';
 export type { MaskError, MaskInfo } from './errors/mask';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type { BatchingOption } from './http/batch';
-export { requestIdKey } from './http/request-id';
+export { getRequestId } from './http/request-id';
 export type {
 	ContextOf,
 	PluginContext,
@@ -15,23 +22,8 @@ export type {
 	RequiresContext,
 } from './plugins/define';
 export { definePlugin } from './plugins/define';
-export type {
-	ChunkOut,
-	ContextOut,
-	ExecuteOut,
-	ParamsOut,
-	ParseOut,
-	PluginEngine,
-	PluginRunners,
-	RequestOut,
-	ResponseOut,
-	ValidateOut,
-} from './plugins/engine';
-export { createPluginEngine } from './plugins/engine';
-export { orderPlugins } from './plugins/order';
-export type { StageOutcome, StageRunner } from './plugins/stage';
-export type { StateKey } from './plugins/state';
-export { createStateKey, RequestState } from './plugins/state';
+export type { RequestState, StateKey } from './plugins/state';
+export { createStateKey } from './plugins/state';
 export type * from './plugins/types';
 export { createSchema } from './schema/create-schema';
 export type { TypeDefs } from './schema/typedefs';
@@ -47,9 +39,17 @@ export type {
 	TypeResolvers,
 } from './schema/types';
 export { getContext, tryGetContext } from './server/context';
-export type { Graxia, GraxiaServeOptions } from './server/create-graxia';
+export type {
+	Graxia,
+	GraxiaServeOptions,
+} from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
-export type { ExecuteArgs } from './server/execute';
+export type { ExecuteArgs, ExecuteBase } from './server/execute';
+export type {
+	OptionsArg,
+	ServerContextArg,
+	WithServerContext,
+} from './server/host-context';
 export type {
 	ContextInit,
 	GraxiaLimits,

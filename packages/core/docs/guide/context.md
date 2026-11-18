@@ -13,6 +13,10 @@ For each operation (each entry of a batch included), in this order:
 3. The `onContext` plugin hooks, each merging what it returns.
 4. `signal`, set last, always the operation's own signal.
 
+The compiler does not check that the context you build matches what the schema's resolvers (the
+`createSchema<Ctx>` type) or the plugins need: that check does not exist in 0.1.0, so a missing key
+is `undefined` at run time. Cover it with a test that runs the operation (`graxia.execute`).
+
 The object is built again for every operation and never shared: a batch of three entries runs
 with three contexts, so a plugin or resolver that mutates its context cannot leak into a sibling.
 
@@ -116,8 +120,8 @@ process.on('SIGTERM', async () => {
    `shutdownTimeout`, 10 000). Then it aborts their `signal` and waits at most `timeout` more. An
    operation that ignores its signal and is still pending then is reported through `onUnexpected`
    (one error, "dispose: N operation(s) did not settle after abort") and does not block the rest.
-4. Waits for the plugins' `setup` to finish, then runs every plugin's `onDispose()` in reverse plugin order. Every hook runs even when one throws;
-   the first error is rethrown afterwards.
+4. Waits for the plugins' `setup` to finish, then runs every plugin's `onDispose()` in reverse plugin order. Only the plugins whose `setup` succeeded are
+   disposed. Every hook runs even when one throws; the first error is rethrown afterwards.
 
 A second call returns the same promise. `graxia` also implements `Symbol.asyncDispose`:
 

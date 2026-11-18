@@ -90,6 +90,7 @@ const contextSpec: StageSpec<
 	Base & { context: Record<string, unknown> },
 	ContextOut
 > = {
+	afterHooks: false,
 	init: (input) => ({ context: { ...input.context } }),
 	payload: (input, out) => ({
 		...input,
@@ -132,6 +133,7 @@ const executeSpec: StageSpec<Base, ExecuteOut> = {
 };
 
 const chunkSpec: StageSpec<Base & { chunk: unknown }, ChunkOut> = {
+	afterHooks: false,
 	init: (input) => ({ chunk: input.chunk }),
 	payload: (input, out) => ({
 		...input,
@@ -144,6 +146,7 @@ const chunkSpec: StageSpec<Base & { chunk: unknown }, ChunkOut> = {
 };
 
 const responseSpec: StageSpec<Base & { response: Response }, ResponseOut> = {
+	afterHooks: false,
 	init: (input) => ({ response: input.response }),
 	payload: (input, out) => ({
 		...input,

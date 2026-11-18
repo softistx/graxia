@@ -11,15 +11,18 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
-- `graphql` `^17.0.0`, as a peer dependency.
+- `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
-  `tsconfig.json`; `nodenext` is not supported.
+  `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
+  both resolutions), but the sources are written for a bundler.
 
 ## Install
 
 ```sh
 bun add @graxia/core graphql@^17
 ```
+
+The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
 
 ## Quick start
 
@@ -48,7 +51,8 @@ Details in [GraphQL over HTTP](./docs/guide/http.md).
 
 A plugin is a plain object with a `name` and the hooks it needs (`onRequest`, `onParams`,
 `onParse`, `onValidate`, `onContext`, `onExecute`, `onResponse`, ...). Returning a function from a
-hook runs it after the stage.
+hook runs it after the stage (except `onContext` and `onResponse`, which have no
+after-hook; `onResponse` replaces the response with `setResponse`).
 
 ```ts
 import { createGraxia, definePlugin } from '@graxia/core';
@@ -126,7 +130,8 @@ See [Errors](./docs/guide/errors.md).
 ## Limits and caches
 
 Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, and parsed and validated documents are
-cached. Both are options; the defaults are safe.
+cached. Both are options. These limits bound parsing and the body, not what an operation costs
+to execute: see [Security in 0.1.0](#security-in-010).
 
 ```ts
 createGraxia({
@@ -137,8 +142,51 @@ createGraxia({
 });
 ```
 
-To run the parse and validation steps yourself, import `createDocumentPipeline` (`import { createDocumentPipeline } from '@graxia/core';`).
 See [Limits and caches](./docs/guide/limits-and-caches.md).
+
+## Security in 0.1.0
+
+0.1.0 is a transport and plugin engine, not a hardened edge. What it does, and what it does not:
+
+**On by default**
+
+- Error masking: a resolver error that is not an `exposedError` or a `GraphQLError` reaches the
+  client as `Unexpected error.` with a correlation id; the original goes to `onUnexpected`.
+- A request body limit (`limits.bodyBytes`, 1 MiB; more answers 413).
+- Document limits before parsing: at most 15 000 tokens and 1 000 nesting levels
+  (`limits.tokens`, `limits.nesting`); a failure is `GRAPHQL_PARSE_FAILED`.
+- Batching is off unless you set `batching: { limit }`.
+- A client's `x-request-id` is never trusted or echoed; graxia generates the id.
+
+**Not in 0.1.0**
+
+- CSRF prevention: a browser can send a simple cross-site `GET` or a form-encoded request to
+  the endpoint with the user's cookies. graxia does not check `Origin` or require a preflight header.
+- Introspection control: introspection is always on.
+- Operation limits: no depth, alias, directive or complexity limit, and no field rate limit.
+- Trusted or persisted documents: any valid document runs.
+
+These are planned (see the [roadmap](./docs/roadmap.md)). Until they land:
+
+- Put the endpoint behind a proxy or gateway that rate-limits and caps request cost, and do not
+  expose it to browsers with cookie auth without your own CSRF check.
+- Add a plugin whose `onRequest` refuses requests that lack a header a browser cannot send
+  cross-site without a preflight:
+
+```ts
+import { definePlugin } from '@graxia/core';
+
+const requireCustomHeader = definePlugin()({
+	name: 'require-custom-header',
+	onRequest: ({ request, respond }) => {
+		if (!request.headers.has('x-requested-with'))
+			respond(new Response('Missing x-requested-with', { status: 403 }));
+	},
+});
+```
+
+- Add a validation rule with `onValidate` (`addRule`) to reject introspection or deep documents
+  in production.
 
 ## `execute`
 
@@ -164,22 +212,23 @@ socket and without importing a test runner.
 ```ts
 import { createTestClient, expectNoErrors } from '@graxia/core/testing';
 
-const client = createTestClient(graxia, { headers: { 'x-user': 'ada' } });
-const result = await client.query<{ me: string }>('{ me }');
+const client = createTestClient(graxia, {
+	headers: { 'x-request-source': 'test' },
+});
+const result = await client.query<{ hello: string }>('{ hello }');
 expectNoErrors(result);
 result.status; // 200
-result.data?.me; // 'ada'
+result.data?.hello; // 'hello world'
 ```
 
 ## Exports
 
-| import                                                       | what it is                                                                                                                                             |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@graxia/core`                                               | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `RequestState`, `requestIdKey`                              |
-|                                                              | Context: `getContext`, `tryGetContext`. Documents: `createDocumentPipeline`, `createLruCache`, `PARSE_FAILED`                                          |
-|                                                              | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these |
-| `@graxia/core` (advanced, for transport and adapter authors) | `createPluginEngine` builds the engine that runs plugin hooks; `orderPlugins` applies `enforce` ordering and rejects duplicate names                   |
-| `@graxia/core/testing`                                       | `createTestClient` and `expectNoErrors`, for tests                                                                                                     |
+| import                 | what it is                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                              |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                 |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                     |
 
 ## Documentation
 
@@ -190,7 +239,7 @@ result.data?.me; // 'ada'
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
-- [Limits and caches](./docs/guide/limits-and-caches.md): parse limits, caches, `createDocumentPipeline`.
+- [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 

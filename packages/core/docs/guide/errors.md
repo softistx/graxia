@@ -44,6 +44,13 @@ coercion), when it is a genuine non-null violation, or when its original is a `G
 origin (`exposedError` included). Everything else (a plain `Error`, a thrown string, a library error)
 is **masked**. `path` and `locations` are always kept. `originalError` and stacks are never serialized.
 
+## Validation errors
+
+A document that parses but does not validate against the schema answers with graphql's own
+errors (exposed), each carrying `extensions.code: "GRAPHQL_VALIDATION_FAILED"` (Apollo
+compatible). The HTTP status is unchanged (400 with `application/graphql-response+json`, 200 with
+`application/json`). Errors that a plugin supplies with `setResult` keep what the plugin gave them.
+
 ## Typed codes
 
 `code` is typed as a key of `GraxiaErrorCodes`: `BAD_USER_INPUT`, `UNAUTHENTICATED`, `FORBIDDEN`,
@@ -93,7 +100,8 @@ A user who reports the id lets you find the original error in your logs (see
 `onUnexpected(error, { requestId, correlationId, phase })` receives the original, unmasked error of
 every unexpected failure. `requestId` and `correlationId` are the same value; `phase` is `request`
 (transport and `onRequest`-level failures), `execution` (a hook, `context` or `execute` failing inside an operation, or a resolver that threw) or
-`dispose` (operations left after shutdown, which have no id).
+`dispose` (operations left after shutdown, which have no id) or `setup` (a plugin's `setup`
+failed; reported once, with no id; see [Plugins](./plugins.md#setup-and-dispose)).
 
 ```ts
 createGraxia({

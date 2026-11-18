@@ -4,7 +4,7 @@ import {
 	type PluginContext,
 	type RequiresContext,
 } from './define';
-import { createStateKey, RequestState, type StateKey } from './state';
+import { createStateKey, StateBag, type StateKey } from './state';
 
 type Equal<A, B> =
 	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -64,7 +64,7 @@ definePlugin()({ name: 'bad', onContext: () => 'x' });
 
 // state keys are typed
 const key: StateKey<number> = createStateKey<number>('n');
-const state = new RequestState();
+const state = new StateBag();
 state.set(key, 1);
 assertType<Equal<ReturnType<typeof state.get<number>>, number | undefined>>();
 // @ts-expect-error a string is not a number
@@ -78,3 +78,10 @@ const unmet: RequiresContext<
 > = [needsUser, auth];
 
 export { chained, missing, ok, unmet };
+
+// `onResponse` has no after-hook: returning a function is a type error.
+export const noAfterHookOnResponse = definePlugin()({
+	name: 'no-after',
+	// @ts-expect-error onResponse returns nothing; use setResponse
+	onResponse: () => () => {},
+});

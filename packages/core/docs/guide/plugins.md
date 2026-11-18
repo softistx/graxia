@@ -29,15 +29,35 @@ the order is kept. Before-hooks run in that order, after-hooks in reverse. Two p
 `name` throw a `GraxiaConfigError` naming both indexes.
 
 ```ts
-import { orderPlugins } from '@graxia/core';
-
-orderPlugins([
-	{ name: 'a', enforce: 'post' },
-	{ name: 'b' },
-	{ name: 'c', enforce: 'pre' },
-]);
-// c, b, a
+createGraxia({
+	schema,
+	plugins: [
+		{ name: 'a', enforce: 'post' },
+		{ name: 'b' },
+		{ name: 'c', enforce: 'pre' },
+	],
+}); // runs c, b, a
 ```
+
+## After-hooks
+
+A hook of `onRequest`, `onParams`, `onParse`, `onValidate`, `onExecute` or `onSubscribe` may return a
+function: it runs after the stage, in reverse plugin order, and receives the stage's outcome. Every
+after-hook runs even if the stage itself, a later after-hook or the step in between threw (for
+`onValidate`, a throwing validation rule included); the first error is rethrown afterwards and
+answers a 500.
+
+`onContext` and `onResponse` have **no after-hook**: `onContext` returns an object to merge, and
+`onResponse` returns nothing (its type is `MaybePromise<void>`, so returning a function is a type
+error) and replaces the response with `setResponse`. `onResponse` hooks run in plugin order on the
+final response.
+
+## Stages that do not run yet
+
+`onSubscribe` and `onResultChunk` are declared so that plugins can be written against the final
+shape, but nothing calls them in 0.1.0: subscriptions and incremental delivery (`@defer`,
+`@stream`) arrive in a later release (see the [roadmap](../roadmap.md)). Over plain HTTP they
+are never invoked.
 
 ## Short-circuit and replacing steps
 
@@ -72,21 +92,32 @@ wins, and the caller skips the step when `out.document`, `out.errors` or `out.re
 
 ## Hook errors
 
-A stage runner never rejects for a hook error. It returns `{ out, error?, runAfter }`: hooks after
-the thrower are skipped, `error` is the original thrown value (not wrapped), and `runAfter(done)`
-still unwinds the after-hooks of the hooks that ran before it, in reverse order. The caller decides
-what to do with `error`. Only a `setup` error is wrapped, in a `GraxiaPluginError` that names the
-plugin.
+A hook that throws does not abort its stage mid-way: the hooks after the thrower are skipped, the
+after-hooks of the hooks that already ran still unwind in reverse order, and the request answers a
+generic 500 (`Unexpected error.`, with the original error sent to `onUnexpected`). The error you
+receive is the original thrown value, not wrapped. Only a `setup` error is wrapped, in a
+`GraxiaPluginError` that names the plugin.
+
+## Setup and dispose
+
+`setup(api)` runs once, awaited, in plugin order, when the instance is created. If one throws,
+the sequence stops there (later plugins do not run `setup`), `graxia.ready` rejects with a
+`GraxiaPluginError` naming the plugin, and the failure is reported once through `onUnexpected`
+with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
 ```ts
-const outcome = await engine.runners.onRequest({ request, state });
-if (outcome.error) console.error(outcome.error);
-await outcome.runAfter({ response: outcome.out.response });
+const graxia = createGraxia({ schema, plugins: [db] });
+await graxia.ready; // throws GraxiaPluginError: Plugin "db" failed during setup: ...
 ```
+
+`onDispose()` runs only for the plugins whose `setup` succeeded, so a plugin whose setup failed
+is never asked to close what it never opened.
 
 ## Per-request state
 
-Typed keys into a bag every hook of one request shares. Two keys with the same name are distinct.
+Typed keys into a bag (`RequestState`: `get`, `set`, `has`, `require`, `responseHeaders`) every hook of
+one request shares. Two keys with the same name are distinct. The request's id is read with
+`getRequestId(state)`.
 
 ```ts
 import { createStateKey, definePlugin } from '@graxia/core';
@@ -104,7 +135,7 @@ const auth = definePlugin()({
 ```
 
 Over HTTP, `onRequest` sees the request's state. Each operation (the single one, or each entry of a
-batch) then runs on `state.fork()`: a child that reads through to the request state, writes only to
+batch) then runs on a forked state: a child that reads through to the request state, writes only to
 itself and shares `responseHeaders` and the request id. Sibling batch entries never see each other's
 writes.
 
@@ -132,21 +163,7 @@ type Ctx = ContextOf<[typeof auth, typeof tenant]>; // { user: { id: string } } 
 the plugins before it) do not provide. Returning something other than an object or nothing from
 `onContext` throws a `GraxiaConfigError`.
 
-## Running the engine
-
-`createPluginEngine` is what the transports call; most applications never do.
-
-```ts
-import { createPluginEngine, RequestState } from '@graxia/core';
-
-const engine = createPluginEngine([timing, gate]);
-await engine.init();
-const outcome = await engine.runners.onRequest({
-	request,
-	state: new RequestState(),
-});
-outcome.out.response; // set when a hook answered
-await outcome.runAfter({ response: outcome.out.response });
-```
-
-`engine.has("onExecute")` tells whether any plugin defines a stage, so a transport can skip it.
+**Not checked in 0.1.0**: `createGraxia` does not verify, at compile time, that the context the
+`context` option, the host's `serverContext` and the plugins build is what the schema's resolvers
+(`createSchema<Ctx>`) or a plugin's `definePlugin<Requires>` expect. `RequiresContext` is a helper
+you can assert with yourself; a missing key shows up at run time, so cover it with a test.

@@ -3,15 +3,15 @@ import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
 import { createRequestId, requestIdKey } from '../http/request-id';
-import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
-import { RequestState } from '../plugins/state';
+import { StateBag } from '../plugins/state';
 import { createDispose } from './dispose';
 import { createExecute, type ExecuteArgs } from './execute';
-import { dispatch } from './handle';
+import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
+import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
 import { createUnexpectedHandler } from './unexpected';
@@ -24,9 +24,13 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	/**
 	 * Handles one request: a Web `Request` in, a `Response` out. Mount it in
 	 * your own `Bun.serve` routes. `serverContext` is merged into every
-	 * operation's context. Never rejects.
+	 * operation's context; it is required when `HostCtx` has required keys.
+	 * Never rejects.
 	 */
-	fetch(request: Request, serverContext?: HostCtx): Promise<Response>;
+	fetch(
+		request: Request,
+		...serverContext: ServerContextArg<HostCtx>
+	): Promise<Response>;
 	/**
 	 * Runs one operation in process (tests, server-side jobs): a synthetic
 	 * `POST` request goes through the same pipeline as HTTP (plugins, context,
@@ -44,8 +48,21 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	execute<Result = Record<string, any>, Variables = Record<string, any>>(
 		args: ExecuteArgs<Result, Variables, HostCtx>,
 	): Promise<ExecutionResult<Result>>;
-	/** Starts `Bun.serve` with this instance as its `fetch`. */
-	serve(options?: GraxiaServeOptions): Bun.Server<undefined>;
+	/**
+	 * Resolves once every plugin's `setup` ran; rejects with the
+	 * `GraxiaPluginError` of the first one that failed (also reported once
+	 * through `onUnexpected`, phase `setup`). Await it at startup to fail fast;
+	 * until then requests wait for it, and answer a 500 when it rejected.
+	 */
+	readonly ready: Promise<void>;
+	/**
+	 * Starts `Bun.serve` with this instance as its `fetch`. The context of each
+	 * operation holds `serverContext` (required when `HostCtx` has required keys)
+	 * and `server`, the `Bun.Server`.
+	 */
+	serve(
+		...options: OptionsArg<HostCtx, GraxiaServeOptions>
+	): Bun.Server<undefined>;
 	/**
 	 * Shuts down: stops accepting requests (new ones answer 503
 	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
@@ -96,8 +113,12 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const engine = createPluginEngine(options.plugins ?? []);
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
+	// Handled here so a failing `setup` is never an unhandled rejection; reported once.
 	ready.catch(() => {});
 	const unexpected = createUnexpectedHandler(options.onUnexpected);
+	ready.catch((error: unknown) =>
+		unexpected.report(error, new StateBag(), 'setup'),
+	);
 	const rt: Runtime = {
 		schema: options.schema,
 		engine,
@@ -122,7 +143,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const handleWith = async (
 		request: Request,
 		serverContext: Record<string, unknown>,
-		state = new RequestState(),
+		state = new StateBag(),
 	) => {
 		state.set(requestIdKey, createRequestId());
 		if (lifecycle.closing) return seal(shuttingDown(), state);
@@ -132,7 +153,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 				state,
 			);
 		} catch (error) {
-			return seal(rt.unexpected.respond(error, state), state);
+			return lastResort(rt, error, state);
 		}
 	};
 	const dispose = createDispose({
@@ -149,13 +170,16 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		path: resolved.path,
 	});
 	return {
+		ready,
 		execute,
-		fetch: (request, serverContext) =>
+		fetch: (request, ...[serverContext]) =>
 			handleWith(request, { ...serverContext }),
-		serve: (serveOptions) => {
+		serve: (...[serveOptions]) => {
+			const { serverContext, ...bunOptions } = serveOptions ?? {};
 			const server = Bun.serve<undefined>({
-				...serveOptions,
-				fetch: (request, server) => handleWith(request, { server }),
+				...(bunOptions as GraxiaServeOptions),
+				fetch: (request, server) =>
+					handleWith(request, { ...serverContext, server }),
 			});
 			servers.push(server);
 			return server;
@@ -163,55 +187,4 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
-}
-
-/** What a request arriving after `dispose()` started gets. */
-function shuttingDown(): Response {
-	return refusal(
-		503,
-		'Server is shutting down.',
-		{ connection: 'close' },
-		'SHUTTING_DOWN',
-	);
-}
-
-/** Path and method refusals, plugins around the dispatch; never rejects. */
-async function handle(
-	rt: Runtime,
-	request: Request,
-	serverContext: Record<string, unknown>,
-	state: RequestState,
-): Promise<Response> {
-	const { path } = rt.options;
-	if (path !== false && new URL(request.url).pathname !== path)
-		return refusal(404, 'Not found.');
-	if (request.method !== 'GET' && request.method !== 'POST')
-		return refusal(405, 'Only GET and POST are allowed.', {
-			allow: 'GET, POST',
-		});
-	try {
-		await rt.ready;
-		const entered = await rt.engine.runners.onRequest({ request, state });
-		let response =
-			entered.error !== undefined
-				? rt.unexpected.respond(entered.error, state)
-				: (entered.out.response ??
-					(await dispatch(rt, request, serverContext, state)));
-		const afterError = await entered.runAfter({ response }).then(
-			() => undefined,
-			(error: unknown) => error,
-		);
-		if (afterError !== undefined && entered.error === undefined)
-			response = rt.unexpected.respond(afterError, state);
-		const last = await rt.engine.runners.onResponse({
-			request,
-			state,
-			response,
-		});
-		return last.error !== undefined
-			? rt.unexpected.respond(last.error, state)
-			: last.out.response;
-	} catch (error) {
-		return rt.unexpected.respond(error, state);
-	}
 }

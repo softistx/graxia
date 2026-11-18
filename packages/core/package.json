@@ -1,7 +1,7 @@
 {
 	"name": "@graxia/core",
 	"version": "0.0.0",
-	"description": "The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, SSE, WebSocket, trusted documents, OpenTelemetry",
+	"description": "The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, in-process execute and a test client",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -31,9 +31,6 @@
 		"server",
 		"bun",
 		"plugins",
-		"sse",
-		"websocket",
-		"graphql-ws",
 		"graphql-http",
 		"graphql-over-http",
 		"graphql-server",
@@ -68,7 +65,7 @@
 		"graphql-http": "1.23.1"
 	},
 	"peerDependencies": {
-		"graphql": "^17.0.0",
+		"graphql": "^17.1.0",
 		"typescript": "^6.0.3 || ^7.0.0"
 	},
 	"engines": {
