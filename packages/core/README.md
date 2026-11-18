@@ -223,8 +223,8 @@ result.data?.hello; // 'hello world'
 
 ## PubSub
 
-A typed in-memory PubSub for subscription resolvers. It lives in one process; a Redis
-implementation of the same interface is planned.
+A typed in-memory PubSub for subscription resolvers. It lives in one process; for several
+instances, `redisPubSub` from `@graxia/redis` implements the same interface.
 
 ```ts
 import { createMemoryPubSub, filterIterable } from '@graxia/core';

@@ -1,3 +1,6 @@
+export type { MemoryCacheOptions } from './cache/memory';
+export { createMemoryCache } from './cache/memory';
+export type { CacheSetOptions, KeyValueCache } from './cache/types';
 export type {
 	DocumentCacheOptions,
 	DocumentCaches,
