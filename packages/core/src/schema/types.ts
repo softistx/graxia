@@ -3,6 +3,7 @@ import type {
 	GraphQLScalarType,
 	GraphQLSchema,
 } from 'graphql';
+import type { TypeDefs } from './typedefs';
 
 /**
  * A field resolver. `Args` and `Result` default to loose types; codegen output
@@ -75,7 +76,7 @@ export type SchemaWithContext<Ctx> = GraphQLSchema & {
 /** What `createSchema` accepts. */
 export type SchemaOptions<R> = {
 	/** SDL strings and/or documents; `extend type` across entries works. */
-	typeDefs: import('./typedefs').TypeDefs;
+	typeDefs: TypeDefs;
 	/** One resolver map or several, merged per type and field. */
 	resolvers?: R | readonly R[];
 };

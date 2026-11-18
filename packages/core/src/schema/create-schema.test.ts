@@ -121,6 +121,39 @@ describe('createSchema attachments', () => {
 		expect(result).toEqual({ data: { echo: 'MIXED' } });
 	});
 
+	test('scalar name mismatch throws, naming both', () => {
+		const Other = new GraphQLScalarType({ name: 'Other' });
+		expect(() =>
+			createSchema()({
+				typeDefs: 'scalar S type Query { a: S }',
+				resolvers: { S: Other },
+			}),
+		).toThrow(/scalar S .* named Other/);
+	});
+
+	test('SDL @specifiedBy is kept, else the scalar one is used', () => {
+		const S = new GraphQLScalarType({
+			name: 'S',
+			specifiedByURL: 'https://x/s',
+		});
+		const withSdl = createSchema()({
+			typeDefs:
+				'scalar S @specifiedBy(url: "https://sdl/s") type Query { a: S }',
+			resolvers: { S },
+		});
+		expect((withSdl.getType('S') as GraphQLScalarType).specifiedByURL).toBe(
+			'https://sdl/s',
+		);
+		const without = createSchema()({
+			typeDefs: 'scalar S type Query { a: S }',
+			resolvers: { S },
+		});
+		expect((without.getType('S') as GraphQLScalarType).specifiedByURL).toBe(
+			'https://x/s',
+		);
+		expect(without.getType('S')?.name).toBe('S');
+	});
+
 	test('SDL description wins over the scalar one', () => {
 		const S = new GraphQLScalarType({ name: 'S', description: 'x' });
 		const schema = createSchema()({

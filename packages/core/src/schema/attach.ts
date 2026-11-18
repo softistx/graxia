@@ -16,9 +16,9 @@ import { GraxiaConfigError } from '../errors/config-error';
 
 type Loose = Record<string, unknown>;
 
-const fail = (message: string): never => {
+function fail(message: string): never {
 	throw new GraxiaConfigError(message);
-};
+}
 
 /**
  * Attaches a merged resolver map to a freshly built (unshared) schema by
@@ -31,7 +31,6 @@ export function attachResolvers(schema: GraphQLSchema, resolvers: Loose): void {
 			fail(
 				`Resolvers for ${name} are defined but the schema has no type ${name}`,
 			);
-			continue;
 		}
 		attachType(type, value);
 	}
@@ -71,15 +70,23 @@ function attachType(type: GraphQLNamedType, value: unknown): void {
 function attachScalar(type: GraphQLScalarType, value: unknown): void {
 	if (!(value instanceof GraphQLScalarType)) {
 		fail(`Resolvers for scalar ${type.name} must be a GraphQLScalarType`);
-		return;
 	}
-	const rest = value.toConfig();
+	if (value.name !== type.name) {
+		fail(
+			`Resolvers for scalar ${type.name} is a GraphQLScalarType named ${value.name}; the names must match`,
+		);
+	}
+	const config = value.toConfig();
 	Object.assign(type, {
-		...rest,
-		astNode: type.astNode,
-		extensionASTNodes: type.extensionASTNodes,
-		extensions: type.extensions,
-		description: type.description ?? rest.description,
+		serialize: config.serialize,
+		parseValue: config.parseValue,
+		parseLiteral: config.parseLiteral,
+		coerceOutputValue: config.coerceOutputValue,
+		coerceInputValue: config.coerceInputValue,
+		coerceInputLiteral: config.coerceInputLiteral,
+		valueToLiteral: config.valueToLiteral,
+		specifiedByURL: type.specifiedByURL ?? config.specifiedByURL,
+		description: type.description ?? config.description,
 	});
 }
 
@@ -90,7 +97,6 @@ function attachEnum(type: GraphQLEnumType, map: Loose): void {
 			fail(
 				`Resolver ${type.name}.${valueName} is defined but enum ${type.name} has no value ${valueName}`,
 			);
-			continue;
 		}
 		(enumValue as { value: unknown }).value = internal;
 	}
@@ -128,7 +134,6 @@ function attachFields(
 				fail(
 					`Resolver ${type.name}.${key} is defined but ${type.name} has no field ${key}`,
 				);
-				continue;
 			}
 			attachField(field, type.name, key, entry);
 		}
