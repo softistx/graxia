@@ -25,11 +25,51 @@ async function payload(
 		: chunk;
 }
 
+/** What ends or silences a stream: the operation's own signals. */
+export interface StreamSignals {
+	/** Aborts when the stream must end now (the client left, the server is closing). */
+	stop: AbortSignal;
+	/** Aborts when the client left: nothing more is written, not even the format's end. */
+	clientGone: AbortSignal;
+}
+
 /**
- * The answer of an operation as a stream: its results framed by `format` (SSE
- * `next` events, multipart parts), the last one followed by the format's end.
- * A stream outcome (a subscription, an incremental query) is pulled live; a
- * plain result is sent as the one and only payload.
+ * An operation's results as a stream of framed payloads (see `payloadStream`):
+ * a stream outcome (a subscription, an incremental query) is pulled live; a
+ * plain result is sent as the one and only payload. Shared by the HTTP
+ * (`streamResponse`) and WebSocket transports.
+ */
+export function streamOutcome(
+	rt: Runtime,
+	call: { request: Request; state: RequestState },
+	outcome: Extract<Outcome, { kind: 'stream' | 'result' }>,
+	format: StreamFormat,
+	signals: StreamSignals,
+) {
+	const { request, state } = call;
+	const live = outcome.kind === 'stream';
+	const once = (async function* () {
+		yield (outcome as { result: ExecutionResult }).result;
+	})();
+	return payloadStream({
+		format,
+		source: live ? outcome.source : once,
+		scope: live ? outcome.scope : (work) => work(),
+		prepare: (value) => payload(rt, request, state, value),
+		fail: (error) => {
+			rt.unexpected.report(error, state, 'execution');
+			return rt.unexpected.body(state);
+		},
+		keepAliveMs: rt.options.keepAliveMs,
+		...signals,
+		release: () => (live ? outcome.stop.abort() : undefined),
+	});
+}
+
+/**
+ * The answer of an operation as a stream response: its results framed by
+ * `format` (SSE `next` events, multipart parts), the last one followed by the
+ * format's end.
  */
 export function streamResponse(
 	rt: Runtime,
@@ -41,29 +81,16 @@ export function streamResponse(
 	outcome: Extract<Outcome, { kind: 'stream' | 'result' }>,
 	format: StreamFormat,
 ): Response {
-	const { request, state } = call;
-	const live = outcome.kind === 'stream';
-	if (live) releaseIdleTimeout(call.serverContext['server'], request);
-	const once = (async function* () {
-		yield (outcome as { result: ExecutionResult }).result;
-	})();
-	const stream = payloadStream({
-		format,
-		source: live ? outcome.source : once,
-		scope: live ? outcome.scope : (work) => work(),
-		prepare: (value) => payload(rt, request, state, value),
-		fail: (error) => {
-			rt.unexpected.report(error, state, 'execution');
-			return rt.unexpected.body(state);
-		},
-		keepAliveMs: rt.options.keepAliveMs,
+	const { request } = call;
+	if (outcome.kind === 'stream')
+		releaseIdleTimeout(call.serverContext['server'], request);
+	const stream = streamOutcome(rt, call, outcome, format, {
 		stop: AbortSignal.any([
 			request.signal,
 			rt.lifecycle.stopping,
 			rt.lifecycle.shutdown,
 		]),
 		clientGone: request.signal,
-		release: () => (live ? outcome.stop.abort() : undefined),
 	});
 	void rt.lifecycle.track(stream.done);
 	return new Response(stream.body, { headers: format.headers() });

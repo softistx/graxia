@@ -7,6 +7,7 @@ import type {
 	GraxiaPlugin,
 	MaybePromise,
 } from '../plugins/types';
+import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
 /** What the `context` option receives for each operation. */
@@ -40,6 +41,12 @@ export interface SubscriptionsOptions {
 	sse?: boolean;
 	/** Milliseconds between keep-alive comments on an open stream. 12 000 by default; finite and above 0. */
 	keepAliveMs?: number;
+	/**
+	 * Serves subscriptions, queries and mutations over WebSocket
+	 * (`graphql-transport-ws`) on the same path. Enabled by default; `false`
+	 * leaves an upgrade request to the normal HTTP handling.
+	 */
+	ws?: boolean | WebSocketOptions;
 }
 
 /** The `incremental` option of {@link createGraxia}: `@defer` and `@stream` delivery. */
@@ -120,6 +127,8 @@ export interface ResolvedOptions {
 	shutdownTimeout: number;
 	sse: boolean;
 	keepAliveMs: number;
+	/** The WebSocket settings, or `false` when it is off. */
+	ws: ResolvedWebSocket | false;
 	/** The incremental delivery format, or `false` when it is off. */
 	incremental: false | 'graphql17' | 'legacy';
 }

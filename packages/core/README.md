@@ -257,7 +257,30 @@ for await (const result of client.iterate({
 ```
 
 `onSubscribe` and `onResultChunk` plugin hooks run on these streams. See
-[Subscriptions](./docs/guide/subscriptions.md); WebSocket (`graphql-transport-ws`) comes later.
+[Subscriptions](./docs/guide/subscriptions.md).
+
+### Over WebSocket
+
+`graphql-transport-ws` on Bun's WebSocket is on by default, on the same path, for the `graphql-ws`
+client. `connectionParams` reach `onConnect` and the context; `dispose()` closes sockets with 1001.
+
+```ts
+const graxia = createGraxia({
+	schema,
+	subscriptions: {
+		ws: {
+			onConnect: ({ connectionParams }) => connectionParams?.token === 'secret',
+		},
+	},
+});
+graxia.serve({ port: 3000 }); // ws://localhost:3000/graphql
+
+// your own Bun.serve:
+//   fetch: (req, server) => graxia.isUpgrade(req) ? graxia.upgrade(req, server) : graxia.fetch(req),
+//   websocket: graxia.websocket
+```
+
+See [Subscriptions over WebSocket](./docs/guide/websocket.md): auth, close codes, keep-alive, limits.
 
 ## `@defer` and `@stream`
 
@@ -280,7 +303,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
-|                        | Options: `SubscriptionsOptions`, `IncrementalOptions` (the `subscriptions` and `incremental` options)                                                    |
+|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
@@ -290,6 +313,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./docs/guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
+- [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
