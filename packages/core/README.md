@@ -251,7 +251,7 @@ import { createClient } from 'graphql-sse';
 
 const client = createClient({ url: 'http://localhost:3000/graphql' });
 for await (const result of client.iterate({
-	query: 'subscription { post(id: "42") { id } }',
+	query: 'subscription { tick }',
 }))
 	console.log(result.data);
 ```
@@ -267,6 +267,7 @@ for await (const result of client.iterate({
 |                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
+|                        | Options: `SubscriptionsOptions` (the `subscriptions` option of `createGraxia`)                                                                           |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation

@@ -46,6 +46,7 @@ async function payload(
 	state: RequestState,
 	value: unknown,
 ): Promise<unknown> {
+	// Called inside the operation's scope (see `eventStream`).
 	const stage = await rt.engine.runners.onResultChunk({
 		request,
 		state,

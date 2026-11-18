@@ -111,6 +111,12 @@ cancelled, graxia calls the source iterator's `return()` and clears the keep-ali
 for `shutdownTimeout` on subscriptions. A stream whose source ignores the abort is dropped at the end
 of the timeout, like any operation.
 
+A custom source (a `setResult` iterator, or your own `subscribe` function) must settle a pending
+`next()` when `return()` is called, or listen to the operation's `signal`. A plain `async function*`
+queues `return()` behind its pending `next()` and so cannot be stopped while it waits for an event.
+graphql's `subscribe` and the memory PubSub already do this. A `return()` that throws or rejects is
+ignored: the stream still ends and `dispose()` does not wait for it.
+
 ## Bun idle timeout
 
 `Bun.serve` closes a connection that stays silent for `idleTimeout` seconds (10 by default). For an

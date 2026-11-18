@@ -131,7 +131,7 @@ await fetch('http://localhost:3000/graphql', {
 
 `graxia.execute` and the test client never run subscriptions, so they always get this refusal.
 
-## Subscriptions are not supported over this transport (subscriptions.sse is false)
+## Subscriptions are not supported over this transport (subscriptions.sse is false).
 
 `createGraxia({ subscriptions: { sse: false } })` turns the event stream off. Remove the option (it is
 `true` by default).
@@ -145,10 +145,12 @@ Pass a count of milliseconds such as `12_000`.
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
 
-## An event stream stops after about 10 seconds with my own `Bun.serve`
+## Streams may be cut after `idleTimeout` with my own `Bun.serve`
 
-If it happens, `Bun.serve` closes a silent connection after `idleTimeout` seconds (10 by default). `graxia.serve()`
-disables it for each stream; with your own server, pass it:
+`Bun.serve` may close a silent connection after `idleTimeout` seconds (10 by default). `graxia.serve()`
+calls `server.timeout(request, 0)` for each stream as a precautionary safeguard (a 1 s `idleTimeout`
+probe did not cut the stream on Bun 1.4.4, but other versions may). With your own server, pass it
+(see [Bun idle timeout](./guide/subscriptions.md#bun-idle-timeout)):
 
 ```ts
 Bun.serve({ fetch: (request, server) => graxia.fetch(request, { server }) });

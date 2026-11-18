@@ -51,12 +51,12 @@ export function eventStream(init: EventStreamInit): {
 	let finished = false;
 	let timer: ReturnType<typeof setInterval> | undefined;
 	const { promise: done, resolve } = Promise.withResolvers<void>();
-	const stopped = new Promise<'stop'>((resolveStop) => {
+	const onStopped = () => resolveStop('stop');
+	let resolveStop!: (value: 'stop') => void;
+	const stopped = new Promise<'stop'>((resolvePromise) => {
+		resolveStop = resolvePromise;
 		if (init.stop.aborted) resolveStop('stop');
-		else
-			init.stop.addEventListener('abort', () => resolveStop('stop'), {
-				once: true,
-			});
+		else init.stop.addEventListener('abort', onStopped, { once: true });
 	});
 	const body = new ReadableStream<Uint8Array>(
 		{
@@ -72,13 +72,24 @@ export function eventStream(init: EventStreamInit): {
 					} catch {
 						// The client already cancelled.
 					}
-					init.release();
-					Promise.resolve(init.source.return?.()).catch(() => {});
-					resolve();
+					init.stop.removeEventListener('abort', onStopped);
+					init.stop.removeEventListener('abort', onAbort);
+					try {
+						init.release();
+					} catch {
+						// Releasing must not keep `done` pending.
+					}
+					// A throw or a rejection of `return()` must not keep `done` pending either.
+					try {
+						Promise.resolve(init.source.return?.())
+							.catch(() => {})
+							.finally(resolve);
+					} catch {
+						resolve();
+					}
 				};
-				init.stop.addEventListener('abort', () => finish(true), {
-					once: true,
-				});
+				const onAbort = () => finish(true);
+				init.stop.addEventListener('abort', onAbort, { once: true });
 				if (init.stop.aborted) finish(true);
 				// Flushes the headers before the first event, so a client knows it is connected.
 				if (finished) return;
@@ -95,7 +106,7 @@ export function eventStream(init: EventStreamInit): {
 					const step = await Promise.race([pending, stopped]);
 					if (finished) return;
 					if (step === 'stop' || step.done) return finish(true);
-					const data = await init.prepare(step.value);
+					const data = await init.scope(() => init.prepare(step.value));
 					if (!finished) controller.enqueue(nextEvent(data));
 				} catch (error) {
 					if (finished) return;
