@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { negotiate } from './negotiate';
+import { negotiate, prefersEventStream, prefersMultipart } from './negotiate';
 
 describe('negotiate', () => {
 	test('absent, empty and wildcard accept give application/json', () => {
@@ -60,5 +60,45 @@ describe('negotiate', () => {
 		expect(
 			negotiate('application/graphql-response+json, application/json'),
 		).toBe('application/graphql-response+json');
+	});
+});
+
+describe('prefersEventStream', () => {
+	test('only a named text/event-stream with q above 0 counts', () => {
+		expect(prefersEventStream(null)).toBe(false);
+		expect(prefersEventStream('*/*')).toBe(false);
+		expect(prefersEventStream('application/json')).toBe(false);
+		expect(prefersEventStream('text/event-stream')).toBe(true);
+		expect(prefersEventStream('text/event-stream;q=0')).toBe(false);
+	});
+	test('q-values and order decide against the JSON types', () => {
+		expect(prefersEventStream('text/event-stream, application/json')).toBe(
+			true,
+		);
+		expect(prefersEventStream('application/json, text/event-stream')).toBe(
+			false,
+		);
+		expect(
+			prefersEventStream('application/json;q=0.5, text/event-stream'),
+		).toBe(true);
+		expect(
+			prefersEventStream('text/event-stream;q=0.5, application/json'),
+		).toBe(false);
+		expect(prefersEventStream('text/event-stream, */*;q=0.8')).toBe(true);
+	});
+});
+
+describe('prefersMultipart', () => {
+	test('named multipart/mixed (parameters ignored) before JSON wins', () => {
+		expect(
+			prefersMultipart('multipart/mixed;deferSpec=20220824, application/json'),
+		).toBe(true);
+		expect(prefersMultipart('multipart/mixed')).toBe(true);
+	});
+	test('never through a wildcard, absent, q=0, or after a JSON type', () => {
+		expect(prefersMultipart(null)).toBe(false);
+		expect(prefersMultipart('*/*')).toBe(false);
+		expect(prefersMultipart('multipart/mixed;q=0')).toBe(false);
+		expect(prefersMultipart('application/json, multipart/mixed')).toBe(false);
 	});
 });

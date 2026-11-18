@@ -1,14 +1,23 @@
 import { parseBatch } from '../http/batch';
 import { type BodyResult, isJsonContentType, readBody } from '../http/body';
-import { type MediaType, negotiate } from '../http/negotiate';
+import { multipartFormat } from '../http/multipart';
+import {
+	type MediaType,
+	negotiate,
+	prefersEventStream,
+	prefersMultipart,
+} from '../http/negotiate';
 import { paramsFromJson, paramsFromUrl } from '../http/params';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
+import { sseFormat } from '../http/sse';
+import type { StreamFormat } from '../http/stream';
 import type { StateBag } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { resultKey } from './execute-state';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
+import { streamResponse } from './stream-response';
 
 type Read =
 	| { response: Response }
@@ -35,7 +44,11 @@ export async function dispatch(
 ): Promise<Response> {
 	try {
 		state.responseHeaders.append('vary', 'Accept');
-		const media = negotiate(request.headers.get('accept'));
+		const accept = request.headers.get('accept');
+		const sse = rt.options.sse && prefersEventStream(accept);
+		const multipart =
+			!sse && rt.options.incremental !== false && prefersMultipart(accept);
+		const media = sse || multipart ? 'application/json' : negotiate(accept);
 		if (media === undefined)
 			return refusal(
 				406,
@@ -47,13 +60,35 @@ export async function dispatch(
 		if ('response' in read) return read.response;
 		const call: Call = { request, state, serverContext, method };
 		if ('single' in read) {
+			const operation = state.fork();
 			const outcome = await runOperation(rt, {
 				...call,
-				state: state.fork(),
+				state: operation,
 				params: read.single,
+				sse,
+				multipart,
 			});
-			return encode(rt, state, outcome, media);
+			if (sse)
+				return encodeStreamed(
+					rt,
+					{ ...call, state: operation },
+					outcome,
+					sseFormat,
+				);
+			return multipart && outcome.kind === 'stream'
+				? streamResponse(
+						rt,
+						{ ...call, state: operation },
+						outcome,
+						multipartFormat,
+					)
+				: encode(rt, state, outcome, media);
 		}
+		if (sse || multipart)
+			return refusal(
+				400,
+				`Batched operations cannot be sent over ${sse ? 'text/event-stream' : 'multipart/mixed'}.`,
+			);
 		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {
 		return rt.unexpected.respond(error, state);
@@ -118,9 +153,36 @@ async function runBatch(
 		if (outcome.kind === 'unexpected') {
 			rt.unexpected.report(outcome.error, state, 'execution');
 			results.push(rt.unexpected.body(state));
-		} else results.push(rt.maskResult(outcome.result, state));
+		} else if (outcome.kind === 'result')
+			results.push(rt.maskResult(outcome.result, state));
+		else results.push(rt.unexpected.body(state));
 	}
 	return jsonResponse(results, 200, media);
+}
+
+/**
+ * The answer over a stream format (`text/event-stream`): the operation's results as events.
+ * What fails before an operation exists (a status was chosen: bad params,
+ * mutation over GET, aborted) keeps its plain HTTP answer; a parse, validation
+ * or execution error is a `next` event, as the protocol asks.
+ */
+function encodeStreamed(
+	rt: Runtime,
+	call: Call,
+	outcome: Outcome,
+	format: StreamFormat,
+): Response {
+	if (outcome.kind === 'response') return outcome.response;
+	if (outcome.kind === 'unexpected')
+		return rt.unexpected.respond(outcome.error, call.state, 'execution');
+	if (outcome.kind === 'result' && outcome.status !== undefined)
+		return jsonResponse(
+			outcome.result,
+			outcome.status,
+			'application/json',
+			outcome.headers,
+		);
+	return streamResponse(rt, call, outcome, format);
 }
 
 function encode(
@@ -132,6 +194,12 @@ function encode(
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
 		return rt.unexpected.respond(outcome.error, state, 'execution');
+	if (outcome.kind === 'stream')
+		return rt.unexpected.respond(
+			new Error('A stream outcome needs an event-stream request'),
+			state,
+			'execution',
+		);
 	const result = rt.maskResult(outcome.result, state);
 	state.set(resultKey, result);
 	return jsonResponse(

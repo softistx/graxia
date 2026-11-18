@@ -52,12 +52,24 @@ answers a 500.
 error) and replaces the response with `setResponse`. `onResponse` hooks run in plugin order on the
 final response.
 
-## Stages that do not run yet
+## Stages that run over streams
 
-`onSubscribe` and `onResultChunk` are declared so that plugins can be written against the final
-shape, but nothing calls them in 0.1.0: subscriptions and incremental delivery (`@defer`,
-`@stream`) arrive in a later release (see the [roadmap](../roadmap.md)). Over plain HTTP they
-are never invoked.
+`onSubscribe` runs around `subscribe` for a subscription served over server-sent events (see
+[Subscriptions](./subscriptions.md)) or WebSocket (see [Subscriptions over WebSocket](./websocket.md)).
+
+`onResultChunk` runs, before masking, for every payload sent on a stream:
+
+- over server-sent events and WebSocket: each subscription event, and the single result of a query or
+  a mutation, a failure before execution (parse, validation) included. Over WebSocket that failure
+  reaches `onResultChunk` as the result that becomes the `error` message, so a hook sees it like it
+  sees an SSE `next`;
+- over `multipart/mixed` (see [`@defer` and `@stream`](./incremental.md)): the initial and each
+  subsequent payload of an incremental result. A query that is not incremental, over `multipart/mixed`
+  or plain JSON, is answered as one plain response and its hooks do not run.
+
+Each payload runs inside its operation's scope, so `getContext()` works in the hook. A failure
+before the context exists (a parse or validation error) has no operation context yet: use
+`tryGetContext()` there. `graxia.execute` and the test client do not run `onResultChunk`.
 
 ## Short-circuit and replacing steps
 
@@ -163,7 +175,7 @@ type Ctx = ContextOf<[typeof auth, typeof tenant]>; // { user: { id: string } } 
 the plugins before it) do not provide. Returning something other than an object or nothing from
 `onContext` throws a `GraxiaConfigError`.
 
-**Not checked in 0.1.0**: `createGraxia` does not verify, at compile time, that the context the
+**Not checked yet**: `createGraxia` does not verify, at compile time, that the context the
 `context` option, the host's `serverContext` and the plugins build is what the schema's resolvers
 (`createSchema<Ctx>`) or a plugin's `definePlugin<Requires>` expect. `RequiresContext` is a helper
 you can assert with yourself; a missing key shows up at run time, so cover it with a test.

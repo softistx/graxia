@@ -56,4 +56,18 @@ describe('LruCache', () => {
 		expect(c.weight).toBeLessThanOrEqual(160);
 		expect(c.size).toBeLessThan(20);
 	});
+
+	test('delete removes an entry and its weight', () => {
+		const c = createLruCache<string, string>({
+			max: 5,
+			maxWeight: 80,
+			ttlMs: 1000,
+			weigh: () => 1,
+		});
+		c.set('a', '1');
+		expect(c.delete('a')).toBe(true);
+		expect(c.delete('a')).toBe(false);
+		expect(c.size).toBe(0);
+		expect(c.weight).toBe(0);
+	});
 });

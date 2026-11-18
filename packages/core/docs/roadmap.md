@@ -4,18 +4,19 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Subscriptions over SSE and WebSocket** — `subscribe` operations over server-sent events and
-  `graphql-transport-ws` on Bun's WebSocket, with a typed PubSub and an in-memory implementation.
-
-## Next
-
-- **`@defer` and `@stream`** — incremental delivery over HTTP, tracking graphql 17.
+- **Subscriptions over SSE and WebSocket** — the typed PubSub, subscriptions over server-sent
+  events (`graphql-sse`, distinct connections) and `graphql-transport-ws` on Bun's WebSocket
+  (see [the guide](./guide/websocket.md)) have shipped. The Redis PubSub in `@graxia/redis`
+  comes in the next release.
+- **`@defer` and `@stream`** — incremental delivery over `multipart/mixed` and server-sent events,
+  in graphql 17's format or the legacy one, has shipped (see [the guide](./guide/incremental.md)).
 - **Redis PubSub and cache** — a separate `@graxia/redis` package on Bun's built-in Redis client,
-  so subscriptions and caches work across several instances.
+  so subscriptions and caches work across several instances; core's `KeyValueCache` contract and
+  `createMemoryCache` it builds on come in the next release.
 
 ## Later
 
-- **Secure by default** — none of this is in 0.1.0 (see "Security in 0.1.0" in the README):
+- **Secure by default** — none of this is built in yet (see "Security" in the README):
   operation limits (depth, aliases, cost), CSRF prevention and same-origin checks, an
   introspection policy (off in production), trusted documents (manifest and automatic persisted queries),
   and a field rate limit.

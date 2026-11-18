@@ -23,8 +23,9 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                       |
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                        |
 
-`@graxia/core` is public since S8 (first publish 0.1.0); the other packages stay
-`"private": true` until their own slice, and removing it is a deliberate commit of its own.
+`@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
+publish 0.1.0, released with core 0.2.0); the other packages stay `"private": true` until their own slice, and removing it is
+a deliberate commit of its own.
 
 ## Scripts
 
@@ -46,11 +47,18 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differences:
 
 - **No `bunfig.toml`**: no private registry; everything resolves from npmjs.
-- **Public npm, `changeset publish`**: no `scripts/publish.ts` (nxgt-data's dual
-  registry publisher). `publishConfig` is `{ "access": "public" }`, and
-  `scripts/artifacts/manifest.ts` `accessProblems` checks that instead of
-  `npm.softistx.com` + `restricted`.
-- **`publish.yml` instead of `release.yml`**: tags `v*` (also `release: published` and
+- **Public npm, `scripts/publish.ts`**: not nxgt-data's dual registry publisher, and not
+  `changeset publish` either, which falls back to a plain `npm publish` that leaves
+  `workspace:^` in the manifest. The script packs each public package with `bun pm pack`,
+  asserts the packed manifest holds no `workspace:` range, runs `npm publish <tgz>`
+  (provenance in CI), skips versions already on npm. It refuses (dry run too) while unversioned changesets exist
+  or a package is 0.0.0, and it never tags: after the Version PR merges, from an
+  up-to-date `develop`, run `bunx changeset git-tag && git push --follow-tags`.
+  `bun run publish:dry-run` packs and asserts only. `publishConfig` is
+  `{ "access": "public" }`, and `scripts/artifacts/manifest.ts` `accessProblems` checks
+  that instead of `npm.softistx.com` + `restricted`; `verify:artifacts` also fails on a
+  `workspace:` range in any packed manifest.
+- **`publish.yml` instead of `release.yml`**: runs `scripts/publish.ts` on tags `v*` and `**@*` (also `release: published` and
   `workflow_dispatch`), org secret `NPM_TOKEN`. The "Version packages" PR is made
   locally (`bun run changeset:version`); nothing opens it in CI. The token's npm user
   must be a member of the `graxia` npm org.

@@ -22,6 +22,25 @@ A failed parse or validation answers the client with `GRAPHQL_PARSE_FAILED` or
 The `onParse` and `onValidate` plugin stages run around these steps; their after-hooks receive the
 outcome and run even when a validation rule throws.
 
+## A key-value cache for your own code
+
+`createMemoryCache` is a small asynchronous key-value store (LRU, per-entry time to live) behind the
+`KeyValueCache` contract. Nothing in graxia consumes it yet; upcoming features (persisted queries,
+response caching) take one, and your own plugins can use it today. `redisCache` from
+`@graxia/redis` implements the same contract across processes.
+
+```ts
+import { createMemoryCache } from '@graxia/core';
+
+const cache = createMemoryCache({ maxEntries: 500 });
+await cache.set('greeting', 'hello', { ttlMs: 60_000 });
+await cache.get('greeting'); // 'hello'
+await cache.delete('greeting'); // true
+```
+
+Values are strings by default (serialise yourself); `createMemoryCache<V>()` stores any `V`.
+`maxEntries` defaults to 1000; an expired entry is dropped when read.
+
 ## Parse limits
 
 | Option           | Default | Meaning                                                           |

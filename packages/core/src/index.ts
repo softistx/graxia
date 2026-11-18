@@ -1,3 +1,6 @@
+export type { MemoryCacheOptions } from './cache/memory';
+export { createMemoryCache } from './cache/memory';
+export type { CacheSetOptions, KeyValueCache } from './cache/types';
 export type {
 	DocumentCacheOptions,
 	DocumentCaches,
@@ -25,6 +28,17 @@ export { definePlugin } from './plugins/define';
 export type { RequestState, StateKey } from './plugins/state';
 export { createStateKey } from './plugins/state';
 export type * from './plugins/types';
+export { filterIterable, mapIterable } from './pubsub/iterables';
+export type {
+	MemoryPubSub,
+	MemoryPubSubOptions,
+} from './pubsub/memory';
+export { createMemoryPubSub } from './pubsub/memory';
+export type {
+	PubSub,
+	PubSubTopics,
+	SubscribeOptions,
+} from './pubsub/types';
 export { createSchema } from './schema/create-schema';
 export type { TypeDefs } from './schema/typedefs';
 export type {
@@ -42,6 +56,7 @@ export { getContext, tryGetContext } from './server/context';
 export type {
 	Graxia,
 	GraxiaServeOptions,
+	GraxiaSocketData,
 } from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
 export type { ExecuteArgs, ExecuteBase } from './server/execute';
@@ -54,9 +69,12 @@ export type {
 	ContextInit,
 	GraxiaLimits,
 	GraxiaOptions,
+	IncrementalOptions,
+	SubscriptionsOptions,
 } from './server/options';
 export type {
 	OnUnexpected,
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
+export type { WebSocketContext, WebSocketOptions } from './ws/options';

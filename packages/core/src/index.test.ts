@@ -26,6 +26,10 @@ describe('public exports', () => {
 			'getContext',
 			'tryGetContext',
 			'exposedError',
+			'createMemoryPubSub',
+			'createMemoryCache',
+			'filterIterable',
+			'mapIterable',
 		])
 			expect(name in api).toBe(true);
 	});

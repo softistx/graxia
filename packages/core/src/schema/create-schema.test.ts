@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import {
-	execute,
+	type ExecutionArgs,
+	type ExecutionResult,
+	experimentalExecuteIncrementally,
 	GraphQLError,
 	GraphQLScalarType,
 	Kind,
@@ -10,9 +12,13 @@ import {
 import { GraxiaConfigError } from '../errors/config-error';
 import { createSchema } from './create-schema';
 
+// graphql's plain `execute` throws for a schema that declares `@defer`.
+const execute = (args: ExecutionArgs) =>
+	experimentalExecuteIncrementally(args) as Promise<ExecutionResult>;
+
 type Ctx = { user: string };
 const ctx: Ctx = { user: 'ada' };
-const run = (schema: Parameters<typeof execute>[0]['schema'], query: string) =>
+const run = (schema: ExecutionArgs['schema'], query: string) =>
 	execute({ schema, document: parse(query), contextValue: ctx });
 
 describe('createSchema typeDefs', () => {
@@ -243,5 +249,26 @@ describe('createSchema attachments', () => {
 		for await (const r of stream as AsyncIterable<{ data: unknown }>)
 			seen.push(r.data);
 		expect(seen).toEqual([{ tick: 10 }, { tick: 20 }]);
+	});
+});
+
+describe('createSchema incremental', () => {
+	test('declares @defer and @stream by default, not with incremental: false', () => {
+		const typeDefs = 'type Query { a: String }';
+		expect(createSchema()({ typeDefs }).getDirective('defer')).toBeDefined();
+		const plain = createSchema()({ typeDefs, incremental: false });
+		expect(plain.getDirective('defer')).toBeUndefined();
+		expect(plain.getDirective('stream')).toBeUndefined();
+	});
+	test("graphql's plain execute runs a schema built with incremental: false", async () => {
+		const schema = createSchema()({
+			typeDefs: 'type Query { a: String }',
+			resolvers: { Query: { a: () => 'x' } },
+			incremental: false,
+		});
+		const { execute: plainExecute } = await import('graphql');
+		expect(await plainExecute({ schema, document: parse('{ a }') })).toEqual({
+			data: { a: 'x' },
+		});
 	});
 });

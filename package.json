@@ -16,7 +16,8 @@
 		"format": "biome format",
 		"changeset": "changeset",
 		"changeset:version": "changeset version && bun install --lockfile-only",
-		"changeset:publish": "bun run build && bun run verify:artifacts && changeset publish",
+		"changeset:publish": "bun run build && bun run verify:artifacts && bun run scripts/publish.ts",
+		"publish:dry-run": "bun run scripts/publish.ts --dry-run",
 		"changeset:status": "changeset status --since=${CHANGESET_BASE:-origin/develop}",
 		"verify:artifacts": "bun run scripts/verify-artifacts.ts"
 	},
@@ -25,6 +26,7 @@
 		"@changesets/changelog-github": "^1.0.1",
 		"@changesets/cli": "^3.0.1",
 		"@types/bun": "^1.4.4",
+		"graphql-sse": "^2.6.3",
 		"typescript": "~6.0.3"
 	},
 	"overrides": {

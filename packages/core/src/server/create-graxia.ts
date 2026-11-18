@@ -2,22 +2,21 @@ import type { ExecutionResult } from 'graphql';
 import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
-import { createRequestId, requestIdKey } from '../http/request-id';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
 import { createDispose } from './dispose';
+import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
-import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
-import { seal } from './seal';
+import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
+import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
 
-/** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
-export type GraxiaServeOptions = Bun.Serve.HostnamePortServeOptions<undefined>;
+export type { GraxiaServeOptions, GraxiaSocketData };
 
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
@@ -38,7 +37,7 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * back as an object, with no content negotiation or HTTP encoding.
 	 * A string document gets the parse limits and both caches; a `DocumentNode`
 	 * skips them. Variables travel as JSON. Subscriptions and incremental results return their usual refusal error
-	 * in the result. Rejects with a {@link GraxiaExecuteError} when the request
+	 * in the result (subscriptions are served over `fetch` with `Accept: text/event-stream`). Rejects with a {@link GraxiaExecuteError} when the request
 	 * ends without a result (a plugin's `respond`, an unexpected failure) and
 	 * after `dispose()`.
 	 *
@@ -62,7 +61,36 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 */
 	serve(
 		...options: OptionsArg<HostCtx, GraxiaServeOptions>
-	): Bun.Server<undefined>;
+	): Bun.Server<GraxiaSocketData>;
+	/**
+	 * Upgrades a request to a `graphql-transport-ws` socket from your own
+	 * `Bun.serve` `fetch`; pass {@link Graxia.websocket} as its `websocket`.
+	 * Resolves `undefined` once the socket is upgraded (return it from `fetch`),
+	 * else the `Response` to send: the refusal (wrong path, a plugin's
+	 * `respond`, no `graphql-transport-ws` subprotocol, shutdown), sealed, with
+	 * the request id. Guard it with {@link Graxia.isUpgrade}: on a request that
+	 * is not an upgrade (or with `subscriptions.ws` off) it answers like
+	 * {@link Graxia.fetch}, so its hooks run once either way.
+	 * `serverContext` is required when `HostCtx` has required keys.
+	 *
+	 * @example
+	 * const server = Bun.serve({
+	 *   fetch: (request, server) =>
+	 *     graxia.isUpgrade(request)
+	 *       ? graxia.upgrade(request, server)
+	 *       : graxia.fetch(request, { server }),
+	 *   websocket: graxia.websocket,
+	 * });
+	 */
+	upgrade(
+		request: Request,
+		server: Bun.Server<GraxiaSocketData>,
+		...serverContext: ServerContextArg<HostCtx>
+	): Promise<Response | undefined>;
+	/** Whether `request` asks for a WebSocket upgrade (`Upgrade: websocket`) and `subscriptions.ws` is on. */
+	isUpgrade(request: Request): boolean;
+	/** The `Bun.serve` `websocket` handler of this instance (see {@link Graxia.upgrade}). */
+	readonly websocket: Bun.WebSocketHandler<GraxiaSocketData>;
 	/**
 	 * Shuts down: stops accepting requests (new ones answer 503
 	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
@@ -94,7 +122,14 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		throw new GraxiaConfigError(
 			'shutdownTimeout must be a non-negative integer (milliseconds)',
 		);
-	return { path, bodyBytes, batching, asyncContext, shutdownTimeout };
+	return {
+		path,
+		bodyBytes,
+		batching,
+		asyncContext,
+		shutdownTimeout,
+		...resolveStreaming(options),
+	};
 }
 
 /**
@@ -109,7 +144,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const lifecycle = createLifecycle();
-	const servers: Bun.Server<undefined>[] = [];
+	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
@@ -140,22 +175,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		lifecycle,
 		ready,
 	};
-	const handleWith = async (
-		request: Request,
-		serverContext: Record<string, unknown>,
-		state = new StateBag(),
-	) => {
-		state.set(requestIdKey, createRequestId());
-		if (lifecycle.closing) return seal(shuttingDown(), state);
-		try {
-			return seal(
-				await lifecycle.track(handle(rt, request, serverContext, state)),
-				state,
-			);
-		} catch (error) {
-			return lastResort(rt, error, state);
-		}
-	};
+	const entry = createEntry<HostCtx>(rt, servers);
 	const dispose = createDispose({
 		lifecycle,
 		engine,
@@ -165,25 +185,18 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		timeout: resolved.shutdownTimeout,
 	});
 	const execute = createExecute({
-		run: handleWith,
+		run: entry.handleWith,
 		lifecycle,
 		path: resolved.path,
 	});
 	return {
 		ready,
 		execute,
-		fetch: (request, ...[serverContext]) =>
-			handleWith(request, { ...serverContext }),
-		serve: (...[serveOptions]) => {
-			const { serverContext, ...bunOptions } = serveOptions ?? {};
-			const server = Bun.serve<undefined>({
-				...(bunOptions as GraxiaServeOptions),
-				fetch: (request, server) =>
-					handleWith(request, { ...serverContext, server }),
-			});
-			servers.push(server);
-			return server;
-		},
+		fetch: entry.fetch,
+		serve: entry.serve,
+		upgrade: entry.upgrade,
+		isUpgrade: entry.isUpgrade,
+		websocket: entry.websocket,
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};

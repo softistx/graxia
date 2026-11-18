@@ -1,17 +1,17 @@
 import {
 	type DocumentNode,
 	type ExecutionArgs,
-	type ExecutionResult,
-	execute,
 	Kind,
 	type OperationDefinitionNode,
 } from 'graphql';
 import type { RequestState } from '../plugins/state';
-import type { ExecutionOutput, GraphQLParams } from '../plugins/types';
+import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
 import { presetDocumentKey } from './execute-state';
+import { execution } from './incremental';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
+import { subscription } from './subscription';
 
 /** Input of one operation: a POST body, a GET query, or one batch entry. */
 export interface OperationInput {
@@ -20,6 +20,10 @@ export interface OperationInput {
 	params: GraphQLParams;
 	serverContext: Record<string, unknown>;
 	method: 'GET' | 'POST';
+	/** The client asked for `text/event-stream`: a subscription becomes a stream. */
+	sse?: boolean;
+	/** The client asked for `multipart/mixed`: an incremental query becomes a stream. */
+	multipart?: boolean;
 }
 
 interface Prepared {
@@ -57,7 +61,7 @@ export async function runOperation(
 
 async function prepare(
 	rt: Runtime,
-	{ request, state, params, method }: OperationInput,
+	{ request, state, params, method, sse }: OperationInput,
 ): Promise<Outcome | Prepared> {
 	const stage = await rt.engine.runners.onParams({ request, state, params });
 	const error = await settle(stage, { params: stage.out.params });
@@ -98,10 +102,13 @@ async function prepare(
 	if (valid.errors) return failed(valid.errors);
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
-	if (operation.operation === 'subscription')
-		return failure('Subscriptions are not supported over this transport yet.', {
-			code: 'SUBSCRIPTION_NOT_SUPPORTED',
-		});
+	if (operation.operation === 'subscription' && !sse)
+		return failure(
+			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
+			{
+				code: 'SUBSCRIPTION_NOT_SUPPORTED',
+			},
+		);
 	return { params: final, document: parsed.document, operation };
 }
 
@@ -127,11 +134,16 @@ function selectOperation(
 
 async function executeOperation(
 	rt: Runtime,
-	{ request, state, serverContext }: OperationInput,
+	{ request, state, serverContext, sse, multipart }: OperationInput,
 	{ params, document, operation }: Prepared,
 ): Promise<Outcome> {
 	// One context and one signal per operation, never shared with a batch sibling.
-	const signal = AbortSignal.any([request.signal, rt.lifecycle.shutdown]);
+	const stop = new AbortController();
+	const signal = AbortSignal.any([
+		request.signal,
+		rt.lifecycle.shutdown,
+		stop.signal,
+	]);
 	const extra = rt.context
 		? await rt.context({ request, serverContext, params, signal })
 		: {};
@@ -152,77 +164,27 @@ async function executeOperation(
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
-	const run = () => execution(rt, { request, state }, args);
-	return rt.options.asyncContext ? runWithContext(contextValue, run) : run();
+	const scope = <T>(work: () => T): T =>
+		rt.options.asyncContext ? runWithContext(contextValue, work) : work();
+	const call = { request, state };
+	return operation.operation === 'subscription'
+		? scope(() => subscription(rt, call, args, { stop, scope }))
+		: scope(() =>
+				execution(rt, call, args, {
+					allowed: Boolean(sse || multipart),
+					stop,
+					scope,
+				}),
+			);
 }
 
-async function execution(
-	rt: Runtime,
-	{ request, state }: Pick<OperationInput, 'request' | 'state'>,
-	args: ExecutionArgs,
-): Promise<Outcome> {
-	const stage = await rt.engine.runners.onExecute({ request, state, args });
-	let result: ExecutionOutput | undefined;
-	let thrown: unknown;
-	let aborted = false;
-	if (stage.error === undefined) {
-		try {
-			result =
-				stage.out.result ?? (await (stage.out.executeFn ?? execute)(args));
-		} catch (error) {
-			if (args.abortSignal?.aborted) aborted = true;
-			else thrown = error;
-		}
-	}
-	const afterError = await settle(stage, {
-		result,
-		setResult: (next: ExecutionOutput) => {
-			result = next;
-		},
-	});
-	const error = thrown ?? afterError;
-	if (error !== undefined) {
-		await release(result);
-		return unexpected(error);
-	}
-	if (aborted)
-		return failure('The operation was aborted.', {
-			code: 'OPERATION_ABORTED',
-			// 499 (client closed request) when the client left, 503 otherwise (shutdown).
-			status: request.signal.aborted ? 499 : 503,
-		});
-	if (!isSingleResult(result)) {
-		await release(result);
-		return failure(
-			'Incremental delivery (@defer, @stream) is not supported over this transport yet.',
-			{ code: 'INCREMENTAL_NOT_SUPPORTED' },
-		);
-	}
-	return { kind: 'result', result };
-}
-
-/** Ends a stream a custom executor returned, so its source is released. */
-async function release(result: ExecutionOutput | undefined): Promise<void> {
-	if (typeof result !== 'object' || result === null) return;
-	const stream =
-		Symbol.asyncIterator in result
-			? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
-			: (result as { subsequentResults?: AsyncIterator<unknown> })
-					.subsequentResults;
-	try {
-		await stream?.return?.();
-	} catch {
-		// Releasing is best effort.
-	}
-}
-
-function isSingleResult(
-	result: ExecutionOutput | undefined,
-): result is ExecutionResult {
-	return (
-		typeof result === 'object' &&
-		result !== null &&
-		!('initialResult' in result) &&
-		!(Symbol.asyncIterator in result)
-	);
+/** Why a subscription sent as plain JSON is refused, naming the transports that are on. */
+function subscriptionRefusal(sse: boolean, ws: boolean): string {
+	if (sse && ws)
+		return 'Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).';
+	if (sse)
+		return 'Subscriptions are served over server-sent events: send "Accept: text/event-stream".';
+	if (ws)
+		return 'Subscriptions are served over WebSocket (graphql-transport-ws); subscriptions.sse is false.';
+	return 'Subscriptions are not supported over this transport (subscriptions.sse is false).';
 }

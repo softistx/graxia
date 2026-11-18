@@ -1,9 +1,12 @@
 import type {
 	DocumentNode,
 	ExecutionArgs,
+	ExperimentalIncrementalExecutionResults,
 	execute,
 	GraphQLError,
 	GraphQLSchema,
+	LegacyExperimentalIncrementalExecutionResults,
+	subscribe,
 	ValidationRule,
 } from 'graphql';
 import type { RequestState } from './state';
@@ -32,7 +35,11 @@ export type HookReturn<Done> = MaybePromise<
 >;
 
 /** Result of `execute` or `subscribe` (single result or incremental/stream). */
-export type ExecutionOutput = Awaited<ReturnType<typeof execute>>;
+export type ExecutionOutput =
+	| Awaited<ReturnType<typeof execute>>
+	| Awaited<ReturnType<typeof subscribe>>
+	| ExperimentalIncrementalExecutionResults
+	| LegacyExperimentalIncrementalExecutionResults;
 /** A replaceable parse function. */
 export type ParseFn = (source: string) => DocumentNode;
 /** A replaceable validation function. */

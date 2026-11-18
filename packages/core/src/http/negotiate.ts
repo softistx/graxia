@@ -73,3 +73,41 @@ export function negotiate(accept: string | null): MediaType | undefined {
 	found.sort((a, b) => b.q - a.q || a.exact - b.exact);
 	return found[0]?.media;
 }
+
+function prefers(accept: string | null, type: string): boolean {
+	if (accept === null) return false;
+	const ranges = accept
+		.split(',')
+		.map(parseRange)
+		.filter((r): r is Range => r !== undefined);
+	const stream = ranges.findIndex((r) => r.type === type);
+	const wanted = ranges[stream];
+	if (wanted === undefined || wanted.q <= 0) return false;
+	const json = OFFERED.flatMap((media) => {
+		const c = candidate(media, ranges);
+		return c && c.q > 0 ? [c] : [];
+	});
+	return json.every(
+		(c) => c.q < wanted.q || (c.q === wanted.q && c.exact > stream),
+	);
+}
+
+/**
+ * Whether an `Accept` header asks for a server-sent event stream: it names
+ * `text/event-stream` (never through a wildcard) with a q above 0, and no
+ * JSON type it names or matches ranks above it. At equal q the range listed
+ * first wins, and a JSON type named exactly beats the stream only when listed
+ * before it.
+ */
+export function prefersEventStream(accept: string | null): boolean {
+	return prefers(accept, 'text/event-stream');
+}
+
+/**
+ * Whether an `Accept` header asks for `multipart/mixed` (incremental delivery
+ * over HTTP; its `deferSpec` and `subscriptionSpec` parameters are ignored),
+ * under the same rules as {@link prefersEventStream}: never through a wildcard.
+ */
+export function prefersMultipart(accept: string | null): boolean {
+	return prefers(accept, 'multipart/mixed');
+}
