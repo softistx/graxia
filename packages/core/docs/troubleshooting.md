@@ -127,12 +127,12 @@ More directive usages than `limits.directives` (50). `extensions.limit.name` is 
 More root fields than `limits.rootFields` (20), `__typename` excluded. Split the operation
 or raise it. `extensions.limit.name` is `rootFields`.
 
-## The schema declares @cost(weight: String!) but graxia's limits.cost reads @cost(weight: Int!)
+## The schema declares @cost(…) but graxia's limits.cost reads @cost(weight: Int!)
 
 Your schema declares `@cost` or `@listSize` with another shape than graxia's (for example the IBM
 form `directive @cost(weight: String!) on FIELD_DEFINITION`). The cost limit reads those directives
 with its own definitions and would fail on every operation, so `createGraxia` throws a
-`GraxiaConfigError` naming the directive and both shapes. Rename or drop your directive, or turn the
+`GraxiaConfigError`: `The schema declares @cost(<your arguments, with defaults>) but graxia's limits.cost reads @cost(weight: Int!). Rename or drop your directive, …`. The same message exists for `@listSize` (graxia reads `@listSize(assumedSize: Int, requireOneSlicingArgument: Boolean = true, sizedFields: [String!], slicingArguments: [String!])`); a different argument name, type or default value is a clash. Rename or drop your directive, or turn the
 cost limit off:
 
 ```ts

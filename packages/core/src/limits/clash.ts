@@ -1,10 +1,27 @@
-import type { GraphQLDirective, GraphQLSchema } from 'graphql';
+import { type GraphQLDirective, type GraphQLSchema, print } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
 import { costDirective, listSizeDirective } from './directives';
 
+type Arg = GraphQLDirective['args'][number];
+
+/** The default of an argument, whichever way graphql 17 recorded it (`default`, or the deprecated `defaultValue`). */
+const defaultOf = (arg: Arg): string => {
+	const input = arg.default;
+	if (input)
+		return 'literal' in input
+			? print(input.literal)
+			: JSON.stringify(input.value);
+	return arg.defaultValue === undefined ? '' : JSON.stringify(arg.defaultValue);
+};
+
 const shapeOf = (directive: GraphQLDirective): string =>
 	directive.args
-		.map((arg) => `${arg.name}: ${String(arg.type)}`)
+		.map(
+			(arg) =>
+				`${arg.name}: ${String(arg.type)}${
+					defaultOf(arg) === '' ? '' : ` = ${defaultOf(arg)}`
+				}`,
+		)
 		.sort()
 		.join(', ');
 

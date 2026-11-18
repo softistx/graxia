@@ -267,3 +267,18 @@ describe('a schema with its own @cost', () => {
 		expect(graxia).toBeDefined();
 	});
 });
+
+describe('a schema with its own @listSize', () => {
+	test('a different default value is a clash', () => {
+		const other = createSchema()({
+			typeDefs: `
+				directive @listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = false) on FIELD_DEFINITION
+				type Query { a: [String] @listSize(assumedSize: 3) }
+			`,
+			resolvers: { Query: { a: () => [] } },
+		});
+		expect(() => createGraxia({ schema: other })).toThrow(
+			/@listSize\(.*requireOneSlicingArgument: Boolean = false.*\)/,
+		);
+	});
+});

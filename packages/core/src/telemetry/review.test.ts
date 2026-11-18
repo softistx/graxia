@@ -6,6 +6,8 @@ import {
 	SimpleSpanProcessor,
 	TracerProvider,
 } from '@opentelemetry/sdk-trace';
+import { jsonResponse } from '../http/respond';
+import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
 import { settleOutcome } from './operation';
@@ -109,5 +111,49 @@ describe('review', () => {
 		);
 		expect(op.ended).toBe(true);
 		expect(exporter.getFinishedSpans()).toHaveLength(1);
+	});
+});
+
+describe('refusal code read', () => {
+	test('a 4xx JSON stream without content-length is not read', async () => {
+		const body = '{"errors":[{"extensions":{"code":"LATE"}}]}';
+		const graxia = make({
+			plugins: [
+				definePlugin({
+					name: 'stream-refusal',
+					onResponse: ({ setResponse }) =>
+						setResponse(
+							new Response(
+								new ReadableStream({
+									start(controller) {
+										controller.enqueue(new TextEncoder().encode(body));
+										controller.close();
+									},
+								}),
+								{
+									status: 400,
+									headers: { 'content-type': 'application/json' },
+								},
+							),
+						),
+				}),
+			],
+		});
+		const response = await graxia.fetch(post({ query: '{ hello }' }));
+		expect(response.status).toBe(400);
+		expect(await response.text()).toBe(body);
+		const [request] = finished().filter((s) => s.name === 'graphql.request');
+		expect(request?.attributes['graxia.refusal.code']).toBeUndefined();
+	});
+
+	test('a jsonResponse refusal declares its content-length', () => {
+		const response = jsonResponse(
+			{ errors: [{ message: 'é' }] },
+			400,
+			'application/json',
+		);
+		expect(response.headers.get('content-length')).toBe(
+			String(Buffer.byteLength('{"errors":[{"message":"é"}]}')),
+		);
 	});
 });
