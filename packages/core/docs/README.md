@@ -1,6 +1,6 @@
 # @graxia/core documentation
 
-Guides, troubleshooting and the roadmap of `@graxia/core` land here with the slices that ship them. The effort-wide roadmap is [`docs/roadmap.md`](../../../docs/roadmap.md).
+Guides and troubleshooting of `@graxia/core`; the roadmap lands with the slices that ship it. The effort-wide roadmap is [`docs/roadmap.md`](../../../docs/roadmap.md).
 
 ## Guides
 
@@ -9,3 +9,8 @@ Guides, troubleshooting and the roadmap of `@graxia/core` land here with the sli
 - [Context, cancellation and shutdown](./guide/context.md)
 - [Schema](./guide/schema.md)
 - [Limits and caches](./guide/limits-and-caches.md)
+- [Errors: exposed, masked, correlation ids](./guide/errors.md)
+
+## Help
+
+- [Troubleshooting](./troubleshooting.md): every error message, why it happens and the fix

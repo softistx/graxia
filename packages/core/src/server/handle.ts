@@ -8,7 +8,6 @@ import type { GraphQLParams } from '../plugins/types';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
-import { UNEXPECTED_BODY } from './unexpected';
 
 type Read =
 	| { response: Response }
@@ -101,8 +100,7 @@ async function readPost(rt: Runtime, request: Request): Promise<Read> {
  * Runs the entries one after the other, in order (a later entry may rely on
  * the effect of an earlier mutation, and one request cannot multiply its own
  * concurrency). Each entry has its own forked state. An entry that fails
- * unexpectedly (a hook or the executor threw) becomes `{ errors: [{ message:
- * "Unexpected error." }] }` at its place and the batch carries on; a `respond`
+ * unexpectedly (a hook or the executor threw) becomes the generic unexpected body at its place and the batch carries on; a `respond`
  * short-circuit (from `onParams`) answers the whole request.
  */
 async function runBatch(
@@ -117,9 +115,9 @@ async function runBatch(
 		const outcome = await runOperation(rt, { ...call, state, params });
 		if (outcome.kind === 'response') return outcome.response;
 		if (outcome.kind === 'unexpected') {
-			rt.unexpected.report(outcome.error, state);
-			results.push(UNEXPECTED_BODY);
-		} else results.push(outcome.result);
+			rt.unexpected.report(outcome.error, state, 'execution');
+			results.push(rt.unexpected.body(state));
+		} else results.push(rt.maskResult(outcome.result, state));
 	}
 	return jsonResponse(results, 200, media);
 }
@@ -132,10 +130,11 @@ function encode(
 ): Response {
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
-		return rt.unexpected.respond(outcome.error, state);
+		return rt.unexpected.respond(outcome.error, state, 'execution');
+	const result = rt.maskResult(outcome.result, state);
 	return jsonResponse(
-		outcome.result,
-		outcome.status ?? statusOf(media, outcome.result),
+		result,
+		outcome.status ?? statusOf(media, result),
 		media,
 		outcome.headers,
 	);

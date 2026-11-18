@@ -141,6 +141,11 @@ describe('dispose edge cases', () => {
 		await Bun.sleep(10);
 		await graxia.dispose({ timeout: 20 });
 		expect(onUnexpected).toHaveBeenCalledTimes(1);
+		expect(onUnexpected.mock.calls[0]?.[1]).toEqual({
+			requestId: undefined,
+			correlationId: undefined,
+			phase: 'dispose',
+		});
 		expect(String(onUnexpected.mock.calls[0]?.[0])).toContain(
 			'dispose: 1 operation(s) did not settle after abort',
 		);

@@ -1,37 +1,51 @@
+import { UNEXPECTED_MESSAGE } from '../errors/mask';
 import { requestIdKey } from '../http/request-id';
-import { errorBody, jsonResponse } from '../http/respond';
+import { jsonResponse } from '../http/respond';
 import type { RequestState } from '../plugins/state';
 
-/** The message every unexpected failure answers with. */
-export const UNEXPECTED_MESSAGE = 'Unexpected error.';
+/** Where an unexpected failure happened. */
+export type UnexpectedPhase = 'request' | 'execution' | 'dispose';
 
-/** The generic body of an unexpected failure. */
-export const UNEXPECTED_BODY = errorBody(UNEXPECTED_MESSAGE);
+/** What `onUnexpected` is told about the failure. */
+export interface UnexpectedInfo {
+	/** The request's id (`x-request-id`); `undefined` for a `dispose` report. */
+	requestId: string | undefined;
+	/** The id the client got in the body; always equal to `requestId`. */
+	correlationId: string | undefined;
+	/** `request`: a hook or the transport; `execution`: an operation; `dispose`: shutdown leftovers. */
+	phase: UnexpectedPhase;
+}
 
 /** Receives the original, unmasked error of an unexpected failure. */
-export type OnUnexpected = (
-	error: unknown,
-	info: { requestId: string | undefined },
-) => void;
+export type OnUnexpected = (error: unknown, info: UnexpectedInfo) => void;
 
 /** What the transport uses to report and answer an unexpected failure. */
 export interface UnexpectedHandler {
 	/** Hands the original error to `onUnexpected`; never throws. */
-	report(error: unknown, state: RequestState): void;
+	report(error: unknown, state: RequestState, phase?: UnexpectedPhase): void;
 	/** Reports, then answers the generic 500. */
-	respond(error: unknown, state: RequestState): Response;
+	respond(
+		error: unknown,
+		state: RequestState,
+		phase?: UnexpectedPhase,
+	): Response;
+	/** The generic body of an unexpected failure, carrying the correlation id. */
+	body(state: RequestState): { errors: unknown[] };
 }
 
-const logToConsole: OnUnexpected = (error, { requestId }) =>
-	console.error(`[graxia] unexpected error (request ${requestId})`, error);
+const logToConsole: OnUnexpected = (error, { correlationId, phase }) =>
+	console.error(
+		`[graxia] unexpected error (${phase}, request ${correlationId})`,
+		error,
+	);
 
 /**
  * The single place an unexpected failure (a plugin hook that threw, a thrown
  * `execute`, a failing `context`) is turned into a response: a generic 500
- * that says nothing about the cause. The original error stays reachable
- * through `onUnexpected` (by default `console.error`, off when
- * `NODE_ENV=production`); masking and correlation ids arrive with the
- * error-handling slice.
+ * with `INTERNAL_SERVER_ERROR` and the correlation id (the request id), that
+ * says nothing about the cause. The original error stays reachable through
+ * `onUnexpected` (by default `console.error`, off when
+ * `NODE_ENV=production`), with the same id.
  */
 export function createUnexpectedHandler(
 	onUnexpected?: OnUnexpected | false,
@@ -41,18 +55,38 @@ export function createUnexpectedHandler(
 			? undefined
 			: (onUnexpected ??
 				(process.env['NODE_ENV'] === 'production' ? undefined : logToConsole));
-	const report = (error: unknown, state: RequestState) => {
+	const report = (
+		error: unknown,
+		state: RequestState,
+		phase: UnexpectedPhase = 'request',
+	) => {
+		const id = state.get(requestIdKey);
 		try {
-			sink?.(error, { requestId: state.get(requestIdKey) });
+			sink?.(error, { requestId: id, correlationId: id, phase });
 		} catch {
 			// A failing reporter must not turn into a second failure.
 		}
 	};
+	const body = (state: RequestState) => {
+		const correlationId = state.get(requestIdKey);
+		return {
+			errors: [
+				{
+					message: UNEXPECTED_MESSAGE,
+					extensions: {
+						code: 'INTERNAL_SERVER_ERROR',
+						...(correlationId !== undefined ? { correlationId } : {}),
+					},
+				},
+			],
+		};
+	};
 	return {
 		report,
-		respond(error, state) {
-			report(error, state);
-			return jsonResponse(UNEXPECTED_BODY, 500, 'application/json');
+		body,
+		respond(error, state, phase) {
+			report(error, state, phase);
+			return jsonResponse(body(state), 500, 'application/json');
 		},
 	};
 }

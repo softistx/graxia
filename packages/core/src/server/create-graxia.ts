@@ -8,6 +8,7 @@ import { RequestState } from '../plugins/state';
 import { createDispose } from './dispose';
 import { dispatch } from './handle';
 import { createLifecycle } from './lifecycle';
+import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
@@ -77,6 +78,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
 	ready.catch(() => {});
+	const unexpected = createUnexpectedHandler(options.onUnexpected);
 	const rt: Runtime = {
 		schema: options.schema,
 		engine,
@@ -87,7 +89,12 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			...(options.caches !== undefined ? { caches: options.caches } : {}),
 		}),
 		options: resolved,
-		unexpected: createUnexpectedHandler(options.onUnexpected),
+		unexpected,
+		maskResult: createResultMasker(
+			options.maskError,
+			options.maskErrors ?? true,
+			unexpected,
+		),
 		context: options.context,
 		lifecycle,
 		ready,

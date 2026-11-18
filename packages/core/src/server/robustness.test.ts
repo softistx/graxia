@@ -13,7 +13,17 @@ const post = (body: unknown, headers: HeadersInit = json) =>
 		body: typeof body === 'string' ? body : JSON.stringify(body),
 	});
 const q = (query: string) => post({ query });
-const generic = { errors: [{ message: 'Unexpected error.' }] };
+const generic = (res: Response) => ({
+	errors: [
+		{
+			message: 'Unexpected error.',
+			extensions: {
+				code: 'INTERNAL_SERVER_ERROR',
+				correlationId: res.headers.get('x-request-id'),
+			},
+		},
+	],
+});
 const make = (plugins: GraxiaPlugin<any, any>[], extra: object = {}) =>
 	createGraxia({ schema, plugins, onUnexpected: false, ...extra });
 
@@ -27,7 +37,7 @@ describe('fetch never rejects', () => {
 		]);
 		const res = await g.fetch(q('{ hello }'));
 		expect(res.status).toBe(500);
-		expect(await res.json()).toEqual(generic);
+		expect(await res.json()).toEqual(generic(res));
 		expect(res.headers.get('x-request-id')).toBeTruthy();
 	});
 	test('onResponse setResponse(Response.error()) becomes a 500', async () => {
@@ -215,7 +225,7 @@ describe('batching under failure', () => {
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual([
 			{ data: { bump: 1 } },
-			generic,
+			generic(res),
 			{ data: { hello: 'world' } },
 		]);
 	});
@@ -372,7 +382,7 @@ describe('onUnexpected', () => {
 			],
 		});
 		const res = await g.fetch(q('{ hello }'));
-		expect(await res.json()).toEqual(generic);
+		expect(await res.json()).toEqual(generic(res));
 		expect(calls).toHaveLength(1);
 		expect(calls[0]?.error).toBe(boom);
 		expect(calls[0]?.requestId).toBe(res.headers.get('x-request-id') as string);

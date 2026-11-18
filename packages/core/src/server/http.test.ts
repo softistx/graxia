@@ -193,7 +193,15 @@ describe('plugins', () => {
 		const res = await fetch(`${main}/graphql?throw=1`);
 		expect(res.status).toBe(500);
 		expect(await res.json()).toEqual({
-			errors: [{ message: 'Unexpected error.' }],
+			errors: [
+				{
+					message: 'Unexpected error.',
+					extensions: {
+						code: 'INTERNAL_SERVER_ERROR',
+						correlationId: res.headers.get('x-request-id'),
+					},
+				},
+			],
 		});
 	});
 	test('a thrown context function is a generic 500', async () => {
@@ -213,7 +221,15 @@ describe('plugins', () => {
 		);
 		expect(res.status).toBe(500);
 		expect(await res.json()).toEqual({
-			errors: [{ message: 'Unexpected error.' }],
+			errors: [
+				{
+					message: 'Unexpected error.',
+					extensions: {
+						code: 'INTERNAL_SERVER_ERROR',
+						correlationId: res.headers.get('x-request-id'),
+					},
+				},
+			],
 		});
 	});
 });

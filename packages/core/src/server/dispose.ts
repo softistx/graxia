@@ -36,6 +36,7 @@ export function createDispose(
 				unexpected.report(
 					new Error(`dispose: ${left} operation(s) did not settle after abort`),
 					new RequestState(),
+					'dispose',
 				);
 			await Promise.all(stopped);
 			await parts.ready.catch(() => {});
