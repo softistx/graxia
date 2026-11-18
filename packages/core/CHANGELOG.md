@@ -1,5 +1,25 @@
 # @graxia/core
 
+## 0.3.0
+
+### Minor Changes
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - CSRF prevention, same-origin checks, a WebSocket Origin check, and introspection and suggestions off in production: new `csrf` (`requireHeader`, `sameOrigin`), `introspection` and `suggestions` options and `DEFAULT_CSRF_HEADERS`. **Breaking**: a `GET` or a non-JSON `POST` without one of the CSRF headers is refused with 403 `CSRF_HEADER_REQUIRED` (`csrf: { requireHeader: false }` turns it off), which includes a browser `EventSource` (it cannot set headers): use `graphql-sse`, or `requireHeader: false` with `sameOrigin` on; a WebSocket upgrade from another origin is refused with 403 `FORBIDDEN_ORIGIN` unless listed in `csrf.sameOrigin.allowedOrigins`; under `NODE_ENV=production` introspection and "Did you mean" suggestions are off unless set to `true`.
+
+- [#55](https://github.com/softistx/graxia/pull/55) [`5c22fdd`](https://github.com/softistx/graxia/commit/5c22fdde87b81a6fff3074b61020b08df3b01c5c) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `definePlugin({ ... })` now takes a plugin that requires no context directly, inferring what its `onContext` adds; `definePlugin<In>()({ ... })` stays for plugins that require a context. `definePlugin()({ ... })` keeps working.
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - fieldRateLimit: per-field rate limits counted across aliases and fragments, single-selection fields, 429 with Retry-After. Adds `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE` and the `RATE_LIMITED` and `FIELD_SELECTED_ONCE` error codes. Opt-in: nothing changes without the plugin.
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - OpenTelemetry spans for requests, parse, validate and operations, optional resolver spans; `@opentelemetry/api` is an optional peer. New `telemetry` option (`false`, or `{ tracer, resolverSpans, document, propagate }`) and the `TelemetryOptions` type. On by default when `@opentelemetry/api` is installed, a no-op otherwise; nothing changes for an application without the peer.
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - operation limits: depth, aliases, directives, root fields and cost (`@cost` / `@listSize`), on by default. **Breaking**: operations over the new defaults (depth 12, 30 aliases, 50 directives, 20 root fields, cost 5 000) are now refused with `GRAPHQL_VALIDATION_FAILED`; raise a limit or set it to `false`. A schema that declares `@cost` or `@listSize` with another shape than graxia's (for example `@cost(weight: String!)`) now fails `createGraxia` with a `GraxiaConfigError` instead of failing each operation; rename or drop it, or set `limits: { cost: false }`. Adds `computeOperationCost`, `costDirectives` and the `DEFAULT_MAX_*` constants.
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - trusted documents: manifests (Relay, graphql-codegen, Apollo), `documentId` (HTTP, SSE, WebSocket, `execute`), automatic persisted queries and a strict mode, on in production when `trustedDocuments` is configured. Valid requests are unaffected when the option is absent. Adds `PERSISTED_QUERY_*` and `PROVIDED_SHA_DOESNT_MATCH` error codes, `GraphQLParams.documentId`, and `documentId` on `graxia.execute` and the test client. A `documentId` that is not a string is now a 400 (it was ignored). **Breaking (types)**: `ExecuteBase` became a union alias (`document` or `documentId`, exclusive), so `interface X extends ExecuteBase` no longer compiles; write `type X = ExecuteBase<R, V> & { … }`. In `strict` mode, `graxia.execute` still runs a document you give it (it is in-process), and such a document is never stored as an APQ.
+
+### Patch Changes
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Production guide and profile spec: a checklist page (what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, health checks) and a spec running the secure-by-default profile end to end. Corrects the trusted documents guide: `redisCache` sets no expiry on registered queries.
+
 ## 0.2.0
 
 ### Minor Changes
