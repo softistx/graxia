@@ -6,6 +6,7 @@ import type {
 	GraxiaPlugin,
 	MaybePromise,
 } from '../plugins/types';
+import type { OnUnexpected } from './unexpected';
 
 /** What the `context` option receives for each operation. */
 export interface ContextInit<HostCtx> {
@@ -42,6 +43,12 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	caches?: DocumentCaches;
 	/** Batched operations (a JSON array body): off by default, or `{ limit }`. */
 	batching?: BatchingOption;
+	/**
+	 * Receives the original error of every unexpected failure (a hook or
+	 * `execute` threw). The response stays a generic 500. Default:
+	 * `console.error`, silent when `NODE_ENV=production`; `false` silences it.
+	 */
+	onUnexpected?: OnUnexpected | false;
 }
 
 /** @internal Options with defaults applied. */

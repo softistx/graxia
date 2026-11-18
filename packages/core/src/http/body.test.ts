@@ -55,3 +55,27 @@ describe('isJsonContentType', () => {
 		expect(isJsonContentType(value)).toBe(expected);
 	});
 });
+
+describe('readBody cancellation', () => {
+	test('the source stream is cancelled once the limit is passed', async () => {
+		let cancelled = false;
+		let pulled = 0;
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				pulled++;
+				controller.enqueue(new Uint8Array(10));
+			},
+			cancel() {
+				cancelled = true;
+			},
+		});
+		const request = new Request('http://x/graphql', {
+			method: 'POST',
+			body: stream,
+			duplex: 'half',
+		} as RequestInit);
+		expect((await readBody(request, 25)).kind).toBe('too-large');
+		expect(cancelled).toBe(true);
+		expect(pulled).toBeLessThan(10);
+	});
+});

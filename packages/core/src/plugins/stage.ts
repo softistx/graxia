@@ -1,4 +1,3 @@
-import { RequestState } from './state';
 import type { MaybePromise } from './types';
 
 type AnyHook = (
@@ -36,16 +35,6 @@ export interface StageSpec<Input, Out> {
 	collect?(out: Out, returned: unknown, plugin: string): void;
 }
 
-/** Adds the request's `responseHeaders` to a payload (when the input carries a state). */
-function withHeaders(input: unknown, payload: unknown): unknown {
-	const state = (input as { state?: unknown }).state;
-	if (!(state instanceof RequestState) || typeof payload !== 'object')
-		return payload;
-	return Object.assign(payload as object, {
-		responseHeaders: state.responseHeaders,
-	});
-}
-
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
 	typeof value === 'object' &&
 	value !== null &&
@@ -76,7 +65,7 @@ export function createStageRunner<Input, Out, Done>(
 		for (const hook of hooks) {
 			try {
 				let returned: unknown = hook.run(
-					withHeaders(input, spec.payload(input, out, stop)) as never,
+					spec.payload(input, out, stop) as never,
 				);
 				if (isThenable(returned)) returned = await returned;
 				if (typeof returned === 'function')
@@ -93,11 +82,19 @@ export function createStageRunner<Input, Out, Done>(
 			out,
 			...(failed ? { error } : {}),
 			async runAfter(done) {
+				let first: unknown;
+				let failed = false;
 				for (let i = afters.length - 1; i >= 0; i--) {
 					const after = afters[i] as (done: Done) => MaybePromise<void>;
-					const pending = after(done);
-					if (isThenable(pending)) await pending;
+					try {
+						const pending = after(done);
+						if (isThenable(pending)) await pending;
+					} catch (thrown) {
+						if (!failed) first = thrown;
+						failed = true;
+					}
 				}
+				if (failed) throw first;
 			},
 		};
 	};

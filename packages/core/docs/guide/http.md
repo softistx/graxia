@@ -18,22 +18,26 @@ graxia.serve({ port: 3000 }); // POST/GET http://localhost:3000/graphql
 
 ## Options
 
-| option     | default    | what it does                                                                                                |
-| ---------- | ---------- | ----------------------------------------------------------------------------------------------------------- |
-| `schema`   | required   | any `GraphQLSchema` (`createSchema` output included)                                                        |
-| `path`     | `/graphql` | the path served; other paths answer 404. `false` serves any path (your host routes)                         |
-| `context`  | none       | `({ request, serverContext, params }) => object`, merged over `serverContext`, then `onContext` plugins run |
-| `plugins`  | `[]`       | see [Plugins](./plugins.md)                                                                                 |
-| `limits`   | see below  | document limits (`tokens`, `nesting`) and `bodyBytes` (default 1 MiB), see [Limits](./limits-and-caches.md) |
-| `caches`   | on         | parse and validation caches, or `false`                                                                     |
-| `batching` | `false`    | `false`, or `{ limit: n }`                                                                                  |
+| option         | default                                           | what it does                                                                                                                      |
+| -------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`       | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                              |
+| `path`         | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                               |
+| `context`      | none                                              | `({ request, serverContext, params }) => object`, merged over `serverContext`, then `onContext` plugins run                       |
+| `plugins`      | `[]`                                              | see [Plugins](./plugins.md)                                                                                                       |
+| `limits`       | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, see [Limits](./limits-and-caches.md)                                                               |
+| `caches`       | on                                                | parse and validation caches, or `false`                                                                                           |
+| `batching`     | `false`                                           | `false`, or `{ limit: n }`                                                                                                        |
+| `onUnexpected` | `console.error` outside production                | `(error, { requestId }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed |
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
-hooks extend it. CORS is not handled: the host owns it.
+hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
+`batching.limit` not a positive integer, a `path` not starting with `/`) throw a `GraxiaConfigError`
+naming the option when `createGraxia` is called.
 
 ## `serve` or your own `Bun.serve`
 
-`graxia.serve(options)` is `Bun.serve({ ...options, fetch })`. To keep your own server and routes,
+`graxia.serve(options)` is `Bun.serve({ ...options, fetch })`; Bun's `server` is forwarded in the
+`serverContext` (`context.server`), for WebSocket upgrades and client addresses. To keep your own server and routes,
 mount `graxia.fetch` (it never rejects and returns a plain `Response`):
 
 ```ts
@@ -56,13 +60,17 @@ graxia answers whatever path it is handed.
 - **POST** needs `Content-Type: application/json` (a charset, if given, must be UTF-8), otherwise 415.
   The body is `{ query, variables?, operationName?, extensions? }`; `null` means absent.
 - **GET** reads `query`, `operationName`, and `variables` / `extensions` as URL-encoded JSON. A
-  mutation over GET answers 405 with `Allow: POST`.
+  mutation over GET answers 405 with `Allow: POST`, decided right after parsing and before validation.
 - **Accept**: `application/graphql-response+json` or `application/json`. A missing header, `*/*` and
-  `application/*` answer `application/json`. Anything else answers 406. q-values are honoured.
+  `application/*` answer `application/json`. Anything else answers 406. q-values are honoured (clamped
+  to 0..1; an explicit `q=0` excludes a type even when a wildcard would match). Responses carry
+  `Vary: Accept`.
 - The body is read as a stream and counted: past `limits.bodyBytes` reading stops and the answer is
   413. `Content-Length` is checked first but never trusted alone.
 - Other methods answer 405 with `Allow: GET, POST`.
-- Subscriptions and `@defer` / `@stream` are refused with a clear error for now.
+- Subscriptions (`SUBSCRIPTION_NOT_SUPPORTED`) and `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`)
+  are refused for now with a 400 under `application/graphql-response+json` (200 under
+  `application/json`), the code in `extensions.code`.
 
 ## Status codes
 
@@ -71,11 +79,15 @@ graxia answers whatever path it is handed.
 | result with `data` (field errors included)                  | 200                                                  | 200                |
 | parse or validation error, unknown operation, bad variables | 400                                                  | 200                |
 | missing `query`; malformed JSON; wrong parameter types      | 400                                                  | 400                |
+| subscription, `@defer` / `@stream`                          | 400                                                  | 200                |
 | mutation over GET                                           | 405 (`Allow: POST`)                                  | 405                |
 | path / method / `Accept` / `Content-Type` / size            | 404 / 405 / 406 / 415 / 413                          | same               |
 | plugin hook threw, `context` threw, `execute` threw         | 500 `{ errors: [{ message: "Unexpected error." }] }` | same               |
 
-Unexpected failures never leak their message. The body is generic whatever the cause.
+Unexpected failures never leak their message. The body is generic whatever the cause; the original
+error reaches `onUnexpected` with the request id. `fetch` never rejects: a response Bun would refuse
+(such as `Response.error()`) also becomes this 500. A throwing executor still runs the `onExecute`
+after-hooks, and every after-hook runs exactly once on every path.
 
 ## Plugin headers
 
@@ -100,8 +112,14 @@ Path and method refusals (404, 405) happen before any plugin runs. Every other r
 Off by default: a JSON array body answers 400. With `batching: { limit: 10 }` an array runs its
 entries **one after the other, in order** (a later entry may rely on an earlier mutation, and one
 request cannot multiply its own concurrency) and answers 200 with an array of results. More than
-`limit` entries, an empty array or a malformed entry answers 400. A plugin that short-circuits or
-fails in an entry ends the whole batch with that response.
+`limit` entries, an empty array or a malformed entry answers 400. A hook that throws, or an
+executor that throws, in entry _n_ becomes that entry's `{ "errors": [{ "message": "Unexpected error." }] }`
+in the array and the batch carries on (earlier mutations already ran, later entries still run). A
+plugin that short-circuits with `respond` (in `onRequest`, or in an entry's `onParams`) is a decision
+about the request and answers the whole request.
+
+Each entry runs on its own forked [state](./plugins.md#per-request-state): writes in one entry are
+not seen by the next, reads fall through to what `onRequest` set.
 
 ## Request id
 

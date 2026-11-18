@@ -8,9 +8,13 @@ const APPENDED = new Set(['set-cookie', 'vary']);
  * The final response: the plugins' `responseHeaders` merged in
  * (`set-cookie` and `vary` appended, any other header set only when the
  * response does not carry it) and `x-request-id` set to the id graxia
- * generated, replacing whatever a client or a plugin put there.
+ * generated, replacing whatever a client or a plugin put there. Throws a
+ * `RangeError` for a status Bun refuses (the caller answers a 500).
  */
 export function seal(response: Response, state: RequestState): Response {
+	// Bun refuses `Response.error()` (status 0) and other non-HTTP statuses.
+	if (response.status < 200 || response.status > 599)
+		throw new RangeError(`A response cannot have status ${response.status}`);
 	const headers = new Headers(response.headers);
 	for (const [name, value] of state.responseHeaders) {
 		if (name === 'set-cookie') continue;

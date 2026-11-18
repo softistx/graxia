@@ -19,6 +19,7 @@ const plugin = definePlugin()({
 
 const graxia = createGraxia({
 	schema,
+	onUnexpected: false,
 	plugins: [plugin],
 	limits: { bodyBytes: 200 },
 });
@@ -198,6 +199,7 @@ describe('plugins', () => {
 	test('a thrown context function is a generic 500', async () => {
 		const bad = createGraxia({
 			schema,
+			onUnexpected: false,
 			context: () => {
 				throw new Error('nope');
 			},

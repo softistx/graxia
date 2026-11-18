@@ -9,10 +9,10 @@ import { dispatch } from './handle';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
-import { handleUnexpected } from './unexpected';
+import { createUnexpectedHandler } from './unexpected';
 
-/** The options `Bun.serve` takes, minus `fetch` (graxia provides it). */
-export type GraxiaServeOptions = Omit<Bun.Serve.Options<undefined>, 'fetch'>;
+/** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
+export type GraxiaServeOptions = Bun.Serve.HostnamePortServeOptions<undefined>;
 
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
@@ -67,22 +67,30 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			...(options.caches !== undefined ? { caches: options.caches } : {}),
 		}),
 		options: resolved,
+		unexpected: createUnexpectedHandler(options.onUnexpected),
 		context: options.context,
 		ready,
 	};
-	const handleFetch = async (request: Request, serverContext?: HostCtx) => {
+	const handleWith = async (
+		request: Request,
+		serverContext: Record<string, unknown>,
+	) => {
 		const state = new RequestState();
 		state.set(requestIdKey, createRequestId());
-		const response = await handle(rt, request, serverContext ?? {}, state);
-		return seal(response, state);
+		try {
+			return seal(await handle(rt, request, serverContext, state), state);
+		} catch (error) {
+			return seal(rt.unexpected.respond(error, state), state);
+		}
 	};
 	return {
-		fetch: handleFetch,
+		fetch: (request, serverContext) =>
+			handleWith(request, { ...serverContext }),
 		serve: (serveOptions) =>
-			Bun.serve({
+			Bun.serve<undefined>({
 				...serveOptions,
-				fetch: (request: Request) => handleFetch(request),
-			} as unknown as Bun.Serve.Options<undefined>),
+				fetch: (request, server) => handleWith(request, { server }),
+			}),
 	};
 }
 
@@ -90,7 +98,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 async function handle(
 	rt: Runtime,
 	request: Request,
-	serverContext: object,
+	serverContext: Record<string, unknown>,
 	state: RequestState,
 ): Promise<Response> {
 	const { path } = rt.options;
@@ -105,29 +113,24 @@ async function handle(
 		const entered = await rt.engine.runners.onRequest({ request, state });
 		let response =
 			entered.error !== undefined
-				? handleUnexpected(entered.error)
+				? rt.unexpected.respond(entered.error, state)
 				: (entered.out.response ??
-					(await dispatch(
-						rt,
-						request,
-						serverContext as Record<string, unknown>,
-						state,
-					)));
+					(await dispatch(rt, request, serverContext, state)));
 		const afterError = await entered.runAfter({ response }).then(
 			() => undefined,
 			(error: unknown) => error,
 		);
 		if (afterError !== undefined && entered.error === undefined)
-			response = handleUnexpected(afterError);
+			response = rt.unexpected.respond(afterError, state);
 		const last = await rt.engine.runners.onResponse({
 			request,
 			state,
 			response,
 		});
 		return last.error !== undefined
-			? handleUnexpected(last.error)
+			? rt.unexpected.respond(last.error, state)
 			: last.out.response;
 	} catch (error) {
-		return handleUnexpected(error);
+		return rt.unexpected.respond(error, state);
 	}
 }

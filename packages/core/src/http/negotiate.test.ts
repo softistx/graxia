@@ -33,4 +33,32 @@ describe('negotiate', () => {
 		expect(negotiate('application/json;q=0')).toBeUndefined();
 		expect(negotiate('text/event-stream, text/html')).toBeUndefined();
 	});
+	test('an explicit q=0 beats a wildcard', () => {
+		expect(negotiate('application/json;q=0, */*')).toBe(
+			'application/graphql-response+json',
+		);
+		expect(
+			negotiate(
+				'application/json;q=0, application/graphql-response+json;q=0, */*',
+			),
+		).toBeUndefined();
+		expect(negotiate('*/*, application/json;q=0')).toBe(
+			'application/graphql-response+json',
+		);
+	});
+	test('q is clamped to 0..1', () => {
+		expect(
+			negotiate('application/graphql-response+json;q=7, application/json;q=1'),
+		).toBe('application/graphql-response+json');
+		expect(negotiate('application/json;q=-3')).toBeUndefined();
+		expect(negotiate('application/json;q=abc')).toBeUndefined();
+	});
+	test('the first listed of two exact types wins a tie', () => {
+		expect(
+			negotiate('application/json, application/graphql-response+json'),
+		).toBe('application/json');
+		expect(
+			negotiate('application/graphql-response+json, application/json'),
+		).toBe('application/graphql-response+json');
+	});
 });

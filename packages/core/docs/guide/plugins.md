@@ -101,6 +101,11 @@ const auth = definePlugin()({
 });
 ```
 
+Over HTTP, `onRequest` sees the request's state. Each operation (the single one, or each entry of a
+batch) then runs on `state.fork()`: a child that reads through to the request state, writes only to
+itself and shares `responseHeaders` and the request id. Sibling batch entries never see each other's
+writes.
+
 ## Typed context
 
 `onContext` returns an object that is shallow-merged into the context, in plugin order. Its type

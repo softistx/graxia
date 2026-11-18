@@ -8,16 +8,24 @@ import type { GraphQLParams } from '../plugins/types';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
-import { handleUnexpected } from './unexpected';
+import { UNEXPECTED_BODY } from './unexpected';
 
 type Read =
 	| { response: Response }
 	| { single: GraphQLParams }
 	| { batch: GraphQLParams[] };
 
+interface Call {
+	request: Request;
+	/** The request's state (what `onRequest` saw). */
+	state: RequestState;
+	serverContext: Record<string, unknown>;
+	method: 'GET' | 'POST';
+}
+
 /**
  * Answers a request that passed `onRequest`: negotiation, parameters,
- * operation(s), encoding. Never rejects.
+ * operation(s), encoding. Never rejects. Every response varies by `Accept`.
  */
 export async function dispatch(
 	rt: Runtime,
@@ -26,6 +34,7 @@ export async function dispatch(
 	state: RequestState,
 ): Promise<Response> {
 	try {
+		state.responseHeaders.append('vary', 'Accept');
 		const media = negotiate(request.headers.get('accept'));
 		if (media === undefined)
 			return refusal(
@@ -36,15 +45,18 @@ export async function dispatch(
 		const read =
 			method === 'GET' ? readGet(request) : await readPost(rt, request);
 		if ('response' in read) return read.response;
-		const base = { request, state, serverContext, method } as const;
-		if ('single' in read)
-			return encode(
-				await runOperation(rt, { ...base, params: read.single }),
-				media,
-			);
-		return await runBatch(rt, read.batch, base, media);
+		const call: Call = { request, state, serverContext, method };
+		if ('single' in read) {
+			const outcome = await runOperation(rt, {
+				...call,
+				state: state.fork(),
+				params: read.single,
+			});
+			return encode(rt, state, outcome, media);
+		}
+		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {
-		return handleUnexpected(error);
+		return rt.unexpected.respond(error, state);
 	}
 }
 
@@ -88,31 +100,39 @@ async function readPost(rt: Runtime, request: Request): Promise<Read> {
 /**
  * Runs the entries one after the other, in order (a later entry may rely on
  * the effect of an earlier mutation, and one request cannot multiply its own
- * concurrency). A hook that short-circuits or fails ends the whole batch.
+ * concurrency). Each entry has its own forked state. An entry that fails
+ * unexpectedly (a hook or the executor threw) becomes `{ errors: [{ message:
+ * "Unexpected error." }] }` at its place and the batch carries on; a `respond`
+ * short-circuit (from `onParams`) answers the whole request.
  */
 async function runBatch(
 	rt: Runtime,
 	entries: readonly GraphQLParams[],
-	base: {
-		request: Request;
-		state: RequestState;
-		serverContext: Record<string, unknown>;
-		method: 'GET' | 'POST';
-	},
+	call: Call,
 	media: MediaType,
 ): Promise<Response> {
 	const results: unknown[] = [];
 	for (const params of entries) {
-		const outcome = await runOperation(rt, { ...base, params });
-		if (outcome.kind !== 'result') return encode(outcome, media);
-		results.push(outcome.result);
+		const state = call.state.fork();
+		const outcome = await runOperation(rt, { ...call, state, params });
+		if (outcome.kind === 'response') return outcome.response;
+		if (outcome.kind === 'unexpected') {
+			rt.unexpected.report(outcome.error, state);
+			results.push(UNEXPECTED_BODY);
+		} else results.push(outcome.result);
 	}
 	return jsonResponse(results, 200, media);
 }
 
-function encode(outcome: Outcome, media: MediaType): Response {
+function encode(
+	rt: Runtime,
+	state: RequestState,
+	outcome: Outcome,
+	media: MediaType,
+): Response {
 	if (outcome.kind === 'response') return outcome.response;
-	if (outcome.kind === 'unexpected') return handleUnexpected(outcome.error);
+	if (outcome.kind === 'unexpected')
+		return rt.unexpected.respond(outcome.error, state);
 	return jsonResponse(
 		outcome.result,
 		outcome.status ?? statusOf(media, outcome.result),

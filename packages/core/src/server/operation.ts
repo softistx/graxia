@@ -66,6 +66,19 @@ async function prepare(
 	});
 	if (parsed.error !== undefined) return unexpected(parsed.error);
 	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);
+	const early = selectOperation(parsed.document, final.operationName);
+	if (
+		typeof early !== 'string' &&
+		early.operation === 'mutation' &&
+		method === 'GET'
+	)
+		return failure(
+			'Can only perform a mutation operation from a POST request.',
+			{
+				status: 405,
+				headers: { allow: 'POST' },
+			},
+		);
 	const valid = await rt.pipeline.validate({
 		document: parsed.document,
 		cacheKey: parsed.cacheKey,
@@ -76,14 +89,6 @@ async function prepare(
 	if (valid.errors) return failed(valid.errors);
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
-	if (operation.operation === 'mutation' && method === 'GET')
-		return failure(
-			'Can only perform a mutation operation from a POST request.',
-			{
-				status: 405,
-				headers: { allow: 'POST' },
-			},
-		);
 	if (operation.operation === 'subscription')
 		return failure('Subscriptions are not supported over this transport yet.', {
 			code: 'SUBSCRIPTION_NOT_SUPPORTED',
@@ -134,23 +139,50 @@ async function executeOperation(
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
 	const stage = await rt.engine.runners.onExecute({ request, state, args });
-	let result: ExecutionOutput | undefined =
-		stage.error === undefined ? stage.out.result : undefined;
-	if (stage.error === undefined && result === undefined)
-		result = await (stage.out.executeFn ?? execute)(args);
-	const error = await settle(stage, {
+	let result: ExecutionOutput | undefined;
+	let thrown: unknown;
+	if (stage.error === undefined) {
+		try {
+			result =
+				stage.out.result ?? (await (stage.out.executeFn ?? execute)(args));
+		} catch (error) {
+			thrown = error;
+		}
+	}
+	const afterError = await settle(stage, {
 		result,
 		setResult: (next: ExecutionOutput) => {
 			result = next;
 		},
 	});
-	if (error !== undefined) return unexpected(error);
-	if (!isSingleResult(result))
+	const error = thrown ?? afterError;
+	if (error !== undefined) {
+		await release(result);
+		return unexpected(error);
+	}
+	if (!isSingleResult(result)) {
+		await release(result);
 		return failure(
 			'Incremental delivery (@defer, @stream) is not supported over this transport yet.',
 			{ code: 'INCREMENTAL_NOT_SUPPORTED' },
 		);
+	}
 	return { kind: 'result', result };
+}
+
+/** Ends a stream a custom executor returned, so its source is released. */
+async function release(result: ExecutionOutput | undefined): Promise<void> {
+	if (typeof result !== 'object' || result === null) return;
+	const stream =
+		Symbol.asyncIterator in result
+			? (result as AsyncIterable<unknown>)[Symbol.asyncIterator]()
+			: (result as { subsequentResults?: AsyncIterator<unknown> })
+					.subsequentResults;
+	try {
+		await stream?.return?.();
+	} catch {
+		// Releasing is best effort.
+	}
 }
 
 function isSingleResult(
