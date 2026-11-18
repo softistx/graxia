@@ -3,6 +3,7 @@ import { StateBag } from '../plugins/state';
 import type { SocketData } from '../ws/connection';
 import { createWebSocketHandler } from '../ws/handler';
 import { isUpgradeRequest, upgradeRequest } from '../ws/upgrade';
+import { recordClientAddress } from './client-address';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
@@ -48,6 +49,7 @@ export function createEntry<HostCtx extends object>(
 		state = new StateBag(),
 	) => {
 		state.set(requestIdKey, createRequestId());
+		recordClientAddress(state, request, serverContext);
 		if (lifecycle.closing) return seal(shuttingDown(), state);
 		try {
 			return seal(
@@ -66,6 +68,7 @@ export function createEntry<HostCtx extends object>(
 	): Promise<Response | undefined> => {
 		const state = new StateBag();
 		state.set(requestIdKey, createRequestId());
+		recordClientAddress(state, request, serverContext);
 		try {
 			if (lifecycle.closing) return seal(shuttingDown(), state);
 			const refusal = await upgradeRequest(

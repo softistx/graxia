@@ -675,3 +675,57 @@ Only version 1 of `apollo-persisted-query-manifest` is read.
 ## trustedDocuments.manifest: the Apollo manifest "operations" must be a list of { id, body }
 
 The Apollo manifest has no `operations` list, or an entry is not an object.
+
+## Too many requests, try again later.
+
+A client spent a `fieldRateLimit` limit. HTTP `429`, code `RATE_LIMITED` (or your `code`),
+`extensions.retryAfter` and a `Retry-After` header in seconds. Wait that long. If real users hit
+it, raise the limit's `limit`, or check that `key` is not the proxy's address for everyone (see
+[Rate limiting fields](./guide/rate-limiting.md)). Nothing counts when the key is `undefined`.
+
+## <field> may be selected once per operation.
+
+A field configured with `single: true` appears at two different places of one operation, for
+example `{ a: signIn b: signIn }`. HTTP `400`, code `FIELD_SELECTED_ONCE`. Send one operation per
+call, or drop `single`.
+
+## fieldRateLimit: fields must be an object with at least one field name
+
+`fields` is missing, empty or not an object. Pass `{ signIn: limit }`.
+
+## fieldRateLimit: fields.<name> must be a limit ({ consume }) or { limit, single? }
+
+The rule of `<name>` has no `consume` function, or `single` is not a boolean. Use
+`memoryFieldLimit(...)`, `limitFromStore(...)`, your own `{ consume }`, or `{ limit, single: true }`.
+
+## fieldRateLimit: ipv6Prefix must be an integer from 0 to 128
+
+```ts
+fieldRateLimit({ fields, ipv6Prefix: 64 });
+```
+
+## fieldRateLimit: ipv6Prefix only applies to the default key; reduce the address inside key() instead
+
+`ipv6Prefix` reduces the address the default key reads. With your own `key`, drop `ipv6Prefix` and
+reduce the address in `key`.
+
+## fieldRateLimit: code must be a non-empty string
+
+`code` is the `extensions.code` of a refusal: give a string, or leave it out for `RATE_LIMITED`.
+
+## memoryFieldLimit: limit must be an integer of 1 or more
+
+Also `windowMs` and `maxKeys`: `memoryFieldLimit: windowMs must be an integer of 1 or more`,
+`memoryFieldLimit: maxKeys must be an integer of 1 or more`. Pass whole numbers (windows in milliseconds).
+
+## limitFromStore: no policy; pass { limit, windowMs } or give the store a policy
+
+The store has no `policy`: `limitFromStore(store, { limit: 10, windowMs: 60_000 })`.
+
+## limitFromStore: limit <n> differs from the store policy's limit <m>
+
+The same for `windowMs`. The store counts with its own policy; pass the same numbers or none.
+
+## limitFromStore: limit must be an integer of 1 or more
+
+Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, `windowMs` in milliseconds.

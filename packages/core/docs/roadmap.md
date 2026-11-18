@@ -10,7 +10,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   off in production are in this release (see [Security](./guide/security.md)), and so are
   trusted documents: manifests (Relay, graphql-codegen, Apollo), `documentId`, automatic
   persisted queries and a strict mode (see
-  [Trusted documents](./guide/trusted-documents.md)). Still to come: a field rate limit.
+  [Trusted documents](./guide/trusted-documents.md)), and a per-field rate limit
+  (`fieldRateLimit`) that counts a field across aliases and fragments and answers `429` with
+  `Retry-After` (see [Rate limiting](./guide/rate-limiting.md)).
 
 ## Later
 

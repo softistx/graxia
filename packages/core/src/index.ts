@@ -54,6 +54,17 @@ export type {
 	PubSubTopics,
 	SubscribeOptions,
 } from './pubsub/types';
+export { fieldRateLimit } from './rate-limit/plugin';
+export type { MemoryFieldLimitOptions } from './rate-limit/store';
+export { limitFromStore, memoryFieldLimit } from './rate-limit/store';
+export type {
+	CostlessStore,
+	FieldDecision,
+	FieldLimit,
+	FieldRateLimitOptions,
+	FieldRule,
+} from './rate-limit/types';
+export { DEFAULT_LIMIT_CODE } from './rate-limit/types';
 export { createSchema } from './schema/create-schema';
 export type { TypeDefs } from './schema/typedefs';
 export type {

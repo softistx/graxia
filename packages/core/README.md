@@ -195,13 +195,38 @@ createGraxia({
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
 
 - Trusted documents are opt-in (`trustedDocuments`): see below.
+- Field rate limits are opt-in (`fieldRateLimit`): see below.
 
-**Not yet**
+Rate-limit the endpoint as a whole in a proxy or gateway.
 
-- A field rate limit.
+## Rate limiting fields
 
-These are planned (see the [roadmap](./docs/roadmap.md)). Meanwhile put the endpoint behind a proxy
-or gateway that rate-limits and caps request cost.
+Limit how often a client selects chosen fields, counted across aliases and fragments (three aliased
+`signIn` in one request spend 3 units). Past a limit nothing executes: `429` with `Retry-After`.
+
+```ts
+import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+
+createGraxia({
+	schema,
+	plugins: [
+		fieldRateLimit({
+			fields: {
+				signIn: {
+					limit: memoryFieldLimit({ limit: 5, windowMs: 60_000 }),
+					single: true,
+				},
+			},
+			// key: (ctx) => ctx.userId, ipv6Prefix: 64, code: 'RATE_LIMITED'
+		}),
+	],
+});
+```
+
+`single: true` also refuses the field selected twice in one operation (`400`,
+`FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
+proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
+[Rate limiting fields](./docs/guide/rate-limiting.md).
 
 ## Trusted documents
 
@@ -365,17 +390,18 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 ## Exports
 
-| import                 | what it is                                                                                                                                               |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
-|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                     |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
-|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                |
-|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                    |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
+| import                 | what it is                                                                                                                                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                        |
+|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                         |
+|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                             |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                           |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                           |
+|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                |
+|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                        |
+|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions` |
+|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                            |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                               |
 
 ## Documentation
 
