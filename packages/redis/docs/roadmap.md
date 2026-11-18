@@ -2,11 +2,6 @@
 
 Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 
-## Now
-
-- **Redis PubSub and cache** — `redisPubSub` and `redisCache` on Bun's built-in Redis client, coming in
-  the next release. See [the guide](./guide/redis.md).
-
 ## Next
 
 - Redis Streams based delivery for at-least-once subscriptions, if there is demand.
@@ -21,4 +16,7 @@ Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 
 ## Shipped
 
-Nothing released yet.
+### 0.1.0
+
+- **Redis PubSub and cache** — `redisPubSub` (drop-in for core's memory PubSub, resubscribes after a
+  reconnect) and `redisCache` (TTL with `PX`) on Bun's built-in Redis client. See [the guide](./guide/redis.md).
