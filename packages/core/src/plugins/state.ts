@@ -1,0 +1,52 @@
+import { GraxiaConfigError } from '../errors/config-error';
+
+/** A typed key into a {@link RequestState}. Create one with {@link createStateKey}. */
+export interface StateKey<T> {
+	/** Human-readable name, used in error messages only. */
+	readonly name: string;
+	/** @internal unique identity; two keys with the same name are distinct. */
+	readonly id: symbol;
+	/** @internal phantom type carrier. */
+	readonly '~type'?: T;
+}
+
+/**
+ * Creates a typed state key. Keys are unique: two keys with the same name do
+ * not collide.
+ *
+ * @example
+ * const userKey = createStateKey<{ id: string }>("user");
+ */
+export function createStateKey<T>(name: string): StateKey<T> {
+	return { name, id: Symbol(name) };
+}
+
+/** Per-request typed bag shared by every hook of one request. */
+export class RequestState {
+	readonly #map = new Map<symbol, unknown>();
+
+	/** Stores a value under the key. */
+	set<T>(key: StateKey<T>, value: T): void {
+		this.#map.set(key.id, value);
+	}
+
+	/** Reads the value, or `undefined` when none was set. */
+	get<T>(key: StateKey<T>): T | undefined {
+		return this.#map.get(key.id) as T | undefined;
+	}
+
+	/** Whether a value was set under the key. */
+	has(key: StateKey<unknown>): boolean {
+		return this.#map.has(key.id);
+	}
+
+	/** Reads the value; throws {@link GraxiaConfigError} naming the key when absent. */
+	require<T>(key: StateKey<T>): T {
+		if (!this.#map.has(key.id)) {
+			throw new GraxiaConfigError(
+				`Request state key "${key.name}" is required but was not set`,
+			);
+		}
+		return this.#map.get(key.id) as T;
+	}
+}
