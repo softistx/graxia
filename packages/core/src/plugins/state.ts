@@ -23,6 +23,11 @@ export function createStateKey<T>(name: string): StateKey<T> {
 
 /** Per-request typed bag shared by every hook of one request. */
 export class RequestState {
+	/**
+	 * Headers added to whatever response the request ends with (a plugin's
+	 * `respond`, a 413, the result), merged by the transport.
+	 */
+	readonly responseHeaders = new Headers();
 	readonly #map = new Map<symbol, unknown>();
 
 	/** Stores a value under the key. */

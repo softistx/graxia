@@ -18,6 +18,8 @@ export const timing = definePlugin()({
 Stages, in order: `onRequest`, `onParams`, `onParse`, `onValidate`, `onContext`, `onExecute` (or
 `onSubscribe`), `onResultChunk`, `onResponse`. `setup(api)` runs once at engine init.
 
+Every payload carries `responseHeaders: Headers`, merged into the final response (see [GraphQL over HTTP](./http.md#plugin-headers)).
+
 ## Ordering
 
 Plugins run in the order given. `enforce: "pre"` moves a plugin first, `"post"` last; inside a group

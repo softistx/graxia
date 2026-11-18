@@ -16,6 +16,7 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 
 ## Documentation
 
+- [GraphQL over HTTP](./docs/guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits, parse and validation caches, `createDocumentPipeline`.

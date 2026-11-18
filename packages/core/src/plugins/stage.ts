@@ -1,3 +1,4 @@
+import { RequestState } from './state';
 import type { MaybePromise } from './types';
 
 type AnyHook = (
@@ -35,6 +36,16 @@ export interface StageSpec<Input, Out> {
 	collect?(out: Out, returned: unknown, plugin: string): void;
 }
 
+/** Adds the request's `responseHeaders` to a payload (when the input carries a state). */
+function withHeaders(input: unknown, payload: unknown): unknown {
+	const state = (input as { state?: unknown }).state;
+	if (!(state instanceof RequestState) || typeof payload !== 'object')
+		return payload;
+	return Object.assign(payload as object, {
+		responseHeaders: state.responseHeaders,
+	});
+}
+
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
 	typeof value === 'object' &&
 	value !== null &&
@@ -65,7 +76,7 @@ export function createStageRunner<Input, Out, Done>(
 		for (const hook of hooks) {
 			try {
 				let returned: unknown = hook.run(
-					spec.payload(input, out, stop) as never,
+					withHeaders(input, spec.payload(input, out, stop)) as never,
 				);
 				if (isThenable(returned)) returned = await returned;
 				if (typeof returned === 'function')

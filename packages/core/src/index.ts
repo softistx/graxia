@@ -1,6 +1,8 @@
 export * from './document';
 export { GraxiaConfigError } from './errors/config-error';
 export { GraxiaPluginError } from './errors/plugin-error';
+export type { BatchingOption } from './http/batch';
+export { requestIdKey } from './http/request-id';
 export type {
 	ContextOf,
 	PluginContext,
@@ -39,3 +41,10 @@ export type {
 	TypeResolver,
 	TypeResolvers,
 } from './schema/types';
+export type { Graxia, GraxiaServeOptions } from './server/create-graxia';
+export { createGraxia } from './server/create-graxia';
+export type {
+	ContextInit,
+	GraxiaLimits,
+	GraxiaOptions,
+} from './server/options';
