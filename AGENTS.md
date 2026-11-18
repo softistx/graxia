@@ -23,8 +23,9 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                       |
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                        |
 
-`@graxia/core` is public since S8 (first publish 0.1.0); the other packages stay
-`"private": true` until their own slice, and removing it is a deliberate commit of its own.
+`@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
+publish with 0.2); the other packages stay `"private": true` until their own slice, and removing it is
+a deliberate commit of its own.
 
 ## Scripts
 

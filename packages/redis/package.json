@@ -1,7 +1,6 @@
 {
 	"name": "@graxia/redis",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Redis PubSub and cache adapters for graxia, on Bun.redis",
 	"license": "MIT",
 	"type": "module",
@@ -53,5 +52,13 @@
 	"peerDependencies": {
 		"@graxia/core": "workspace:^",
 		"typescript": "^6.0.3 || ^7.0.0"
+	},
+	"engines": {
+		"bun": ">=1.4.4"
+	},
+	"peerDependenciesMeta": {
+		"typescript": {
+			"optional": true
+		}
 	}
 }

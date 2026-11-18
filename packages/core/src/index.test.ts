@@ -27,6 +27,7 @@ describe('public exports', () => {
 			'tryGetContext',
 			'exposedError',
 			'createMemoryPubSub',
+			'createMemoryCache',
 			'filterIterable',
 			'mapIterable',
 		])

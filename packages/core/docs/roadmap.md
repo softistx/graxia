@@ -6,14 +6,13 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 - **Subscriptions over SSE and WebSocket** — the typed PubSub, subscriptions over server-sent
   events (`graphql-sse`, distinct connections) and `graphql-transport-ws` on Bun's WebSocket
-  (see [the guide](./guide/websocket.md)) have shipped; only the Redis PubSub is still to come.
+  (see [the guide](./guide/websocket.md)) have shipped. The Redis PubSub in `@graxia/redis`
+  comes in the next release.
 - **`@defer` and `@stream`** — incremental delivery over `multipart/mixed` and server-sent events,
   in graphql 17's format or the legacy one, has shipped (see [the guide](./guide/incremental.md)).
-
-## Next
-
 - **Redis PubSub and cache** — a separate `@graxia/redis` package on Bun's built-in Redis client,
-  so subscriptions and caches work across several instances.
+  so subscriptions and caches work across several instances; core's `KeyValueCache` contract and
+  `createMemoryCache` it builds on come in the next release.
 
 ## Later
 

@@ -221,10 +221,25 @@ result.status; // 200
 result.data?.hello; // 'hello world'
 ```
 
+## Key-value cache
+
+`KeyValueCache` (with `CacheSetOptions`) is a small asynchronous string store; `createMemoryCache` is the
+in-process LRU implementation with a per-entry `ttlMs`. `redisCache` in `@graxia/redis` is the shared one.
+
+```ts
+import { createMemoryCache } from '@graxia/core';
+
+const cache = createMemoryCache({ maxEntries: 500 });
+await cache.set('greeting', 'hello', { ttlMs: 60_000 });
+await cache.get('greeting'); // 'hello'
+```
+
+See [limits and caches](./docs/guide/limits-and-caches.md).
+
 ## PubSub
 
-A typed in-memory PubSub for subscription resolvers. It lives in one process; a Redis
-implementation of the same interface is planned.
+A typed in-memory PubSub for subscription resolvers. It lives in one process; for several
+instances, `redisPubSub` from `@graxia/redis` implements the same interface.
 
 ```ts
 import { createMemoryPubSub, filterIterable } from '@graxia/core';

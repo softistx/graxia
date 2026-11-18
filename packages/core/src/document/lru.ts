@@ -22,6 +22,8 @@ export interface LruCache<K, V> {
 	 * is not stored, and evicts nothing.
 	 */
 	set(key: K, value: V): void;
+	/** Removes an entry; true when it was held (expired or not). */
+	delete(key: K): boolean;
 	/** The number of entries held (expired ones included until read). */
 	readonly size: number;
 	/** The total weight held. */
@@ -71,6 +73,12 @@ export function createLruCache<K, V>(
 				if (entries.size <= max && total <= maxWeight) break;
 				drop(oldest, entry);
 			}
+		},
+		delete(key) {
+			const entry = entries.get(key);
+			if (entry === undefined) return false;
+			drop(key, entry);
+			return true;
 		},
 		get size() {
 			return entries.size;
