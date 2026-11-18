@@ -18,5 +18,6 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
+- [Limits and caches](./docs/guide/limits-and-caches.md): parse limits, parse and validation caches, `createDocumentPipeline`.
 
 See [`docs/`](./docs) for the guides, troubleshooting and roadmap of this package.

@@ -6,3 +6,4 @@ Guides, troubleshooting and the roadmap of `@graxia/core` land here with the sli
 
 - [Plugins](./guide/plugins.md)
 - [Schema](./guide/schema.md)
+- [Limits and caches](./guide/limits-and-caches.md)

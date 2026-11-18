@@ -1,3 +1,4 @@
+export * from './document';
 export { GraxiaConfigError } from './errors/config-error';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type {
