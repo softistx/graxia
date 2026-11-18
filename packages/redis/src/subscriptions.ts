@@ -1,6 +1,9 @@
 import type { RedisClient } from 'bun';
 import { closeQuietly } from './connection';
 
+/** The longest `close()` waits for commands still in flight. */
+const CLOSE_WAIT_MS = 1000;
+
 /** What {@link createTopicSubscriptions} needs. */
 export interface TopicSubscriptionsInit {
 	/** The publisher client; its `duplicate()` becomes the subscriber connection. */
@@ -30,8 +33,9 @@ export interface TopicSubscriptions {
  * Commands run one after the other. Bun reconnects a lost connection by
  * itself but does not restore its subscriptions, and it fires `onconnect`
  * after the first connection too: each `onconnect` subscribes the active
- * topics again (harmless on the server) with a new listener, the older
- * listeners going inert, so delivery stays single.
+ * topics again (harmless on the server) with a new listener and drops the
+ * previous one (Bun keeps every listener of a channel), so delivery stays
+ * single and the listener list stays bounded.
  */
 export function createTopicSubscriptions(
 	init: TopicSubscriptionsInit,
@@ -70,9 +74,13 @@ export function createTopicSubscriptions(
 	}
 
 	async function restore(redis: RedisClient): Promise<void> {
+		const previous = listener;
 		listener = listen(++generation);
-		for (const topic of refs.keys())
+		for (const topic of refs.keys()) {
 			await redis.subscribe(prefix + topic, listener);
+			// Bun keeps every listener of a channel: drop the inert one.
+			await redis.unsubscribe(prefix + topic, previous);
+		}
 	}
 
 	return {
@@ -90,10 +98,16 @@ export function createTopicSubscriptions(
 		},
 		ready: () => queue,
 		async close() {
-			await queue;
 			closed = true;
 			refs.clear();
-			if (subscriber) closeQuietly(await subscriber.catch(() => client));
+			// Bounded: a SUBSCRIBE stuck while the connection is down must not hang dispose.
+			const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+			await Promise.race([queue, wait(CLOSE_WAIT_MS)]);
+			const redis = await Promise.race([
+				subscriber?.catch(() => undefined),
+				wait(CLOSE_WAIT_MS),
+			]);
+			if (redis) closeQuietly(redis as RedisClient);
 		},
 	};
 }

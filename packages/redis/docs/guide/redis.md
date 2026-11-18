@@ -64,6 +64,12 @@ does not restore its subscriptions. `redisPubSub` subscribes again to every acti
 PubSub is at most once. When Bun gives up (`maxRetries` reached) it calls `onclose`; the error goes to
 `onError` and the iterators stay open but silent, so alert on `onError` and restart the instance.
 
+### Waiting while disconnected
+
+`publish()` and `ready()` wait for this instance's own pending SUBSCRIBE/UNSUBSCRIBE commands, so they can
+wait while the subscriber connection is down. `ready()` never rejects (failures go to `onError`).
+`dispose()` waits at most one second for those commands, so shutdown never hangs.
+
 ### Errors
 
 `onError` receives connection errors, failed `SUBSCRIBE` commands and payloads whose `deserialize`

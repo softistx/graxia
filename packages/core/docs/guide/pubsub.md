@@ -90,7 +90,7 @@ const pubsub = createMemoryPubSub<Topics>({
 ## Several processes
 
 The memory PubSub only reaches subscribers in the same process. For several instances, swap it
-for `redisPubSub` from [`@graxia/redis`](../../../redis/README.md): it implements the same `PubSub`
+for `redisPubSub` from [`@graxia/redis`](https://www.npmjs.com/package/@graxia/redis): it implements the same `PubSub`
 interface on Bun's Redis client, so resolvers and `filterIterable` do not change.
 
 ```ts

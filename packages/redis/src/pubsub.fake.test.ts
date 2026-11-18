@@ -9,25 +9,30 @@ type Listener = (message: string, channel: string) => void;
 /** A stand-in for the publisher client and its duplicate (the subscriber). */
 function fakeRedis() {
 	const calls: string[] = [];
-	const listeners = new Map<string, Listener>();
+	const listeners = new Map<string, Listener[]>();
 	const subscriber = {
 		onconnect: null as (() => void) | null,
 		onclose: null as ((error: Error) => void) | null,
 		subscribe: async (channel: string, listener: Listener) => {
 			calls.push(`subscribe ${channel}`);
-			listeners.set(channel, listener);
+			listeners.set(channel, [...(listeners.get(channel) ?? []), listener]);
 			return 1;
 		},
-		unsubscribe: async (channel: string) => {
+		unsubscribe: async (channel: string, listener?: Listener) => {
 			calls.push(`unsubscribe ${channel}`);
-			listeners.delete(channel);
+			const left = listener
+				? (listeners.get(channel) ?? []).filter((l) => l !== listener)
+				: [];
+			if (left.length > 0) listeners.set(channel, left);
+			else listeners.delete(channel);
 		},
 		close: () => calls.push('subscriber closed'),
 	};
 	const client = {
 		duplicate: async () => subscriber,
 		publish: async (channel: string, message: string) => {
-			listeners.get(channel)?.(message, channel);
+			for (const listener of listeners.get(channel) ?? [])
+				listener(message, channel);
 			return 1;
 		},
 		close: () => calls.push('client closed'),
@@ -91,7 +96,8 @@ describe('redisPubSub (fake client)', () => {
 		});
 		const events = pubsub.subscribe('t');
 		await pubsub.ready();
-		listeners.get('graxia:t')?.('{nope', 'graxia:t');
+		for (const listener of listeners.get('graxia:t') ?? [])
+			listener('{nope', 'graxia:t');
 		await pubsub.publish('t', 2);
 		expect((await events.next()).value).toBe(2);
 		expect(errors).toHaveLength(1);
@@ -104,9 +110,60 @@ describe('redisPubSub (fake client)', () => {
 		await pubsub.ready();
 		subscriber.onconnect?.();
 		await pubsub.ready();
-		expect(calls.slice(1)).toEqual(['subscribe graxia:t']);
+		expect(calls.slice(1)).toEqual([
+			'subscribe graxia:t',
+			'unsubscribe graxia:t',
+		]);
 		await pubsub.publish('t', 3);
 		expect((await events.next()).value).toBe(3);
+	});
+
+	test('many reconnects keep one listener per channel and one delivery', async () => {
+		const { listeners, subscriber, client } = fakeRedis();
+		const pubsub = redisPubSub<{ t: number }>({ client });
+		const events = pubsub.subscribe('t');
+		await pubsub.ready();
+		for (let i = 0; i < 25; i++) {
+			subscriber.onconnect?.();
+			await pubsub.ready();
+		}
+		expect(listeners.get('graxia:t')).toHaveLength(1);
+		await pubsub.publish('t', 4);
+		expect((await events.next()).value).toBe(4);
+		expect(
+			await Promise.race([
+				events.next(),
+				new Promise((r) => setTimeout(r, 50, 'none')),
+			]),
+		).toBe('none');
+	});
+
+	test('dispose never closes the given client when duplicate() rejected', async () => {
+		const { calls, client } = fakeRedis();
+		(client as unknown as { duplicate: () => Promise<never> }).duplicate =
+			async () => {
+				throw new Error('no connection');
+			};
+		const errors: unknown[] = [];
+		const pubsub = redisPubSub<{ t: number }>({
+			client,
+			onError: (error) => errors.push(error),
+		});
+		pubsub.subscribe('t');
+		await pubsub.ready();
+		await pubsub.dispose();
+		expect(errors).toHaveLength(1);
+		expect(calls).not.toContain('client closed');
+	});
+
+	test('dispose does not hang on a SUBSCRIBE that never completes', async () => {
+		const { subscriber, client } = fakeRedis();
+		subscriber.subscribe = () => new Promise(() => {});
+		const pubsub = redisPubSub<{ t: number }>({ client });
+		pubsub.subscribe('t');
+		const start = Date.now();
+		await pubsub.dispose();
+		expect(Date.now() - start).toBeLessThan(3000);
 	});
 
 	test('a connection error goes to onError, not into the iterator', async () => {

@@ -36,16 +36,19 @@ await pubsub.dispose(); // on shutdown
 
 Options (all optional):
 
-| Option                      | Default                                    | Meaning                                                      |
-| --------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
-| `url`                       | `REDIS_URL`, then `redis://localhost:6379` | Connection; the adapter creates and later closes the client  |
-| `client`                    |                                            | A `RedisClient` you own instead of `url`; never closed by us |
-| `prefix`                    | `graxia:`                                  | Prepended to every channel                                   |
-| `bufferSize` / `onOverflow` | 1000                                       | Per subscriber, the oldest event is dropped (same as memory) |
-| `serialize` / `deserialize` | `JSON.stringify` / `JSON.parse`            | Payload codec                                                |
-| `onError`                   |                                            | Connection, subscription and payload errors                  |
+| Option                      | Default                                    | Meaning                                                       |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| `url`                       | `REDIS_URL`, then `redis://localhost:6379` | Connection; the adapter creates and later closes the client   |
+| `client`                    |                                            | A `RedisClient` you own instead of `url`; never closed by us  |
+| `prefix`                    | `graxia:`                                  | Prepended to every channel                                    |
+| `bufferSize`                | 1000                                       | Events buffered per subscriber; past it the oldest is dropped |
+| `onOverflow`                |                                            | Called once per dropped event with `{ topic, dropped }`       |
+| `serialize` / `deserialize` | `JSON.stringify` / `JSON.parse`            | Payload codec                                                 |
+| `onError`                   |                                            | Connection, subscription and payload errors                   |
 
 ## Cache
+
+Options: `url`, `client` (as above) and `prefix` (default `graxia:cache:`).
 
 `redisCache` implements core's `KeyValueCache<string>`; `createMemoryCache` is its in-process twin.
 
@@ -70,6 +73,9 @@ Redis PubSub is at most once, and graxia adds nothing on top:
   per topic, shared by every local subscriber and dropped with the last.
 - Events published while a connection is down are lost. Iterators stay open across a reconnect
   and receive later events.
+- `publish()` and `ready()` wait for this instance's own pending SUBSCRIBEs, so they can wait while
+  the subscriber connection is down; `ready()` never rejects, and `dispose()` waits at most one
+  second for them.
 - Events published by another process just after `subscribe()` returns may arrive before the
   server registered the subscription. `await pubsub.ready()` waits for the `SUBSCRIBE`s issued so
   far. `publish` on the same instance waits for its own pending subscriptions, so a local

@@ -4,8 +4,8 @@ Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Redis PubSub and cache** — `redisPubSub` and `redisCache` on Bun's built-in Redis client, released
-  with graxia 0.2. See [the guide](./guide/redis.md).
+- **Redis PubSub and cache** — `redisPubSub` and `redisCache` on Bun's built-in Redis client, coming in
+  the next release. See [the guide](./guide/redis.md).
 
 ## Next
 
