@@ -5,9 +5,10 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 ## Now
 
 - **Secure by default** — operation limits (depth, aliases, directives, root fields and a
-  `@cost` / `@listSize` cost limit) are in this release, on by default. Still to come: CSRF and
-  same-origin checks (WebSocket upgrades included), an introspection policy, trusted documents
-  and a field rate limit.
+  `@cost` / `@listSize` cost limit), CSRF prevention (a header on a `GET` or a non-JSON `POST`),
+  same-origin checks, a WebSocket `Origin` check, and introspection and "Did you mean" suggestions
+  off in production are in this release (see [Security](./guide/security.md)). Still to come:
+  trusted documents and a field rate limit.
 
 ## Later
 

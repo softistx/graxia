@@ -25,6 +25,35 @@ describe('createTestClient', () => {
 		expect(get.data).toEqual({ hello: 'world' });
 	});
 
+	test('a GET carries the instance CSRF header, none when the check is off', async () => {
+		const custom = createGraxia({
+			schema,
+			csrf: { requireHeader: ['x-my-token'] },
+			...quiet,
+		});
+		expect(
+			(await createTestClient(custom).query('{ hello }', { method: 'GET' }))
+				.status,
+		).toBe(200);
+		for (const csrf of [false, { requireHeader: false }] as const) {
+			const seen: (string | null)[] = [];
+			const spy = createGraxia({
+				schema,
+				csrf,
+				plugins: [
+					{
+						name: 'spy',
+						onRequest: ({ request }) =>
+							void seen.push(request.headers.get('x-graphql-csrf')),
+					},
+				],
+				...quiet,
+			});
+			await createTestClient(spy).query('{ hello }', { method: 'GET' });
+			expect(seen).toEqual([null]);
+		}
+	});
+
 	test('DocumentNode, variables and operationName over GET and POST', async () => {
 		const client = createTestClient(createGraxia({ schema, ...quiet }));
 		for (const method of ['GET', 'POST'] as const) {

@@ -18,6 +18,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [`@defer` and `@stream`](./guide/incremental.md): multipart/mixed and SSE, formats, clients, masking, cancellation.
 - [PubSub](./guide/pubsub.md): typed topics, the in-memory PubSub, `filterIterable` / `mapIterable`, cancellation.
 - [Limits and caches](./guide/limits-and-caches.md): parse limits, parse and validation caches, the `KeyValueCache` contract.
+- [Security: CSRF, origins, introspection](./guide/security.md): the CSRF header, `sameOrigin`, WebSocket origin, `introspection` and `suggestions`.
 - [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@graxia/core/testing`.
 - [Errors: exposed, masked, correlation ids](./guide/errors.md): `exposedError`, `onUnexpected`, `maskError`.
 

@@ -303,7 +303,9 @@ describe('operation selection and executors', () => {
 	test('a GET mutation is 405 before validation', async () => {
 		const g = make([]);
 		const url = `http://x/graphql?query=${encodeURIComponent('mutation { doesNotExist }')}`;
-		const res = await g.fetch(new Request(url));
+		const res = await g.fetch(
+			new Request(url, { headers: { 'x-graphql-csrf': '1' } }),
+		);
 		expect(res.status).toBe(405);
 		expect(res.headers.get('allow')).toBe('POST');
 	});

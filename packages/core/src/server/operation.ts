@@ -173,6 +173,7 @@ async function executeOperation(
 		// `signal` is set again: a plugin cannot make it diverge from `abortSignal`.
 		contextValue,
 		abortSignal: signal,
+		hideSuggestions: !rt.options.suggestions,
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};

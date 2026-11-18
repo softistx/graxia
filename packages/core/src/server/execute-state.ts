@@ -11,6 +11,9 @@ export const presetDocumentKey = createStateKey<{
 	text: string;
 }>('graxia.execute.document');
 
+/** @internal Set on the synthetic request of `execute`: no browser sent it, so the CSRF and origin checks skip it. */
+export const inProcessKey = createStateKey<true>('graxia.execute.inProcess');
+
 /** @internal The masked result of the operation, recorded for `execute`. */
 export const resultKey = createStateKey<ExecutionResult>(
 	'graxia.execute.result',

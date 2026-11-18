@@ -6,6 +6,9 @@ import { resolveOperationLimits } from '../limits/options';
 import { operationLimitRules } from '../limits/rules';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
+import { csrfHeaderKey } from '../security/header-key';
+import { noIntrospectionRule } from '../security/introspection';
+import { resolveSecurity } from '../security/options';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
@@ -132,6 +135,7 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		batching,
 		asyncContext,
 		shutdownTimeout,
+		...resolveSecurity(options),
 		...resolveStreaming(options),
 	};
 }
@@ -164,7 +168,11 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			schema: options.schema,
 			engine,
 			...(options.limits ? { limits: options.limits } : {}),
-			rules: operationLimitRules(resolved.operationLimits),
+			rules: [
+				...operationLimitRules(resolved.operationLimits),
+				...(resolved.introspection ? [] : [noIntrospectionRule]),
+			],
+			hideSuggestions: !resolved.suggestions,
 			...(options.caches !== undefined ? { caches: options.caches } : {}),
 		}),
 		options: resolved,
@@ -193,7 +201,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		lifecycle,
 		path: resolved.path,
 	});
-	return {
+	const graxia: Graxia<HostCtx> = {
 		ready,
 		execute,
 		fetch: entry.fetch,
@@ -204,4 +212,10 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
+	// @internal: lets the test client send the instance's CSRF header on a GET.
+	const header = resolved.csrf === false ? undefined : resolved.csrf.headers;
+	Object.defineProperty(graxia, csrfHeaderKey, {
+		value: header ? header[0] : undefined,
+	});
+	return graxia;
 }

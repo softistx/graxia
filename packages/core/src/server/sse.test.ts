@@ -101,14 +101,14 @@ describe('wire format', () => {
 		const graxia = make();
 		const get = await graxia.fetch(
 			new Request(`http://x/graphql?query=${encodeURIComponent('{ hello }')}`, {
-				headers: { accept: 'text/event-stream' },
+				headers: { accept: 'text/event-stream', 'x-graphql-csrf': '1' },
 			}),
 		);
 		expect(events(await get.text())).toContain('"hello":"world"');
 		const mutation = await graxia.fetch(
 			new Request(
 				`http://x/graphql?query=${encodeURIComponent('mutation { bump }')}`,
-				{ headers: { accept: 'text/event-stream' } },
+				{ headers: { accept: 'text/event-stream', 'x-graphql-csrf': '1' } },
 			),
 		);
 		expect(mutation.status).toBe(405);
@@ -130,7 +130,11 @@ describe('wire format', () => {
 		const bad = await graxia.fetch(
 			new Request('http://x/graphql', {
 				method: 'POST',
-				headers: { 'content-type': 'text/plain', accept: 'text/event-stream' },
+				headers: {
+					'content-type': 'text/plain',
+					accept: 'text/event-stream',
+					'x-graphql-csrf': '1',
+				},
 				body: 'x',
 			}),
 		);

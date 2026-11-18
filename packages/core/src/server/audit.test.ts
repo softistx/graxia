@@ -11,7 +11,11 @@ afterAll(() => {
 describe('graphql-http server audits', () => {
 	const audits = serverAudits({
 		url: () => `http://localhost:${server.port}/graphql`,
-		fetchFn: fetch,
+		fetchFn: (input: RequestInfo | URL, init?: RequestInit) => {
+			const headers = new Headers(init?.headers);
+			headers.set('x-graphql-csrf', '1');
+			return fetch(input, { ...init, headers });
+		},
 	});
 	for (const audit of audits) {
 		test(`${audit.id} ${audit.name}`, async () => {

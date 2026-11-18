@@ -1,5 +1,6 @@
 import type { DocumentInput } from '../document/typed';
 import { isRecord } from '../http/record';
+import { csrfHeaderKey } from '../security/header-key';
 import type { Graxia } from '../server/create-graxia';
 import type { OptionsArg, WithServerContext } from '../server/host-context';
 import { getUrl, type WireParams, wireParams } from './request';
@@ -75,6 +76,7 @@ export function createTestClient<HostCtx extends object>(
 ): TestClient {
 	const options: TestClientBase & { serverContext?: HostCtx } =
 		clientOptions ?? {};
+	const csrfHeader = (graxia as { [csrfHeaderKey]?: string })[csrfHeaderKey];
 	const base = `http://graxia.local${options.path ?? '/graphql'}`;
 	const send = async (
 		method: 'GET' | 'POST',
@@ -84,6 +86,9 @@ export function createTestClient<HostCtx extends object>(
 	): Promise<{ response: Response; body: unknown }> => {
 		const merged = new Headers(options.headers);
 		for (const [name, value] of new Headers(headers)) merged.set(name, value);
+		// A GET carries the instance's CSRF header (its first configured one), unless the caller set it.
+		if (method === 'GET' && csrfHeader && !merged.has(csrfHeader))
+			merged.set(csrfHeader, '1');
 		if (!merged.has('accept')) merged.set('accept', accept ?? DEFAULT_ACCEPT);
 		else if (accept !== undefined) merged.set('accept', accept);
 		const request =

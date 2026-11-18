@@ -11,6 +11,7 @@ import type {
 	GraxiaPlugin,
 	MaybePromise,
 } from '../plugins/types';
+import type { CsrfOptions, ResolvedCsrf } from '../security/options';
 import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
@@ -101,6 +102,21 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 */
 	incremental?: boolean | IncrementalOptions;
 	/**
+	 * CSRF prevention and origin checks. On by default: a GET, or a POST that is not
+	 * JSON, needs a CSRF header (see `DEFAULT_CSRF_HEADERS`); a WebSocket upgrade from
+	 * another origin is refused. `false` turns all of it off.
+	 */
+	csrf?: false | CsrfOptions;
+	/**
+	 * Answers `__schema` and `__type` queries. `true` unless `NODE_ENV` is `production`.
+	 */
+	introspection?: boolean;
+	/**
+	 * Keeps "Did you mean ..." hints in validation and variable errors. `true` unless
+	 * `NODE_ENV` is `production`.
+	 */
+	suggestions?: boolean;
+	/**
 	 * Receives the original error of every unexpected failure (a hook or
 	 * `execute` threw, a resolver threw a plain error). The response stays a
 	 * generic 500 or a masked error. Default: `console.error`, silent when
@@ -136,6 +152,10 @@ export interface ResolvedOptions {
 	keepAliveMs: number;
 	/** The WebSocket settings, or `false` when it is off. */
 	ws: ResolvedWebSocket | false;
+	/** The CSRF and origin checks, or `false` when they are off. */
+	csrf: ResolvedCsrf | false;
+	introspection: boolean;
+	suggestions: boolean;
 	/** The incremental delivery format, or `false` when it is off. */
 	incremental: false | 'graphql17' | 'legacy';
 }
