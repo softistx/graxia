@@ -22,6 +22,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Trusted documents and persisted queries](./guide/trusted-documents.md): manifests (Relay, codegen, Apollo), `documentId`, APQ, strict mode, error codes.
 - [Rate limiting fields](./guide/rate-limiting.md): `fieldRateLimit`, aliases and fragments counted, `single`, keys and IPv6, stores, 429.
 - [OpenTelemetry](./guide/telemetry.md): spans for requests, parse, validate and operations, resolver spans, propagation, the optional peer.
+- [Production](./guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, health checks and a checklist.
 - [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@graxia/core/testing`.
 - [Errors: exposed, masked, correlation ids](./guide/errors.md): `exposedError`, `onUnexpected`, `maskError`.
 
