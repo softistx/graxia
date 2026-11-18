@@ -168,3 +168,18 @@ describe('setup failure', () => {
 		await expect(g.ready).resolves.toBeUndefined();
 	});
 });
+
+describe('client address', () => {
+	test('a requestIP that throws does not fail the request', async () => {
+		const g = createGraxia({ schema, onUnexpected: false });
+		const response = await g.fetch(post({ query: '{ hello }' }), {
+			server: {
+				requestIP: () => {
+					throw new Error('socket closed');
+				},
+			},
+		} as never);
+		expect(response.status).toBe(200);
+		await g.dispose({ timeout: 10 });
+	});
+});

@@ -17,9 +17,11 @@ import {
 async function refusalCode(response: Response): Promise<string | undefined> {
 	if (response.status < 400 || response.status > 499) return undefined;
 	if (!response.headers.get('content-type')?.includes('json')) return undefined;
+	// A refusal is small and declares its length; a body of unknown or large size is never read.
+	const length = Number(response.headers.get('content-length') ?? Number.NaN);
+	if (!(length <= 4096)) return undefined;
 	try {
 		const text = await response.clone().text();
-		if (text.length > 4096) return undefined;
 		const code = JSON.parse(text)?.errors?.[0]?.extensions?.code;
 		return typeof code === 'string' ? code : undefined;
 	} catch {

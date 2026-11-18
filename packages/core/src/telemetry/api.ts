@@ -20,7 +20,7 @@ export interface TracerLike {
 	startSpan(
 		name: string,
 		options?: { kind?: number; attributes?: Record<string, string | number> },
-		context?: any,
+		context?: unknown,
 	): SpanLike;
 }
 
@@ -28,15 +28,15 @@ export interface TracerLike {
 export interface OtelApi {
 	trace: {
 		getTracer(name: string, version?: string): TracerLike;
-		setSpan(context: any, span: any): any;
+		setSpan(context: unknown, span: unknown): unknown;
 		getActiveSpan(): unknown;
 	};
 	context: {
-		active(): any;
-		with<T>(context: any, fn: () => T): T;
+		active(): unknown;
+		with<T>(context: unknown, fn: () => T): T;
 	};
 	propagation: {
-		extract(context: any, carrier: Headers, getter: HeaderGetter): any;
+		extract(context: unknown, carrier: Headers, getter: HeaderGetter): unknown;
 	};
 	SpanKind: { SERVER: number; INTERNAL: number };
 	SpanStatusCode: { ERROR: number };

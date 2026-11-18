@@ -1,25 +1,21 @@
 import type { ExecutionResult } from 'graphql';
-import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
+import { assertCostDirectives } from '../limits/clash';
 import { resolveOperationLimits } from '../limits/options';
-import { operationLimitRules } from '../limits/rules';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
-import { csrfHeaderKey } from '../security/header-key';
-import { noIntrospectionRule } from '../security/introspection';
+import { exposeCsrfHeader } from '../security/header-key';
 import { resolveSecurity } from '../security/options';
 import { createTelemetry } from '../telemetry';
 import { resolveTrusted } from '../trusted/options';
-import { createTrustedDocuments } from '../trusted/resolve';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
-import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
-import type { Runtime } from './runtime';
+import { buildRuntime } from './runtime';
 import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
 import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
@@ -116,6 +112,7 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	if (!Number.isInteger(bodyBytes) || bodyBytes < 1)
 		throw new GraxiaConfigError('limits.bodyBytes must be a positive integer');
 	const operationLimits = resolveOperationLimits(options.limits);
+	if (operationLimits.cost) assertCostDirectives(options.schema);
 	const batching = options.batching ?? false;
 	if (
 		batching !== false &&
@@ -167,38 +164,15 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	ready.catch((error: unknown) =>
 		unexpected.report(error, new StateBag(), 'setup'),
 	);
-	const rt: Runtime = {
-		schema: options.schema,
-		engine,
-		pipeline: createDocumentPipeline({
-			schema: options.schema,
-			engine,
-			...(options.limits ? { limits: options.limits } : {}),
-			rules: [
-				...operationLimitRules(resolved.operationLimits),
-				...(resolved.introspection ? [] : [noIntrospectionRule]),
-			],
-			hideSuggestions: !resolved.suggestions,
-			...(options.caches !== undefined ? { caches: options.caches } : {}),
-		}),
-		options: resolved,
-		unexpected,
-		maskResult: createResultMasker(
-			options.maskError,
-			options.maskErrors ?? true,
-			options.schema,
-			unexpected,
-		),
-		trusted:
-			trusted &&
-			createTrustedDocuments(trusted, (error, state) =>
-				unexpected.report(error, state),
-			),
-		context: options.context,
-		lifecycle,
+	const rt = buildRuntime(options, {
+		resolved,
+		trusted,
 		telemetry,
+		engine,
+		unexpected,
+		lifecycle,
 		ready,
-	};
+	});
 	const entry = createEntry<HostCtx>(rt, servers);
 	const dispose = createDispose({
 		lifecycle,
@@ -224,10 +198,6 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
-	// @internal: lets the test client send the instance's CSRF header on a GET.
-	const header = resolved.csrf === false ? undefined : resolved.csrf.headers;
-	Object.defineProperty(graxia, csrfHeaderKey, {
-		value: header ? header[0] : undefined,
-	});
+	exposeCsrfHeader(graxia, resolved.csrf);
 	return graxia;
 }

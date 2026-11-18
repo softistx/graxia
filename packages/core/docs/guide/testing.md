@@ -84,6 +84,10 @@ result.data?.greet; // string
 await graxia.execute({ document: Greet, variables: { name: 1 } });
 ```
 
+`execute` is exempt from the CSRF and origin checks, and from the `strict` trusted-documents
+refusal (`PERSISTED_QUERY_ONLY`): a document you pass in process is yours. The operation limits
+still apply. To test the refusal itself, go through `fetch` or the test client.
+
 ### What it does not do
 
 - Subscriptions (served over SSE by `fetch`, not by `execute`) and `@defer` / `@stream` return their usual refusal error in the result

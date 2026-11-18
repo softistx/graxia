@@ -22,6 +22,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 ```sh
 bun add @graxia/core graphql@^17
+bun add @opentelemetry/api  # optional, enables OpenTelemetry spans
 ```
 
 The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
@@ -196,8 +197,10 @@ createGraxia({
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
 
-- Trusted documents are opt-in (`trustedDocuments`): see below.
-- Field rate limits are opt-in (`fieldRateLimit`): see below.
+**Opt-in**
+
+- Trusted documents (`trustedDocuments`): see below.
+- Field rate limits (`fieldRateLimit`): see below.
 
 Rate-limit the endpoint as a whole in a proxy or gateway.
 
@@ -413,19 +416,20 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 ## Exports
 
-| import                 | what it is                                                                                                                                                                                                       |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                        |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                         |
-|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                             |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                           |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                           |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                |
-|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                        |
-|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions` |
-|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                        |
-|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                            |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                               |
+| import                 | what it is                                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
+|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                                              |
+|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
+|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
+|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
+|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
+|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
+|                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
+|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                                                             |
+|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
+| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
 ## Documentation
 
@@ -441,6 +445,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
+- [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
 - [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.

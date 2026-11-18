@@ -16,7 +16,13 @@ export function recordClientAddress(
 	const server = serverContext['server'] as
 		| { requestIP?: (request: Request) => { address?: string } | null }
 		| undefined;
-	const address = server?.requestIP?.(request)?.address;
+	let address: string | undefined;
+	try {
+		address = server?.requestIP?.(request)?.address;
+	} catch {
+		// A closed socket or a host quirk: the address is optional, the request goes on.
+		return;
+	}
 	if (typeof address === 'string' && address !== '')
 		state.set(clientAddressKey, address);
 }

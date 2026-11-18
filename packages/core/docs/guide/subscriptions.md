@@ -50,7 +50,7 @@ for await (const result of client.iterate({ query: 'subscription { tick }' }))
 	console.log(result.data);
 ```
 
-A browser `EventSource` works for GET requests (`?query=...`). Over the wire:
+A browser `EventSource` cannot set headers, so a GET from it is refused with 403 `CSRF_HEADER_REQUIRED`. Either use `graphql-sse` (a POST with a JSON body), or accept header-less GETs with `csrf: { requireHeader: false }` and keep `csrf.sameOrigin` on, so cross-site pages are still refused (see [Security](./security.md)). Over the wire:
 
 ```
 event: next

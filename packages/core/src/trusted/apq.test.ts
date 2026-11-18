@@ -5,10 +5,28 @@ import { definePlugin } from '../plugins/define';
 import { createGraxia } from '../server/create-graxia';
 import { schema } from '../server/fixtures.test-util';
 import { createTestClient } from '../testing/client';
-import { sha256Hex } from './apq';
+import { sha256Hex, storeKey } from './apq';
 import { codes, HELLO, hash, setup } from './trusted.test-util';
 
 describe('automatic persisted queries', () => {
+	test('a document over the cost limit is refused and not stored', async () => {
+		const store = createMemoryCache<string>();
+		const graxia = createGraxia({
+			schema,
+			onUnexpected: false,
+			limits: { cost: { max: 1, scalarCost: 5 } },
+			trustedDocuments: { mode: 'mixed', store },
+		});
+		const result = await createTestClient(graxia).query(HELLO, {
+			persisted: true,
+		});
+		expect(result.data).toBeUndefined();
+		expect(result.errors).toBeDefined();
+		await Promise.resolve();
+		expect(await store.get(storeKey(hash))).toBeUndefined();
+		await graxia.dispose({ timeout: 10 });
+	});
+
 	test('not found, then registered, then a hit (POST and GET)', async () => {
 		const { client } = setup({ mode: 'mixed' });
 		const miss = await client.query(null, { persisted: { sha256Hash: hash } });

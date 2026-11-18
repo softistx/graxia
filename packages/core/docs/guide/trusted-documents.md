@@ -47,6 +47,10 @@ before any plugin's `onParams` runs, so plugins, caches and limits see an ordina
 transport shares the one step: HTTP (GET, POST, each entry of a batch), SSE, WebSocket and
 `execute`. A mutation found by id over GET is still refused with 405.
 
+`graxia.execute` is the host's own code, not a client: in `strict` mode it still runs a `document`
+you give it (a string or a typed document), and such a document is never registered in the APQ store.
+Only requests that reach `fetch` are held to the allow-list.
+
 A `documentId` sent together with a `query` is refused (400: "Send either documentId or query, not
 both."), so a client cannot smuggle text past the allow-list. With APQ, a `query` sent beside a hash
 is checked against it.

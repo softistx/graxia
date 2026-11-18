@@ -241,3 +241,44 @@ describe('config errors', () => {
 		});
 	});
 });
+
+describe('a schema with its own @cost', () => {
+	const other = createSchema()({
+		typeDefs: `
+			directive @cost(weight: String!) on FIELD_DEFINITION | OBJECT
+			type Query { a: String @cost(weight: "high") }
+		`,
+		resolvers: { Query: { a: () => 'a' } },
+	});
+
+	test('throws a config error naming the clash', () => {
+		expect(() => createGraxia({ schema: other })).toThrow(GraxiaConfigError);
+		expect(() => createGraxia({ schema: other })).toThrow(
+			/@cost\(weight: String!\).*cost: false/,
+		);
+	});
+
+	test('does not throw when the cost limit is off', () => {
+		const graxia = createGraxia({
+			schema: other,
+			limits: { cost: false },
+			onUnexpected: false,
+		});
+		expect(graxia).toBeDefined();
+	});
+});
+
+describe('a schema with its own @listSize', () => {
+	test('a different default value is a clash', () => {
+		const other = createSchema()({
+			typeDefs: `
+				directive @listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = false) on FIELD_DEFINITION
+				type Query { a: [String] @listSize(assumedSize: 3) }
+			`,
+			resolvers: { Query: { a: () => [] } },
+		});
+		expect(() => createGraxia({ schema: other })).toThrow(
+			/@listSize\(.*requireOneSlicingArgument: Boolean = false.*\)/,
+		);
+	});
+});
