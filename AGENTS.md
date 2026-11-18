@@ -23,8 +23,14 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                       |
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                        |
 
-Every package is `"private": true` until S8; removing it is a deliberate commit
-of its own. Nothing is published to npm before then.
+`@graxia/core` is public since S8 (first publish 0.1.0); the other packages stay
+`"private": true` until their own slice, and removing it is a deliberate commit of its own.
+
+## Scripts
+
+- `bun run changeset:status` compares against `origin/develop`; set `CHANGESET_BASE`
+  to compare against another base, e.g. `CHANGESET_BASE=origin/feat/m1-http-core bun run changeset:status`
+  from a slice branch of an integration branch.
 
 ## Invariants
 
