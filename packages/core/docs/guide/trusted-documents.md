@@ -175,8 +175,8 @@ A registration runs in the background: the request never waits for the store. A 
 
 The default memory store keeps 1 000 entries, so it holds up to 1 000 times the largest accepted
 query (`limits.bodyBytes`, 1 MiB by default). In `mixed` mode anyone can register documents, so
-junk registrations can evict real ones: give a public endpoint a `redisCache()` with a time to
-live, or run `strict`.
+junk registrations can evict real ones: give a public endpoint a `redisCache()` on a Redis with a
+`maxmemory` and an eviction policy (graxia sets no expiry on a registration), or run `strict`.
 
 A store that throws (a Redis outage) never fails the request: a failing `get` is reported through
 `onUnexpected` and answers as not found (the client then sends the query, which works in `mixed`);

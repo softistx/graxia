@@ -262,6 +262,15 @@ createGraxia({
 In `strict` a query sent in full is refused with `PERSISTED_QUERY_ONLY`. Without the option nothing
 changes. See [Trusted documents](./docs/guide/trusted-documents.md).
 
+## Production
+
+Set `NODE_ENV=production`: introspection and "Did you mean" hints go off, trusted documents run in
+`strict` mode, and the unexpected-error log goes quiet. Masked errors, CSRF checks, operation
+limits, no batching and a server-made request id are on in every environment. Give
+`trustedDocuments` your manifest, share the rate-limit and PubSub state across instances, set
+`csrf.sameOrigin.allowedOrigins` and call `graxia.dispose()` on `SIGTERM`. The
+[production guide](./docs/guide/production.md) has the full configuration and a checklist.
+
 ## `execute`
 
 Run an operation in process (`graxia` is the instance from the quick start), through the same pipeline as HTTP (plugins, context, masking), for
@@ -435,6 +444,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
 - [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
+- [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 
