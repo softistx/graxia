@@ -24,7 +24,7 @@ export interface PayloadStreamInit {
 	prepare(value: unknown): Promise<unknown>;
 	/** The data of the last payload after the source or `prepare` threw. */
 	fail(error: unknown): unknown;
-	/** Milliseconds between keep-alive chunks (ignored when the format has none). */
+	/** Milliseconds between keep-alive chunks; 0 sends none (also ignored when the format has none). */
 	keepAliveMs: number;
 	/** Aborts when the stream must end now: the client left, or the server is closing. */
 	stop: AbortSignal;
@@ -92,7 +92,7 @@ export function payloadStream(init: PayloadStreamInit): {
 				if (finished) return;
 				const { open, keepAlive } = init.format;
 				if (open) controller.enqueue(open);
-				if (keepAlive)
+				if (keepAlive && init.keepAliveMs > 0)
 					timer = setInterval(() => {
 						if (!finished) controller.enqueue(keepAlive);
 					}, init.keepAliveMs);

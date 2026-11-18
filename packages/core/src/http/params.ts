@@ -1,4 +1,5 @@
 import type { GraphQLParams } from '../plugins/types';
+import { isRecord } from './record';
 
 /** A parsed set of parameters, or the reason the request is malformed (a 400). */
 export type ParamsResult =
@@ -6,9 +7,6 @@ export type ParamsResult =
 	| { ok: false; message: string };
 
 const fail = (message: string): ParamsResult => ({ ok: false, message });
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Validates one decoded JSON entry (a POST body, or one entry of a batch)

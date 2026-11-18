@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { createClient } from 'graphql-ws';
 import { exposedError } from '../errors/exposed';
 import { definePlugin } from '../plugins/define';
+import { getContext } from '../server/context';
 import { pubsub, raw, sleep, start, until } from './ws.test-util';
 
 const client = (url: string, options: object = {}) =>
@@ -64,6 +65,46 @@ describe('graphql-ws client', () => {
 			),
 		);
 		expect(error[0].message).toContain('Cannot query field "nope"');
+		await c.dispose();
+	});
+
+	test('onResultChunk sees a validation error and a single result, with getContext()', async () => {
+		const chunks: { errors?: unknown; who?: unknown }[] = [];
+		const plugin = definePlugin()({
+			name: 'chunks',
+			onResultChunk: ({ chunk }) => {
+				let who: string | undefined;
+				try {
+					who = (getContext() as { who?: string }).who;
+				} catch {
+					// A failure before the operation's context exists has none.
+				}
+				chunks.push({ errors: (chunk as { errors?: unknown }).errors, who });
+			},
+		});
+		const { url } = start({
+			plugins: [plugin],
+			context: () => ({ who: 'ctx' }),
+		});
+		const c = client(url);
+		const results: unknown[] = [];
+		await new Promise<void>((resolve) =>
+			c.subscribe(
+				{ query: '{ hello }' },
+				{ next: (v) => results.push(v), error: () => {}, complete: resolve },
+			),
+		);
+		expect(results).toEqual([{ data: { hello: 'world' } }]);
+		expect(chunks).toHaveLength(1);
+		expect(chunks[0]?.who).toBe('ctx');
+		await new Promise<void>((resolve) =>
+			c.subscribe(
+				{ query: '{ nope }' },
+				{ next: () => {}, error: () => resolve(), complete: () => {} },
+			),
+		);
+		expect(chunks).toHaveLength(2);
+		expect(JSON.stringify(chunks[1]?.errors)).toContain('Cannot query field');
 		await c.dispose();
 	});
 

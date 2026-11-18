@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from 'bun';
 import { isGraxiaError } from '../errors/exposed';
 import { paramsFromJson } from '../http/params';
+import { isRecord } from '../http/record';
 import type { StateBag } from '../plugins/state';
 import type { Runtime } from '../server/runtime';
 import { runSubscribe } from './operation';
@@ -44,9 +45,6 @@ interface Conn {
 	acknowledged: boolean;
 	connectionParams: Record<string, unknown> | undefined;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const contextOf = (c: Conn): WebSocketContext => ({
 	request: c.data.request,

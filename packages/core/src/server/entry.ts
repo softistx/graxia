@@ -94,7 +94,7 @@ export function createEntry<HostCtx extends object>(
 			// Not an upgrade: the plain pipeline, so hooks run once.
 			return isUpgrade(request)
 				? upgradeWith(request, server, { ...context, server })
-				: handleWith(request, context);
+				: handleWith(request, { ...context, server });
 		},
 		serve: (...[serveOptions]) => {
 			const { serverContext, ...bunOptions } = serveOptions ?? {};

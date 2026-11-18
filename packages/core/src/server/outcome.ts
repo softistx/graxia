@@ -9,11 +9,15 @@ export type Outcome =
 			/** Overrides the status the negotiated media type would give. */
 			status?: number;
 			headers?: HeadersInit;
+			/** The operation's `getContext()` scope, set once its context exists (not for a failure before it). */
+			scope?: <T>(work: () => T) => T;
 	  }
 	| { kind: 'response'; response: Response }
 	| {
 			/** A subscription: results to stream, and how to end and scope them. */
 			kind: 'stream';
+			/** A subscription ends gracefully when `dispose()` starts; an incremental query drains first. */
+			subscription: boolean;
 			source: AsyncIterator<unknown>;
 			/** Aborts the operation's signal; ends the source. */
 			stop: AbortController;

@@ -23,7 +23,7 @@ export interface WebSocketOptions {
 	connectionInitWaitTimeout?: number;
 	/**
 	 * Milliseconds between the server's `ping` messages. 12 000 by default;
-	 * `0` turns them off. A non-negative integer.
+	 * `0` turns them off. A non-negative integer (as `subscriptions.sse.keepAliveMs`).
 	 */
 	keepAliveMs?: number;
 	/**

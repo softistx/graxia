@@ -104,10 +104,10 @@ async function prepare(
 	if (typeof operation === 'string') return failure(operation);
 	if (operation.operation === 'subscription' && !sse)
 		return failure(
-			rt.options.sse
-				? 'Subscriptions are served over server-sent events: send "Accept: text/event-stream".'
-				: 'Subscriptions are not supported over this transport (subscriptions.sse is false).',
-			{ code: 'SUBSCRIPTION_NOT_SUPPORTED' },
+			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
+			{
+				code: 'SUBSCRIPTION_NOT_SUPPORTED',
+			},
 		);
 	return { params: final, document: parsed.document, operation };
 }
@@ -176,4 +176,15 @@ async function executeOperation(
 					scope,
 				}),
 			);
+}
+
+/** Why a subscription sent as plain JSON is refused, naming the transports that are on. */
+function subscriptionRefusal(sse: boolean, ws: boolean): string {
+	if (sse && ws)
+		return 'Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).';
+	if (sse)
+		return 'Subscriptions are served over server-sent events: send "Accept: text/event-stream".';
+	if (ws)
+		return 'Subscriptions are served over WebSocket (graphql-transport-ws); subscriptions.sse is false.';
+	return 'Subscriptions are not supported over this transport (subscriptions.sse is false).';
 }

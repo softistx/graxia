@@ -71,6 +71,37 @@ createGraxia({
   connection. `onResponse` hooks do not run: Bun writes the handshake response. Each operation
   gets its own forked state, like a batch entry.
 
+## Origin and cookie-authenticated browser apps
+
+Subscriptions over WebSocket are on by default, on the endpoint's path. A page on **any** site can
+open a socket to it, and the browser sends the user's cookies with the upgrade, so graxia does not
+refuse a foreign origin by itself. A browser app that authenticates with cookies must therefore do
+one of two things:
+
+- **Check `Origin` on the upgrade.** The upgrade request goes through `onRequest`, where its
+  `Upgrade` and `Origin` headers are visible:
+
+  ```ts
+  const allowed = new Set(['https://app.example.com']);
+
+  const checkSocketOrigin = definePlugin()({
+  	name: 'check-socket-origin',
+  	onRequest: ({ request, respond }) => {
+  		const isUpgrade = request.headers.get('upgrade')?.toLowerCase() === 'websocket';
+  		const origin = request.headers.get('origin'); // browsers always send it; other clients may not
+  		if (isUpgrade && origin !== null && !allowed.has(origin))
+  			respond(new Response('Forbidden origin', { status: 403 }));
+  	},
+  });
+  ```
+
+- **Authenticate with `connectionParams`**: send a token in `connection_init` and check it in
+  `onConnect`, and ignore the cookie.
+
+The custom-header CSRF recipe of the [README](../../README.md#security) cannot apply to a browser
+WebSocket: the browser lets a script set no custom header on it. A built-in `Origin` option is
+planned (issue #16).
+
 ## Options
 
 ```ts
@@ -102,7 +133,7 @@ Bun.serve({
 	fetch: (request, server) =>
 		graxia.isUpgrade(request)
 			? graxia.upgrade(request, server)
-			: graxia.fetch(request),
+			: graxia.fetch(request, { server }),
 	websocket: graxia.websocket,
 });
 ```

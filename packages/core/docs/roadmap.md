@@ -16,7 +16,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Later
 
-- **Secure by default** — none of this is in 0.1.0 (see "Security in 0.1.0" in the README):
+- **Secure by default** — none of this is built in yet (see "Security" in the README):
   operation limits (depth, aliases, cost), CSRF prevention and same-origin checks, an
   introspection policy (off in production), trusted documents (manifest and automatic persisted queries),
   and a field rate limit.

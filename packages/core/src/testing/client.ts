@@ -1,4 +1,5 @@
 import type { DocumentInput } from '../document/typed';
+import { isRecord } from '../http/record';
 import type { Graxia } from '../server/create-graxia';
 import type { OptionsArg, WithServerContext } from '../server/host-context';
 import { getUrl, type WireParams, wireParams } from './request';
@@ -41,9 +42,6 @@ export interface TestClient {
 		options?: { headers?: HeadersInit; accept?: string },
 	): Promise<TestBatchResult>;
 }
-
-const isRecord = (value: unknown): value is Record<string, any> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 async function readBody(response: Response): Promise<unknown> {
 	const text = await response.text();

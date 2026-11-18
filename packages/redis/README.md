@@ -9,8 +9,14 @@ node-redis: one dependency less, and nothing to install beyond graxia.
 bun add @graxia/redis @graxia/core
 ```
 
-The packages are ESM, built for Bun (1.4.4 or later), and resolve with `"moduleResolution": "bundler"`
-in your `tsconfig.json`. `nodenext` is not supported.
+## Requirements
+
+- [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
+- `@graxia/core` as a peer dependency.
+- `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
+  `tsconfig.json`; `nodenext` is not supported.
+
+Exported types: `RedisConnection`, `RedisPubSub`, `RedisPubSubOptions`, `RedisCacheOptions`.
 
 ## PubSub: swap memory for Redis
 
@@ -24,11 +30,23 @@ import { redisPubSub } from '@graxia/redis';
 type Topics = { [k: `post:${string}`]: { id: string; published: boolean } };
 const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
 
-// in a subscription resolver
-const events = filterIterable(
-	pubsub.subscribe('post:42', { signal: ctx.signal }),
-	(post) => post.published,
-);
+// the Subscription resolver: `ctx.signal` removes the subscriber when the client leaves
+const resolvers = {
+	Subscription: {
+		postPublished: {
+			subscribe: (
+				_root: unknown,
+				_args: unknown,
+				ctx: { signal: AbortSignal },
+			) =>
+				filterIterable(
+					pubsub.subscribe('post:42', { signal: ctx.signal }),
+					(post) => post.published,
+				),
+			resolve: (post: { id: string }) => post,
+		},
+	},
+};
 
 await pubsub.publish('post:42', { id: '42', published: true });
 await pubsub.dispose(); // on shutdown

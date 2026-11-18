@@ -18,7 +18,7 @@ export async function subscription(
 	const run = await runExecutionStage(rt, call, args, 'onSubscribe', subscribe);
 	if ('outcome' in run) return run.outcome;
 	const { result } = run;
-	if (isSingleResult(result)) return { kind: 'result', result };
+	if (isSingleResult(result)) return { kind: 'result', result, scope };
 	if (
 		typeof result === 'object' &&
 		result !== null &&
@@ -27,6 +27,7 @@ export async function subscription(
 	)
 		return {
 			kind: 'stream',
+			subscription: true,
 			source: (result as AsyncIterable<unknown>)[Symbol.asyncIterator](),
 			stop,
 			scope,

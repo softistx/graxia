@@ -35,12 +35,13 @@ export interface GraxiaLimits extends DocumentLimits {
 export interface SubscriptionsOptions {
 	/**
 	 * Serves a request whose `Accept` prefers `text/event-stream` as an event
-	 * stream (subscriptions, and queries or mutations as one event). `true` by
-	 * default; `false` answers a subscription with `SUBSCRIPTION_NOT_SUPPORTED`.
+	 * stream (subscriptions, and queries or mutations as one event). Enabled by
+	 * default; `false` answers a subscription over HTTP with
+	 * `SUBSCRIPTION_NOT_SUPPORTED`. `{ keepAliveMs }` sets the milliseconds
+	 * between keep-alive comments on an open stream (12 000 by default; `0`
+	 * turns them off; a non-negative integer).
 	 */
-	sse?: boolean;
-	/** Milliseconds between keep-alive comments on an open stream. 12 000 by default; finite and above 0. */
-	keepAliveMs?: number;
+	sse?: boolean | { keepAliveMs?: number };
 	/**
 	 * Serves subscriptions, queries and mutations over WebSocket
 	 * (`graphql-transport-ws`) on the same path. Enabled by default; `false`
@@ -87,7 +88,7 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	caches?: DocumentCaches;
 	/** Batched operations (a JSON array body): off by default, or `{ limit }`. */
 	batching?: BatchingOption;
-	/** Subscriptions over server-sent events (the `graphql-sse` distinct connections mode). */
+	/** Subscriptions and streamed results over server-sent events (`sse`) and WebSocket (`ws`), both on by default. */
 	subscriptions?: SubscriptionsOptions;
 	/**
 	 * `@defer` and `@stream` over `multipart/mixed` and server-sent events.

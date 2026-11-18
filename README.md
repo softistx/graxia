@@ -1,12 +1,13 @@
 # graxia
 
 A Bun-native GraphQL server engine: typed plugins, graphql 17 and GraphQL over HTTP.
-`@graxia/core` 0.1.0 ships the HTTP transport, plugins, context and cancellation, error masking,
-in-process `execute` and a test client. Subscriptions (SSE, WebSocket), `@defer`/`@stream`,
-trusted documents, OpenTelemetry and an MCP server are planned.
+`@graxia/core` ships the HTTP transport, plugins, context and cancellation, error masking,
+subscriptions over server-sent events and WebSocket, `@defer` and `@stream`, a typed PubSub, a
+key-value cache contract, in-process `execute` and a test client. `@graxia/redis` swaps the PubSub
+and the cache for Redis. Trusted documents, OpenTelemetry and an MCP server are planned.
 
-> Status: `@graxia/core` is the only package in progress; the others are not published yet. See
-> the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
+> Status: `@graxia/core` and `@graxia/redis` are public on npm; the other packages are not published
+> yet. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
 
 | package                                 | what it is                                   |
 | --------------------------------------- | -------------------------------------------- |
