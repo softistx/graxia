@@ -1,8 +1,7 @@
 {
 	"name": "@graxia/core",
 	"version": "0.0.0",
-	"private": true,
-	"description": "The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, SSE, WebSocket, trusted documents, OpenTelemetry",
+	"description": "The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, in-process execute and a test client",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -20,6 +19,11 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"import": "./dist/testing/index.js",
+			"default": "./dist/testing/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -27,14 +31,19 @@
 		"server",
 		"bun",
 		"plugins",
-		"sse",
-		"websocket",
-		"graphql-ws"
+		"graphql-http",
+		"graphql-over-http",
+		"graphql-server",
+		"typescript"
 	],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/softistx/graxia.git",
 		"directory": "packages/core"
+	},
+	"homepage": "https://github.com/softistx/graxia/tree/develop/packages/core#readme",
+	"bugs": {
+		"url": "https://github.com/softistx/graxia/issues"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -46,15 +55,25 @@
 	},
 	"nxgt": {
 		"entrypoints": [
-			"src/index.ts"
+			"src/index.ts",
+			"src/testing/index.ts"
 		]
 	},
 	"devDependencies": {
 		"@types/bun": "^1.4.4",
-		"graphql": "17.1.0"
+		"graphql": "17.1.0",
+		"graphql-http": "1.23.1"
 	},
 	"peerDependencies": {
-		"graphql": "^17.0.0",
+		"graphql": "^17.1.0",
 		"typescript": "^6.0.3 || ^7.0.0"
+	},
+	"engines": {
+		"bun": ">=1.4.4"
+	},
+	"peerDependenciesMeta": {
+		"typescript": {
+			"optional": true
+		}
 	}
 }

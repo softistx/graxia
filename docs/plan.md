@@ -98,9 +98,9 @@ Errors: `exposedError(code, message, { extensions?, fix? })` with typed code map
 ### M2 Subscriptions & incremental
 
 - **S9** PubSub typed interface + memory impl, filter/map, abort-safe.
-- **S10** SSE (graphql-sse distinct connections, GET/POST, 12 s keep-alive, cancel on abort/dispose; graphql-sse client tests).
-- **S11** @defer/@stream over multipart/mixed and SSE; onResultChunk.
-- **S12** graphql-transport-ws on Bun WebSocket (close codes 4400/4401/4403/4408/4409/4429, onConnect, connectionParams, keep-alive, maxPayloadBytes, 1001 on dispose, `upgrade()`); graphql-ws client interop.
+- **S10** SSE (graphql-sse distinct connections, GET/POST, 12 s keep-alive, cancel on abort/dispose; graphql-sse client tests). Note (S6): every payload goes through `rt.maskResult`, after `onResultChunk`.
+- **S11** @defer/@stream over multipart/mixed and SSE; onResultChunk. Note (S5): a streamed body must be tracked by the lifecycle (so `dispose()` drains it), aborted by the shutdown signal, and have ALS wrapped around its async iterator. Note (S6): each incremental payload goes through `rt.maskResult`, after `onResultChunk`.
+- **S12** graphql-transport-ws on Bun WebSocket (close codes 4400/4401/4403/4408/4409/4429, onConnect, connectionParams, keep-alive, maxPayloadBytes, 1001 on dispose, `upgrade()`); graphql-ws client interop. Note (S5): sockets and their streams follow the same rule as S11 (lifecycle tracking, shutdown abort, ALS around the iterator). Note (S6): every `next` payload goes through `rt.maskResult`, after `onResultChunk`.
 - **S13** `@graxia/redis` (pubsub + cache, reconnect/resubscribe); publish 0.2.
 ### M3 Security, trusted documents, OTel
 
