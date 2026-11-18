@@ -131,14 +131,23 @@ See [Errors](./docs/guide/errors.md).
 
 ## Limits and caches
 
-Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, and parsed and validated documents are
-cached. Both are options. These limits bound parsing and the body, not what an operation costs
-to execute: see [Security](#security).
+Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, operations are refused over
+a depth, alias, directive, root field or cost limit (all on by default), and parsed and validated documents are cached.
+See [Security](#security).
 
 ```ts
 createGraxia({
 	schema,
-	limits: { tokens: 15_000, nesting: 1_000, bodyBytes: 1_048_576 },
+	limits: {
+		tokens: 15_000,
+		nesting: 1_000,
+		bodyBytes: 1_048_576,
+		depth: 12,
+		aliases: 30,
+		directives: 50,
+		rootFields: 20,
+		cost: { max: 5_000 }, // @cost / @listSize; `false` turns a limit off
+	},
 	caches: { parse: { max: 1024, ttlMs: 3_600_000 } }, // or `false`
 	batching: { limit: 10 }, // off by default
 });
@@ -157,6 +166,11 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
 - A request body limit (`limits.bodyBytes`, 1 MiB; more answers 413).
 - Document limits before parsing: at most 15 000 tokens and 1 000 nesting levels
   (`limits.tokens`, `limits.nesting`); a failure is `GRAPHQL_PARSE_FAILED`.
+- Operation limits: depth 12, 30 aliases, 50 directives, 20 root fields and a cost of 5 000
+  (`limits.depth`, `.aliases`, `.directives`, `.rootFields`, `.cost`), fragments expanded; a refusal is
+  `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`. Cost follows `@cost` / `@listSize`, which
+  `createSchema` adds to your SDL (`costDirectives` does for a schema you build yourself);
+  `computeOperationCost` returns an operation's cost for plugins and tests.
 - Batching is off unless you set `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
@@ -169,7 +183,7 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
 - WebSocket origin check: a page on another site can open a socket to the endpoint, and the browser
   sends the user's cookies with the upgrade. graxia does not check `Origin` on the upgrade.
 - Introspection control: introspection is always on.
-- Operation limits: no depth, alias, directive or complexity limit, and no field rate limit.
+- A field rate limit.
 - Trusted or persisted documents: any valid document runs.
 
 These are planned (see the [roadmap](./docs/roadmap.md)). Until they land:

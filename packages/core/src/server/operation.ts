@@ -4,6 +4,7 @@ import {
 	Kind,
 	type OperationDefinitionNode,
 } from 'graphql';
+import { costRefusal } from '../limits/operation-cost';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
@@ -102,6 +103,17 @@ async function prepare(
 	if (valid.errors) return failed(valid.errors);
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
+	const { cost } = rt.options.operationLimits;
+	if (cost) {
+		const over = costRefusal(
+			rt.schema,
+			parsed.document,
+			operation,
+			final.variables,
+			cost,
+		);
+		if (over) return failed(over);
+	}
 	if (operation.operation === 'subscription' && !sse)
 		return failure(
 			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
