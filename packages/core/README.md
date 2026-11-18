@@ -125,7 +125,7 @@ See [Errors](./docs/guide/errors.md).
 
 ## Limits and caches
 
-Documents are parsed under token and nesting limits, and parsed and validated documents are
+Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, and parsed and validated documents are
 cached. Both are options; the defaults are safe.
 
 ```ts
@@ -137,11 +137,12 @@ createGraxia({
 });
 ```
 
+To run the parse and validation steps yourself, import `createDocumentPipeline` (`import { createDocumentPipeline } from '@graxia/core';`).
 See [Limits and caches](./docs/guide/limits-and-caches.md).
 
 ## `execute`
 
-Run an operation in process, through the same pipeline as HTTP (plugins, context, masking), for
+Run an operation in process (`graxia` is the instance from the quick start), through the same pipeline as HTTP (plugins, context, masking), for
 tests, jobs and scripts.
 
 ```ts
@@ -157,7 +158,7 @@ example) instead of a result. See [Testing](./docs/guide/testing.md).
 
 ## Testing client
 
-`@graxia/core/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
+`graxia` is the instance from the quick start. `@graxia/core/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
 socket and without importing a test runner.
 
 ```ts
@@ -172,10 +173,13 @@ result.data?.me; // 'ada'
 
 ## Exports
 
-| import                 | what it is                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | `createGraxia`, `createSchema`, `definePlugin`, `exposedError`, `getContext`, `createDocumentPipeline`, types |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                            |
+| import                                                       | what it is                                                                                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@graxia/core`                                               | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `RequestState`, `requestIdKey`                              |
+|                                                              | Context: `getContext`, `tryGetContext`. Documents: `createDocumentPipeline`, `createLruCache`, `PARSE_FAILED`                                          |
+|                                                              | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these |
+| `@graxia/core` (advanced, for transport and adapter authors) | `createPluginEngine` builds the engine that runs plugin hooks; `orderPlugins` applies `enforce` ordering and rejects duplicate names                   |
+| `@graxia/core/testing`                                       | `createTestClient` and `expectNoErrors`, for tests                                                                                                     |
 
 ## Documentation
 

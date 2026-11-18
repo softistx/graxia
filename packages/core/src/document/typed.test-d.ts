@@ -1,6 +1,6 @@
 import { parse, type TypedQueryDocumentNode } from 'graphql';
 import { createGraxia } from '../server/create-graxia';
-import { schema } from '../server/fixtures';
+import { schema } from '../server/fixtures.test-util';
 import { createTestClient } from '../testing/client';
 import type { TypedDocument, TypedString } from './typed';
 
