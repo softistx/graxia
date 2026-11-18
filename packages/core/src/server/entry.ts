@@ -3,11 +3,11 @@ import { StateBag } from '../plugins/state';
 import type { SocketData } from '../ws/connection';
 import { createWebSocketHandler } from '../ws/handler';
 import { isUpgradeRequest, upgradeRequest } from '../ws/upgrade';
-import type { GraxiaServeOptions } from './create-graxia';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
+import type { GraxiaServeOptions } from './serve-options';
 
 /** @internal What `createGraxia` exposes besides `execute` and `dispose`. */
 export interface Entry<HostCtx extends object> {
@@ -28,7 +28,8 @@ export interface Entry<HostCtx extends object> {
 		request: Request,
 		server: Bun.Server<SocketData>,
 		...serverContext: ServerContextArg<HostCtx>
-	): Promise<boolean>;
+	): Promise<Response | undefined>;
+	isUpgrade(request: Request): boolean;
 	websocket: Bun.WebSocketHandler<SocketData>;
 }
 
@@ -79,16 +80,22 @@ export function createEntry<HostCtx extends object>(
 			return lastResort(rt, error, state);
 		}
 	};
+	const isUpgrade = (request: Request) =>
+		rt.options.ws !== false && isUpgradeRequest(request);
 	const websocket = createWebSocketHandler(rt);
 	return {
 		handleWith,
 		websocket,
 		fetch: (request, ...[serverContext]) =>
 			handleWith(request, { ...serverContext }),
-		upgrade: async (request, server, ...[serverContext]) =>
-			rt.options.ws !== false &&
-			(await upgradeWith(request, server, { ...serverContext, server })) ===
-				undefined,
+		isUpgrade,
+		upgrade: (request, server, ...[serverContext]) => {
+			const context = { ...serverContext };
+			// Not an upgrade: the plain pipeline, so hooks run once.
+			return isUpgrade(request)
+				? upgradeWith(request, server, { ...context, server })
+				: handleWith(request, context);
+		},
 		serve: (...[serveOptions]) => {
 			const { serverContext, ...bunOptions } = serveOptions ?? {};
 			const server = Bun.serve<SocketData>({
@@ -96,7 +103,7 @@ export function createEntry<HostCtx extends object>(
 				websocket,
 				fetch: (request, server) => {
 					const context = { ...serverContext, server };
-					return rt.options.ws !== false && isUpgradeRequest(request)
+					return isUpgrade(request)
 						? upgradeWith(request, server, context)
 						: handleWith(request, context);
 				},

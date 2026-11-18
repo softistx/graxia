@@ -21,6 +21,8 @@ export function createSocketIo(ws: ServerWebSocket<unknown>): SocketIo {
 			if (ws.readyState !== OPEN) return;
 			const text =
 				typeof message === 'string' ? message : encodeMessage(message);
+			// 0: dropped, the connection is gone; Bun then fires `close`, which
+			// aborts the operations, so there is nothing to wait for or to do.
 			// -1: queued, but the socket is backed up; wait for Bun's `drain`.
 			if (ws.sendText(text) === -1) {
 				drained ??= Promise.withResolvers<void>();

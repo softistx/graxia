@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GraxiaConfigError } from '../errors/config-error';
 import { createGraxia } from '../server/create-graxia';
-import { pubsub, raw, schema, start, until } from './ws.test-util';
+import { pubsub, raw, schema, sleep, start, until } from './ws.test-util';
 
 describe('close codes', () => {
 	test('4408 when connection_init does not come in time', async () => {
@@ -185,5 +185,76 @@ describe('handshake and options', () => {
 		expect(() => createGraxia({ schema, subscriptions: { ws } })).toThrow(
 			new GraxiaConfigError(message),
 		);
+	});
+});
+
+describe('results over a socket', () => {
+	test('@defer sends one next per payload, then complete', async () => {
+		const { url } = start();
+		const socket = raw(url);
+		await socket.init();
+		await socket.send({
+			id: '1',
+			type: 'subscribe',
+			payload: { query: '{ hello user { name ... @defer { slow } } }' },
+		});
+		const first = await socket.next();
+		expect(first).toMatchObject({
+			id: '1',
+			type: 'next',
+			payload: {
+				data: { hello: 'world', user: { name: 'Ada' } },
+				hasNext: true,
+			},
+		});
+		const second = await socket.next();
+		expect(second).toMatchObject({
+			id: '1',
+			type: 'next',
+			payload: { incremental: [{ data: { slow: 'late' } }], hasNext: false },
+		});
+		expect(await socket.next()).toEqual({ id: '1', type: 'complete' });
+	});
+
+	test('a result with a chosen status is an error message', async () => {
+		const { url } = start({
+			plugins: [
+				{
+					name: 'refuse',
+					onParams: ({ respond }: any) =>
+						respond(new Response('nope', { status: 418 })),
+				},
+			],
+		});
+		const socket = raw(url);
+		await socket.init();
+		await socket.send({
+			id: '1',
+			type: 'subscribe',
+			payload: { query: '{ hello }' },
+		});
+		const message = await socket.next();
+		expect(message).toMatchObject({ id: '1', type: 'error' });
+		expect(Array.isArray(message.payload)).toBe(true);
+		expect(JSON.stringify(message)).not.toContain('nope');
+	});
+
+	test('a complete while onConnect is pending is ignored', async () => {
+		const { url } = start({
+			subscriptions: {
+				ws: {
+					onConnect: async () => {
+						await sleep(50);
+						return true;
+					},
+				},
+			},
+		});
+		const socket = raw(url);
+		await socket.send({ type: 'connection_init' });
+		await socket.send({ id: '1', type: 'complete' });
+		expect((await socket.next()).type).toBe('connection_ack');
+		await socket.send({ type: 'ping' });
+		expect(await socket.next()).toEqual({ type: 'pong' });
 	});
 });

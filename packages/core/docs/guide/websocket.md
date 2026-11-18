@@ -99,18 +99,24 @@ const graxia = createGraxia({ schema });
 
 Bun.serve({
 	port: 3000,
-	fetch: async (request, server) =>
-		(await graxia.upgrade(request, server)) // true once the socket is upgraded
-			? undefined
+	fetch: (request, server) =>
+		graxia.isUpgrade(request)
+			? graxia.upgrade(request, server)
 			: graxia.fetch(request),
 	websocket: graxia.websocket,
 });
 ```
 
-`graxia.upgrade(request, server, serverContext?)` resolves `true` once upgraded, and `false` when
-it is off or refused (wrong path, a plugin's `respond`, a missing subprotocol, shutdown); then
-`graxia.fetch(request)` gives the matching HTTP answer. `serverContext` is typed like `fetch`'s
+`graxia.isUpgrade(request)` is true for a request with `Upgrade: websocket` while `subscriptions.ws`
+is on. `graxia.upgrade(request, server, serverContext?)` resolves `undefined` once the socket is
+upgraded, and otherwise the `Response` to send: the refusal (wrong path, a plugin's `respond`, a
+missing subprotocol, shutdown), with the request id and the sealed headers. Guard it with
+`isUpgrade`; on a request that is not an upgrade (or with `ws: false`) it answers like
+`graxia.fetch`, so the hooks run once either way. `serverContext` is typed like `fetch`'s
 (required when `HostCtx` has required keys) and merged into every operation's context.
+
+`GraxiaSocketData` is the opaque type of `ws.data`; `serve()` returns `Bun.Server<GraxiaSocketData>`.
+You need it only to annotate your own server or `websocket` handler.
 
 ## Close codes
 

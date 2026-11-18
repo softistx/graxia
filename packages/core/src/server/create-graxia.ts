@@ -4,7 +4,6 @@ import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
-import type { SocketData } from '../ws/connection';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
@@ -13,15 +12,11 @@ import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 import type { Runtime } from './runtime';
+import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
 import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
 
-/** What graxia attaches to each upgraded socket (`ws.data`); opaque to the host. */
-export type GraxiaSocketData = SocketData;
-
-/** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
-export type GraxiaServeOptions =
-	Bun.Serve.HostnamePortServeOptions<GraxiaSocketData>;
+export type { GraxiaServeOptions, GraxiaSocketData };
 
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
@@ -70,17 +65,20 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	/**
 	 * Upgrades a request to a `graphql-transport-ws` socket from your own
 	 * `Bun.serve` `fetch`; pass {@link Graxia.websocket} as its `websocket`.
-	 * Resolves `true` once the socket is upgraded (return `undefined` from
-	 * `fetch` then), `false` when it is not: `subscriptions.ws` is off, or the
-	 * request was refused (wrong path, a plugin's `respond`, no
-	 * `graphql-transport-ws` subprotocol, shutdown). Answer a `false` with
-	 * `graxia.fetch(request)`, which gives the matching HTTP response.
+	 * Resolves `undefined` once the socket is upgraded (return it from `fetch`),
+	 * else the `Response` to send: the refusal (wrong path, a plugin's
+	 * `respond`, no `graphql-transport-ws` subprotocol, shutdown), sealed, with
+	 * the request id. Guard it with {@link Graxia.isUpgrade}: on a request that
+	 * is not an upgrade (or with `subscriptions.ws` off) it answers like
+	 * {@link Graxia.fetch}, so its hooks run once either way.
 	 * `serverContext` is required when `HostCtx` has required keys.
 	 *
 	 * @example
 	 * const server = Bun.serve({
-	 *   fetch: async (request, server) =>
-	 *     (await graxia.upgrade(request, server)) ? undefined : graxia.fetch(request),
+	 *   fetch: (request, server) =>
+	 *     graxia.isUpgrade(request)
+	 *       ? graxia.upgrade(request, server)
+	 *       : graxia.fetch(request),
 	 *   websocket: graxia.websocket,
 	 * });
 	 */
@@ -88,7 +86,9 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 		request: Request,
 		server: Bun.Server<GraxiaSocketData>,
 		...serverContext: ServerContextArg<HostCtx>
-	): Promise<boolean>;
+	): Promise<Response | undefined>;
+	/** Whether `request` asks for a WebSocket upgrade (`Upgrade: websocket`) and `subscriptions.ws` is on. */
+	isUpgrade(request: Request): boolean;
 	/** The `Bun.serve` `websocket` handler of this instance (see {@link Graxia.upgrade}). */
 	readonly websocket: Bun.WebSocketHandler<GraxiaSocketData>;
 	/**
@@ -195,6 +195,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		fetch: entry.fetch,
 		serve: entry.serve,
 		upgrade: entry.upgrade,
+		isUpgrade: entry.isUpgrade,
 		websocket: entry.websocket,
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),

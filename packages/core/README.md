@@ -275,7 +275,9 @@ const graxia = createGraxia({
 });
 graxia.serve({ port: 3000 }); // ws://localhost:3000/graphql
 
-// your own Bun.serve: graxia.upgrade(request, server) and websocket: graxia.websocket
+// your own Bun.serve:
+//   fetch: (req, server) => graxia.isUpgrade(req) ? graxia.upgrade(req, server) : graxia.fetch(req),
+//   websocket: graxia.websocket
 ```
 
 See [Subscriptions over WebSocket](./docs/guide/websocket.md): auth, close codes, keep-alive, limits.

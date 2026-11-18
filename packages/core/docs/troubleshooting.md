@@ -152,33 +152,73 @@ Pass `12_000`, or `0` to stop the server's `ping` messages.
 
 Pass a byte count such as `1_048_576` (the default).
 
-## WebSocket closed with 4400, 4401, 4403, 4408, 4409, 4429, 1001, 1009 or 1011
+## Unauthorized
 
-The close code says why (see the table in [Subscriptions over WebSocket](./guide/websocket.md#close-codes)):
+Close code **4401**. `subscribe` came before `connection_ack`. Wait for the client's `connected`
+event (`graphql-ws` does). See the [close codes](./guide/websocket.md#close-codes).
 
-- **4400** (`Invalid message received`, `Unknown message type "x"`, `Invalid "subscribe" message: …`):
-  a message was not JSON, had no known `type`, or `subscribe` had no string `id` or a payload that is not
-  `{ query, variables?, operationName?, extensions? }`. Use the `graphql-ws` client.
-- **4401** `Unauthorized`: `subscribe` came before `connection_ack`. Wait for the client's `connected`
-  event (`graphql-ws` does).
-- **4403** `Forbidden`: `onConnect` returned `false` or threw an `exposedError`. Check the
-  `connectionParams` the client sent.
-- **4408** `Connection initialisation timeout`: no `connection_init` within
-  `connectionInitWaitTimeout` (3 s). A hand-made client must send it first.
-- **4409** `Subscriber for <id> already exists`: `subscribe` reused the id of an active operation.
-  Ids are free again after `complete`.
-- **4429** `Too many initialisation requests`: `connection_init` was sent twice.
-- **1001** `Going away`: the server is shutting down (`dispose()`). Reconnect elsewhere.
-- **1009**: a message was larger than `subscriptions.ws.maxPayloadBytes`.
-- **1011** `Internal error`: `onConnect` or the handler threw an unexpected error; it reached
-  `onUnexpected` with the request id.
+## Forbidden
 
-## The WebSocket handshake fails with a 400 or 404
+Close code **4403**. `onConnect` returned `false` or threw an `exposedError`. Check the
+`connectionParams` the client sent.
 
-The upgrade must be a `GET` to the served `path` and offer the `graphql-transport-ws`
-subprotocol: `new WebSocket(url, 'graphql-transport-ws')`. The answer is
-`The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` otherwise. With
-`subscriptions: { ws: false }` the request is handled as plain HTTP.
+## Connection initialisation timeout
+
+Close code **4408**. No `connection_init` within `connectionInitWaitTimeout` (3 s). A hand-made client
+must send it first.
+
+## Subscriber for <id> already exists
+
+Close code **4409**. `subscribe` reused the id of an active operation. Ids are free again after
+`complete`.
+
+## Too many initialisation requests
+
+Close code **4429**. `connection_init` was sent twice on one socket.
+
+## Invalid message received
+
+Close code **4400**. A frame was not valid JSON, or not an object with a string `type`. Use the
+`graphql-ws` client, or send `{ "type": ..., "id"?: ..., "payload"?: ... }` as JSON text.
+
+## Unknown message type "x"
+
+Close code **4400**. The `type` is none of `connection_init`, `ping`, `pong`, `subscribe`,
+`complete`.
+
+## Invalid "<type>" message: …
+
+Close code **4400**. The text after the colon says what is wrong: a payload that is not an object, a
+`subscribe` or `complete` without a non-empty string `id`, or a `subscribe` payload that is not
+`{ query, variables?, operationName?, extensions? }`.
+
+## Binary messages are not supported
+
+Close code **4400**. Send text frames only.
+
+## Internal error
+
+Close code **1011**. `onConnect` or the socket handler threw an unexpected error; it reached
+`onUnexpected` with the request id. Other codes you may see: **1001** `Going away` (the server is
+shutting down, `dispose()`; reconnect elsewhere) and **1009** (a message was larger than
+`subscriptions.ws.maxPayloadBytes`, Bun's own close).
+
+## WebSocket is disabled
+
+Close code **1008**. A socket reached graxia's handler while `subscriptions.ws` is `false`. Your own
+`Bun.serve` upgraded it without checking `graxia.isUpgrade(request)`; guard the upgrade with it.
+
+## The WebSocket handshake fails with a 400, 404 or 405
+
+The upgrade must be a `GET` to the served `path` and offer the `graphql-transport-ws` subprotocol:
+`new WebSocket(url, 'graphql-transport-ws')`.
+
+- `Not found.` (404): the path is not graxia's `path`.
+- `A WebSocket upgrade must be a GET request.` (405, `Allow: GET`).
+- `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` (400): no such subprotocol.
+- `The WebSocket upgrade failed.` (400): Bun refused the upgrade, e.g. missing `Sec-WebSocket-Key`.
+
+With `subscriptions: { ws: false }` the request is handled as plain HTTP.
 
 ## Batched operations cannot be sent over text/event-stream.
 

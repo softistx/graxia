@@ -67,9 +67,9 @@ describe('own Bun.serve', () => {
 		const graxia = createGraxia({ schema, onUnexpected: false });
 		const server = Bun.serve({
 			port: 0,
-			fetch: async (request, server) =>
-				(await graxia.upgrade(request, server))
-					? undefined
+			fetch: (request, server) =>
+				graxia.isUpgrade(request)
+					? graxia.upgrade(request, server)
 					: graxia.fetch(request),
 			websocket: graxia.websocket,
 		});
@@ -90,6 +90,43 @@ describe('own Bun.serve', () => {
 				`http://localhost:${server.port}/graphql?query={hello}`,
 			);
 			expect(await http.json()).toEqual({ data: { hello: 'world' } });
+		} finally {
+			await server.stop(true);
+			await graxia.dispose({ timeout: 100 });
+		}
+	});
+
+	test('hooks run once on a plain GET and on a refused upgrade', async () => {
+		let seen = 0;
+		const graxia = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [{ name: 'count', onRequest: () => void seen++ }],
+		});
+		const server = Bun.serve({
+			port: 0,
+			fetch: (request, server) =>
+				graxia.isUpgrade(request)
+					? graxia.upgrade(request, server)
+					: graxia.fetch(request),
+			websocket: graxia.websocket,
+		});
+		const base = `http://localhost:${server.port}/graphql`;
+		try {
+			expect((await fetch(`${base}?query={hello}`)).status).toBe(200);
+			expect(seen).toBe(1);
+			const refused = await fetch(base, {
+				headers: {
+					upgrade: 'websocket',
+					connection: 'Upgrade',
+					'sec-websocket-version': '13',
+					'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==',
+					'sec-websocket-protocol': 'other',
+				},
+			});
+			expect(refused.status).toBe(400);
+			expect(refused.headers.get('x-request-id')).toBeTruthy();
+			expect(seen).toBe(2);
 		} finally {
 			await server.stop(true);
 			await graxia.dispose({ timeout: 100 });
