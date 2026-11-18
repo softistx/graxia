@@ -15,7 +15,7 @@
     },
     "packages/core": {
       "name": "@graxia/core",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "devDependencies": {
         "@opentelemetry/api": "1.10.0",
         "@opentelemetry/sdk-trace": "3.1.1",
@@ -73,7 +73,7 @@
     },
     "packages/redis": {
       "name": "@graxia/redis",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@graxia/core": "workspace:^",
         "@types/bun": "^1.4.4",
