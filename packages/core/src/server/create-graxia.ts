@@ -78,7 +78,7 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 *   fetch: (request, server) =>
 	 *     graxia.isUpgrade(request)
 	 *       ? graxia.upgrade(request, server)
-	 *       : graxia.fetch(request),
+	 *       : graxia.fetch(request, { server }),
 	 *   websocket: graxia.websocket,
 	 * });
 	 */

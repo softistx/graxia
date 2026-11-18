@@ -5,8 +5,8 @@ import { maskPayload } from './masking';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
 
-/** One payload on its way out: `onResultChunk` hooks first, then masking. */
-async function payload(
+/** One payload on its way out: `onResultChunk` hooks first, then masking. Run it inside the operation's scope. */
+export async function preparePayload(
 	rt: Runtime,
 	request: Request,
 	state: RequestState,
@@ -54,8 +54,8 @@ export function streamOutcome(
 	return payloadStream({
 		format,
 		source: live ? outcome.source : once,
-		scope: live ? outcome.scope : (work) => work(),
-		prepare: (value) => payload(rt, request, state, value),
+		scope: outcome.scope ?? ((work) => work()),
+		prepare: (value) => preparePayload(rt, request, state, value),
 		fail: (error) => {
 			rt.unexpected.report(error, state, 'execution');
 			return rt.unexpected.body(state);
@@ -64,6 +64,24 @@ export function streamOutcome(
 		...signals,
 		release: () => (live ? outcome.stop.abort() : undefined),
 	});
+}
+
+/**
+ * What ends a stream now: the client leaving, the shutdown timeout, and, for
+ * a subscription only, `dispose()` starting. An incremental query or mutation
+ * drains like any other operation, within `shutdownTimeout`.
+ */
+export function streamStop(
+	rt: Runtime,
+	signal: AbortSignal,
+	outcome: Extract<Outcome, { kind: 'stream' | 'result' }>,
+): AbortSignal {
+	const graceful = outcome.kind === 'stream' && outcome.subscription;
+	return AbortSignal.any([
+		signal,
+		...(graceful ? [rt.lifecycle.stopping] : []),
+		rt.lifecycle.shutdown,
+	]);
 }
 
 /**
@@ -85,11 +103,7 @@ export function streamResponse(
 	if (outcome.kind === 'stream')
 		releaseIdleTimeout(call.serverContext['server'], request);
 	const stream = streamOutcome(rt, call, outcome, format, {
-		stop: AbortSignal.any([
-			request.signal,
-			rt.lifecycle.stopping,
-			rt.lifecycle.shutdown,
-		]),
+		stop: streamStop(rt, request.signal, outcome),
 		clientGone: request.signal,
 	});
 	void rt.lifecycle.track(stream.done);

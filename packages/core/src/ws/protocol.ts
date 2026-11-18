@@ -1,3 +1,4 @@
+import { isRecord } from '../http/record';
 import type { StreamFormat } from '../http/stream';
 
 /** The WebSocket subprotocol graxia speaks. */
@@ -29,9 +30,6 @@ export type ServerMessage =
 	| { type: 'next'; id: string; payload: unknown }
 	| { type: 'error'; id: string; payload: readonly unknown[] }
 	| { type: 'complete'; id: string };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Parses one text frame; a string is the reason for the 4400 close when the

@@ -93,14 +93,27 @@ describe('cancellation and shutdown', () => {
 		expect(returned).toBeGreaterThan(0);
 	});
 
-	test('dispose with an open multipart stream resolves promptly and closes it', async () => {
+	test('dispose waits for a deferred part that finishes within shutdownTimeout', async () => {
+		const g = make();
+		const response = await g.fetch(
+			post('{ user { name ... @defer { slow } } }', MULTIPART),
+		);
+		const disposing = g.dispose({ timeout: 2000 });
+		const payloads = await parts(response);
+		await disposing;
+		expect(JSON.stringify(payloads)).toContain('"slow":"late"');
+	});
+
+	test('dispose cuts an incremental stream that outlives shutdownTimeout, and closes it', async () => {
 		const g = make();
 		const response = await g.fetch(post(hang, MULTIPART));
 		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
 		await reader.read();
 		const started = Date.now();
-		await g.dispose({ timeout: 5000 });
-		expect(Date.now() - started).toBeLessThan(2000);
+		await g.dispose({ timeout: 300 });
+		const waited = Date.now() - started;
+		expect(waited).toBeGreaterThanOrEqual(250);
+		expect(waited).toBeLessThan(2000);
 		let text = '';
 		for (;;) {
 			const { value, done } = await reader.read();

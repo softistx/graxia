@@ -3,6 +3,20 @@ import { encodeMessage, type ServerMessage } from './protocol';
 
 const OPEN = 1;
 
+const encoder = new TextEncoder();
+
+/** @internal A close reason cut to 123 UTF-8 bytes (the WebSocket limit), never in the middle of a character. */
+export function truncateReason(reason: string): string {
+	let bytes = 0;
+	let out = '';
+	for (const char of reason) {
+		bytes += encoder.encode(char).length;
+		if (bytes > 123) break;
+		out += char;
+	}
+	return out;
+}
+
 /** What a connection does on its socket: write with backpressure, close. */
 export interface SocketIo {
 	/** Writes one message (or a ready-made text frame); waits when the socket is backed up. */
@@ -31,7 +45,7 @@ export function createSocketIo(ws: ServerWebSocket<unknown>): SocketIo {
 		},
 		close(code, reason) {
 			try {
-				ws.close(code, reason.slice(0, 120));
+				ws.close(code, truncateReason(reason));
 			} catch {
 				// Already closed.
 			}

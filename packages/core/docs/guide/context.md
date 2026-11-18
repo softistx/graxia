@@ -14,7 +14,7 @@ For each operation (each entry of a batch included), in this order:
 4. `signal`, set last, always the operation's own signal.
 
 The compiler does not check that the context you build matches what the schema's resolvers (the
-`createSchema<Ctx>` type) or the plugins need: that check does not exist in 0.1.0, so a missing key
+`createSchema<Ctx>` type) or the plugins need: that check does not exist yet, so a missing key
 is `undefined` at run time. Cover it with a test that runs the operation (`graxia.execute`).
 
 The object is built again for every operation and never shared: a batch of three entries runs

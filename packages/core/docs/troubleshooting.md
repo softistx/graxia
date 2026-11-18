@@ -116,10 +116,10 @@ The document parsed but does not validate against the schema. Every such error c
 
 `batching: { limit }` needs an integer of at least 1.
 
-## Subscriptions are served over server-sent events: send "Accept: text/event-stream".
+## Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).
 
-A subscription arrived without an `Accept` that prefers `text/event-stream` (`SUBSCRIPTION_NOT_SUPPORTED`).
-Request the stream (a `graphql-sse` client does), or call it over GET with that header:
+A subscription arrived as plain JSON while both transports are on (`SUBSCRIPTION_NOT_SUPPORTED`).
+Request the event stream (a `graphql-sse` client does), or use a `graphql-transport-ws` client:
 
 ```ts
 await fetch('http://localhost:3000/graphql', {
@@ -131,22 +131,31 @@ await fetch('http://localhost:3000/graphql', {
 
 `graxia.execute` and the test client never run subscriptions, so they always get this refusal.
 
+## Subscriptions are served over server-sent events: send "Accept: text/event-stream".
+
+The same refusal when `subscriptions.ws` is `false`: only the event stream is on. Send the `Accept` header as above.
+
+## Subscriptions are served over WebSocket (graphql-transport-ws); subscriptions.sse is false.
+
+The same refusal when `subscriptions.sse` is `false` and WebSocket is on: use a `graphql-transport-ws` client
+(see [WebSocket](./guide/websocket.md)), or remove `sse: false`.
+
 ## Subscriptions are not supported over this transport (subscriptions.sse is false).
 
-`createGraxia({ subscriptions: { sse: false } })` turns the event stream off. Remove the option (it is
-`true` by default).
+Both `subscriptions: { sse: false, ws: false }` are set, so no transport serves a subscription. Remove one
+(each is on by default).
 
-## subscriptions.keepAliveMs must be a finite number above 0 (milliseconds)
+## subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)
 
-Pass a count of milliseconds such as `12_000`.
+Pass `12_000`, or `0` to stop the keep-alive comments. The most is `2_147_483_647` (the largest timer delay).
 
 ## subscriptions.ws.connectionInitWaitTimeout must be a positive integer (milliseconds)
 
 Pass a count of milliseconds such as `3_000`. The default is `3_000`.
 
-## subscriptions.ws.keepAliveMs must be a non-negative integer (milliseconds, 0 turns pings off)
+## subscriptions.ws.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns pings off)
 
-Pass `12_000`, or `0` to stop the server's `ping` messages.
+Pass `12_000`, or `0` to stop the server's `ping` messages. The most is `2_147_483_647` (the largest timer delay).
 
 ## subscriptions.ws.maxPayloadBytes must be a positive integer (bytes)
 
@@ -202,6 +211,19 @@ Close code **1011**. `onConnect` or the socket handler threw an unexpected error
 `onUnexpected` with the request id. Other codes you may see: **1001** `Going away` (the server is
 shutting down, `dispose()`; reconnect elsewhere) and **1009** (a message was larger than
 `subscriptions.ws.maxPayloadBytes`, Bun's own close).
+
+## The operation was refused.
+
+An `error` message with this text answers a `subscribe` whose operation a plugin ended with its own
+`Response` from `onRequest` or `onParams` (an auth refusal, a cache hit): a socket has no HTTP response to
+carry it. Refuse the connection instead, in `subscriptions.ws.onConnect` (return `false`, close code 4403), or answer in
+`onRequest` on the upgrade request, which refuses the handshake with that `Response`.
+
+## The operation failed.
+
+An `error` message with this text answers a `subscribe` whose parse or validation errors an
+`onResultChunk` hook removed: graphql-transport-ws requires at least one error in an `error` message,
+so graxia sends this generic one. Let the hook keep (or rewrite) the errors instead of dropping them.
 
 ## WebSocket is disabled
 
@@ -275,7 +297,7 @@ probe did not cut the stream on Bun 1.4.4, but other versions may). With your ow
 Bun.serve({ fetch: (request, server) => graxia.fetch(request, { server }) });
 ```
 
-Keep `subscriptions.keepAliveMs` below the idle timeout of any proxy in front of the server.
+Keep `subscriptions.sse.keepAliveMs` below the idle timeout of any proxy in front of the server.
 
 ## path must start with "/" (or be false)
 

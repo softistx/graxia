@@ -67,8 +67,10 @@ data:
 createGraxia({
 	schema,
 	subscriptions: {
-		sse: true, // default; false answers SUBSCRIPTION_NOT_SUPPORTED
-		keepAliveMs: 12_000, // default; finite and above 0, else GraxiaConfigError
+		// default `true`; `false` answers SUBSCRIPTION_NOT_SUPPORTED
+		sse: {
+			keepAliveMs: 12_000, // default; keep-alive comments; 0 turns them off; an integer up to 2_147_483_647
+		},
 	},
 });
 ```
@@ -90,7 +92,7 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   stream is open, a last `next` with the generic `Unexpected error.` body and its correlation id.
 - **Batching**: a batch (JSON array) is refused with 400 when `Accept` prefers the event stream; the
   protocol streams one operation per request.
-- **Keep-alive**: a comment line every `keepAliveMs` while the stream is open, so proxies do not
+- **Keep-alive**: a comment line every `sse.keepAliveMs` while the stream is open, so proxies do not
   close it.
 - **Hooks**: `onSubscribe` runs for subscriptions like `onExecute` does for queries (`setExecuteFn`
   swaps `subscribe`, `setResult` answers with one result, the after-hook receives
@@ -109,7 +111,8 @@ cancelled, graxia calls the source iterator's `return()` and clears the keep-ali
 
 `dispose()` stops the open streams first: each sends `complete` and closes, so shutdown does not wait
 for `shutdownTimeout` on subscriptions. A stream whose source ignores the abort is dropped at the end
-of the timeout, like any operation.
+of the timeout, like any operation. Over HTTP (multipart/mixed, SSE), an incremental query or mutation is not a subscription: it drains
+within `shutdownTimeout` before it is cut (see [`@defer` and `@stream`](./incremental.md)).
 
 A custom source (a `setResult` iterator, or your own `subscribe` function) must settle a pending
 `next()` when `return()` is called, or listen to the operation's `signal`. A plain `async function*`
@@ -138,4 +141,4 @@ const server = Bun.serve({
 
 The call is a safeguard: in Bun 1.4.4 a probe of a silent streaming response was not cut at a 1 s
 `idleTimeout` either way, but the documented default may apply on other versions or transports. Keep
-`keepAliveMs` under the idle timeout of any proxy in front of the server.
+`sse.keepAliveMs` under the idle timeout of any proxy in front of the server.

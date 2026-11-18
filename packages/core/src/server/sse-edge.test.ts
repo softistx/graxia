@@ -96,3 +96,21 @@ test('getContext() works inside onResultChunk hooks of a stream', async () => {
 	await response.text();
 	expect(seen).toBe('ada');
 });
+
+test('getContext() works inside onResultChunk hooks of a single SSE result', async () => {
+	let seen: unknown;
+	const graxia = make({
+		plugins: [
+			definePlugin()({
+				name: 'ctx',
+				onContext: () => ({ user: 'ada' }),
+				onResultChunk: () => {
+					seen = (getContext() as { user?: string }).user;
+				},
+			}),
+		],
+	});
+	const response = await graxia.fetch(request('{ _ }'));
+	await response.text();
+	expect(seen).toBe('ada');
+});

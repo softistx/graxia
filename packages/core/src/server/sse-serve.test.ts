@@ -20,7 +20,7 @@ describe('SSE on a real Bun server', () => {
 		});
 		const graxia = createGraxia({
 			schema,
-			subscriptions: { keepAliveMs: 10_000 },
+			subscriptions: { sse: { keepAliveMs: 10_000 } },
 		});
 		const server = graxia.serve({ port: 0, idleTimeout: 1 });
 		try {

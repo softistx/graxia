@@ -117,9 +117,14 @@ Such a schema cannot serve incremental queries.
 ## Cancellation and shutdown
 
 The stream is pulled one payload at a time. When the client leaves or cancels the body, the
-operation's `signal` aborts and graxia calls `subsequentResults.return()`. `dispose()` ends open
-streams at once: a multipart response gets its closing boundary, an event stream gets `complete`, so
-shutdown does not wait for `shutdownTimeout` on them.
+operation's `signal` aborts and graxia calls `subsequentResults.return()`.
+
+Over HTTP (multipart/mixed, SSE), `dispose()` lets an incremental query or mutation drain like any other operation: it keeps streaming
+its deferred parts for up to `shutdownTimeout`. A stream still open after that is cut (a multipart
+response gets its closing boundary, an event stream gets `complete`) and its resolvers see the
+operation's `signal` abort. Only subscriptions end as soon as `dispose()` starts (see
+[Subscriptions](./subscriptions.md)). Over WebSocket there is no drain: `dispose()` closes the
+socket with 1001 and ends every operation on it.
 
 ## Limits
 

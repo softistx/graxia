@@ -6,10 +6,16 @@ import type { GraxiaOptions, ResolvedOptions } from './options';
 export function resolveStreaming(
 	options: GraxiaOptions<any>,
 ): Pick<ResolvedOptions, 'sse' | 'keepAliveMs' | 'incremental' | 'ws'> {
-	const keepAliveMs = options.subscriptions?.keepAliveMs ?? 12_000;
-	if (!Number.isFinite(keepAliveMs) || keepAliveMs <= 0)
+	const givenSse = options.subscriptions?.sse;
+	const keepAliveMs =
+		typeof givenSse === 'object' ? (givenSse.keepAliveMs ?? 12_000) : 12_000;
+	if (
+		!Number.isInteger(keepAliveMs) ||
+		keepAliveMs < 0 ||
+		keepAliveMs > 2_147_483_647
+	)
 		throw new GraxiaConfigError(
-			'subscriptions.keepAliveMs must be a finite number above 0 (milliseconds)',
+			'subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)',
 		);
 	const given = options.incremental ?? true;
 	const format =
@@ -19,7 +25,7 @@ export function resolveStreaming(
 			'incremental.format must be "graphql17" or "legacy"',
 		);
 	return {
-		sse: options.subscriptions?.sse ?? true,
+		sse: givenSse !== false,
 		ws: resolveWebSocket(options.subscriptions?.ws),
 		keepAliveMs,
 		incremental: given === false ? false : format,

@@ -2,7 +2,11 @@ import type { StateBag } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runOperation } from '../server/operation';
 import type { Runtime } from '../server/runtime';
-import { streamOutcome } from '../server/stream-response';
+import {
+	preparePayload,
+	streamOutcome,
+	streamStop,
+} from '../server/stream-response';
 import { operationFormat, type ServerMessage } from './protocol';
 
 /** What one operation needs from its connection. */
@@ -54,19 +58,25 @@ export async function runSubscribe(
 			rt.unexpected.report(outcome.error, state, 'execution');
 			return await fail(rt.unexpected.body(state).errors);
 		}
-		if (outcome.kind === 'result' && !hasData(outcome))
-			return await fail(rt.maskResult(outcome.result, state).errors ?? []);
+		if (outcome.kind === 'result' && !hasData(outcome)) {
+			// Same path as a payload over SSE: `onResultChunk`, then masking.
+			const scope = outcome.scope ?? ((work) => work());
+			const prepared = (await scope(() =>
+				preparePayload(rt, request, state, outcome.result),
+			)) as { errors?: readonly unknown[] } | null;
+			const errors = prepared?.errors ?? [];
+			// A hook may have dropped every error: never answer with an empty list.
+			return await fail(
+				errors.length > 0 ? errors : [{ message: 'The operation failed.' }],
+			);
+		}
 		const stream = streamOutcome(
 			rt,
 			{ request, state },
 			outcome,
 			operationFormat(id),
 			{
-				stop: AbortSignal.any([
-					signal,
-					rt.lifecycle.stopping,
-					rt.lifecycle.shutdown,
-				]),
+				stop: streamStop(rt, signal, outcome),
 				clientGone: signal,
 			},
 		);

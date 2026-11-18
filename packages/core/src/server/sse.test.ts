@@ -156,11 +156,33 @@ describe('wire format', () => {
 		);
 		expect(response.headers.get('content-type')).toContain('application/json');
 	});
-	test('keepAliveMs is validated', () => {
-		for (const keepAliveMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
-			expect(() => make({ subscriptions: { keepAliveMs } })).toThrow(
-				'keepAliveMs',
+	test('sse.keepAliveMs is validated: an integer from 0 to 2147483647', () => {
+		for (const keepAliveMs of [
+			-1,
+			1.5,
+			Number.NaN,
+			Number.POSITIVE_INFINITY,
+			2_147_483_648,
+		])
+			expect(() => make({ subscriptions: { sse: { keepAliveMs } } })).toThrow(
+				'subscriptions.sse.keepAliveMs must be an integer from 0 to 2147483647 (milliseconds, 0 turns keep-alive comments off)',
 			);
+		expect(() =>
+			make({ subscriptions: { sse: { keepAliveMs: 0 } } }),
+		).not.toThrow();
+	});
+	test('sse.keepAliveMs 0 sends no keep-alive comment', async () => {
+		const response = await make({
+			subscriptions: { sse: { keepAliveMs: 0 } },
+		}).fetch(sse({ query: 'subscription { tick }' }));
+		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+		await reader.read(); // the opening comment
+		const next = await Promise.race([
+			reader.read(),
+			new Promise<'quiet'>((resolve) => setTimeout(resolve, 150, 'quiet')),
+		]);
+		expect(next).toBe('quiet');
+		await reader.cancel();
 	});
 });
 
@@ -219,9 +241,9 @@ describe('subscriptions', () => {
 		expect(invalid[0].errors[0].message).toContain('Cannot query field');
 	});
 	test('keep-alive comments flow while the stream is open', async () => {
-		const response = await make({ subscriptions: { keepAliveMs: 20 } }).fetch(
-			sse({ query: 'subscription { tick }' }),
-		);
+		const response = await make({
+			subscriptions: { sse: { keepAliveMs: 20 } },
+		}).fetch(sse({ query: 'subscription { tick }' }));
 		const text = await read(response, (t) => t.split(':\n\n').length > 3);
 		expect(text.split(':\n\n').length).toBeGreaterThan(3);
 		await response.body?.cancel();
@@ -292,7 +314,7 @@ describe('subscriptions', () => {
 
 describe('cancellation', () => {
 	test('aborting the request ends the source', async () => {
-		const graxia = make({ subscriptions: { keepAliveMs: 20 } });
+		const graxia = make({ subscriptions: { sse: { keepAliveMs: 20 } } });
 		const controller = new AbortController();
 		const request = new Request('http://x/graphql', {
 			method: 'POST',

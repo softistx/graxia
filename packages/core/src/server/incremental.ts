@@ -82,7 +82,8 @@ export async function execution(
 	);
 	if ('outcome' in run) return run.outcome;
 	const { result } = run;
-	if (isSingleResult(result)) return { kind: 'result', result };
+	if (isSingleResult(result))
+		return { kind: 'result', result, scope: stream.scope };
 	if (
 		rt.options.incremental !== false &&
 		stream.allowed &&
@@ -90,6 +91,7 @@ export async function execution(
 	)
 		return {
 			kind: 'stream',
+			subscription: false,
 			source: sourceOf(result),
 			stop: stream.stop,
 			scope: stream.scope,

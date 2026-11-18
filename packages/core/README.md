@@ -131,7 +131,7 @@ See [Errors](./docs/guide/errors.md).
 
 Here `graxia` is the instance from the quick start. Documents are parsed under token and nesting limits, and parsed and validated documents are
 cached. Both are options. These limits bound parsing and the body, not what an operation costs
-to execute: see [Security in 0.1.0](#security-in-010).
+to execute: see [Security](#security).
 
 ```ts
 createGraxia({
@@ -144,9 +144,9 @@ createGraxia({
 
 See [Limits and caches](./docs/guide/limits-and-caches.md).
 
-## Security in 0.1.0
+## Security
 
-0.1.0 is a transport and plugin engine, not a hardened edge. What it does, and what it does not:
+graxia is a transport and plugin engine, not a hardened edge. What it does, and what it does not:
 
 **On by default**
 
@@ -157,11 +157,15 @@ See [Limits and caches](./docs/guide/limits-and-caches.md).
   (`limits.tokens`, `limits.nesting`); a failure is `GRAPHQL_PARSE_FAILED`.
 - Batching is off unless you set `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
+- Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
+  path; turn either off with `false`.
 
-**Not in 0.1.0**
+**Not yet**
 
 - CSRF prevention: a browser can send a simple cross-site `GET` or a form-encoded request to
   the endpoint with the user's cookies. graxia does not check `Origin` or require a preflight header.
+- WebSocket origin check: a page on another site can open a socket to the endpoint, and the browser
+  sends the user's cookies with the upgrade. graxia does not check `Origin` on the upgrade.
 - Introspection control: introspection is always on.
 - Operation limits: no depth, alias, directive or complexity limit, and no field rate limit.
 - Trusted or persisted documents: any valid document runs.
@@ -181,6 +185,28 @@ const requireCustomHeader = definePlugin()({
 	onRequest: ({ request, respond }) => {
 		if (!request.headers.has('x-requested-with'))
 			respond(new Response('Missing x-requested-with', { status: 403 }));
+	},
+});
+```
+
+- **Cookie-authenticated browser apps must check `Origin` on the WebSocket upgrade.** The
+  custom-header recipe above cannot apply to a browser WebSocket (the browser sets no custom header
+  on it). The upgrade request goes through `onRequest`, where its `Upgrade` and `Origin` headers are
+  visible; refuse a foreign origin there, or authenticate the socket with `connectionParams` (a
+  token in `connection_init`, checked in `subscriptions.ws.onConnect`) instead of the cookie. A
+  built-in `Origin` option is planned ([issue #16](https://github.com/softistx/graxia/issues/16)).
+
+```ts
+const allowed = new Set(['https://app.example.com']);
+
+const checkSocketOrigin = definePlugin()({
+	name: 'check-socket-origin',
+	onRequest: ({ request, respond }) => {
+		const isUpgrade =
+			request.headers.get('upgrade')?.toLowerCase() === 'websocket';
+		const origin = request.headers.get('origin'); // browsers always send it; other clients may not
+		if (isUpgrade && origin !== null && !allowed.has(origin))
+			respond(new Response('Forbidden origin', { status: 403 }));
 	},
 });
 ```
@@ -242,25 +268,37 @@ A typed in-memory PubSub for subscription resolvers. It lives in one process; fo
 instances, `redisPubSub` from `@graxia/redis` implements the same interface.
 
 ```ts
-import { createMemoryPubSub, filterIterable } from '@graxia/core';
+import { createMemoryPubSub, createSchema } from '@graxia/core';
 
-type Post = { id: string; published: boolean };
-const pubsub = createMemoryPubSub<{ [k: `post:${string}`]: Post }>();
-await pubsub.publish('post:42', { id: '42', published: true });
-// in a resolver, pass `ctx.signal`
-const events = filterIterable(
-	pubsub.subscribe('post:42', { signal: new AbortController().signal }),
-	(p) => p.published,
-);
+const pubsub = createMemoryPubSub<{ tick: number }>();
+
+// This `schema` is the one the subscription examples below use.
+const schema = createSchema<{ signal: AbortSignal }>()({
+	typeDefs: 'type Query { hello: String } type Subscription { tick: Int! }',
+	resolvers: {
+		Query: { hello: () => 'world' },
+		Subscription: {
+			tick: {
+				subscribe: (_root, _args, ctx) =>
+					pubsub.subscribe('tick', { signal: ctx.signal }),
+				resolve: (n: number) => n,
+			},
+		},
+	},
+});
+
+await pubsub.publish('tick', 1);
+// `filterIterable(source, keep)` and `mapIterable(source, map)` wrap a subscription's source.
 ```
 
 ## Subscriptions
 
 Subscriptions are served over server-sent events (`graphql-sse`, distinct connections mode) to any
 request whose `Accept` prefers `text/event-stream`, on by default. `graxia.serve()` keeps the
-connection open; a keep-alive comment is sent every 12 s (`subscriptions.keepAliveMs`).
+connection open; a keep-alive comment is sent every 12 s (`subscriptions.sse.keepAliveMs`, `0` turns it off).
 
 ```ts
+// server: `createGraxia({ schema })` with the PubSub example's `schema`; publish with `pubsub.publish('tick', 1)`
 // client: bun add graphql-sse
 import { createClient } from 'graphql-sse';
 
@@ -280,7 +318,7 @@ for await (const result of client.iterate({
 client. `connectionParams` reach `onConnect` and the context; `dispose()` closes sockets with 1001.
 
 ```ts
-const graxia = createGraxia({
+const live = createGraxia({
 	schema,
 	subscriptions: {
 		ws: {
@@ -288,12 +326,15 @@ const graxia = createGraxia({
 		},
 	},
 });
-graxia.serve({ port: 3000 }); // ws://localhost:3000/graphql
+live.serve({ port: 3000 }); // ws://localhost:3000/graphql
 
 // your own Bun.serve:
-//   fetch: (req, server) => graxia.isUpgrade(req) ? graxia.upgrade(req, server) : graxia.fetch(req),
-//   websocket: graxia.websocket
+//   fetch: (req, server) =>
+//     live.isUpgrade(req) ? live.upgrade(req, server) : live.fetch(req, { server }),
+//   websocket: live.websocket
 ```
+
+A cookie-authenticated browser app must also check `Origin` on the upgrade: see [Security](#security).
 
 See [Subscriptions over WebSocket](./docs/guide/websocket.md): auth, close codes, keep-alive, limits.
 
@@ -316,6 +357,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                |
 |                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
+|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                     |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
 |                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                        |
