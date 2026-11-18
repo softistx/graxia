@@ -4,15 +4,12 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Secure by default** (M3) — operation limits (depth, aliases, cost), CSRF and
-  same-origin checks (WebSocket upgrades included), introspection off in production,
-  trusted documents (manifests, `documentId`, automatic persisted queries, strict mode;
-  built), a field rate limit and OpenTelemetry spans.
+- **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
+  content security policy ([#21](https://github.com/softistx/graxia/issues/21)), and an Apollo Sandbox option
+  ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
 
 ## Later
 
-- **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
-  content security policy, and an Apollo Sandbox option, both development-only.
 - **Ready for agents** (M5) — an MCP server over Streamable HTTP with schema,
   query and mutation tools, OAuth, persisted operations as typed tools, a
   schema printer that shows an agent what it may do, `llms.txt` and a Claude Code
@@ -42,3 +39,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
   graphql-transport-ws on Bun's WebSocket, `@defer` and `@stream` over
   `multipart/mixed` and SSE, a key-value cache contract, and Redis PubSub and cache
   on Bun's Redis client.
+- **Secure by default** (M3, in `@graxia/core` 0.3.0 and `@graxia/redis` 0.1.1) — operation
+  limits (depth, aliases, cost with `@cost` / `@listSize`), CSRF prevention and a WebSocket
+  `Origin` check, introspection and suggestions off in production, trusted documents (manifests,
+  `documentId`, automatic persisted queries, strict mode), `fieldRateLimit`, OpenTelemetry spans
+  and a production guide.
