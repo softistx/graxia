@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { parse } from 'graphql';
 import { definePlugin } from '../plugins/define';
 import { createGraxia } from '../server/create-graxia';
-import { schema } from '../server/fixtures';
+import { schema } from '../server/fixtures.test-util';
 import { sha256Hex } from './document';
 import { createTestClient, expectNoErrors } from './index';
 

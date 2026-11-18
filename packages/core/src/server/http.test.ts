@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { requestIdKey } from '../http/request-id';
 import { definePlugin } from '../plugins/define';
 import { createGraxia } from './create-graxia';
-import { schema } from './fixtures';
+import { schema } from './fixtures.test-util';
 
 const plugin = definePlugin()({
 	name: 'headers',

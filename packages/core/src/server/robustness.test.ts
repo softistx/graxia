@@ -3,7 +3,7 @@ import { definePlugin } from '../plugins/define';
 import { createStateKey } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
 import { createGraxia } from './create-graxia';
-import { schema } from './fixtures';
+import { schema } from './fixtures.test-util';
 
 const json = { 'content-type': 'application/json' };
 const post = (body: unknown, headers: HeadersInit = json) =>

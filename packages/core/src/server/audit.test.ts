@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test } from 'bun:test';
 import { serverAudits } from 'graphql-http';
 import { createGraxia } from './create-graxia';
-import { schema } from './fixtures';
+import { schema } from './fixtures.test-util';
 
 const server = createGraxia({ schema }).serve({ port: 0 });
 afterAll(() => {

@@ -13,6 +13,7 @@
 		"test",
 		"**/*.spec.ts",
 		"**/*.test.ts",
+		"**/*.test-util.ts",
 		"**/*.test-d.ts"
 	]
 }
