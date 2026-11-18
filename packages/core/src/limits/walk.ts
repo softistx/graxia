@@ -68,6 +68,38 @@ export function fragmentMap(
 
 const introspection = new Set(['__schema', '__type']);
 
+function emptyStats(track: ReadonlySet<string> | undefined): SelectionStats {
+	return {
+		depth: 0,
+		aliases: 0,
+		directives: 0,
+		fields: 0,
+		tracked: track ? new Map() : noTracked,
+	};
+}
+
+/** Folds field `node` (its `child` stats already computed) into the tracked selections of `total`. */
+function trackField(
+	track: ReadonlySet<string>,
+	total: SelectionStats,
+	node: FieldNode,
+	child: SelectionStats,
+): void {
+	const name = node.name.value;
+	if (introspection.has(name)) return;
+	const mine = track.has(name);
+	// The printed arguments are only needed when a path is.
+	if (!mine && child.tracked.size === 0) return;
+	const here = segment(node);
+	if (mine)
+		mergeTracked(
+			total.tracked,
+			new Map<string, Tracked>([[name, { count: 1, paths: [here] }]]),
+			'',
+		);
+	mergeTracked(total.tracked, child.tracked, here);
+}
+
 /**
  * Walks operations of one document, memoising each fragment so the walk stays linear.
  * `track` names fields whose selections are collected in `SelectionStats.tracked`.
@@ -76,13 +108,7 @@ export function createWalker(
 	fragments: ReadonlyMap<string, FragmentDefinitionNode>,
 	track?: ReadonlySet<string>,
 ) {
-	const empty = (): SelectionStats => ({
-		depth: 0,
-		aliases: 0,
-		directives: 0,
-		fields: 0,
-		tracked: track ? new Map() : noTracked,
-	});
+	const empty = () => emptyStats(track);
 	const memo = new Map<string, SelectionStats>();
 	const active = new Set<string>();
 
@@ -99,10 +125,6 @@ export function createWalker(
 		memo.set(name, stats);
 		return stats;
 	}
-
-	/** One selection of tracked field `name` at `path`. */
-	const own = (name: string, path: string) =>
-		new Map<string, Tracked>([[name, { count: 1, paths: [path] }]]);
 
 	function selection(set: SelectionSetNode): SelectionStats {
 		const total = empty();
@@ -125,15 +147,7 @@ export function createWalker(
 				// other; only the depth of its subtree is exempt.
 				if (introspection.has(name)) child.depth = 0;
 				merge(child, 1);
-				if (track && !introspection.has(name)) {
-					const mine = track.has(name);
-					// The printed arguments are only needed when a path is.
-					if (mine || child.tracked.size > 0) {
-						const here = segment(node);
-						if (mine) mergeTracked(total.tracked, own(name, here), '');
-						mergeTracked(total.tracked, child.tracked, here);
-					}
-				}
+				if (track) trackField(track, total, node, child);
 			} else {
 				const child =
 					node.kind === Kind.FRAGMENT_SPREAD

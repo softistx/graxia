@@ -232,24 +232,15 @@ proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redi
 
 ## OpenTelemetry
 
-Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits a
-`graphql.request` span per HTTP request, `graphql.parse` and `graphql.validate`, and one span per
-operation named `query GetUser`, with the error count and the original exception of an unexpected
-error. Subscriptions and incremental results are one span with a `graphql.event` per payload. Without
-the peer, nothing is wrapped and nothing runs.
+Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits spans for each
+request, parse, validation and operation, and the original exception of an unexpected error.
+Without the peer, nothing is wrapped and nothing runs.
 
 ```ts
-createGraxia({
-	schema,
-	telemetry: {
-		// tracer: trace.getTracer('my-app'),   default: '@graxia/core'
-		resolverSpans: true, // off by default: one span per resolver call
-		document: false, // the document source in graphql.document; may hold literals
-	},
-});
+createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
 ```
 
-`telemetry: false` turns it off. See [OpenTelemetry](./docs/guide/telemetry.md).
+Setup, the span tree, attributes and every option: [OpenTelemetry](./docs/guide/telemetry.md).
 
 ## Trusted documents
 

@@ -7,6 +7,7 @@ import {
 	fail,
 	type Live,
 	parentKey,
+	quietKey,
 	requestKey,
 	SPAN,
 	start,
@@ -56,6 +57,24 @@ function incoming(env: Env, request: Request) {
 }
 
 /**
+ * A request span that records nothing (no SDK registered, or sampled out):
+ * the context still flows, but no clone, attribute or child span is made.
+ */
+async function untraced<R>(
+	env: Env,
+	state: RequestState,
+	live: Live,
+	run: () => Promise<R>,
+): Promise<R> {
+	state.set(quietKey, true);
+	try {
+		return await env.api.context.with(live.ctx, run);
+	} finally {
+		live.span.end();
+	}
+}
+
+/**
  * Runs `run` inside a `graphql.request` span. `upgrade` marks a WebSocket
  * handshake: it ends with the handshake, and the context it extracted is
  * kept for the operations of the socket. A stream response keeps the span
@@ -82,6 +101,7 @@ export async function traceRequest<R extends Response | undefined>(
 			...(upgrade ? { [ATTR.upgrade]: 1 } : {}),
 		},
 	);
+	if (!live.span.isRecording()) return untraced(env, state, live, run);
 	const held: Promise<unknown>[] = [];
 	if (!upgrade) state.set(requestKey, { live, held });
 	let response: R | undefined;

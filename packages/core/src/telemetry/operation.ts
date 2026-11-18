@@ -1,4 +1,8 @@
-import type { ExecutionResult, GraphQLSchema } from 'graphql';
+import {
+	type ExecutionResult,
+	GraphQLError,
+	type GraphQLSchema,
+} from 'graphql';
 import { isExposed } from '../errors/mask';
 import type { Outcome } from '../server/outcome';
 import { ATTR, type Env, EVENT_NAME, fail, type Operation } from './spans';
@@ -23,9 +27,9 @@ export function observePayload(
 		if (!Array.isArray(list)) continue;
 		op.errors += list.length;
 		for (const error of list) {
-			if (!(error instanceof Error) || !('originalError' in error)) continue;
-			const cause = (error as any).originalError;
-			if (cause !== undefined && !isExposed(error as any, schema))
+			if (!(error instanceof GraphQLError)) continue;
+			const cause = error.originalError;
+			if (cause !== undefined && !isExposed(error, schema))
 				fail(env, op.live.span, cause);
 		}
 	}
@@ -96,13 +100,12 @@ export function settleOutcome(
 			endOperation(op, false);
 			return outcome;
 		case 'stream': {
-			outcome.stop.signal.addEventListener(
-				'abort',
-				() => endOperation(op, true),
-				{
+			const { signal } = outcome.stop;
+			if (signal.aborted) endOperation(op, true);
+			else
+				signal.addEventListener('abort', () => endOperation(op, true), {
 					once: true,
-				},
-			);
+				});
 			const inner = outcome.scope;
 			return {
 				...outcome,

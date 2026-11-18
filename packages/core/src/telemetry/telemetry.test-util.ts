@@ -9,11 +9,11 @@ import {
 	trace,
 } from '@opentelemetry/api';
 import {
-	BasicTracerProvider,
 	InMemorySpanExporter,
 	type ReadableSpan,
 	SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+	TracerProvider,
+} from '@opentelemetry/sdk-trace';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia, type Graxia } from '../server/create-graxia';
 
@@ -58,8 +58,8 @@ context.setGlobalContextManager(new AlsContextManager());
 propagation.setGlobalPropagator(traceparent);
 
 const exporter = new InMemorySpanExporter();
-export const tracer = new BasicTracerProvider({
-	spanProcessors: [new SimpleSpanProcessor(exporter)],
+export const tracer = new TracerProvider({
+	spanProcessors: [new SimpleSpanProcessor({ exporter })],
 }).getTracer('graxia-test');
 
 /** The spans that ended, oldest first. */

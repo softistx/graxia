@@ -6,40 +6,43 @@ and costs what your SDK costs; absent, graxia does nothing and wraps nothing.
 
 ## Setup
 
-Install the API and an SDK, register the SDK once at startup (before `createGraxia`), and run.
+Install the API, an SDK, an exporter and a context manager. Register them once at startup, before
+`createGraxia`.
 
 ```sh
-bun add @opentelemetry/api @opentelemetry/sdk-trace-base @opentelemetry/exporter-trace-otlp-http
+bun add @opentelemetry/api @opentelemetry/sdk-trace @opentelemetry/context-async-hooks @opentelemetry/exporter-trace-otlp-http
 ```
 
 ```ts
-import { context } from '@opentelemetry/api';
+import { context, trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import {
-	BasicTracerProvider,
-	BatchSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+import { BatchSpanProcessor, TracerProvider } from '@opentelemetry/sdk-trace';
 import { createGraxia } from '@graxia/core';
 
-const provider = new BasicTracerProvider({
-	spanProcessors: [
-		new BatchSpanProcessor(
-			new OTLPTraceExporter({ url: 'http://localhost:4318/v1/traces' }),
-		),
-	],
-});
+// The context manager makes `trace.getActiveSpan()` and the spans you start in a resolver nest.
+context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
 
-// Not required for the spans to be recorded and parented, but required for a span you start
-// yourself inside a resolver to nest (it needs a context manager, see "Active span" below).
-const graxia = createGraxia({
-	schema,
-	telemetry: { tracer: provider.getTracer('my-app') },
-});
+trace.setGlobalTracerProvider(
+	new TracerProvider({
+		spanProcessors: [
+			new BatchSpanProcessor({
+				exporter: new OTLPTraceExporter({
+					url: 'http://localhost:4318/v1/traces',
+				}),
+			}),
+		],
+	}),
+);
+
+// graxia uses `trace.getTracer('@graxia/core')`, so the provider above is picked up.
+const graxia = createGraxia({ schema });
 ```
 
-With the default `telemetry` (no option), graxia uses `trace.getTracer('@graxia/core')`:
-register your provider globally (`trace.setGlobalTracerProvider`, or the Node SDK's `NodeSDK`) and it
-is picked up. Without an SDK registered, the API's no-op tracer applies and tracing is nearly free.
+To keep the provider out of the global, pass its tracer instead:
+`createGraxia({ schema, telemetry: { tracer: provider.getTracer('my-app') } })`. Without any SDK
+registered, the API's tracer records nothing and graxia skips the rest of the work for the request
+(no attribute, no child span, no copy of the response).
 
 ## The span tree
 
@@ -65,6 +68,7 @@ per entry, in order. `graxia.execute` goes through the same request, so it has b
 |                     | `graxia.request.upgrade`: `1` on a WebSocket handshake                                                         |
 | `graphql.operation` | `graphql.operation.type`, `graphql.operation.name` (when named), `graphql.error.count` (when there are some)   |
 |                     | `graphql.document` (only with `document: true`), `graxia.document.id` (a persisted document or APQ hash)       |
+|                     | `graxia.event.index` on each `graphql.event` span event (1, 2, ...)                                            |
 |                     | `graxia.events` (subscriptions and incremental results: the payloads sent)                                     |
 | `graphql.parse`     | `graxia.cache.hit` (the parse cache served it), `graphql.error.count`                                          |
 | `graphql.validate`  | `graxia.cache.hit` (the validation cache served it), `graphql.error.count`                                     |
@@ -107,13 +111,15 @@ createGraxia({
 });
 ```
 
-Off by default: one span per resolver call is expensive on a large list. `true` traces the resolvers
+One span per resolver call is expensive on a large list, hence the default (see Options). `true` traces the resolvers
 you wrote. `{ trivial: true }` also traces the fields that read a property of their parent (graphql's
 default resolver), which is usually noise. Each span is a child of the operation span (not of the
 resolver that returned its parent), so the tree stays flat and cheap.
 
 The resolvers are wrapped **once, in place, on the schema you give** (graphql 17 has no hook to trace
-a field's own `resolve` from outside), when `createGraxia` runs with `resolverSpans`. Sharing the
+a field's own `resolve` from outside), when `createGraxia` runs with `resolverSpans`. The wrappers
+stay on the schema for its lifetime: an execution that is not traced pays one `WeakMap` lookup per
+field. Sharing the
 schema with another graxia instance, or with `telemetry: false`, is safe: a wrapped resolver
 traces only the operations of an instance that asked for it, and otherwise calls your resolver.
 
@@ -121,13 +127,13 @@ traces only the operations of an instance that asked for it, and otherwise calls
 
 Execution runs inside the operation span's context, so `trace.getActiveSpan()` in a resolver is the
 operation span (or its resolver span with `resolverSpans`), and a span you start there nests under
-it. That needs a context manager registered, as any OpenTelemetry code does (the Node SDK and
-`AsyncLocalStorageContextManager` from `@opentelemetry/context-async-hooks` provide one). Parenting
-of graxia's own spans does not depend on it.
+it. That needs a context manager registered, as any OpenTelemetry code does: the
+`AsyncLocalStorageContextManager` line of [Setup](#setup). Parenting of graxia's own spans does not
+depend on it.
 
 ## The document and PII
 
-`graphql.document` is off by default: a document can hold literals (an email, a token) that
+`graphql.document` is opt-in: a document can hold literals (an email, a token) that
 variables would not. Turn on `document: true` only when your queries carry none, or use persisted
 operations (`graxia.document.id` always identifies them).
 
@@ -141,12 +147,20 @@ installed does the same: the tracer needs the API's context to parent spans.
 
 ```ts
 telemetry?: false | {
-	tracer?: Tracer;                                  // default: trace.getTracer('@graxia/core')
-	resolverSpans?: boolean | { trivial?: boolean };  // default false
-	document?: boolean;                               // default false
-	propagate?: boolean;                              // default true
+	tracer?: Tracer;
+	resolverSpans?: boolean | { trivial?: boolean };
+	document?: boolean;
+	propagate?: boolean;
 };
 ```
 
-An invalid value throws a `GraxiaConfigError` from `createGraxia`; see
+| option          | default                                   | meaning                                                                  |
+| --------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
+| `telemetry`     | on when `@opentelemetry/api` is installed | `false` turns every span off                                             |
+| `tracer`        | `trace.getTracer('@graxia/core')`         | the tracer the spans come from                                           |
+| `resolverSpans` | `false`                                   | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
+| `document`      | `false`                                   | the document source on `graphql.document` (may hold literals)            |
+| `propagate`     | `true`                                    | read the `traceparent` header of a request with no active span           |
+
+An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).

@@ -11,6 +11,7 @@ export interface SpanLike {
 	setStatus(status: { code: number; message?: string }): unknown;
 	recordException(exception: unknown): unknown;
 	updateName(name: string): unknown;
+	isRecording(): boolean;
 	end(): void;
 }
 

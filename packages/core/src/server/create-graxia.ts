@@ -155,6 +155,8 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const trusted = resolveTrusted(options.trustedDocuments);
+	// Before `engine.init()`: a bad option throws before any plugin's setup runs.
+	const telemetry = createTelemetry(options.telemetry, options.schema);
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
@@ -194,7 +196,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			),
 		context: options.context,
 		lifecycle,
-		telemetry: createTelemetry(options.telemetry, options.schema),
+		telemetry,
 		ready,
 	};
 	const entry = createEntry<HostCtx>(rt, servers);

@@ -766,5 +766,6 @@ The server answers but your backend shows nothing. In order:
 ## A resolver span has no child spans of mine
 
 A span you start inside a resolver nests under the active span, which needs a context manager
-registered (the Node SDK registers one). Without it, `trace.getActiveSpan()` returns `undefined` in
-a resolver; graxia's own spans are still parented correctly.
+registered. Without one, `trace.getActiveSpan()` returns `undefined` in a resolver; graxia's own
+spans are still parented correctly. Register `AsyncLocalStorageContextManager` as in the
+[Setup](./guide/telemetry.md#setup) snippet.

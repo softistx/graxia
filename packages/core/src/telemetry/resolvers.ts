@@ -29,11 +29,14 @@ export function bindResolvers(
 }
 
 /** `user.posts.0.title`: the keys from the root down. */
-function pathOf(
-	path: { prev?: unknown; key: string | number } | undefined,
-): string {
+interface PathLike {
+	prev: PathLike | undefined;
+	key: string | number;
+}
+
+function pathOf(path: PathLike | undefined): string {
 	const keys: (string | number)[] = [];
-	for (let at = path as any; at; at = at.prev) keys.push(at.key);
+	for (let at = path; at; at = at.prev) keys.push(at.key);
 	return keys.reverse().join('.');
 }
 

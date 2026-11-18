@@ -3,31 +3,19 @@ import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import type { Outcome } from '../server/outcome';
 import { type ApiLoader, apiLoader } from './api';
-import { settleOutcome } from './operation';
 import { resolveTelemetry, type TelemetryOptions } from './options';
 import { traceRequest } from './request';
-import { bindResolvers, wrapSchemaResolvers } from './resolvers';
+import { wrapSchemaResolvers } from './resolvers';
+import { type Env, requestKey } from './spans';
 import {
-	ATTR,
-	documentIdOf,
-	type Env,
-	fail,
-	type Operation,
-	operationKey,
-	parentOf,
-	requestKey,
-	SPAN,
-	start,
-} from './spans';
+	describeOperation,
+	type StepLike,
+	traceOperation,
+	traceScope,
+	traceStep,
+} from './steps';
 
 export type { TelemetryOptions } from './options';
-
-/** @internal What a validation or parse step reports back to its span. */
-export interface StepLike {
-	errors?: readonly unknown[] | undefined;
-	error?: unknown;
-	cacheHit?: boolean | undefined;
-}
 
 /**
  * @internal The tracing hooks of the transport. The off implementation does
@@ -102,9 +90,8 @@ export function createTelemetry(
 		document: resolved.document,
 		propagate: resolved.propagate,
 	};
-	if (resolved.resolvers)
-		wrapSchemaResolvers(schema, resolved.resolvers.trivial);
-	const { INTERNAL } = api.SpanKind;
+	const trivial = resolved.resolvers ? resolved.resolvers.trivial : undefined;
+	if (trivial !== undefined) wrapSchemaResolvers(schema, trivial);
 	return {
 		on: true,
 		request: (request, state, run) =>
@@ -112,67 +99,10 @@ export function createTelemetry(
 		upgrade: (request, state, run) =>
 			traceRequest(env, request, state, run, true),
 		hold: (state, done) => void state.get(requestKey)?.held.push(done),
-		async operation(state, run) {
-			const live = start(env, SPAN.operation, INTERNAL, parentOf(env, state));
-			const op: Operation = { live, errors: 0, events: 0, ended: false };
-			state.set(operationKey, op);
-			const inContext = <T>(work: () => T) => api.context.with(live.ctx, work);
-			try {
-				const outcome = await inContext(run);
-				return settleOutcome(env, schema, op, outcome, inContext);
-			} catch (error) {
-				fail(env, live.span, error);
-				live.span.end();
-				op.ended = true;
-				throw error;
-			}
-		},
-		describe(state, { operation, source, params }) {
-			const op = state.get(operationKey);
-			if (!op) return;
-			const name = operation.name?.value;
-			op.live.span.updateName(
-				name ? `${operation.operation} ${name}` : operation.operation,
-			);
-			op.live.span.setAttribute(ATTR.operationType, operation.operation);
-			if (name) op.live.span.setAttribute(ATTR.operationName, name);
-			if (env.document) op.live.span.setAttribute(ATTR.document, source);
-			const id = documentIdOf(params);
-			if (id) op.live.span.setAttribute(ATTR.documentId, id);
-		},
-		async step(state, name, run) {
-			const live = start(
-				env,
-				name === 'parse' ? SPAN.parse : SPAN.validate,
-				INTERNAL,
-				parentOf(env, state),
-			);
-			try {
-				const result = await run();
-				if (result.cacheHit !== undefined)
-					live.span.setAttribute(ATTR.cacheHit, result.cacheHit);
-				if (result.errors?.length)
-					live.span.setAttribute(ATTR.errorCount, result.errors.length);
-				if (result.error !== undefined) fail(env, live.span, result.error);
-				return result;
-			} catch (error) {
-				fail(env, live.span, error);
-				throw error;
-			} finally {
-				live.span.end();
-			}
-		},
-		scope(state, contextValue, scope) {
-			const op = state.get(operationKey);
-			if (!op) return scope;
-			if (resolved.resolvers)
-				bindResolvers(
-					contextValue,
-					env,
-					op.live.ctx,
-					resolved.resolvers.trivial,
-				);
-			return (work) => api.context.with(op.live.ctx, () => scope(work));
-		},
+		operation: (state, run) => traceOperation(env, schema, state, run),
+		describe: (state, info) => describeOperation(env, state, info),
+		step: (state, name, run) => traceStep(env, state, name, run),
+		scope: (state, contextValue, scope) =>
+			traceScope(env, trivial, state, contextValue, scope),
 	};
 }

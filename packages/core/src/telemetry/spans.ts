@@ -59,6 +59,9 @@ export const operationKey = createStateKey<Operation>(
 	'graxia.telemetry.operation',
 );
 
+/** @internal Set when the request span is not recording (no SDK, or sampled out): the rest of the request is untraced. */
+export const quietKey = createStateKey<true>('graxia.telemetry.quiet');
+
 /** @internal The state of an operation span. */
 export interface Operation {
 	live: Live;
