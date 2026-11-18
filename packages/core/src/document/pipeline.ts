@@ -53,6 +53,8 @@ export interface DocumentPipeline {
 		source: string;
 		state: RequestState;
 		request: Request;
+		/** A document already parsed (`graxia.execute`): used instead of parsing `source`, after `onParse` ran. */
+		document?: DocumentNode | undefined;
 	}): Promise<StepResult>;
 	/**
 	 * Runs `onValidate`, then the validation. The validation cache is used only
@@ -109,7 +111,12 @@ export function createDocumentPipeline(
 
 async function runParse(
 	ctx: Ctx,
-	input: { source: string; state: RequestState; request: Request },
+	input: {
+		source: string;
+		state: RequestState;
+		request: Request;
+		document?: DocumentNode | undefined;
+	},
 ): Promise<StepResult> {
 	const { source, state, request } = input;
 	const outcome = await ctx.engine.runners.onParse({
@@ -122,6 +129,7 @@ async function runParse(
 	let cacheKey: string | undefined;
 	if (error !== undefined) result = { errors: [] };
 	else if (out.document) result = { document: out.document };
+	else if (input.document) result = { document: input.document };
 	else if (out.parseFn)
 		result = parseWithLimits(source, ctx.limits, out.parseFn);
 	else {

@@ -9,6 +9,7 @@ import {
 import type { RequestState } from '../plugins/state';
 import type { ExecutionOutput, GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
+import { presetDocumentKey } from './execute-state';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
 
@@ -29,6 +30,12 @@ interface Prepared {
 
 const isPrepared = (value: Outcome | Prepared): value is Prepared =>
 	!('kind' in value);
+
+/** The pre-parsed document `execute` gave, while the query is still the text it printed. */
+function presetFor(state: RequestState, query: string) {
+	const preset = state.get(presetDocumentKey);
+	return preset?.text === query ? preset.node : undefined;
+}
 
 /**
  * Runs one operation through the pipeline (onParams, parse, validate,
@@ -64,6 +71,7 @@ async function prepare(
 		source: final.query,
 		state,
 		request,
+		document: presetFor(state, final.query),
 	});
 	if (parsed.error !== undefined) return unexpected(parsed.error);
 	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);

@@ -2,6 +2,7 @@ import { UNEXPECTED_MESSAGE } from '../errors/mask';
 import { requestIdKey } from '../http/request-id';
 import { jsonResponse } from '../http/respond';
 import type { RequestState } from '../plugins/state';
+import { unexpectedErrorKey } from './execute-state';
 
 /** Where an unexpected failure happened. */
 export type UnexpectedPhase = 'request' | 'execution' | 'dispose';
@@ -61,6 +62,8 @@ export function createUnexpectedHandler(
 		phase: UnexpectedPhase = 'request',
 	) => {
 		const id = state.get(requestIdKey);
+		if (state.get(unexpectedErrorKey) === undefined)
+			state.set(unexpectedErrorKey, { error });
 		try {
 			sink?.(error, { requestId: id, correlationId: id, phase });
 		} catch {

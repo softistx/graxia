@@ -6,6 +6,7 @@ export type {
 	StepResult,
 } from './pipeline';
 export { createDocumentPipeline } from './pipeline';
+export type { DocumentInput, TypedDocument, TypedString } from './typed';
 export type {
 	DocumentCacheOptions,
 	DocumentCaches,

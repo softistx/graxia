@@ -5,6 +5,7 @@ import { paramsFromJson, paramsFromUrl } from '../http/params';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
+import { resultKey } from './execute-state';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
@@ -132,6 +133,7 @@ function encode(
 	if (outcome.kind === 'unexpected')
 		return rt.unexpected.respond(outcome.error, state, 'execution');
 	const result = rt.maskResult(outcome.result, state);
+	state.set(resultKey, result);
 	return jsonResponse(
 		result,
 		outcome.status ?? statusOf(media, result),

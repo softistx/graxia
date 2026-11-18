@@ -1,6 +1,7 @@
 export * from './document';
 export type { GraxiaErrorCode, GraxiaErrorCodes } from './errors/codes';
 export { GraxiaConfigError } from './errors/config-error';
+export { GraxiaExecuteError } from './errors/execute-error';
 export type { ExposedErrorOptions } from './errors/exposed';
 export { exposedError, GraxiaError, isGraxiaError } from './errors/exposed';
 export type { MaskError, MaskInfo } from './errors/mask';
@@ -48,6 +49,7 @@ export type {
 export { getContext, tryGetContext } from './server/context';
 export type { Graxia, GraxiaServeOptions } from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
+export type { ExecuteArgs } from './server/execute';
 export type {
 	ContextInit,
 	GraxiaLimits,

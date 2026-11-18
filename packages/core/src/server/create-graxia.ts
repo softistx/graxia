@@ -1,3 +1,4 @@
+import type { ExecutionResult } from 'graphql';
 import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
@@ -6,6 +7,7 @@ import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
 import { RequestState } from '../plugins/state';
 import { createDispose } from './dispose';
+import { createExecute, type ExecuteArgs } from './execute';
 import { dispatch } from './handle';
 import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
@@ -25,6 +27,23 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * operation's context. Never rejects.
 	 */
 	fetch(request: Request, serverContext?: HostCtx): Promise<Response>;
+	/**
+	 * Runs one operation in process (tests, server-side jobs): a synthetic
+	 * `POST` request goes through the same pipeline as HTTP (plugins, context,
+	 * request id, `dispose` tracking, masking) and the masked result comes
+	 * back as an object, with no content negotiation or HTTP encoding.
+	 * A string document gets the parse limits and both caches; a `DocumentNode`
+	 * skips them. Variables travel as JSON. Subscriptions and incremental results return their usual refusal error
+	 * in the result. Rejects with a {@link GraxiaExecuteError} when the request
+	 * ends without a result (a plugin's `respond`, an unexpected failure) and
+	 * after `dispose()`.
+	 *
+	 * @example
+	 * const { data } = await graxia.execute({ document: '{ hello }' });
+	 */
+	execute<Result = Record<string, any>, Variables = Record<string, any>>(
+		args: ExecuteArgs<Result, Variables, HostCtx>,
+	): Promise<ExecutionResult<Result>>;
 	/** Starts `Bun.serve` with this instance as its `fetch`. */
 	serve(options?: GraxiaServeOptions): Bun.Server<undefined>;
 	/**
@@ -103,8 +122,8 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const handleWith = async (
 		request: Request,
 		serverContext: Record<string, unknown>,
+		state = new RequestState(),
 	) => {
-		const state = new RequestState();
 		state.set(requestIdKey, createRequestId());
 		if (lifecycle.closing) return seal(shuttingDown(), state);
 		try {
@@ -124,7 +143,13 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		unexpected: rt.unexpected,
 		timeout: resolved.shutdownTimeout,
 	});
+	const execute = createExecute({
+		run: handleWith,
+		lifecycle,
+		path: resolved.path,
+	});
 	return {
+		execute,
 		fetch: (request, serverContext) =>
 			handleWith(request, { ...serverContext }),
 		serve: (serveOptions) => {
