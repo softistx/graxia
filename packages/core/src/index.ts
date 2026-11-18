@@ -53,6 +53,7 @@ export { getContext, tryGetContext } from './server/context';
 export type {
 	Graxia,
 	GraxiaServeOptions,
+	GraxiaSocketData,
 } from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
 export type { ExecuteArgs, ExecuteBase } from './server/execute';
@@ -73,3 +74,4 @@ export type {
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
+export type { WebSocketContext, WebSocketOptions } from './ws/options';

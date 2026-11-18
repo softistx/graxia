@@ -4,9 +4,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Subscriptions over SSE and WebSocket** — the typed PubSub and subscriptions over server-sent
-  events (`graphql-sse`, distinct connections) have shipped; `graphql-transport-ws` on Bun's
-  WebSocket is still to come.
+- **Subscriptions over SSE and WebSocket** — the typed PubSub, subscriptions over server-sent
+  events (`graphql-sse`, distinct connections) and `graphql-transport-ws` on Bun's WebSocket
+  (see [the guide](./guide/websocket.md)) have shipped; only the Redis PubSub is still to come.
 - **`@defer` and `@stream`** — incremental delivery over `multipart/mixed` and server-sent events,
   in graphql 17's format or the legacy one, has shipped (see [the guide](./guide/incremental.md)).
 

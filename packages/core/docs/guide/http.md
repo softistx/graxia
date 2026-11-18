@@ -60,6 +60,10 @@ Bun.serve({
 });
 ```
 
+To serve WebSockets from your own server too, call `graxia.upgrade(request, server)` from `fetch` and
+pass `graxia.websocket` as `websocket` (see [Subscriptions over WebSocket](./websocket.md)); on the
+same path, `serve()` does it for you.
+
 The second argument is the `serverContext`, merged into every operation's context. With `path: false`
 graxia answers whatever path it is handed.
 

@@ -2,23 +2,26 @@ import type { ExecutionResult } from 'graphql';
 import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
-import { createRequestId, requestIdKey } from '../http/request-id';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
+import type { SocketData } from '../ws/connection';
 import { createDispose } from './dispose';
+import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
-import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
-import { seal } from './seal';
 import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
 
+/** What graxia attaches to each upgraded socket (`ws.data`); opaque to the host. */
+export type GraxiaSocketData = SocketData;
+
 /** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
-export type GraxiaServeOptions = Bun.Serve.HostnamePortServeOptions<undefined>;
+export type GraxiaServeOptions =
+	Bun.Serve.HostnamePortServeOptions<GraxiaSocketData>;
 
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
@@ -63,7 +66,31 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 */
 	serve(
 		...options: OptionsArg<HostCtx, GraxiaServeOptions>
-	): Bun.Server<undefined>;
+	): Bun.Server<GraxiaSocketData>;
+	/**
+	 * Upgrades a request to a `graphql-transport-ws` socket from your own
+	 * `Bun.serve` `fetch`; pass {@link Graxia.websocket} as its `websocket`.
+	 * Resolves `true` once the socket is upgraded (return `undefined` from
+	 * `fetch` then), `false` when it is not: `subscriptions.ws` is off, or the
+	 * request was refused (wrong path, a plugin's `respond`, no
+	 * `graphql-transport-ws` subprotocol, shutdown). Answer a `false` with
+	 * `graxia.fetch(request)`, which gives the matching HTTP response.
+	 * `serverContext` is required when `HostCtx` has required keys.
+	 *
+	 * @example
+	 * const server = Bun.serve({
+	 *   fetch: async (request, server) =>
+	 *     (await graxia.upgrade(request, server)) ? undefined : graxia.fetch(request),
+	 *   websocket: graxia.websocket,
+	 * });
+	 */
+	upgrade(
+		request: Request,
+		server: Bun.Server<GraxiaSocketData>,
+		...serverContext: ServerContextArg<HostCtx>
+	): Promise<boolean>;
+	/** The `Bun.serve` `websocket` handler of this instance (see {@link Graxia.upgrade}). */
+	readonly websocket: Bun.WebSocketHandler<GraxiaSocketData>;
 	/**
 	 * Shuts down: stops accepting requests (new ones answer 503
 	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
@@ -117,7 +144,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const lifecycle = createLifecycle();
-	const servers: Bun.Server<undefined>[] = [];
+	const servers: Bun.Server<SocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
@@ -148,22 +175,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		lifecycle,
 		ready,
 	};
-	const handleWith = async (
-		request: Request,
-		serverContext: Record<string, unknown>,
-		state = new StateBag(),
-	) => {
-		state.set(requestIdKey, createRequestId());
-		if (lifecycle.closing) return seal(shuttingDown(), state);
-		try {
-			return seal(
-				await lifecycle.track(handle(rt, request, serverContext, state)),
-				state,
-			);
-		} catch (error) {
-			return lastResort(rt, error, state);
-		}
-	};
+	const entry = createEntry<HostCtx>(rt, servers);
 	const dispose = createDispose({
 		lifecycle,
 		engine,
@@ -173,25 +185,17 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		timeout: resolved.shutdownTimeout,
 	});
 	const execute = createExecute({
-		run: handleWith,
+		run: entry.handleWith,
 		lifecycle,
 		path: resolved.path,
 	});
 	return {
 		ready,
 		execute,
-		fetch: (request, ...[serverContext]) =>
-			handleWith(request, { ...serverContext }),
-		serve: (...[serveOptions]) => {
-			const { serverContext, ...bunOptions } = serveOptions ?? {};
-			const server = Bun.serve<undefined>({
-				...(bunOptions as GraxiaServeOptions),
-				fetch: (request, server) =>
-					handleWith(request, { ...serverContext, server }),
-			});
-			servers.push(server);
-			return server;
-		},
+		fetch: entry.fetch,
+		serve: entry.serve,
+		upgrade: entry.upgrade,
+		websocket: entry.websocket,
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};

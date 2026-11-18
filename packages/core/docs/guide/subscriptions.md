@@ -3,8 +3,8 @@
 `createGraxia` serves subscriptions over server-sent events (SSE), in the **distinct connections
 mode** of the [`graphql-sse`](https://github.com/enisdenjo/graphql-sse/blob/master/PROTOCOL.md)
 protocol: one HTTP request, one event stream. Single connection mode (reservations, stream tokens)
-is not implemented. `graphql-transport-ws` over WebSocket comes later (see the
-[roadmap](../roadmap.md)).
+is not implemented. For `graphql-transport-ws` over WebSocket see [Subscriptions over
+WebSocket](./websocket.md).
 
 It is on by default. A request whose `Accept` header prefers `text/event-stream` gets an event
 stream, for any operation type:

@@ -1,10 +1,11 @@
 import { GraxiaConfigError } from '../errors/config-error';
+import { resolveWebSocket } from '../ws/options';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 
 /** @internal Resolves the options of the streamed transports (SSE, incremental delivery). */
 export function resolveStreaming(
 	options: GraxiaOptions<any>,
-): Pick<ResolvedOptions, 'sse' | 'keepAliveMs' | 'incremental'> {
+): Pick<ResolvedOptions, 'sse' | 'keepAliveMs' | 'incremental' | 'ws'> {
 	const keepAliveMs = options.subscriptions?.keepAliveMs ?? 12_000;
 	if (!Number.isFinite(keepAliveMs) || keepAliveMs <= 0)
 		throw new GraxiaConfigError(
@@ -19,6 +20,7 @@ export function resolveStreaming(
 		);
 	return {
 		sse: options.subscriptions?.sse ?? true,
+		ws: resolveWebSocket(options.subscriptions?.ws),
 		keepAliveMs,
 		incremental: given === false ? false : format,
 	};
