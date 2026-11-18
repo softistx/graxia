@@ -89,20 +89,23 @@ check that this context matches what your schema's resolvers or plugins expect (
   `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`) are refused with a 400 under
   `application/graphql-response+json` (200 under `application/json`), the code in `extensions.code`.
   A batch with an event-stream `Accept` answers 400.
+- **Multipart**: an `Accept` that prefers `multipart/mixed` (named, never through a wildcard) answers
+  a `@defer` / `@stream` query as `multipart/mixed; boundary="-"`; any other result stays plain JSON.
+  See [`@defer` and `@stream`](./incremental.md). A batch with it answers 400.
 
 ## Status codes
 
-| situation                                                             | `application/graphql-response+json`                                                       | `application/json` |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------ |
-| result with `data` (field errors included)                            | 200                                                                                       | 200                |
-| parse or validation error, unknown operation, bad variables           | 400                                                                                       | 200                |
-| missing `query`; malformed JSON; wrong parameter types                | 400                                                                                       | 400                |
-| subscription, `@defer` / `@stream` (without an event-stream `Accept`) | 400                                                                                       | 200                |
-| mutation over GET                                                     | 405 (`Allow: POST`)                                                                       | 405                |
-| path / method / `Accept` / `Content-Type` / size                      | 404 / 405 / 406 / 415 / 413                                                               | same               |
-| client left, or shutdown past its timeout (`OPERATION_ABORTED`)       | 499 / 503                                                                                 | same               |
-| `dispose()` started (`SHUTTING_DOWN`)                                 | 503 (`connection: close`)                                                                 | same               |
-| plugin hook threw, `context` threw, `execute` threw                   | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same               |
+| situation                                                                          | `application/graphql-response+json`                                                       | `application/json` |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------ |
+| result with `data` (field errors included)                                         | 200                                                                                       | 200                |
+| parse or validation error, unknown operation, bad variables                        | 400                                                                                       | 200                |
+| missing `query`; malformed JSON; wrong parameter types                             | 400                                                                                       | 400                |
+| subscription, `@defer` / `@stream` (without an event-stream or multipart `Accept`) | 400                                                                                       | 200                |
+| mutation over GET                                                                  | 405 (`Allow: POST`)                                                                       | 405                |
+| path / method / `Accept` / `Content-Type` / size                                   | 404 / 405 / 406 / 415 / 413                                                               | same               |
+| client left, or shutdown past its timeout (`OPERATION_ABORTED`)                    | 499 / 503                                                                                 | same               |
+| `dispose()` started (`SHUTTING_DOWN`)                                              | 503 (`connection: close`)                                                                 | same               |
+| plugin hook threw, `context` threw, `execute` threw                                | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same               |
 
 Unexpected failures never leak their message. The body is generic whatever the cause
 (`INTERNAL_SERVER_ERROR` and a `correlationId` equal to the `x-request-id` header); the original

@@ -8,9 +8,9 @@ import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
 import { presetDocumentKey } from './execute-state';
+import { execution } from './incremental';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
-import { isSingleResult, release, runExecutionStage } from './stage';
 import { subscription } from './subscription';
 
 /** Input of one operation: a POST body, a GET query, or one batch entry. */
@@ -22,6 +22,8 @@ export interface OperationInput {
 	method: 'GET' | 'POST';
 	/** The client asked for `text/event-stream`: a subscription becomes a stream. */
 	sse?: boolean;
+	/** The client asked for `multipart/mixed`: an incremental query becomes a stream. */
+	multipart?: boolean;
 }
 
 interface Prepared {
@@ -132,7 +134,7 @@ function selectOperation(
 
 async function executeOperation(
 	rt: Runtime,
-	{ request, state, serverContext }: OperationInput,
+	{ request, state, serverContext, sse, multipart }: OperationInput,
 	{ params, document, operation }: Prepared,
 ): Promise<Outcome> {
 	// One context and one signal per operation, never shared with a batch sibling.
@@ -167,27 +169,11 @@ async function executeOperation(
 	const call = { request, state };
 	return operation.operation === 'subscription'
 		? scope(() => subscription(rt, call, args, { stop, scope }))
-		: scope(() => execution(rt, call, args));
-}
-
-async function execution(
-	rt: Runtime,
-	{ request, state }: Pick<OperationInput, 'request' | 'state'>,
-	args: ExecutionArgs,
-): Promise<Outcome> {
-	const run = await runExecutionStage(
-		rt,
-		{ request, state },
-		args,
-		'onExecute',
-	);
-	if ('outcome' in run) return run.outcome;
-	if (!isSingleResult(run.result)) {
-		await release(run.result);
-		return failure(
-			'Incremental delivery (@defer, @stream) is not supported over this transport yet.',
-			{ code: 'INCREMENTAL_NOT_SUPPORTED' },
-		);
-	}
-	return { kind: 'result', result: run.result };
+		: scope(() =>
+				execution(rt, call, args, {
+					allowed: Boolean(sse || multipart),
+					stop,
+					scope,
+				}),
+			);
 }

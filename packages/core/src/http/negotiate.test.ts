@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { negotiate, prefersEventStream } from './negotiate';
+import { negotiate, prefersEventStream, prefersMultipart } from './negotiate';
 
 describe('negotiate', () => {
 	test('absent, empty and wildcard accept give application/json', () => {
@@ -85,5 +85,20 @@ describe('prefersEventStream', () => {
 			prefersEventStream('text/event-stream;q=0.5, application/json'),
 		).toBe(false);
 		expect(prefersEventStream('text/event-stream, */*;q=0.8')).toBe(true);
+	});
+});
+
+describe('prefersMultipart', () => {
+	test('named multipart/mixed (parameters ignored) before JSON wins', () => {
+		expect(
+			prefersMultipart('multipart/mixed;deferSpec=20220824, application/json'),
+		).toBe(true);
+		expect(prefersMultipart('multipart/mixed')).toBe(true);
+	});
+	test('never through a wildcard, absent, q=0, or after a JSON type', () => {
+		expect(prefersMultipart(null)).toBe(false);
+		expect(prefersMultipart('*/*')).toBe(false);
+		expect(prefersMultipart('multipart/mixed;q=0')).toBe(false);
+		expect(prefersMultipart('application/json, multipart/mixed')).toBe(false);
 	});
 });

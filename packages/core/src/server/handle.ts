@@ -1,19 +1,23 @@
 import { parseBatch } from '../http/batch';
 import { type BodyResult, isJsonContentType, readBody } from '../http/body';
+import { multipartFormat } from '../http/multipart';
 import {
 	type MediaType,
 	negotiate,
 	prefersEventStream,
+	prefersMultipart,
 } from '../http/negotiate';
 import { paramsFromJson, paramsFromUrl } from '../http/params';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
+import { sseFormat } from '../http/sse';
+import type { StreamFormat } from '../http/stream';
 import type { StateBag } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { resultKey } from './execute-state';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
-import { streamResponse } from './subscription';
+import { streamResponse } from './stream-response';
 
 type Read =
 	| { response: Response }
@@ -42,7 +46,9 @@ export async function dispatch(
 		state.responseHeaders.append('vary', 'Accept');
 		const accept = request.headers.get('accept');
 		const sse = rt.options.sse && prefersEventStream(accept);
-		const media = sse ? 'application/json' : negotiate(accept);
+		const multipart =
+			!sse && rt.options.incremental !== false && prefersMultipart(accept);
+		const media = sse || multipart ? 'application/json' : negotiate(accept);
 		if (media === undefined)
 			return refusal(
 				406,
@@ -60,15 +66,28 @@ export async function dispatch(
 				state: operation,
 				params: read.single,
 				sse,
+				multipart,
 			});
-			return sse
-				? encodeSse(rt, { ...call, state: operation }, outcome)
+			if (sse)
+				return encodeStreamed(
+					rt,
+					{ ...call, state: operation },
+					outcome,
+					sseFormat,
+				);
+			return multipart && outcome.kind === 'stream'
+				? streamResponse(
+						rt,
+						{ ...call, state: operation },
+						outcome,
+						multipartFormat,
+					)
 				: encode(rt, state, outcome, media);
 		}
-		if (sse)
+		if (sse || multipart)
 			return refusal(
 				400,
-				'Batched operations cannot be sent over text/event-stream.',
+				`Batched operations cannot be sent over ${sse ? 'text/event-stream' : 'multipart/mixed'}.`,
 			);
 		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {
@@ -142,12 +161,17 @@ async function runBatch(
 }
 
 /**
- * The answer over `text/event-stream`: the operation's results as events.
+ * The answer over a stream format (`text/event-stream`): the operation's results as events.
  * What fails before an operation exists (a status was chosen: bad params,
  * mutation over GET, aborted) keeps its plain HTTP answer; a parse, validation
  * or execution error is a `next` event, as the protocol asks.
  */
-function encodeSse(rt: Runtime, call: Call, outcome: Outcome): Response {
+function encodeStreamed(
+	rt: Runtime,
+	call: Call,
+	outcome: Outcome,
+	format: StreamFormat,
+): Response {
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
 		return rt.unexpected.respond(outcome.error, call.state, 'execution');
@@ -158,7 +182,7 @@ function encodeSse(rt: Runtime, call: Call, outcome: Outcome): Response {
 			'application/json',
 			outcome.headers,
 		);
-	return streamResponse(rt, call, outcome);
+	return streamResponse(rt, call, outcome, format);
 }
 
 function encode(

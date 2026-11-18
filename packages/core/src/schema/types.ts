@@ -79,4 +79,10 @@ export type SchemaOptions<R> = {
 	typeDefs: TypeDefs;
 	/** One resolver map or several, merged per type and field. */
 	resolvers?: R | readonly R[];
+	/**
+	 * `false` leaves `@defer` and `@stream` out of the schema, so graphql's plain
+	 * `execute` runs it (it refuses a schema that declares them). The schema then
+	 * cannot serve incremental queries. Declared by default.
+	 */
+	incremental?: false;
 };

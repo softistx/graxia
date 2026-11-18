@@ -117,6 +117,12 @@ queues `return()` behind its pending `next()` and so cannot be stopped while it 
 graphql's `subscribe` and the memory PubSub already do this. A `return()` that throws or rejects is
 ignored: the stream still ends and `dispose()` does not wait for it.
 
+## Incremental queries
+
+A query with `@defer` or `@stream` over `text/event-stream` sends one `next` event per payload, then
+`complete`; see [`@defer` and `@stream`](./incremental.md). A subscription event that uses them is
+refused with `INCREMENTAL_NOT_SUPPORTED`.
+
 ## Bun idle timeout
 
 `Bun.serve` closes a connection that stays silent for `idleTimeout` seconds (10 by default). For an

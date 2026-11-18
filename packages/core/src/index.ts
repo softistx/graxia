@@ -65,6 +65,7 @@ export type {
 	ContextInit,
 	GraxiaLimits,
 	GraxiaOptions,
+	IncrementalOptions,
 	SubscriptionsOptions,
 } from './server/options';
 export type {

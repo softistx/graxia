@@ -145,6 +145,45 @@ Pass a count of milliseconds such as `12_000`.
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
 
+## Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed" or "Accept: text/event-stream".
+
+A query with `@defer` or `@stream` came with a JSON `Accept` (or none): a single JSON body cannot carry
+the later payloads. The error has `extensions.code: "INCREMENTAL_NOT_SUPPORTED"`. Send
+`Accept: multipart/mixed;deferSpec=20220824, application/json` (Apollo Client does) or
+`Accept: text/event-stream`. `graxia.execute` and the test client always answer it: use `fetch`.
+
+## Incremental delivery (@defer, @stream) is disabled (incremental is false).
+
+The instance was created with `incremental: false`. Remove the option (or pass `true`), or drop
+`@defer` / `@stream` from the query.
+
+## incremental.format must be "graphql17" or "legacy"
+
+`createGraxia({ incremental: { format } })` got another value. `graphql17` is the default; `legacy`
+is the 2022-08 format older clients read.
+
+## The provided schema unexpectedly contains experimental directives (@defer or @stream). These directives may only be utilized if experimental execution features are explicitly enabled.
+
+Graphql's plain `execute` was given a schema from `createSchema`, which declares `@defer` and
+`@stream`. Run the schema through graxia or `experimentalExecuteIncrementally`, or build it with
+`createSchema()({ typeDefs, resolvers, incremental: false })`.
+
+## Incremental delivery (@defer, @stream) is not supported over this transport yet.
+
+A subscription event used `@defer` or `@stream`; incremental delivery inside subscription events is not
+supported. Code `INCREMENTAL_NOT_SUPPORTED`. Remove the directive from the subscription's selection.
+
+## Unknown directive "@defer".
+
+The schema is a `GraphQLSchema` you built without the directives (`createSchema` adds them). Add
+`GraphQLDeferDirective` and `GraphQLStreamDirective` next to `specifiedDirectives`; see
+[`@defer` and `@stream`](./guide/incremental.md).
+
+## Batched operations cannot be sent over multipart/mixed.
+
+A JSON array body came with an `Accept` that prefers `multipart/mixed`. Send one operation per
+request, or ask for `application/json`.
+
 ## Streams may be cut after `idleTimeout` with my own `Bun.serve`
 
 `Bun.serve` may close a silent connection after `idleTimeout` seconds (10 by default). `graxia.serve()`
