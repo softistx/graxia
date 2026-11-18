@@ -1,0 +1,40 @@
+/**
+ * The error codes `exposedError` accepts. Add your own by augmenting it:
+ *
+ * ```ts
+ * declare module '@graxia/core' {
+ *   interface GraxiaErrorCodes {
+ *     PAYMENT_REQUIRED: true;
+ *   }
+ * }
+ * ```
+ */
+export interface GraxiaErrorCodes {
+	/** The client sent a value the operation cannot use. */
+	BAD_USER_INPUT: true;
+	/** The caller is not signed in. */
+	UNAUTHENTICATED: true;
+	/** The caller is signed in but not allowed. */
+	FORBIDDEN: true;
+	/** The record asked for does not exist. */
+	NOT_FOUND: true;
+	/** The change conflicts with the current state. */
+	CONFLICT: true;
+	/** An unexpected failure (what masked errors carry). */
+	INTERNAL_SERVER_ERROR: true;
+	/** Emitted by core: the document does not parse. */
+	GRAPHQL_PARSE_FAILED: true;
+	/** Emitted by core: the document does not validate. */
+	GRAPHQL_VALIDATION_FAILED: true;
+	/** Emitted by core: the client left or the server shut down. */
+	OPERATION_ABORTED: true;
+	/** Emitted by core: `dispose()` started. */
+	SHUTTING_DOWN: true;
+	/** Emitted by core: subscriptions over plain HTTP. */
+	SUBSCRIPTION_NOT_SUPPORTED: true;
+	/** Emitted by core: `@defer` / `@stream` over plain HTTP. */
+	INCREMENTAL_NOT_SUPPORTED: true;
+}
+
+/** A code of {@link GraxiaErrorCodes}. */
+export type GraxiaErrorCode = keyof GraxiaErrorCodes;

@@ -1,5 +1,9 @@
 export * from './document';
+export type { GraxiaErrorCode, GraxiaErrorCodes } from './errors/codes';
 export { GraxiaConfigError } from './errors/config-error';
+export type { ExposedErrorOptions } from './errors/exposed';
+export { exposedError, GraxiaError, isGraxiaError } from './errors/exposed';
+export type { MaskError, MaskInfo } from './errors/mask';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type { BatchingOption } from './http/batch';
 export { requestIdKey } from './http/request-id';
@@ -49,3 +53,8 @@ export type {
 	GraxiaLimits,
 	GraxiaOptions,
 } from './server/options';
+export type {
+	OnUnexpected,
+	UnexpectedInfo,
+	UnexpectedPhase,
+} from './server/unexpected';

@@ -1,5 +1,6 @@
 import type { GraphQLSchema } from 'graphql';
 import type { DocumentCaches, DocumentLimits } from '../document/types';
+import type { MaskError } from '../errors/mask';
 import type { BatchingOption } from '../http/batch';
 import type {
 	GraphQLParams,
@@ -57,10 +58,25 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	batching?: BatchingOption;
 	/**
 	 * Receives the original error of every unexpected failure (a hook or
-	 * `execute` threw). The response stays a generic 500. Default:
-	 * `console.error`, silent when `NODE_ENV=production`; `false` silences it.
+	 * `execute` threw, a resolver threw a plain error). The response stays a
+	 * generic 500 or a masked error. Default: `console.error`, silent when
+	 * `NODE_ENV=production`; `false` silences it.
 	 */
 	onUnexpected?: OnUnexpected | false;
+	/**
+	 * Replaces the masker of unexpected resolver errors. Exposed (never
+	 * masked): graphql's own errors, `exposedError`, any `GraphQLError` and a
+	 * genuine non-null violation. Masked: everything else (a plain `Error`, a
+	 * thrown string, a library error). If it throws, the default masker is used
+	 * and its error is reported too. The default answers `Unexpected error.` with
+	 * `INTERNAL_SERVER_ERROR` and the correlation id.
+	 */
+	maskError?: MaskError;
+	/**
+	 * `false` turns masking off: every resolver error reaches the client with
+	 * its message. Unsafe, for tests only. `true` by default, in every environment.
+	 */
+	maskErrors?: boolean;
 }
 
 /** @internal Options with defaults applied. */

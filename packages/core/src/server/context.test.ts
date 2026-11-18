@@ -167,7 +167,11 @@ describe('getContext', () => {
 	});
 
 	test('asyncContext: false skips the store and names the option', async () => {
-		const graxia = createGraxia({ schema, asyncContext: false });
+		const graxia = createGraxia({
+			schema,
+			asyncContext: false,
+			maskErrors: false,
+		});
 		const res = await graxia.fetch(post({ query: '{ ctx }' }));
 		const body = (await res.json()) as { errors: { message: string }[] };
 		expect(body.errors[0]?.message).toContain('asyncContext: false');
