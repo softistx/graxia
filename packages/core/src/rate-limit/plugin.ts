@@ -75,7 +75,9 @@ export function fieldRateLimit<Ctx extends object = any>(
 		if (client === undefined) return;
 		for (const [name, found] of counted) {
 			const { limit } = rules.get(name) as ResolvedRule;
-			const decision = await limit.consume(`${name}:${client}`, found.count);
+			const decision = Number.isFinite(found.count)
+				? await limit.consume(`${name}:${client}`, found.count)
+				: { allowed: false, retryAfter: Number.NaN };
 			if (decision.allowed) continue;
 			const seconds = retrySeconds(decision.retryAfter);
 			return refuse(

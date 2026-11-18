@@ -35,6 +35,21 @@ describe('memoryFieldLimit', () => {
 		limit.consume('d', 1); // evicts the oldest (b)
 		expect(limit.consume('b', 1)).toMatchObject({ allowed: true });
 	});
+	test('a full map evicts only the oldest entry between sweeps', () => {
+		let now = 0;
+		const limit = memoryFieldLimit({
+			limit: 1,
+			windowMs: 100,
+			maxKeys: 2,
+			now: () => now,
+		});
+		limit.consume('a', 1);
+		limit.consume('b', 1);
+		now = 10;
+		limit.consume('c', 1); // no sweep yet (swept at 0): evicts a
+		expect(limit.consume('b', 1)).toMatchObject({ allowed: false });
+		expect(limit.consume('a', 1)).toMatchObject({ allowed: true });
+	});
 	test('rejects bad options', () => {
 		expect(() => memoryFieldLimit({ limit: 0, windowMs: 1 })).toThrow(
 			'memoryFieldLimit: limit must be an integer of 1 or more',
@@ -74,6 +89,29 @@ describe('limitFromStore', () => {
 			allowed: true,
 			retryAfter: 0,
 		});
+	});
+	test('a cost over the limit is one call and a refusal', async () => {
+		const s = store(99);
+		expect(await limitFromStore(s).consume('k', 1_000_000_000)).toEqual({
+			allowed: false,
+			retryAfter: 1000,
+		});
+		expect(s.calls).toHaveLength(1);
+		const refusing = store(0);
+		expect(await limitFromStore(refusing).consume('k', 6)).toEqual({
+			allowed: false,
+			retryAfter: 700,
+		});
+		expect(refusing.calls).toHaveLength(1);
+	});
+	test('a cost that is not finite is refused without a call', async () => {
+		const s = store(99);
+		expect(
+			await limitFromStore(s).consume('k', Number.POSITIVE_INFINITY),
+		).toMatchObject({
+			allowed: false,
+		});
+		expect(s.calls).toHaveLength(0);
 	});
 	test('the policy may come from the argument alone', () => {
 		const { policy: _p, ...bare } = store(1);

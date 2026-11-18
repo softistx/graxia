@@ -205,7 +205,7 @@ Limit how often a client selects chosen fields, counted across aliases and fragm
 `signIn` in one request spend 3 units). Past a limit nothing executes: `429` with `Retry-After`.
 
 ```ts
-import { fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
 
 createGraxia({
 	schema,

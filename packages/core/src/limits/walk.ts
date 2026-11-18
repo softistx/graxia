@@ -126,9 +126,13 @@ export function createWalker(
 				if (introspection.has(name)) child.depth = 0;
 				merge(child, 1);
 				if (track && !introspection.has(name)) {
-					const here = segment(node);
-					if (track.has(name)) mergeTracked(total.tracked, own(name, here), '');
-					mergeTracked(total.tracked, child.tracked, here);
+					const mine = track.has(name);
+					// The printed arguments are only needed when a path is.
+					if (mine || child.tracked.size > 0) {
+						const here = segment(node);
+						if (mine) mergeTracked(total.tracked, own(name, here), '');
+						mergeTracked(total.tracked, child.tracked, here);
+					}
 				}
 			} else {
 				const child =

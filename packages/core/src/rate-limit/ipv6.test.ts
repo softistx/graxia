@@ -22,10 +22,12 @@ describe('networkOf', () => {
 	test('a zone is dropped', () => {
 		expect(networkOf('fe80::1%en0', 64)).toBe('fe80:0:0:0:0:0:0:0/64');
 	});
-	test('a dotted tail and a mapped address stay IPv6', () => {
-		expect(networkOf('::ffff:192.0.2.1', 128)).toBe(
-			'0:0:0:0:0:ffff:c000:201/128',
-		);
+	test('an IPv4-mapped address becomes plain IPv4, in both spellings', () => {
+		expect(networkOf('::ffff:192.0.2.1', 64)).toBe('192.0.2.1');
+		expect(networkOf('::ffff:c000:201', 64)).toBe('192.0.2.1');
+		expect(networkOf('::FFFF:c000:0201', 0)).toBe('192.0.2.1');
+	});
+	test('a dotted tail on another prefix stays IPv6', () => {
 		expect(networkOf('64:ff9b::192.0.2.33', 128)).toBe(
 			'64:ff9b:0:0:0:0:c000:221/128',
 		);

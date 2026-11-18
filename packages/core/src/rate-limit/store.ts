@@ -38,6 +38,18 @@ export function limitFromStore(
 	const resolved = { limit: merge('limit'), windowMs: merge('windowMs') };
 	return {
 		async consume(key, cost) {
+			// A cost over the limit can never pass: one call tells how long to wait.
+			if (!Number.isFinite(cost) || cost > resolved.limit) {
+				const decision = Number.isFinite(cost)
+					? await store.consume(key, resolved)
+					: { allowed: true, retryAfter: 0 };
+				return {
+					allowed: false,
+					retryAfter: decision.allowed
+						? resolved.windowMs
+						: decision.retryAfter,
+				};
+			}
 			for (let unit = 0; unit < cost; unit++) {
 				const decision = await store.consume(key, resolved);
 				if (!decision.allowed)
@@ -75,13 +87,16 @@ export function memoryFieldLimit(options: MemoryFieldLimitOptions): FieldLimit {
 	);
 	const now = options.now ?? Date.now;
 	const windows = new Map<string, { used: number; resetAt: number }>();
+	let swept = 0;
 	const make = (key: string, at: number) => {
 		if (windows.size >= maxKeys) {
-			for (const [k, w] of windows) if (w.resetAt <= at) windows.delete(k);
-			while (windows.size >= maxKeys) {
-				const oldest = windows.keys().next().value as string;
-				windows.delete(oldest);
+			// Expired entries go at most once per window; otherwise only the oldest entry.
+			if (at - swept >= windowMs) {
+				swept = at;
+				for (const [k, w] of windows) if (w.resetAt <= at) windows.delete(k);
 			}
+			if (windows.size >= maxKeys)
+				windows.delete(windows.keys().next().value as string);
 		}
 		const fresh = { used: 0, resetAt: at + windowMs };
 		windows.set(key, fresh);

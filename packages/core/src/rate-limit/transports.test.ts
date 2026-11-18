@@ -40,4 +40,24 @@ describe('over a real server', () => {
 		});
 		expect(c.calls[0]?.key).toMatch(/^hello:.*(127\.0\.0\.1|::1)/);
 	});
+
+	test('WebSocket: a single field selected twice is an error message', async () => {
+		const c = counter(9);
+		const { url } = start({
+			plugins: [
+				fieldRateLimit({ fields: { hello: { limit: c.limit, single: true } } }),
+			],
+		});
+		const client = raw(url);
+		await client.init();
+		await client.send({
+			id: '1',
+			type: 'subscribe',
+			payload: { query: '{ a: hello b: hello }' },
+		});
+		const message = await client.next();
+		expect(message.type).toBe('error');
+		expect(message.payload[0].extensions.code).toBe('FIELD_SELECTED_ONCE');
+		expect(c.calls).toEqual([]);
+	});
 });

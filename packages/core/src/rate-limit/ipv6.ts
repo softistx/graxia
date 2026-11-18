@@ -35,13 +35,18 @@ function toBits(address: string): bigint | undefined {
 
 /**
  * Reduces an IPv6 address to its network, `<8 hex groups>/<prefix>`; an IPv4
- * address (or anything that is not IPv6) is returned unchanged. A mapped
- * `::ffff:a.b.c.d` stays IPv6.
+ * address (or anything that is not IPv6) is returned unchanged. An IPv4-mapped
+ * address (`::ffff:a.b.c.d`, or `::ffff:XXXX:XXXX`) becomes plain IPv4.
  */
 export function networkOf(address: string, prefix: number): string {
 	if (!address.includes(':')) return address;
 	const bits = toBits(address);
 	if (bits === undefined) return address;
+	// An IPv4-mapped address is an IPv4 client: never prefixed.
+	if (bits >> 32n === 0xffffn) {
+		const v4 = Number(bits & 0xffffffffn);
+		return [v4 >>> 24, (v4 >>> 16) & 255, (v4 >>> 8) & 255, v4 & 255].join('.');
+	}
 	const keep = (FULL << BigInt(128 - prefix)) & FULL;
 	const network = bits & keep;
 	const groups: string[] = [];

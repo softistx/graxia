@@ -13,6 +13,14 @@ const limited = (max: number, extra: object = {}, host = {}) => {
 	};
 };
 
+const limitedSingle = () =>
+	app(
+		fieldRateLimit({
+			fields: { signIn: { limit: counter(9).limit, single: true } },
+			key: () => 'k',
+		}),
+	);
+
 describe('refusal', () => {
 	test('429 with Retry-After, no-store, code and retryAfter seconds', async () => {
 		const { graxia } = limited(1);
@@ -82,6 +90,30 @@ describe('refusal', () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get('retry-after')).toBeNull();
 		expect(await response.text()).toContain('RATE_LIMITED');
+	});
+});
+
+describe('other transports', () => {
+	test('single over SSE is an event, with no status', async () => {
+		const graxia = limitedSingle();
+		const response = await post(
+			graxia,
+			{ query: '{ a: signIn b: signIn }' },
+			'text/event-stream',
+		);
+		expect(response.status).toBe(200);
+		expect(await response.text()).toContain('FIELD_SELECTED_ONCE');
+	});
+	test('a refusal under multipart/mixed is the plain 429 JSON answer', async () => {
+		const { graxia } = limited(0);
+		const response = await post(
+			graxia,
+			{ query: '{ signIn }' },
+			'multipart/mixed; deferSpec=20220824, application/json',
+		);
+		expect(response.status).toBe(429);
+		expect(response.headers.get('retry-after')).toBe('3');
+		expect(response.headers.get('content-type')).toContain('application/json');
 	});
 });
 

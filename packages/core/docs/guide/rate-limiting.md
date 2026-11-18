@@ -65,7 +65,7 @@ sync or async. The key passed to it is `<fieldName>:<who>`.
 
 - Each selection of a limited field, as written in the document, fragments expanded: a fragment
   spread twice counts twice. The walk is memoised, so a document of exponential fragments is
-  still read in linear time (S14's operation limits refuse it anyway).
+  still read in linear time (the operation limits refuse it anyway, see [Limits and caches](./limits-and-caches.md)).
 - A field is matched by name only, on any type. A list parent costs 1.
 - `@skip` and `@include` are not evaluated: a skipped field still counts.
 - Introspection subtrees are ignored. Only the operation that will run (`operationName`) is counted.
@@ -101,18 +101,24 @@ fieldRateLimit({
 Put `request` in the context (`context: ({ request }) => ({ request })`) or use `ip`.
 
 - `ipv6Prefix: 64` counts a client by its `/64`, since one subscriber often holds a whole network.
-  The key is `<8 hex groups>/<prefix>`. IPv4 addresses are unchanged. It is refused together with
+  The key is `<8 hex groups>/<prefix>`. IPv4 addresses are unchanged, and an IPv4-mapped address
+  (`::ffff:192.0.2.1` or `::ffff:c000:201`) is counted as plain IPv4, never prefixed. It is refused together with
   `key`: reduce the address in your own function.
 
 ## Stores
 
 - `memoryFieldLimit({ limit, windowMs })`: fixed window per key, in this process, up to `maxKeys`
-  keys (10 000; expired entries go first, then the oldest). For development, tests and one server.
-  A call over the units left is refused and spends nothing. `now` sets the clock for tests.
+  keys (10 000). When it is full, expired entries are swept at most once per window, otherwise the
+  single oldest entry is dropped. The cap trades strictness for bounded memory: a flood of new
+  keys can evict a victim's counter and reset it. For development, tests and one server; in
+  production use a shared store. A call over the units left is refused and spends nothing. `now` sets the clock for tests.
 - `limitFromStore(store, policy?)`: wraps a store that counts one request per call. A cost of 3 is
-  three `store.consume(key, { limit, windowMs })` calls, stopped at the first refusal. The policy
+  three `store.consume(key, { limit, windowMs })` calls, stopped at the first refusal. A cost over
+  `limit` can never pass: it is one call, refused, with that call's `retryAfter` (or `windowMs`
+  when the call allowed). The policy
   comes from `store.policy`, from `policy`, or both when they agree.
-- Your own: shared state across servers belongs in Redis. Wrap your limiter:
+- Your own: shared state across servers belongs in Redis. `@graxia/redis` ships no rate limiter;
+  this adapter takes a Redis client you provide (with `incrby`, `pexpire` and `pttl`):
 
 ```ts
 import type { FieldLimit } from '@graxia/core';
@@ -129,13 +135,14 @@ const redisLimit = (limit: number, windowMs: number): FieldLimit => ({
 
 ## Refusals per transport
 
-| transport        | refusal                                                                                   |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| HTTP (JSON)      | `429`, `Retry-After` (seconds, at least 1), `Cache-Control: no-store`; `400` for `single` |
-| a batch          | that entry is the error; the batch stays `200`, no header                                 |
-| SSE              | the error as a `next` event, then `complete`; no status, no header                        |
-| WebSocket        | an `error` message for the subscribe                                                      |
-| `graxia.execute` | a result with the error                                                                   |
+| transport         | refusal                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| HTTP (JSON)       | `429`, `Retry-After` (seconds, at least 1), `Cache-Control: no-store`; `400` for `single`     |
+| a batch           | that entry is the error; the batch stays `200`, no header                                     |
+| `multipart/mixed` | the plain JSON answer: `429` and `Retry-After` (the refusal comes before any `@defer` stream) |
+| SSE               | the error as a `next` event, then `complete`; no status, no header (`single` too)             |
+| WebSocket         | an `error` message for the subscribe (`single` too)                                           |
+| `graxia.execute`  | a result with the error                                                                       |
 
 `extensions.retryAfter` is the same number of seconds as the header.
 
