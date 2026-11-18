@@ -40,6 +40,18 @@ export function workspaceRanges(manifest: Record<string, unknown>): string[] {
 	);
 }
 
+/**
+ * npm answers E409 "Cannot publish over previously staged version" when the
+ * version was just published and is not yet visible on the registry (several
+ * tag runs of one commit): the version is on its way, not a failure.
+ */
+export function isAlreadyPublishedError(stderr: string): boolean {
+	return (
+		/E409|409 Conflict/i.test(stderr) &&
+		/previously staged version|cannot publish over/i.test(stderr)
+	);
+}
+
 /** Dependencies first, so a consumer is never on npm before what it needs. */
 export function inDependencyOrder<T extends { name: string; deps: string[] }>(
 	pkgs: readonly T[],
@@ -147,7 +159,23 @@ async function main(): Promise<void> {
 				continue;
 			}
 			const provenance = process.env.GITHUB_ACTIONS ? ['--provenance'] : [];
-			await $`npm publish ${join(dest, tgz)} --access public ${provenance}`;
+			const result =
+				await $`npm publish ${join(dest, tgz)} --access public ${provenance}`
+					.quiet()
+					.nothrow();
+			process.stdout.write(result.stdout);
+			process.stderr.write(result.stderr);
+			if (result.exitCode !== 0) {
+				if (isAlreadyPublishedError(result.stderr.toString())) {
+					console.log(
+						`  skipped   ${pkg.name}@${pkg.version} already published (staged on npm)`,
+					);
+					continue;
+				}
+				throw new Error(
+					`${pkg.name}: npm publish failed (exit ${result.exitCode})`,
+				);
+			}
 			published++;
 			console.log(`  published ${pkg.name}@${pkg.version}`);
 		}
