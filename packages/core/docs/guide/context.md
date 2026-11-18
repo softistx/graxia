@@ -52,7 +52,9 @@ the primary, explicit way to reach the context.
 Each operation has an `AbortSignal` that aborts when the client disconnects (`request.signal`) or
 when `dispose()` gives up waiting (see below). It is `signal` in `ContextInit`, `signal` in the
 context, and is given to graphql's `execute` as `abortSignal`, so graphql stops resolving and
-rejects the pending work.
+rejects the pending work. An open event stream (a subscription) is ended at once by `dispose()`: it
+sends `complete`, then the signal aborts, without waiting for `shutdownTimeout` (see
+[Subscriptions](./subscriptions.md#cancellation-and-shutdown)).
 
 ```ts
 const resolvers = {
@@ -116,7 +118,8 @@ process.on('SIGTERM', async () => {
    `{"errors":[{"message":"Server is shutting down.","extensions":{"code":"SHUTTING_DOWN"}}]}` and
    `connection: close`.
 2. Calls `server.stop()` (not forced) on every server started with `serve()`.
-3. Waits for the in-flight operations to settle, up to `timeout` milliseconds (default
+3. Ends the open event streams at once (each sends `complete`, then its `signal` aborts; see
+   [Subscriptions](./subscriptions.md#cancellation-and-shutdown)), then waits for the other in-flight operations to settle, up to `timeout` milliseconds (default
    `shutdownTimeout`, 10 000). Then it aborts their `signal` and waits at most `timeout` more. An
    operation that ignores its signal and is still pending then is reported through `onUnexpected`
    (one error, "dispose: N operation(s) did not settle after abort") and does not block the rest.

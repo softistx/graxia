@@ -72,7 +72,7 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 
 ### What it does not do
 
-- Subscriptions and `@defer` / `@stream` return their usual refusal error in the result
+- Subscriptions (served over SSE by `fetch`, not by `execute`) and `@defer` / `@stream` return their usual refusal error in the result
   (`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`); `execute` does not throw for them.
 - When the request ends without a result, `execute` rejects with a `GraxiaExecuteError` carrying
   `response`, the HTTP response the pipeline produced (sealed, with `x-request-id`): a plugin

@@ -53,7 +53,9 @@ Bun.serve({
 	port: 3000,
 	routes: {
 		'/health': () => new Response('ok'),
-		'/api/graphql': (request) => graxia.fetch(request, { tenant: 'acme' }),
+		// pass `server` too when a client may open event streams (subscriptions.md#bun-idle-timeout)
+		'/api/graphql': (request, server) =>
+			graxia.fetch(request, { tenant: 'acme', server }),
 	},
 });
 ```
@@ -81,23 +83,26 @@ check that this context matches what your schema's resolvers or plugins expect (
 - The body is read as a stream and counted: past `limits.bodyBytes` reading stops and the answer is
   413. `Content-Length` is checked first but never trusted alone.
 - Other methods answer 405 with `Allow: GET, POST`.
-- Subscriptions (`SUBSCRIPTION_NOT_SUPPORTED`) and `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`)
-  are refused for now with a 400 under `application/graphql-response+json` (200 under
-  `application/json`), the code in `extensions.code`.
+- **Event streams**: an `Accept` that prefers `text/event-stream` (named, never through a wildcard,
+  with a q at least that of the JSON types) answers an event stream for any operation; see
+  [Subscriptions](./subscriptions.md). Without it, a subscription (`SUBSCRIPTION_NOT_SUPPORTED`) and
+  `@defer` / `@stream` (`INCREMENTAL_NOT_SUPPORTED`) are refused with a 400 under
+  `application/graphql-response+json` (200 under `application/json`), the code in `extensions.code`.
+  A batch with an event-stream `Accept` answers 400.
 
 ## Status codes
 
-| situation                                                       | `application/graphql-response+json`                                                       | `application/json` |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------ |
-| result with `data` (field errors included)                      | 200                                                                                       | 200                |
-| parse or validation error, unknown operation, bad variables     | 400                                                                                       | 200                |
-| missing `query`; malformed JSON; wrong parameter types          | 400                                                                                       | 400                |
-| subscription, `@defer` / `@stream`                              | 400                                                                                       | 200                |
-| mutation over GET                                               | 405 (`Allow: POST`)                                                                       | 405                |
-| path / method / `Accept` / `Content-Type` / size                | 404 / 405 / 406 / 415 / 413                                                               | same               |
-| client left, or shutdown past its timeout (`OPERATION_ABORTED`) | 499 / 503                                                                                 | same               |
-| `dispose()` started (`SHUTTING_DOWN`)                           | 503 (`connection: close`)                                                                 | same               |
-| plugin hook threw, `context` threw, `execute` threw             | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same               |
+| situation                                                             | `application/graphql-response+json`                                                       | `application/json` |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------ |
+| result with `data` (field errors included)                            | 200                                                                                       | 200                |
+| parse or validation error, unknown operation, bad variables           | 400                                                                                       | 200                |
+| missing `query`; malformed JSON; wrong parameter types                | 400                                                                                       | 400                |
+| subscription, `@defer` / `@stream` (without an event-stream `Accept`) | 400                                                                                       | 200                |
+| mutation over GET                                                     | 405 (`Allow: POST`)                                                                       | 405                |
+| path / method / `Accept` / `Content-Type` / size                      | 404 / 405 / 406 / 415 / 413                                                               | same               |
+| client left, or shutdown past its timeout (`OPERATION_ABORTED`)       | 499 / 503                                                                                 | same               |
+| `dispose()` started (`SHUTTING_DOWN`)                                 | 503 (`connection: close`)                                                                 | same               |
+| plugin hook threw, `context` threw, `execute` threw                   | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same               |
 
 Unexpected failures never leak their message. The body is generic whatever the cause
 (`INTERNAL_SERVER_ERROR` and a `correlationId` equal to the `x-request-id` header); the original

@@ -131,7 +131,7 @@ describe('requests', () => {
 			},
 		);
 		expect(res.status).toBe(400);
-		expect(JSON.stringify(await res.json())).toContain('not supported');
+		expect(JSON.stringify(await res.json())).toContain('text/event-stream');
 	});
 	test('unknown and ambiguous operationName are 400 under graphql-response+json', async () => {
 		const accept = { ...json, accept: 'application/graphql-response+json' };

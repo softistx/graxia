@@ -224,8 +224,7 @@ result.data?.hello; // 'hello world'
 ## PubSub
 
 A typed in-memory PubSub for subscription resolvers. It lives in one process; a Redis
-implementation of the same interface is planned. The transports that deliver subscriptions
-to clients (SSE, WebSocket) arrive in a later release: this release ships the PubSub only.
+implementation of the same interface is planned.
 
 ```ts
 import { createMemoryPubSub, filterIterable } from '@graxia/core';
@@ -240,6 +239,26 @@ const events = filterIterable(
 );
 ```
 
+## Subscriptions
+
+Subscriptions are served over server-sent events (`graphql-sse`, distinct connections mode) to any
+request whose `Accept` prefers `text/event-stream`, on by default. `graxia.serve()` keeps the
+connection open; a keep-alive comment is sent every 12 s (`subscriptions.keepAliveMs`).
+
+```ts
+// client: bun add graphql-sse
+import { createClient } from 'graphql-sse';
+
+const client = createClient({ url: 'http://localhost:3000/graphql' });
+for await (const result of client.iterate({
+	query: 'subscription { tick }',
+}))
+	console.log(result.data);
+```
+
+`onSubscribe` and `onResultChunk` plugin hooks run on these streams. See
+[Subscriptions](./docs/guide/subscriptions.md); WebSocket (`graphql-transport-ws`) comes later.
+
 ## Exports
 
 | import                 | what it is                                                                                                                                               |
@@ -248,6 +267,7 @@ const events = filterIterable(
 |                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions` |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                   |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these   |
+|                        | Options: `SubscriptionsOptions` (the `subscriptions` option of `createGraxia`)                                                                           |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                       |
 
 ## Documentation
@@ -256,6 +276,7 @@ const events = filterIterable(
 - [GraphQL over HTTP](./docs/guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./docs/guide/context.md): `getContext()`, `signal`, `dispose()`.
+- [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.

@@ -4,8 +4,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Subscriptions over SSE and WebSocket** — `subscribe` operations over server-sent events and
-  `graphql-transport-ws` on Bun's WebSocket, with a typed PubSub and an in-memory implementation.
+- **Subscriptions over SSE and WebSocket** — the typed PubSub and subscriptions over server-sent
+  events (`graphql-sse`, distinct connections) have shipped; `graphql-transport-ws` on Bun's
+  WebSocket is still to come.
 
 ## Next
 

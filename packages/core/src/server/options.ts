@@ -30,6 +30,18 @@ export interface GraxiaLimits extends DocumentLimits {
 	bodyBytes?: number;
 }
 
+/** The `subscriptions` option of {@link createGraxia}. */
+export interface SubscriptionsOptions {
+	/**
+	 * Serves a request whose `Accept` prefers `text/event-stream` as an event
+	 * stream (subscriptions, and queries or mutations as one event). `true` by
+	 * default; `false` answers a subscription with `SUBSCRIPTION_NOT_SUPPORTED`.
+	 */
+	sse?: boolean;
+	/** Milliseconds between keep-alive comments on an open stream. 12 000 by default; finite and above 0. */
+	keepAliveMs?: number;
+}
+
 /** Options of {@link createGraxia}. */
 export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	/** The schema to serve (a `SchemaWithContext<Ctx>` from `createSchema` is accepted). */
@@ -56,6 +68,8 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	caches?: DocumentCaches;
 	/** Batched operations (a JSON array body): off by default, or `{ limit }`. */
 	batching?: BatchingOption;
+	/** Subscriptions over server-sent events (the `graphql-sse` distinct connections mode). */
+	subscriptions?: SubscriptionsOptions;
 	/**
 	 * Receives the original error of every unexpected failure (a hook or
 	 * `execute` threw, a resolver threw a plain error). The response stays a
@@ -86,4 +100,6 @@ export interface ResolvedOptions {
 	batching: BatchingOption;
 	asyncContext: boolean;
 	shutdownTimeout: number;
+	sse: boolean;
+	keepAliveMs: number;
 }

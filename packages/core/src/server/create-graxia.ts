@@ -38,7 +38,7 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * back as an object, with no content negotiation or HTTP encoding.
 	 * A string document gets the parse limits and both caches; a `DocumentNode`
 	 * skips them. Variables travel as JSON. Subscriptions and incremental results return their usual refusal error
-	 * in the result. Rejects with a {@link GraxiaExecuteError} when the request
+	 * in the result (subscriptions are served over `fetch` with `Accept: text/event-stream`). Rejects with a {@link GraxiaExecuteError} when the request
 	 * ends without a result (a plugin's `respond`, an unexpected failure) and
 	 * after `dispose()`.
 	 *
@@ -94,7 +94,21 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		throw new GraxiaConfigError(
 			'shutdownTimeout must be a non-negative integer (milliseconds)',
 		);
-	return { path, bodyBytes, batching, asyncContext, shutdownTimeout };
+	const keepAliveMs = options.subscriptions?.keepAliveMs ?? 12_000;
+	if (!Number.isFinite(keepAliveMs) || keepAliveMs <= 0)
+		throw new GraxiaConfigError(
+			'subscriptions.keepAliveMs must be a finite number above 0 (milliseconds)',
+		);
+	const sse = options.subscriptions?.sse ?? true;
+	return {
+		path,
+		bodyBytes,
+		batching,
+		asyncContext,
+		shutdownTimeout,
+		sse,
+		keepAliveMs,
+	};
 }
 
 /**

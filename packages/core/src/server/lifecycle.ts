@@ -2,6 +2,8 @@
 export interface Lifecycle {
 	/** Aborts when shutdown gives up waiting; every operation's signal includes it. */
 	readonly shutdown: AbortSignal;
+	/** Aborts as soon as `close` is called: open event streams end gracefully. */
+	readonly stopping: AbortSignal;
 	/** True once `close` was called. */
 	readonly closing: boolean;
 	/** Tracks `work` until it settles. */
@@ -19,6 +21,7 @@ export interface Lifecycle {
 /** @internal Tracks in-flight requests and owns the shutdown signal. */
 export function createLifecycle(): Lifecycle {
 	const controller = new AbortController();
+	const stopping = new AbortController();
 	const inflight = new Set<Promise<unknown>>();
 	let closing = false;
 	const settled = async () => {
@@ -26,6 +29,7 @@ export function createLifecycle(): Lifecycle {
 	};
 	return {
 		shutdown: controller.signal,
+		stopping: stopping.signal,
 		get closing() {
 			return closing;
 		},
@@ -37,6 +41,7 @@ export function createLifecycle(): Lifecycle {
 		},
 		close() {
 			closing = true;
+			stopping.abort(new Error('graxia is closing'));
 		},
 		async drain(timeout) {
 			const within = async (ms: number) => {
