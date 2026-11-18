@@ -4,6 +4,7 @@ Guides, troubleshooting and the roadmap of `@graxia/core` land here with the sli
 
 ## Guides
 
+- [GraphQL over HTTP](./guide/http.md)
 - [Plugins](./guide/plugins.md)
 - [Schema](./guide/schema.md)
 - [Limits and caches](./guide/limits-and-caches.md)

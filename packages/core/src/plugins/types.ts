@@ -56,6 +56,12 @@ export interface GraphQLParams {
 export interface BasePayload {
 	request: Request;
 	state: RequestState;
+	/**
+	 * Headers merged into the final response, whichever it is (the result, a
+	 * 4xx, a short-circuit). `set-cookie` and `vary` are appended; any other
+	 * header is set only when the response does not carry it.
+	 */
+	responseHeaders: Headers;
 }
 
 /** `onRequest`: `respond` ends the stage; later hooks are skipped. */

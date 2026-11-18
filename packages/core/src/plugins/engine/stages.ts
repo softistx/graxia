@@ -31,6 +31,7 @@ const requestSpec: StageSpec<Base, RequestOut> = {
 	init: () => ({}),
 	payload: (input, out, stop) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		respond: (response: Response) => {
 			out.response = response;
 			stop();
@@ -42,6 +43,7 @@ const paramsSpec: StageSpec<Base & { params: GraphQLParams }, ParamsOut> = {
 	init: (input) => ({ params: input.params }),
 	payload: (input, out, stop) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		params: out.params,
 		setParams: (params: GraphQLParams) => {
 			out.params = params;
@@ -57,6 +59,7 @@ const parseSpec: StageSpec<Base, ParseOut> = {
 	init: () => ({}),
 	payload: (input, out) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		setParseFn: (fn: ParseFn) => {
 			out.parseFn = fn;
 		},
@@ -70,6 +73,7 @@ const validateSpec: StageSpec<Base, ValidateOut> = {
 	init: () => ({ rules: [] }),
 	payload: (input, out) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		setValidationFn: (fn: ValidationFn) => {
 			out.validationFn = fn;
 		},
@@ -87,7 +91,11 @@ const contextSpec: StageSpec<
 	ContextOut
 > = {
 	init: (input) => ({ context: { ...input.context } }),
-	payload: (input, out) => ({ ...input, context: out.context }),
+	payload: (input, out) => ({
+		...input,
+		responseHeaders: input.state.responseHeaders,
+		context: out.context,
+	}),
 	collect: (out, returned, plugin) => {
 		if (returned === undefined) return;
 		if (
@@ -113,6 +121,7 @@ const executeSpec: StageSpec<Base, ExecuteOut> = {
 	init: () => ({}),
 	payload: (input, out) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		setExecuteFn: (fn: ExecuteFn) => {
 			out.executeFn = fn;
 		},
@@ -126,6 +135,7 @@ const chunkSpec: StageSpec<Base & { chunk: unknown }, ChunkOut> = {
 	init: (input) => ({ chunk: input.chunk }),
 	payload: (input, out) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		chunk: out.chunk,
 		setChunk: (chunk: unknown) => {
 			out.chunk = chunk;
@@ -137,6 +147,7 @@ const responseSpec: StageSpec<Base & { response: Response }, ResponseOut> = {
 	init: (input) => ({ response: input.response }),
 	payload: (input, out) => ({
 		...input,
+		responseHeaders: input.state.responseHeaders,
 		response: out.response,
 		setResponse: (response: Response) => {
 			out.response = response;

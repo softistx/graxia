@@ -18,6 +18,8 @@ export const timing = definePlugin()({
 Stages, in order: `onRequest`, `onParams`, `onParse`, `onValidate`, `onContext`, `onExecute` (or
 `onSubscribe`), `onResultChunk`, `onResponse`. `setup(api)` runs once at engine init.
 
+Every payload carries `responseHeaders: Headers`, merged into the final response (see [GraphQL over HTTP](./http.md#plugin-headers)).
+
 ## Ordering
 
 Plugins run in the order given. `enforce: "pre"` moves a plugin first, `"post"` last; inside a group
@@ -98,6 +100,11 @@ const auth = definePlugin()({
 	},
 });
 ```
+
+Over HTTP, `onRequest` sees the request's state. Each operation (the single one, or each entry of a
+batch) then runs on `state.fork()`: a child that reads through to the request state, writes only to
+itself and shares `responseHeaders` and the request id. Sibling batch entries never see each other's
+writes.
 
 ## Typed context
 

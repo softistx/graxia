@@ -1,0 +1,75 @@
+/** The two response encodings of a GraphQL result over HTTP. */
+export type MediaType =
+	| 'application/graphql-response+json'
+	| 'application/json';
+
+interface Range {
+	type: string;
+	q: number;
+}
+
+/** The types offered, in the order a tie between wildcards resolves to. */
+const OFFERED: readonly MediaType[] = [
+	'application/json',
+	'application/graphql-response+json',
+];
+
+function parseRange(part: string): Range | undefined {
+	const [type = '', ...params] = part.split(';').map((s) => s.trim());
+	if (type === '') return undefined;
+	let q = 1;
+	for (const param of params) {
+		const [name, value] = param.split('=').map((s) => s.trim());
+		if (name?.toLowerCase() === 'q') {
+			const parsed = Number(value);
+			q = Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0;
+		}
+	}
+	return { type: type.toLowerCase(), q };
+}
+
+interface Candidate {
+	media: MediaType;
+	q: number;
+	/** Index of the exact range, or `Infinity` when only a wildcard matched. */
+	exact: number;
+}
+
+/** The q of one offered type: its own range wins, then `application/*`, then `*\/*`. */
+function candidate(
+	media: MediaType,
+	ranges: readonly Range[],
+): Candidate | undefined {
+	const exact = ranges.findIndex((r) => r.type === media);
+	if (exact >= 0) return { media, q: (ranges[exact] as Range).q, exact };
+	const wild =
+		ranges.find((r) => r.type === 'application/*') ??
+		ranges.find((r) => r.type === '*/*');
+	return wild
+		? { media, q: wild.q, exact: Number.POSITIVE_INFINITY }
+		: undefined;
+}
+
+/**
+ * Picks the response media type from an `Accept` header.
+ *
+ * An absent or empty header gives `application/json`, as does `*\/*` or
+ * `application/*` (the legacy type, which every client reads). The header's
+ * q-values (clamped to 0..1) decide; an explicit `q=0` on a type excludes it
+ * even when a wildcard would allow it. At equal q a type named exactly beats
+ * a wildcard match, then the one listed first wins, then `application/json`.
+ * Returns `undefined` when neither type is acceptable (answer 406).
+ */
+export function negotiate(accept: string | null): MediaType | undefined {
+	if (accept === null || accept.trim() === '') return 'application/json';
+	const ranges = accept
+		.split(',')
+		.map(parseRange)
+		.filter((r): r is Range => r !== undefined);
+	const found = OFFERED.flatMap((media) => {
+		const c = candidate(media, ranges);
+		return c && c.q > 0 ? [c] : [];
+	});
+	found.sort((a, b) => b.q - a.q || a.exact - b.exact);
+	return found[0]?.media;
+}

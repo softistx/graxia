@@ -444,3 +444,39 @@ describe('more stages', () => {
 		}
 	});
 });
+
+describe('after-hook failures', () => {
+	test('a throwing after-hook does not stop the unwinding; the first error is reported', async () => {
+		const log: string[] = [];
+		const mk = (name: string, fail: boolean) =>
+			plain({
+				name,
+				onRequest: () => () => {
+					log.push(name);
+					if (fail) throw new Error(`${name} failed`);
+				},
+			});
+		const engine = createPluginEngine([
+			mk('a', true),
+			mk('b', true),
+			mk('c', false),
+		]);
+		const outcome = await engine.runners.onRequest(base());
+		await expect(outcome.runAfter({ response: undefined })).rejects.toThrow(
+			'b failed',
+		);
+		expect(log).toEqual(['c', 'b', 'a']);
+	});
+	test('payloads carry the state responseHeaders', async () => {
+		const seen: Headers[] = [];
+		const engine = createPluginEngine([
+			plain({
+				name: 'h',
+				onRequest: ({ responseHeaders }) => void seen.push(responseHeaders),
+			}),
+		]);
+		const input = base();
+		await engine.runners.onRequest(input);
+		expect(seen[0]).toBe(input.state.responseHeaders);
+	});
+});

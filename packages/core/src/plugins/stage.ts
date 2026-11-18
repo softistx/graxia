@@ -82,11 +82,19 @@ export function createStageRunner<Input, Out, Done>(
 			out,
 			...(failed ? { error } : {}),
 			async runAfter(done) {
+				let first: unknown;
+				let failed = false;
 				for (let i = afters.length - 1; i >= 0; i--) {
 					const after = afters[i] as (done: Done) => MaybePromise<void>;
-					const pending = after(done);
-					if (isThenable(pending)) await pending;
+					try {
+						const pending = after(done);
+						if (isThenable(pending)) await pending;
+					} catch (thrown) {
+						if (!failed) first = thrown;
+						failed = true;
+					}
 				}
+				if (failed) throw first;
 			},
 		};
 	};
