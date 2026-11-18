@@ -4,17 +4,10 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Subscriptions and incremental delivery** (M2) — SSE and
-  graphql-transport-ws on Bun's WebSocket, `@defer` and `@stream`, a typed PubSub
-  with an in-memory implementation, and Redis PubSub and cache in `@graxia/redis`
-  (coming in the next release).
-
-## Next
-
 - **Secure by default** (M3) — operation limits (depth, aliases, cost), CSRF and
-  same-origin checks, introspection off in production, trusted documents (manifest
-  and automatic persisted queries, strict mode), a field rate limit and
-  OpenTelemetry spans.
+  same-origin checks (WebSocket upgrades included), introspection off in production,
+  trusted documents (manifest and automatic persisted queries, strict mode), a field
+  rate limit and OpenTelemetry spans.
 
 ## Later
 
@@ -44,3 +37,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
   graphql-http audit, a typed plugin system with ordered hooks and per-request
   state, parse and validation caches, per-request context with cancellation,
   masked errors with typed codes, and an in-process `execute` with a test client.
+- **Subscriptions and incremental delivery** (M2, in `@graxia/core` 0.2.0 and
+  `@graxia/redis` 0.1.0) — a typed PubSub, subscriptions over SSE and
+  graphql-transport-ws on Bun's WebSocket, `@defer` and `@stream` over
+  `multipart/mixed` and SSE, a key-value cache contract, and Redis PubSub and cache
+  on Bun's Redis client.

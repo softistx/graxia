@@ -4,22 +4,11 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Subscriptions over SSE and WebSocket** — the typed PubSub, subscriptions over server-sent
-  events (`graphql-sse`, distinct connections) and `graphql-transport-ws` on Bun's WebSocket
-  (see [the guide](./guide/websocket.md)) have shipped. The Redis PubSub in `@graxia/redis`
-  comes in the next release.
-- **`@defer` and `@stream`** — incremental delivery over `multipart/mixed` and server-sent events,
-  in graphql 17's format or the legacy one, has shipped (see [the guide](./guide/incremental.md)).
-- **Redis PubSub and cache** — a separate `@graxia/redis` package on Bun's built-in Redis client,
-  so subscriptions and caches work across several instances; core's `KeyValueCache` contract and
-  `createMemoryCache` it builds on come in the next release.
+- **Secure by default** — operation limits, CSRF and same-origin checks (WebSocket upgrades
+  included), an introspection policy, trusted documents and a field rate limit, in progress.
 
 ## Later
 
-- **Secure by default** — none of this is built in yet (see "Security" in the README):
-  operation limits (depth, aliases, cost), CSRF prevention and same-origin checks, an
-  introspection policy (off in production), trusted documents (manifest and automatic persisted queries),
-  and a field rate limit.
 - **OpenTelemetry** — spans for each stage of an operation.
 - **A built-in explorer** — GraphiQL, bundled with no CDN and development-only.
 - **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted
@@ -34,6 +23,19 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - A code-first schema builder in v1: bring any `GraphQLSchema`, or use SDL with typed resolvers.
 
 ## Shipped
+
+### 0.2.0
+
+- **A typed PubSub** — `createMemoryPubSub` with typed topics (template keys included), per-subscriber
+  buffers, abort-safe iterators, and `filterIterable` / `mapIterable` (see [the guide](./guide/pubsub.md)).
+- **Subscriptions over SSE** — the `graphql-sse` protocol (distinct connections), keep-alives, Bun's
+  idle timeout handled (see [the guide](./guide/subscriptions.md)).
+- **Subscriptions over WebSocket** — `graphql-transport-ws` on Bun's WebSocket, `connectionParams` and
+  `onConnect`, `graxia.upgrade` for your own `Bun.serve` (see [the guide](./guide/websocket.md)).
+- **`@defer` and `@stream`** — over `multipart/mixed` and SSE, in graphql 17's format or the legacy one
+  (see [the guide](./guide/incremental.md)).
+- **A key-value cache contract** — `KeyValueCache` and `createMemoryCache` (LRU with per-entry TTL);
+  Redis implementations are in `@graxia/redis`.
 
 ### 0.1.0
 
