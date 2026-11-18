@@ -71,12 +71,8 @@ export function createEntry<HostCtx extends object>(
 		recordClientAddress(state, request, serverContext);
 		try {
 			if (lifecycle.closing) return seal(shuttingDown(), state);
-			const refusal = await upgradeRequest(
-				rt,
-				request,
-				server,
-				serverContext,
-				state,
+			const refusal = await rt.telemetry.upgrade(request, state, () =>
+				upgradeRequest(rt, request, server, serverContext, state),
 			);
 			return refusal && seal(refusal, state);
 		} catch (error) {

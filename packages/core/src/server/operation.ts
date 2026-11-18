@@ -48,10 +48,14 @@ function presetFor(state: RequestState, query: string) {
  * operation selection, context, onExecute, execute). Never rejects: a hook
  * error or a throw becomes an `unexpected` outcome.
  */
-export async function runOperation(
+export function runOperation(
 	rt: Runtime,
 	input: OperationInput,
 ): Promise<Outcome> {
+	return rt.telemetry.operation(input.state, () => run(rt, input));
+}
+
+async function run(rt: Runtime, input: OperationInput): Promise<Outcome> {
 	try {
 		const prepared = await prepare(rt, input);
 		if (!isPrepared(prepared)) return prepared;
@@ -85,15 +89,23 @@ async function prepare(
 	const final = stage.out.params;
 	if (typeof final.query !== 'string' || final.query === '')
 		return failure('Must provide a query string.', { status: 400 });
-	const parsed = await rt.pipeline.parse({
-		source: final.query,
-		state,
-		request,
-		document: presetFor(state, final.query),
-	});
+	const parsed = await rt.telemetry.step(state, 'parse', () =>
+		rt.pipeline.parse({
+			source: final.query as string,
+			state,
+			request,
+			document: presetFor(state, final.query as string),
+		}),
+	);
 	if (parsed.error !== undefined) return unexpected(parsed.error);
 	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);
 	const early = selectOperation(parsed.document, final.operationName);
+	if (typeof early !== 'string')
+		rt.telemetry.describe(state, {
+			operation: early,
+			source: final.query,
+			params,
+		});
 	if (
 		typeof early !== 'string' &&
 		early.operation === 'mutation' &&
@@ -106,12 +118,14 @@ async function prepare(
 				headers: { allow: 'POST' },
 			},
 		);
-	const valid = await rt.pipeline.validate({
-		document: parsed.document,
-		cacheKey: parsed.cacheKey,
-		state,
-		request,
-	});
+	const valid = await rt.telemetry.step(state, 'validate', () =>
+		rt.pipeline.validate({
+			document: parsed.document as DocumentNode,
+			cacheKey: parsed.cacheKey,
+			state,
+			request,
+		}),
+	);
 	if (valid.error !== undefined) return unexpected(valid.error);
 	if (valid.errors) return failed(valid.errors);
 	// Only the query the client sent is registered, never one a plugin rewrote.
@@ -192,8 +206,12 @@ async function executeOperation(
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
-	const scope = <T>(work: () => T): T =>
-		rt.options.asyncContext ? runWithContext(contextValue, work) : work();
+	const scope = rt.telemetry.scope(
+		state,
+		contextValue,
+		<T>(work: () => T): T =>
+			rt.options.asyncContext ? runWithContext(contextValue, work) : work(),
+	);
 	const call = { request, state };
 	const outcome =
 		operation.operation === 'subscription'

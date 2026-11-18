@@ -9,6 +9,7 @@ import { StateBag } from '../plugins/state';
 import { csrfHeaderKey } from '../security/header-key';
 import { noIntrospectionRule } from '../security/introspection';
 import { resolveSecurity } from '../security/options';
+import { createTelemetry } from '../telemetry';
 import { resolveTrusted } from '../trusted/options';
 import { createTrustedDocuments } from '../trusted/resolve';
 import { createDispose } from './dispose';
@@ -193,6 +194,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			),
 		context: options.context,
 		lifecycle,
+		telemetry: createTelemetry(options.telemetry, options.schema),
 		ready,
 	};
 	const entry = createEntry<HostCtx>(rt, servers);

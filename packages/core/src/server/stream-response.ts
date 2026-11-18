@@ -107,6 +107,7 @@ export function streamResponse(
 		clientGone: request.signal,
 	});
 	void rt.lifecycle.track(stream.done);
+	rt.telemetry.hold(call.state, stream.done);
 	return new Response(stream.body, { headers: format.headers() });
 }
 

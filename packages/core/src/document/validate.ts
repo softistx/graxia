@@ -20,6 +20,11 @@ export interface ValidationCtx {
 	validationCache: ValidationCache | undefined;
 }
 
+/** @internal Lets a caller learn whether the cache served a step (for tracing). */
+export interface CacheTrace {
+	hit?: boolean;
+}
+
 /**
  * Validates `document`. The cache is used only for the default validation
  * (no plugin function or rules) of a document that has a `cacheKey`.
@@ -30,6 +35,7 @@ export function checkDocument(
 	cacheKey: string | undefined,
 	validationFn: ValidationFn | undefined,
 	rules: readonly ValidationRule[],
+	trace?: CacheTrace,
 ): readonly GraphQLError[] {
 	const { schema, validationCache } = ctx;
 	const key =
@@ -41,6 +47,7 @@ export function checkDocument(
 			: undefined;
 	if (key !== undefined) {
 		const hit = validationCache?.get(schema, key);
+		if (trace) trace.hit = hit !== undefined;
 		if (hit) return hit;
 	}
 	const all = [...specifiedRules, ...ctx.rules, ...rules];

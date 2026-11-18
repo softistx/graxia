@@ -13,10 +13,12 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   [Trusted documents](./guide/trusted-documents.md)), and a per-field rate limit
   (`fieldRateLimit`) that counts a field across aliases and fragments and answers `429` with
   `Retry-After` (see [Rate limiting](./guide/rate-limiting.md)).
+- **OpenTelemetry** — spans for each request, parse, validation and operation, optional resolver
+  spans, W3C trace context in, and the original exception on unexpected errors, with
+  `@opentelemetry/api` as an optional peer (see [OpenTelemetry](./guide/telemetry.md)).
 
 ## Later
 
-- **OpenTelemetry** — spans for each stage of an operation.
 - **A built-in explorer** — GraphiQL, bundled with no CDN and development-only.
 - **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted
   operations as tools.

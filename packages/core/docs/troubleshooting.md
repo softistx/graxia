@@ -729,3 +729,42 @@ The same for `windowMs`. The store counts with its own policy; pass the same num
 ## limitFromStore: limit must be an integer of 1 or more
 
 Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, `windowMs` in milliseconds.
+
+## telemetry must be false or an object
+
+`telemetry` was `true`, a string or an array. Omit it (on when `@opentelemetry/api` is installed),
+pass `false`, or pass an options object.
+
+## telemetry.tracer must be an OpenTelemetry Tracer
+
+`tracer` has no `startSpan` method. Pass what `trace.getTracer(...)` or your provider's
+`getTracer(...)` returns.
+
+## telemetry.document must be a boolean
+
+Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
+
+## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
+
+Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fields with no resolver.
+
+## No spans appear
+
+The server answers but your backend shows nothing. In order:
+
+1. `@opentelemetry/api` is not installed next to `@graxia/core`. It is an optional peer: graxia
+   traces nothing without it. `bun add @opentelemetry/api`.
+2. No SDK is registered, or it is registered after `createGraxia`. Without an SDK the API's tracer
+   is a no-op. Register the provider (or pass `telemetry: { tracer }`) before creating the server.
+3. Two copies of `@opentelemetry/api`: your SDK registers on one and graxia reads the other.
+   The API shares its global through a version-keyed symbol, so a major mismatch or a nested
+   `node_modules` copy of another major breaks it. Check `bun pm ls @opentelemetry/api` shows one version
+   (`^1`).
+4. `telemetry: false` is set.
+5. A request outside the GraphQL path (`path`) is not traced.
+
+## A resolver span has no child spans of mine
+
+A span you start inside a resolver nests under the active span, which needs a context manager
+registered (the Node SDK registers one). Without it, `trace.getActiveSpan()` returns `undefined` in
+a resolver; graxia's own spans are still parented correctly.

@@ -47,6 +47,18 @@ export async function handle(
 		return refusal(405, 'Only GET and POST are allowed.', {
 			allow: 'GET, POST',
 		});
+	return rt.telemetry.request(request, state, () =>
+		respond(rt, request, serverContext, state),
+	);
+}
+
+/** The answer of a request on the GraphQL path, `onResponse` hooks included. */
+async function respond(
+	rt: Runtime,
+	request: Request,
+	serverContext: Record<string, unknown>,
+	state: StateBag,
+): Promise<Response> {
 	try {
 		await rt.ready;
 		const response = await answer(rt, request, serverContext, state);

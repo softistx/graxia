@@ -12,6 +12,7 @@ import type {
 	MaybePromise,
 } from '../plugins/types';
 import type { CsrfOptions, ResolvedCsrf } from '../security/options';
+import type { TelemetryOptions } from '../telemetry';
 import type { TrustedDocumentsOptions } from '../trusted/types';
 import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
@@ -114,6 +115,12 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 * Absent: no persisted documents and no APQ, queries run as sent.
 	 */
 	trustedDocuments?: TrustedDocumentsOptions;
+	/**
+	 * OpenTelemetry spans (`graphql.request`, `graphql.parse`, `graphql.validate`, one per
+	 * operation, optional resolver spans). On when `@opentelemetry/api` (an optional peer) is
+	 * installed, a no-op otherwise; `false` turns it off.
+	 */
+	telemetry?: false | TelemetryOptions;
 	/**
 	 * Answers `__schema` and `__type` queries. `true` unless `NODE_ENV` is `production`.
 	 */
