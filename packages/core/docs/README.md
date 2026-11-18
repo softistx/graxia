@@ -9,6 +9,7 @@ Guides and troubleshooting of `@graxia/core`; the roadmap lands with the slices 
 - [Context, cancellation and shutdown](./guide/context.md)
 - [Schema](./guide/schema.md)
 - [Limits and caches](./guide/limits-and-caches.md)
+- [Testing: `execute` and the test client](./guide/testing.md)
 - [Errors: exposed, masked, correlation ids](./guide/errors.md)
 
 ## Help

@@ -20,6 +20,7 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./docs/guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
+- [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, `@graxia/core/testing` client.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits, parse and validation caches, `createDocumentPipeline`.
 

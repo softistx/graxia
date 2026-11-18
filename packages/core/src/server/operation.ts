@@ -9,6 +9,7 @@ import {
 import type { RequestState } from '../plugins/state';
 import type { ExecutionOutput, GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
+import { presetDocumentKey } from './execute-state';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
 
@@ -64,6 +65,7 @@ async function prepare(
 		source: final.query,
 		state,
 		request,
+		document: state.get(presetDocumentKey),
 	});
 	if (parsed.error !== undefined) return unexpected(parsed.error);
 	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);

@@ -120,3 +120,22 @@ The client gets the generic 500 instead. Answer with a real HTTP status.
 graphql reports a `parseValue` that throws a plain `Error` as a coercion error, unmasked. Throw
 `exposedError('BAD_USER_INPUT', …)` or a `GraphQLError` with a safe message. See
 [Errors](./guide/errors.md#known-behaviour-scalar-coercion).
+
+## graxia.execute: the request ended with an HTTP N response instead of a result
+
+`graxia.execute` rejects with a `GraxiaExecuteError` when the pipeline answered with something other
+than an execution result: a plugin returned `respond(...)` (for example a 401 from an auth plugin),
+a hook failed unexpectedly (500), or the instance was disposed (503). The HTTP answer is on
+`error.response` (and `error.status`):
+
+```ts
+try {
+	await graxia.execute({ document: '{ me { id } }' });
+} catch (error) {
+	if (error instanceof GraxiaExecuteError)
+		console.log(error.status, await error.response.text());
+}
+```
+
+Pass the headers the plugin expects (`headers: { authorization: … }`). See
+[Testing](./guide/testing.md).
