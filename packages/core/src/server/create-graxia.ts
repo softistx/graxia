@@ -5,7 +5,9 @@ import { createRequestId, requestIdKey } from '../http/request-id';
 import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
 import { RequestState } from '../plugins/state';
+import { createDispose } from './dispose';
 import { dispatch } from './handle';
+import { createLifecycle } from './lifecycle';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
@@ -24,6 +26,16 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	fetch(request: Request, serverContext?: HostCtx): Promise<Response>;
 	/** Starts `Bun.serve` with this instance as its `fetch`. */
 	serve(options?: GraxiaServeOptions): Bun.Server<undefined>;
+	/**
+	 * Shuts down: stops accepting requests (new ones answer 503
+	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
+	 * operations up to `timeout` ms (default `shutdownTimeout`, 10 000), aborts
+	 * what remains through their `signal`, then runs the plugins' `onDispose`
+	 * in reverse order. Idempotent: later calls return the same promise.
+	 */
+	dispose(options?: { timeout?: number }): Promise<void>;
+	/** `await using graxia = createGraxia(...)` calls {@link Graxia.dispose}. */
+	[Symbol.asyncDispose](): Promise<void>;
 }
 
 function resolve(options: GraxiaOptions<any>): ResolvedOptions {
@@ -39,7 +51,13 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 	const path = options.path ?? '/graphql';
 	if (path !== false && !path.startsWith('/'))
 		throw new GraxiaConfigError('path must start with "/" (or be false)');
-	return { path, bodyBytes, batching };
+	const asyncContext = options.asyncContext ?? true;
+	const shutdownTimeout = options.shutdownTimeout ?? 10_000;
+	if (!Number.isInteger(shutdownTimeout) || shutdownTimeout < 0)
+		throw new GraxiaConfigError(
+			'shutdownTimeout must be a non-negative integer (milliseconds)',
+		);
+	return { path, bodyBytes, batching, asyncContext, shutdownTimeout };
 }
 
 /**
@@ -53,6 +71,8 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	options: GraxiaOptions<HostCtx>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
+	const lifecycle = createLifecycle();
+	const servers: Bun.Server<undefined>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
 	const { bodyBytes: _bodyBytes, ...limits } = options.limits ?? {};
 	const ready = engine.init();
@@ -69,6 +89,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		options: resolved,
 		unexpected: createUnexpectedHandler(options.onUnexpected),
 		context: options.context,
+		lifecycle,
 		ready,
 	};
 	const handleWith = async (
@@ -77,21 +98,48 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	) => {
 		const state = new RequestState();
 		state.set(requestIdKey, createRequestId());
+		if (lifecycle.closing) return seal(shuttingDown(), state);
 		try {
-			return seal(await handle(rt, request, serverContext, state), state);
+			return seal(
+				await lifecycle.track(handle(rt, request, serverContext, state)),
+				state,
+			);
 		} catch (error) {
 			return seal(rt.unexpected.respond(error, state), state);
 		}
 	};
+	const dispose = createDispose({
+		lifecycle,
+		engine,
+		ready,
+		servers,
+		unexpected: rt.unexpected,
+		timeout: resolved.shutdownTimeout,
+	});
 	return {
 		fetch: (request, serverContext) =>
 			handleWith(request, { ...serverContext }),
-		serve: (serveOptions) =>
-			Bun.serve<undefined>({
+		serve: (serveOptions) => {
+			const server = Bun.serve<undefined>({
 				...serveOptions,
 				fetch: (request, server) => handleWith(request, { server }),
-			}),
+			});
+			servers.push(server);
+			return server;
+		},
+		dispose,
+		[Symbol.asyncDispose]: () => dispose(),
 	};
+}
+
+/** What a request arriving after `dispose()` started gets. */
+function shuttingDown(): Response {
+	return refusal(
+		503,
+		'Server is shutting down.',
+		{ connection: 'close' },
+		'SHUTTING_DOWN',
+	);
 }
 
 /** Path and method refusals, plugins around the dispatch; never rejects. */

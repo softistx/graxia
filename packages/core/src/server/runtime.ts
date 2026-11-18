@@ -1,6 +1,7 @@
 import type { GraphQLSchema } from 'graphql';
 import type { DocumentPipeline } from '../document/pipeline';
 import type { PluginEngine } from '../plugins/engine';
+import type { Lifecycle } from './lifecycle';
 import type { GraxiaOptions, ResolvedOptions } from './options';
 import type { UnexpectedHandler } from './unexpected';
 
@@ -12,6 +13,7 @@ export interface Runtime {
 	options: ResolvedOptions;
 	context: GraxiaOptions<any>['context'];
 	unexpected: UnexpectedHandler;
+	lifecycle: Lifecycle;
 	/** Resolves once every plugin's `setup` ran. */
 	ready: Promise<void>;
 }

@@ -41,6 +41,7 @@ export type {
 	TypeResolver,
 	TypeResolvers,
 } from './schema/types';
+export { getContext, tryGetContext } from './server/context';
 export type { Graxia, GraxiaServeOptions } from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
 export type {

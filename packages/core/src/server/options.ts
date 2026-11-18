@@ -16,6 +16,11 @@ export interface ContextInit<HostCtx> {
 	serverContext: HostCtx;
 	/** The operation's parameters (after `onParams`). */
 	params: GraphQLParams;
+	/**
+	 * Aborts when the client disconnects or the server shuts down past its
+	 * timeout. Also in the context as `signal` and passed to `execute`.
+	 */
+	signal: AbortSignal;
 }
 
 /** `limits` option: document limits plus the request body limit. */
@@ -35,6 +40,13 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	 * (`{ ...serverContext, ...returned }`), before `onContext` plugins run.
 	 */
 	context?: (init: ContextInit<HostCtx>) => MaybePromise<object>;
+	/**
+	 * Makes `getContext()` work (an `AsyncLocalStorage` around each operation's
+	 * execution). `true` by default; `false` skips it and `getContext()` throws.
+	 */
+	asyncContext?: boolean;
+	/** Milliseconds `dispose()` waits for in-flight operations before aborting them. 10 000 by default. */
+	shutdownTimeout?: number;
 	/** Plugins (see `definePlugin`). */
 	plugins?: readonly GraxiaPlugin<any, any>[];
 	/** Document and body limits. */
@@ -56,4 +68,6 @@ export interface ResolvedOptions {
 	path: string | false;
 	bodyBytes: number;
 	batching: BatchingOption;
+	asyncContext: boolean;
+	shutdownTimeout: number;
 }

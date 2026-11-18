@@ -8,6 +8,7 @@ import {
 } from 'graphql';
 import type { RequestState } from '../plugins/state';
 import type { ExecutionOutput, GraphQLParams } from '../plugins/types';
+import { runWithContext } from './context';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
 
@@ -121,32 +122,48 @@ async function executeOperation(
 	{ request, state, serverContext }: OperationInput,
 	{ params, document, operation }: Prepared,
 ): Promise<Outcome> {
+	// One context and one signal per operation, never shared with a batch sibling.
+	const signal = AbortSignal.any([request.signal, rt.lifecycle.shutdown]);
 	const extra = rt.context
-		? await rt.context({ request, serverContext, params })
+		? await rt.context({ request, serverContext, params, signal })
 		: {};
 	const ctx = await rt.engine.runners.onContext({
 		request,
 		state,
-		context: { ...serverContext, ...extra },
+		context: { ...serverContext, ...extra, signal },
 	});
 	const ctxError = await settle(ctx, undefined);
 	if (ctxError !== undefined) return unexpected(ctxError);
+	const contextValue = { ...ctx.out.context, signal };
 	const args: ExecutionArgs = {
 		schema: rt.schema,
 		document,
-		contextValue: ctx.out.context,
+		// `signal` is set again: a plugin cannot make it diverge from `abortSignal`.
+		contextValue,
+		abortSignal: signal,
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
+	const run = () => execution(rt, { request, state }, args);
+	return rt.options.asyncContext ? runWithContext(contextValue, run) : run();
+}
+
+async function execution(
+	rt: Runtime,
+	{ request, state }: Pick<OperationInput, 'request' | 'state'>,
+	args: ExecutionArgs,
+): Promise<Outcome> {
 	const stage = await rt.engine.runners.onExecute({ request, state, args });
 	let result: ExecutionOutput | undefined;
 	let thrown: unknown;
+	let aborted = false;
 	if (stage.error === undefined) {
 		try {
 			result =
 				stage.out.result ?? (await (stage.out.executeFn ?? execute)(args));
 		} catch (error) {
-			thrown = error;
+			if (args.abortSignal?.aborted) aborted = true;
+			else thrown = error;
 		}
 	}
 	const afterError = await settle(stage, {
@@ -160,6 +177,12 @@ async function executeOperation(
 		await release(result);
 		return unexpected(error);
 	}
+	if (aborted)
+		return failure('The operation was aborted.', {
+			code: 'OPERATION_ABORTED',
+			// 499 (client closed request) when the client left, 503 otherwise (shutdown).
+			status: request.signal.aborted ? 499 : 503,
+		});
 	if (!isSingleResult(result)) {
 		await release(result);
 		return failure(

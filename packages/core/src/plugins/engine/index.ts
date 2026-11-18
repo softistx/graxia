@@ -1,5 +1,6 @@
 import { orderPlugins } from '../order';
 import type { GraxiaPlugin, HookStage } from '../types';
+import { createDispose } from './dispose';
 import type { PluginRunners } from './outputs';
 import { createSetup } from './setup';
 import { buildRunners } from './stages';
@@ -24,6 +25,8 @@ export interface PluginEngine {
 	has(stage: HookStage): boolean;
 	/** Runs every plugin's `setup` once, awaited; later calls return the same promise. */
 	init(): Promise<void>;
+	/** Runs every plugin's `onDispose` once, in reverse plugin order; later calls return the same promise. */
+	dispose(): Promise<void>;
 	/** The stage runners (see {@link PluginRunners}). */
 	readonly runners: PluginRunners;
 }
@@ -52,5 +55,6 @@ export function createPluginEngine(
 		runners: buildRunners(hooksOf),
 		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
 		init: createSetup(ordered, names),
+		dispose: createDispose(ordered),
 	};
 }
