@@ -12,6 +12,8 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
+- `@opentelemetry/api` `^1` is an optional peer: with it installed graxia emits OpenTelemetry spans,
+  without it tracing is off (see [OpenTelemetry](#opentelemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
   both resolutions), but the sources are written for a bundler.
@@ -228,6 +230,18 @@ createGraxia({
 proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
+## OpenTelemetry
+
+Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits spans for each
+request, parse, validation and operation, and the original exception of an unexpected error.
+Without the peer, nothing is wrapped and nothing runs.
+
+```ts
+createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
+```
+
+Setup, the span tree, attributes and every option: [OpenTelemetry](./docs/guide/telemetry.md).
+
 ## Trusted documents
 
 Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
@@ -400,6 +414,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                |
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                        |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions` |
+|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                        |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                            |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                               |
 
@@ -418,6 +433,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
+- [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
 - [Roadmap](./docs/roadmap.md): what ships next.

@@ -1,16 +1,20 @@
-import {
-	type DocumentNode,
-	type ExecutionArgs,
-	Kind,
-	type OperationDefinitionNode,
+import type {
+	DocumentNode,
+	ExecutionArgs,
+	OperationDefinitionNode,
 } from 'graphql';
 import { costRefusal } from '../limits/operation-cost';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import { runWithContext } from './context';
-import { presetDocumentKey } from './execute-state';
 import { withHttpRefusal } from './http-refusal';
 import { execution } from './incremental';
+import {
+	parseStep,
+	selectOperation,
+	settleParams,
+	validateStep,
+} from './operation-steps';
 import { failed, failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
 import { subscription } from './subscription';
@@ -34,27 +38,24 @@ interface Prepared {
 	operation: OperationDefinitionNode;
 }
 
-const isPrepared = (value: Outcome | Prepared): value is Prepared =>
-	!('kind' in value);
-
-/** The pre-parsed document `execute` gave, while the query is still the text it printed. */
-function presetFor(state: RequestState, query: string) {
-	const preset = state.get(presetDocumentKey);
-	return preset?.text === query ? preset.node : undefined;
-}
+const isOutcome = (value: object): value is Outcome => 'kind' in value;
 
 /**
  * Runs one operation through the pipeline (onParams, parse, validate,
  * operation selection, context, onExecute, execute). Never rejects: a hook
  * error or a throw becomes an `unexpected` outcome.
  */
-export async function runOperation(
+export function runOperation(
 	rt: Runtime,
 	input: OperationInput,
 ): Promise<Outcome> {
+	return rt.telemetry.operation(input.state, () => run(rt, input));
+}
+
+async function run(rt: Runtime, input: OperationInput): Promise<Outcome> {
 	try {
 		const prepared = await prepare(rt, input);
-		if (!isPrepared(prepared)) return prepared;
+		if (isOutcome(prepared)) return prepared;
 		return await executeOperation(rt, input, prepared);
 	} catch (error) {
 		return unexpected(error);
@@ -63,59 +64,17 @@ export async function runOperation(
 
 async function prepare(
 	rt: Runtime,
-	{ request, state, params, method, sse }: OperationInput,
+	input: OperationInput,
 ): Promise<Outcome | Prepared> {
-	const trusted = await rt.trusted?.resolve(params, request, state);
-	if (trusted && !trusted.ok)
-		return failure(trusted.message, {
-			code: trusted.code,
-			...(trusted.status !== undefined ? { status: trusted.status } : {}),
-			...(trusted.fix ? { fix: trusted.fix } : {}),
-		});
-	const register = trusted?.register;
-	const stage = await rt.engine.runners.onParams({
-		request,
-		state,
-		params: trusted ? trusted.params : params,
-	});
-	const error = await settle(stage, { params: stage.out.params });
-	if (error !== undefined) return unexpected(error);
-	if (stage.out.response)
-		return { kind: 'response', response: stage.out.response };
-	const final = stage.out.params;
-	if (typeof final.query !== 'string' || final.query === '')
-		return failure('Must provide a query string.', { status: 400 });
-	const parsed = await rt.pipeline.parse({
-		source: final.query,
-		state,
-		request,
-		document: presetFor(state, final.query),
-	});
-	if (parsed.error !== undefined) return unexpected(parsed.error);
-	if (parsed.errors || !parsed.document) return failed(parsed.errors ?? []);
-	const early = selectOperation(parsed.document, final.operationName);
-	if (
-		typeof early !== 'string' &&
-		early.operation === 'mutation' &&
-		method === 'GET'
-	)
-		return failure(
-			'Can only perform a mutation operation from a POST request.',
-			{
-				status: 405,
-				headers: { allow: 'POST' },
-			},
-		);
-	const valid = await rt.pipeline.validate({
-		document: parsed.document,
-		cacheKey: parsed.cacheKey,
-		state,
-		request,
-	});
-	if (valid.error !== undefined) return unexpected(valid.error);
-	if (valid.errors) return failed(valid.errors);
+	const settled = await settleParams(rt, input);
+	if (isOutcome(settled)) return settled;
+	const { params: final } = settled;
+	const parsed = await parseStep(rt, input, settled);
+	if (isOutcome(parsed)) return parsed;
+	const refused = await validateStep(rt, input, parsed);
+	if (refused) return refused;
 	// Only the query the client sent is registered, never one a plugin rewrote.
-	if (final.query === params.query) register?.();
+	if (final.query === input.params.query) settled.register?.();
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string') return failure(operation);
 	const { cost } = rt.options.operationLimits;
@@ -129,34 +88,12 @@ async function prepare(
 		);
 		if (over) return failed(over);
 	}
-	if (operation.operation === 'subscription' && !sse)
+	if (operation.operation === 'subscription' && !input.sse)
 		return failure(
 			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
-			{
-				code: 'SUBSCRIPTION_NOT_SUPPORTED',
-			},
+			{ code: 'SUBSCRIPTION_NOT_SUPPORTED' },
 		);
 	return { params: final, document: parsed.document, operation };
-}
-
-/** The operation to run, or the message explaining why none can be picked. */
-function selectOperation(
-	document: DocumentNode,
-	name: string | undefined,
-): OperationDefinitionNode | string {
-	const operations = document.definitions.filter(
-		(d): d is OperationDefinitionNode => d.kind === Kind.OPERATION_DEFINITION,
-	);
-	if (name !== undefined) {
-		const found = operations.filter((o) => o.name?.value === name);
-		return found.length === 1
-			? (found[0] as OperationDefinitionNode)
-			: `Unknown operation named "${name}".`;
-	}
-	if (operations.length === 1) return operations[0] as OperationDefinitionNode;
-	return operations.length === 0
-		? 'Must provide an operation.'
-		: 'Must provide operation name if query contains multiple operations.';
 }
 
 async function executeOperation(
@@ -192,8 +129,12 @@ async function executeOperation(
 		...(params.variables ? { variableValues: params.variables } : {}),
 		...(operation.name ? { operationName: operation.name.value } : {}),
 	};
-	const scope = <T>(work: () => T): T =>
-		rt.options.asyncContext ? runWithContext(contextValue, work) : work();
+	const scope = rt.telemetry.scope(
+		state,
+		contextValue,
+		<T>(work: () => T): T =>
+			rt.options.asyncContext ? runWithContext(contextValue, work) : work(),
+	);
 	const call = { request, state };
 	const outcome =
 		operation.operation === 'subscription'

@@ -20,7 +20,7 @@ import {
 	resolveLimits,
 } from './parse';
 import type { DocumentCaches, DocumentLimits } from './types';
-import { checkDocument } from './validate';
+import { type CacheTrace, checkDocument } from './validate';
 
 /** Options of {@link createDocumentPipeline}. */
 export interface DocumentPipelineOptions {
@@ -46,6 +46,8 @@ export interface StepResult {
 	errors?: readonly GraphQLError[];
 	/** A value thrown by a plugin hook, never masked here. */
 	error?: unknown;
+	/** Whether a cache served the step (the default parse or validation of a cached source). Absent when no cache was consulted. */
+	cacheHit?: boolean;
 	/**
 	 * Set by `parse` only when the document is the default parse of the source
 	 * (no `setParseFn`, no `setDocument`). Pass it to `validate` as `cacheKey`.
@@ -138,13 +140,14 @@ async function runParse(
 	const { out, error } = outcome;
 	let result: ParseResult;
 	let cacheKey: string | undefined;
+	const trace: CacheTrace = {};
 	if (error !== undefined) result = { errors: [] };
 	else if (out.document) result = { document: out.document };
 	else if (input.document) result = { document: input.document };
 	else if (out.parseFn)
 		result = parseWithLimits(source, ctx.limits, out.parseFn);
 	else {
-		result = parseDefault(ctx, source);
+		result = parseDefault(ctx, source, trace);
 		if ('document' in result) cacheKey = source;
 	}
 	const afterError = await finish(outcome.runAfter, {
@@ -154,15 +157,21 @@ async function runParse(
 	return {
 		...result,
 		...(cacheKey !== undefined ? { cacheKey } : {}),
+		...(trace.hit !== undefined ? { cacheHit: trace.hit } : {}),
 		...(failure !== undefined ? { error: failure } : {}),
 	};
 }
 
 /** Default parse through the cache; stack-overflow failures are not cached. */
-function parseDefault(ctx: Ctx, source: string): ParseResult {
+function parseDefault(
+	ctx: Ctx,
+	source: string,
+	trace: CacheTrace,
+): ParseResult {
 	const { parseCache } = ctx;
 	if (!parseCache) return parseWithLimits(source, ctx.limits);
 	const hit = parseCache.get(source);
+	trace.hit = hit !== undefined;
 	if (hit) return hit;
 	const result = parseWithLimits(source, ctx.limits);
 	const overflow = 'errors' in result && result.errors.some(isOverflow);
@@ -189,11 +198,19 @@ async function runValidate(
 	const { out, error } = outcome;
 	let errors: readonly GraphQLError[] = [];
 	let thrown: unknown;
+	const trace: CacheTrace = {};
 	if (error === undefined) {
 		try {
 			errors = out.errors
 				? out.errors
-				: checkDocument(ctx, document, cacheKey, out.validationFn, out.rules);
+				: checkDocument(
+						ctx,
+						document,
+						cacheKey,
+						out.validationFn,
+						out.rules,
+						trace,
+					);
 		} catch (caught) {
 			// A throwing rule or validation function: the after-hooks still run.
 			thrown = caught;
@@ -205,6 +222,7 @@ async function runValidate(
 	const failure = error ?? thrown ?? afterError;
 	return {
 		...(errors.length > 0 || failure !== undefined ? { errors } : { document }),
+		...(trace.hit !== undefined ? { cacheHit: trace.hit } : {}),
 		...(failure !== undefined ? { error: failure } : {}),
 	};
 }

@@ -9,6 +9,7 @@ import { StateBag } from '../plugins/state';
 import { csrfHeaderKey } from '../security/header-key';
 import { noIntrospectionRule } from '../security/introspection';
 import { resolveSecurity } from '../security/options';
+import { createTelemetry } from '../telemetry';
 import { resolveTrusted } from '../trusted/options';
 import { createTrustedDocuments } from '../trusted/resolve';
 import { createDispose } from './dispose';
@@ -154,6 +155,8 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const trusted = resolveTrusted(options.trustedDocuments);
+	// Before `engine.init()`: a bad option throws before any plugin's setup runs.
+	const telemetry = createTelemetry(options.telemetry, options.schema);
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
 	const engine = createPluginEngine(options.plugins ?? []);
@@ -193,6 +196,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 			),
 		context: options.context,
 		lifecycle,
+		telemetry,
 		ready,
 	};
 	const entry = createEntry<HostCtx>(rt, servers);
