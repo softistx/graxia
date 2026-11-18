@@ -1,5 +1,13 @@
 # @graxia/redis
 
+## 0.1.1
+
+### Patch Changes
+
+- [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - docs: README names redisCache as the store of core's automatic persisted queries
+- Updated dependencies [[`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`5c22fdd`](https://github.com/softistx/graxia/commit/5c22fdde87b81a6fff3074b61020b08df3b01c5c), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499)]:
+  - @graxia/core@0.3.0
+
 ## 0.1.0
 
 ### Minor Changes
