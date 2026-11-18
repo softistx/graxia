@@ -25,6 +25,17 @@ export { definePlugin } from './plugins/define';
 export type { RequestState, StateKey } from './plugins/state';
 export { createStateKey } from './plugins/state';
 export type * from './plugins/types';
+export { filterIterable, mapIterable } from './pubsub/iterables';
+export type {
+	MemoryPubSub,
+	MemoryPubSubOptions,
+} from './pubsub/memory';
+export { createMemoryPubSub } from './pubsub/memory';
+export type {
+	PubSub,
+	PubSubTopics,
+	SubscribeOptions,
+} from './pubsub/types';
 export { createSchema } from './schema/create-schema';
 export type { TypeDefs } from './schema/typedefs';
 export type {

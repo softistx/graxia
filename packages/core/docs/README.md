@@ -13,6 +13,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Plugins](./guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Schema](./guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
+- [PubSub](./guide/pubsub.md): typed topics, the in-memory PubSub, `filterIterable` / `mapIterable`, cancellation.
 - [Limits and caches](./guide/limits-and-caches.md): parse limits, parse and validation caches.
 - [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@graxia/core/testing`.
 - [Errors: exposed, masked, correlation ids](./guide/errors.md): `exposedError`, `onUnexpected`, `maskError`.

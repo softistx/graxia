@@ -26,6 +26,9 @@ describe('public exports', () => {
 			'getContext',
 			'tryGetContext',
 			'exposedError',
+			'createMemoryPubSub',
+			'filterIterable',
+			'mapIterable',
 		])
 			expect(name in api).toBe(true);
 	});
