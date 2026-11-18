@@ -22,6 +22,8 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 bun add @graxia/core graphql@^17
 ```
 
+The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
+
 ## Quick start
 
 ```ts
@@ -210,11 +212,13 @@ socket and without importing a test runner.
 ```ts
 import { createTestClient, expectNoErrors } from '@graxia/core/testing';
 
-const client = createTestClient(graxia, { headers: { 'x-user': 'ada' } });
-const result = await client.query<{ me: string }>('{ me }');
+const client = createTestClient(graxia, {
+	headers: { 'x-request-source': 'test' },
+});
+const result = await client.query<{ hello: string }>('{ hello }');
 expectNoErrors(result);
 result.status; // 200
-result.data?.me; // 'ada'
+result.data?.hello; // 'hello world'
 ```
 
 ## Exports

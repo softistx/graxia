@@ -42,12 +42,14 @@ export { getContext, tryGetContext } from './server/context';
 export type {
 	Graxia,
 	GraxiaServeOptions,
-	ServeArgs,
-	ServeOptions,
-	ServerContextArgs,
 } from './server/create-graxia';
 export { createGraxia } from './server/create-graxia';
 export type { ExecuteArgs, ExecuteBase } from './server/execute';
+export type {
+	OptionsArg,
+	ServerContextArg,
+	WithServerContext,
+} from './server/host-context';
 export type {
 	ContextInit,
 	GraxiaLimits,

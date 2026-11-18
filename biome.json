@@ -8,7 +8,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/dist", "!.changeset/*.md"]
+		"includes": ["**", "!**/dist", "!.changeset/*.md", "!plugins/**/SKILL.md"]
 	},
 	"formatter": {
 		"enabled": true,

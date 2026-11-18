@@ -33,6 +33,8 @@ export interface StageSpec<Input, Out> {
 	payload(input: Input, out: Out, stop: () => void): unknown;
 	/** Called with a hook's non-function return value (used by `onContext`). */
 	collect?(out: Out, returned: unknown, plugin: string): void;
+	/** `false` for a stage with no after-hook: a returned function is ignored, not collected. */
+	afterHooks?: false;
 }
 
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
@@ -68,9 +70,10 @@ export function createStageRunner<Input, Out, Done>(
 					spec.payload(input, out, stop) as never,
 				);
 				if (isThenable(returned)) returned = await returned;
-				if (typeof returned === 'function')
-					afters.push(returned as (done: Done) => MaybePromise<void>);
-				else spec.collect?.(out, returned, hook.plugin);
+				if (typeof returned === 'function') {
+					if (spec.afterHooks !== false)
+						afters.push(returned as (done: Done) => MaybePromise<void>);
+				} else spec.collect?.(out, returned, hook.plugin);
 			} catch (thrown) {
 				error = thrown;
 				failed = true;

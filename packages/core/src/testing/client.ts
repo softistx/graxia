@@ -1,5 +1,6 @@
 import type { DocumentInput } from '../document/typed';
 import type { Graxia } from '../server/create-graxia';
+import type { OptionsArg, WithServerContext } from '../server/host-context';
 import { getUrl, type WireParams, wireParams } from './request';
 import {
 	DEFAULT_ACCEPT,
@@ -12,10 +13,7 @@ import {
 
 /** Options of {@link createTestClient}: `serverContext` is required when `HostCtx` has required keys. */
 export type TestClientOptions<HostCtx extends object> = TestClientBase &
-	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-	({} extends HostCtx
-		? { serverContext?: HostCtx }
-		: { serverContext: HostCtx });
+	WithServerContext<HostCtx>;
 
 /** The options of {@link createTestClient} that do not depend on the host context. */
 export interface TestClientBase {
@@ -43,12 +41,6 @@ export interface TestClient {
 		options?: { headers?: HeadersInit; accept?: string },
 	): Promise<TestBatchResult>;
 }
-
-/** The options argument: required when `HostCtx` has required keys (they need a `serverContext`). */
-// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-type ClientArgs<HostCtx extends object> = {} extends HostCtx
-	? [options?: TestClientOptions<HostCtx>]
-	: [options: TestClientOptions<HostCtx>];
 
 const isRecord = (value: unknown): value is Record<string, any> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -80,8 +72,8 @@ function picks(body: unknown) {
  * const { data, status } = await client.query<{ hello: string }>('{ hello }');
  */
 export function createTestClient<HostCtx extends object>(
-	graxia: Graxia<HostCtx>,
-	...[clientOptions]: ClientArgs<HostCtx>
+	graxia: Pick<Graxia<HostCtx>, 'fetch'>,
+	...[clientOptions]: OptionsArg<HostCtx, TestClientBase>
 ): TestClient {
 	const options: TestClientBase & { serverContext?: HostCtx } =
 		clientOptions ?? {};

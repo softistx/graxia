@@ -168,9 +168,9 @@ Pass the headers the plugin expects (`headers: { authorization: … }`). See
 has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
 [Context, cancellation and shutdown](./guide/context.md).
 
-## graxia.execute: variables must be JSON-serializable
+## graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)
 
-`variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
+`execute` throws this `TypeError` because `variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
 to a string) before calling `execute`.
 
 ## Resolvers for X are defined more than once

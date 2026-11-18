@@ -7,6 +7,7 @@ import {
 	resultKey,
 	unexpectedErrorKey,
 } from './execute-state';
+import type { WithServerContext } from './host-context';
 import type { Lifecycle } from './lifecycle';
 
 /** Arguments of {@link Graxia.execute}: `serverContext` is required when `HostCtx` has required keys. */
@@ -14,11 +15,7 @@ export type ExecuteArgs<
 	Result,
 	Variables,
 	HostCtx extends object,
-> = ExecuteBase<Result, Variables> &
-	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-	({} extends HostCtx
-		? { serverContext?: HostCtx }
-		: { serverContext: HostCtx });
+> = ExecuteBase<Result, Variables> & WithServerContext<HostCtx>;
 
 /** The arguments of {@link Graxia.execute} that do not depend on the host context. */
 export interface ExecuteBase<Result, Variables> {

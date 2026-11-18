@@ -3,42 +3,21 @@ import { createDocumentPipeline } from '../document/pipeline';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
 import { createRequestId, requestIdKey } from '../http/request-id';
-import { refusal } from '../http/respond';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
 import { createDispose } from './dispose';
 import { createExecute, type ExecuteArgs } from './execute';
-import { dispatch } from './handle';
+import type { OptionsArg, ServerContextArg } from './host-context';
 import { createLifecycle } from './lifecycle';
 import { createResultMasker } from './masking';
 import type { GraxiaOptions, ResolvedOptions } from './options';
+import { handle, lastResort, shuttingDown } from './request';
 import type { Runtime } from './runtime';
 import { seal } from './seal';
 import { createUnexpectedHandler } from './unexpected';
 
 /** The `Bun.serve` options graxia forwards (host and port; not `fetch`, `routes` or unix sockets). */
 export type GraxiaServeOptions = Bun.Serve.HostnamePortServeOptions<undefined>;
-
-/**
- * The `serverContext` argument list of `fetch`: optional when `HostCtx` has no
- * required key, required otherwise.
- */
-export type ServerContextArgs<HostCtx extends object> =
-	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-	{} extends HostCtx ? [serverContext?: HostCtx] : [serverContext: HostCtx];
-
-/** The options of `serve()`: `serverContext` is required when `HostCtx` has required keys. */
-export type ServeOptions<HostCtx extends object> = GraxiaServeOptions &
-	// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-	({} extends HostCtx
-		? { serverContext?: HostCtx }
-		: { serverContext: HostCtx });
-
-/** The argument list of `serve`: the options are required when `HostCtx` has required keys. */
-// biome-ignore lint/complexity/noBannedTypes: `{}` is the "no required key" test.
-export type ServeArgs<HostCtx extends object> = {} extends HostCtx
-	? [options?: ServeOptions<HostCtx>]
-	: [options: ServeOptions<HostCtx>];
 
 /** A graxia server instance. */
 export interface Graxia<HostCtx extends object = Record<never, never>> {
@@ -50,7 +29,7 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 */
 	fetch(
 		request: Request,
-		...serverContext: ServerContextArgs<HostCtx>
+		...serverContext: ServerContextArg<HostCtx>
 	): Promise<Response>;
 	/**
 	 * Runs one operation in process (tests, server-side jobs): a synthetic
@@ -81,7 +60,9 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * operation holds `serverContext` (required when `HostCtx` has required keys)
 	 * and `server`, the `Bun.Server`.
 	 */
-	serve(...options: ServeArgs<HostCtx>): Bun.Server<undefined>;
+	serve(
+		...options: OptionsArg<HostCtx, GraxiaServeOptions>
+	): Bun.Server<undefined>;
 	/**
 	 * Shuts down: stops accepting requests (new ones answer 503
 	 * `SHUTTING_DOWN`), stops the `serve()` servers, waits for in-flight
@@ -206,68 +187,4 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 		dispose,
 		[Symbol.asyncDispose]: () => dispose(),
 	};
-}
-
-/**
- * The answer when sealing the response failed (a plugin produced a response
- * Bun refuses): the generic 500, sealed; if even that fails, a bare 500.
- * `fetch` never rejects.
- */
-function lastResort(rt: Runtime, error: unknown, state: StateBag): Response {
-	try {
-		return seal(rt.unexpected.respond(error, state), state);
-	} catch {
-		return new Response(null, { status: 500 });
-	}
-}
-
-/** What a request arriving after `dispose()` started gets. */
-function shuttingDown(): Response {
-	return refusal(
-		503,
-		'Server is shutting down.',
-		{ connection: 'close' },
-		'SHUTTING_DOWN',
-	);
-}
-
-/** Path and method refusals, plugins around the dispatch; never rejects. */
-async function handle(
-	rt: Runtime,
-	request: Request,
-	serverContext: Record<string, unknown>,
-	state: StateBag,
-): Promise<Response> {
-	const { path } = rt.options;
-	if (path !== false && new URL(request.url).pathname !== path)
-		return refusal(404, 'Not found.');
-	if (request.method !== 'GET' && request.method !== 'POST')
-		return refusal(405, 'Only GET and POST are allowed.', {
-			allow: 'GET, POST',
-		});
-	try {
-		await rt.ready;
-		const entered = await rt.engine.runners.onRequest({ request, state });
-		let response =
-			entered.error !== undefined
-				? rt.unexpected.respond(entered.error, state)
-				: (entered.out.response ??
-					(await dispatch(rt, request, serverContext, state)));
-		const afterError = await entered.runAfter({ response }).then(
-			() => undefined,
-			(error: unknown) => error,
-		);
-		if (afterError !== undefined && entered.error === undefined)
-			response = rt.unexpected.respond(afterError, state);
-		const last = await rt.engine.runners.onResponse({
-			request,
-			state,
-			response,
-		});
-		return last.error !== undefined
-			? rt.unexpected.respond(last.error, state)
-			: last.out.response;
-	} catch (error) {
-		return rt.unexpected.respond(error, state);
-	}
 }

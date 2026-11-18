@@ -45,8 +45,10 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **A parse and validation pipeline with caches** — token and nesting limits, a weighted LRU parse
   cache and a per-schema validation cache.
 - **GraphQL over HTTP** — `createGraxia` with `fetch` and `serve`, GET and POST, content
-  negotiation, correct status codes, a body size limit, opt-in batching and a request id and `graxia.ready`; passes
-  the `graphql-http` server audits.
+  negotiation, correct status codes, a body size limit, opt-in batching and a request id; passes the `graphql-http`
+  server audits.
+- **Readiness** — `graxia.ready` resolves once every plugin's `setup` has completed and rejects
+  when one fails, so a host can wait before it serves.
 - **Context and cancellation** — one context per operation, `getContext()`, a `signal` that aborts
   on client disconnect or shutdown, and `dispose()` that drains in-flight operations.
 - **Errors and masking** — `exposedError` with typed codes, unexpected errors masked with a

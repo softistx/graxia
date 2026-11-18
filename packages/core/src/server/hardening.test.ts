@@ -51,20 +51,25 @@ describe('validation', () => {
 });
 
 describe('onResponse', () => {
-	test('setResponse replaces the response; a returned function is not an after-hook', async () => {
+	test('setResponse replaces the response; a returned function is ignored', async () => {
+		const ignored = mock(() => {});
 		const g = createGraxia({
 			schema,
 			plugins: [
 				definePlugin()({
 					name: 'p',
-					onResponse: ({ setResponse }) =>
-						setResponse(new Response('replaced', { status: 202 })),
+					// A JS caller can return a function; the type forbids it.
+					onResponse: (({ setResponse }: any) => {
+						setResponse(new Response('replaced', { status: 202 }));
+						return ignored;
+					}) as never,
 				}),
 			],
 		});
 		const res = await g.fetch(post({ query: '{ hello }' }));
 		expect(res.status).toBe(202);
 		expect(await res.text()).toBe('replaced');
+		expect(ignored).not.toHaveBeenCalled();
 	});
 });
 
