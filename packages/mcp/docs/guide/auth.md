@@ -23,13 +23,15 @@ const mcp = createMcp(graxia, {
 		authorizationServers: ['https://auth.example.com'],
 		verifyToken: async (token, request) => {
 			const claims = await verifyJwt(token); // your verifier
-			return claims && {
-				subject: claims.sub,
-				clientId: claims.client_id,
-				scopes: claims.scope.split(' '),
-				expiresAt: claims.exp,
-				audience: claims.aud,
-			};
+			return (
+				claims && {
+					subject: claims.sub,
+					clientId: claims.client_id,
+					scopes: claims.scope.split(' '),
+					expiresAt: claims.exp,
+					audience: claims.aud,
+				}
+			);
 		},
 	},
 });
@@ -65,14 +67,14 @@ bearer_methods_supported: ["header"], resource_name?, resource_documentation? }`
 
 After the origin, host and method checks, and before the body is read:
 
-| case                                            | answer                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| `access_token` in the query string              | 400, `MCP_TOKEN_IN_URL` (OAuth 2.1 forbids it)               |
-| no `Authorization: Bearer`                      | 401, `MCP_UNAUTHORIZED`, challenge with `scope="mcp:read"`   |
-| `verifyToken` resolves `undefined` or throws    | 401, `error="invalid_token"` (a throw also goes to `onError`) |
-| `expiresAt` in the past                         | 401, `invalid_token`                                         |
-| `audience` returned and without `resource`      | 401, `invalid_token`                                         |
-| token without the read scope                    | 403, `error="insufficient_scope"`, `MCP_INSUFFICIENT_SCOPE`  |
+| case                                         | answer                                                        |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| `access_token` in the query string           | 400, `MCP_TOKEN_IN_URL` (OAuth 2.1 forbids it)                |
+| no `Authorization: Bearer`                   | 401, `MCP_UNAUTHORIZED`, challenge with `scope="mcp:read"`    |
+| `verifyToken` resolves `undefined` or throws | 401, `error="invalid_token"` (a throw also goes to `onError`) |
+| `expiresAt` in the past                      | 401, `invalid_token`                                          |
+| `audience` returned and without `resource`   | 401, `invalid_token`                                          |
+| token without the read scope                 | 403, `error="insufficient_scope"`, `MCP_INSUFFICIENT_SCOPE`   |
 
 Every refusal is a JSON-RPC error with a `fix`. A preflight from an allowed origin needs no token,
 and `WWW-Authenticate` is exposed to allowed origins (`Access-Control-Expose-Headers`).
