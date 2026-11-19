@@ -146,7 +146,7 @@ package installed does the same.
 
 ```ts
 telemetry?: false | {
-	instance?: Telemetry; // from @softistx/telemetry
+	instance?: TelemetryInstance; // a Telemetry from createTelemetry (@softistx/telemetry)
 	resolverSpans?: boolean | { trivial?: boolean };
 	document?: boolean;
 	propagate?: boolean;
@@ -167,7 +167,14 @@ Before 0.4 graxia traced through `@opentelemetry/api`. Now: `bun add @softistx/t
 exporter such as `@softistx/telemetry-otlp`) in place of the OpenTelemetry API and SDK packages,
 `createTelemetry(...).install()` in place of the provider and context manager, and
 `telemetry: { instance }` in place of `telemetry: { tracer }`. Span names and attributes are
-unchanged; a failure that is a timeout or an abort is `cancelled` instead of `error`.
+unchanged. Differences:
+
+- A failure that is a timeout or an abort is `cancelled` instead of `error`.
+- A WebSocket operation span is now a child of the upgrade's `graphql.request` span.
+- The operation span records the first unexpected error only; `graphql.error.count` still counts
+  all of them.
+- The `tracer` option is not ignored: it throws, see
+  [Troubleshooting](../troubleshooting.md#telemetrytracer-was-replaced-by-telemetryinstance).
 
 An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).

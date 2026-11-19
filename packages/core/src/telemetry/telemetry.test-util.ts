@@ -33,7 +33,7 @@ export const seen: { span?: unknown; spans: unknown[] } = { spans: [] };
 
 export const schema = createSchema()({
 	typeDefs: `
-		type Query { hello: String boom: String user: User }
+		type Query { hello: String boom: String timeout: String user: User }
 		type User { name: String slow: String }
 		type Mutation { bump: Int }
 		type Subscription { ticks: Int! }
@@ -46,6 +46,9 @@ export const schema = createSchema()({
 			},
 			boom: () => {
 				throw new Error('secret detail');
+			},
+			timeout: () => {
+				throw new DOMException('t', 'TimeoutError');
 			},
 			user: () => ({ name: 'Ada' }),
 		},

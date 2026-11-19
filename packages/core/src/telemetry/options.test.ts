@@ -69,6 +69,7 @@ describe('options', () => {
 			{ instance: 'x' },
 			'telemetry.instance must be a @softistx/telemetry Telemetry',
 		);
+		bad({ tracer: {} }, 'telemetry.tracer was replaced by telemetry.instance');
 		bad({ document: 1 }, 'telemetry.document must be a boolean');
 		bad({ propagate: 'yes' }, 'telemetry.propagate must be a boolean');
 		bad(
@@ -160,6 +161,14 @@ describe('resolver spans', () => {
 		const boom = one('graphql.resolve boom');
 		expect(boom.status).toBe('error');
 		expect(boom.error?.message).toBe('secret detail');
+	});
+
+	test('a timeout in a resolver ends the resolver and operation spans cancelled', async () => {
+		await make({ telemetry: { instance, resolverSpans: true } }).fetch(
+			post({ query: '{ timeout }' }),
+		);
+		expect(one('graphql.resolve timeout').status).toBe('cancelled');
+		expect(one('query').status).toBe('cancelled');
 	});
 
 	test('the active span in a resolver is the resolver span, or the operation span without resolver spans', async () => {

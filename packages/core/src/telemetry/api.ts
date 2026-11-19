@@ -21,6 +21,15 @@ export interface SpanLike {
 	run<T>(fn: () => T): T;
 }
 
+/**
+ * A `Telemetry` from `createTelemetry` in `@softistx/telemetry`, described structurally so
+ * the published declarations never import the optional peer.
+ */
+export interface TelemetryInstance {
+	emit(signal: never): unknown;
+	flush(): Promise<void>;
+}
+
 /** The options `startSpan` takes that graxia sets. */
 export interface StartOptions {
 	kind: 'internal' | 'server';
@@ -32,7 +41,7 @@ export interface StartOptions {
 export interface TelemetryApi {
 	startSpan(name: string, options?: StartOptions): SpanLike;
 	currentSpan(): unknown;
-	withTelemetry<T>(telemetry: object, fn: () => T): T;
+	withTelemetry<T>(telemetry: TelemetryInstance, fn: () => T): T;
 }
 
 /** @internal Loads `@softistx/telemetry`, or `undefined` when it is not installed. */

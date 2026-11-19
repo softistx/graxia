@@ -799,6 +799,12 @@ pass `false`, or pass an options object.
 the installed one. A `tracer` option from before 0.4 is no longer read: see
 [Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
 
+## telemetry.tracer was replaced by telemetry.instance
+
+The `telemetry` option still has `tracer`, the OpenTelemetry option of graxia before 0.4. Replace it
+with `instance`, a `Telemetry` from `createTelemetry` in `@softistx/telemetry`, or leave it out to use
+the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
+
 ## telemetry.document must be a boolean
 
 Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.

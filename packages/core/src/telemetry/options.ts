@@ -1,4 +1,5 @@
 import { GraxiaConfigError } from '../errors/config-error';
+import type { TelemetryInstance } from './api';
 
 /** The `telemetry` option of `createGraxia`: spans on `@softistx/telemetry`. */
 export interface TelemetryOptions {
@@ -6,7 +7,7 @@ export interface TelemetryOptions {
 	 * The `Telemetry` (from `createTelemetry`) that receives the spans. Default: the one in scope
 	 * or installed (`createTelemetry(...).install()`). Without either, spans are detached no-ops.
 	 */
-	instance?: object;
+	instance?: TelemetryInstance;
 	/**
 	 * One span per resolver call (`graphql.resolve <field>`). `false` by default: it costs a span
 	 * per field. `true` traces resolvers you wrote; `{ trivial: true }` also traces fields with no
@@ -21,7 +22,7 @@ export interface TelemetryOptions {
 
 /** @internal {@link TelemetryOptions} with defaults applied. */
 export interface ResolvedTelemetry {
-	instance: object | undefined;
+	instance: TelemetryInstance | undefined;
 	resolvers: false | { trivial: boolean };
 	document: boolean;
 	propagate: boolean;
@@ -37,6 +38,10 @@ export function resolveTelemetry(
 	if (option === undefined) option = {};
 	if (typeof option !== 'object' || option === null || Array.isArray(option))
 		throw bad('telemetry must be false or an object');
+	if ('tracer' in option)
+		throw bad(
+			'telemetry.tracer was replaced by telemetry.instance (a Telemetry from createTelemetry in @softistx/telemetry); see the telemetry migration guide',
+		);
 	const { instance, resolverSpans, document, propagate } = option;
 	if (
 		instance !== undefined &&

@@ -90,8 +90,10 @@ describe('WebSocket', () => {
 		expect(upgrade?.attributes['http.request.method']).toBe('GET');
 		expect(upgrade?.attributes['graxia.request.upgrade']).toBe(1);
 		expect(upgrade?.attributes['http.response.status_code']).toBe(101);
+		await instance.flush();
 		const operation = named('subscription')[0];
 		expect(operation?.attributes['graxia.events']).toBe(1);
+		expect(operation && parentId(operation)).toBe(upgrade && idOf(upgrade));
 	});
 
 	test('an operation joins the trace of the upgrade request', async () => {

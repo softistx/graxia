@@ -1,5 +1,10 @@
 import { createStateKey, type RequestState } from '../plugins/state';
-import type { SpanLike, StartOptions, TelemetryApi } from './api';
+import type {
+	SpanLike,
+	StartOptions,
+	TelemetryApi,
+	TelemetryInstance,
+} from './api';
 
 /** Span and attribute names graxia emits (OpenTelemetry GraphQL conventions where they exist, `graxia.*` otherwise). */
 export const SPAN = {
@@ -36,7 +41,7 @@ export const EVENT_NAME = 'graphql.event';
 /** What the spans need: the API, the optional telemetry instance and the resolved options. */
 export interface Env {
 	api: TelemetryApi;
-	instance: object | undefined;
+	instance: TelemetryInstance | undefined;
 	document: boolean;
 	propagate: boolean;
 }

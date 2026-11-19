@@ -15,6 +15,7 @@ import {
 	traceStep,
 } from './steps';
 
+export type { TelemetryInstance } from './api';
 export type { TelemetryOptions } from './options';
 
 /**
