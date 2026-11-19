@@ -55,7 +55,9 @@ Details in [GraphQL over HTTP](./docs/guide/http.md).
 A plugin is a plain object with a `name` and the hooks it needs (`onRequest`, `onParams`,
 `onParse`, `onValidate`, `onContext`, `onExecute`, `onResponse`, ...). Returning a function from a
 hook runs it after the stage (except `onContext` and `onResponse`, which have no
-after-hook; `onResponse` replaces the response with `setResponse`).
+after-hook; `onResponse` replaces the response with `setResponse`). A plugin may also declare
+`csrfExempt(request)` for its own `GET` requests (see [Security](./docs/guide/security.md)); for an
+in-browser explorer see `@graxia/graphiql`.
 
 ```ts
 import { createGraxia, definePlugin } from '@graxia/core';
@@ -196,6 +198,7 @@ createGraxia({
 ```
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
+A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
 **Opt-in**
 

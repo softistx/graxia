@@ -21,11 +21,13 @@ function instance(opts: {
 			definePlugin({
 				name: 'exempting',
 				csrfExempt: opts.csrfExempt ?? exempt,
-				onRequest: opts.respond
-					? ({ request, respond }) => {
-							if (exempt(request)) respond(page());
+				...(opts.respond
+					? {
+							onRequest: ({ request, respond }) => {
+								if (exempt(request)) respond(page());
+							},
 						}
-					: undefined,
+					: {}),
 			}),
 		],
 	});
