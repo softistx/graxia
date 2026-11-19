@@ -32,21 +32,18 @@ export async function traceOperation(
 	run: () => Promise<Outcome>,
 ): Promise<Outcome> {
 	if (state.get(quietKey)) return run();
-	const live = start(
-		env,
-		SPAN.operation,
-		env.api.SpanKind.INTERNAL,
-		parentOf(env, state),
-	);
+	const live = start(env, SPAN.operation, parentOf(state), {
+		kind: 'internal',
+	});
 	const op: Operation = { live, errors: 0, events: 0, ended: false };
 	state.set(operationKey, op);
-	const inContext = <T>(work: () => T) => env.api.context.with(live.ctx, work);
+	const inContext = <T>(work: () => T) => live.run(work);
 	try {
 		const outcome = await inContext(run);
-		return settleOutcome(env, schema, op, outcome, inContext);
+		return settleOutcome(schema, op, outcome, inContext);
 	} catch (error) {
-		fail(env, live.span, error);
-		live.span.end();
+		fail(live, error);
+		live.end();
 		op.ended = true;
 		throw error;
 	}
@@ -66,15 +63,13 @@ export function describeOperation(
 	if (!op) return;
 	const { operation, source, params } = info;
 	const name = operation.name?.value;
-	const span = op.live.span;
-	span.updateName(
-		name ? `${operation.operation} ${name}` : operation.operation,
-	);
-	span.setAttribute(ATTR.operationType, operation.operation);
-	if (name) span.setAttribute(ATTR.operationName, name);
-	if (env.document) span.setAttribute(ATTR.document, source);
+	const span = op.live;
+	span.name = name ? `${operation.operation} ${name}` : operation.operation;
+	span.attribute(ATTR.operationType, operation.operation);
+	if (name) span.attribute(ATTR.operationName, name);
+	if (env.document) span.attribute(ATTR.document, source);
 	const id = documentIdOf(params);
-	if (id) span.setAttribute(ATTR.documentId, id);
+	if (id) span.attribute(ATTR.documentId, id);
 }
 
 /** Runs the parse or validate step in a span of its own. */
@@ -88,22 +83,22 @@ export async function traceStep<R extends StepLike>(
 	const live = start(
 		env,
 		name === 'parse' ? SPAN.parse : SPAN.validate,
-		env.api.SpanKind.INTERNAL,
-		parentOf(env, state),
+		parentOf(state),
+		{ kind: 'internal' },
 	);
 	try {
 		const result = await run();
 		if (result.cacheHit !== undefined)
-			live.span.setAttribute(ATTR.cacheHit, result.cacheHit);
+			live.attribute(ATTR.cacheHit, result.cacheHit);
 		if (result.errors?.length)
-			live.span.setAttribute(ATTR.errorCount, result.errors.length);
-		if (result.error !== undefined) fail(env, live.span, result.error);
+			live.attribute(ATTR.errorCount, result.errors.length);
+		if (result.error !== undefined) fail(live, result.error);
 		return result;
 	} catch (error) {
-		fail(env, live.span, error);
+		fail(live, error);
 		throw error;
 	} finally {
-		live.span.end();
+		live.end();
 	}
 }
 
@@ -117,7 +112,6 @@ export function traceScope(
 ): <T>(work: () => T) => T {
 	const op = state.get(operationKey);
 	if (!op) return scope;
-	if (trivial !== undefined)
-		bindResolvers(contextValue, env, op.live.ctx, trivial);
-	return (work) => env.api.context.with(op.live.ctx, () => scope(work));
+	if (trivial !== undefined) bindResolvers(contextValue, env, op.live, trivial);
+	return (work) => op.live.run(() => scope(work));
 }

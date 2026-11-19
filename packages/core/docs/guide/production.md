@@ -37,8 +37,8 @@ production, always give it.
 ## A recommended configuration
 
 One instance with trusted documents, a rate limit shared across instances, Redis for the
-PubSub, OpenTelemetry and an error logger. It needs `@graxia/redis` and the tracing packages of
-[OpenTelemetry](./telemetry.md#setup).
+PubSub, telemetry and an error logger. It needs `@graxia/redis`, `@softistx/telemetry` and an
+exporter such as `@softistx/telemetry-otlp` (see [Telemetry](./telemetry.md#setup)).
 
 ```ts
 // server.ts
@@ -115,8 +115,9 @@ Notes on each choice:
   per operation, so aliases cannot multiply attempts. See [Rate limiting](./rate-limiting.md).
 - **PubSub.** `createPubSub` delivers inside one process. With several instances, a mutation
   on one must reach subscribers on the others: use `redisPubSub`. Delivery is at most once.
-- **Telemetry.** On when `@opentelemetry/api` is installed; register your OTLP provider before
-  `createGraxia` (see [OpenTelemetry](./telemetry.md#setup)). Leave `resolverSpans` and
+- **Telemetry.** On when `@softistx/telemetry` is installed; install your telemetry with the
+  `@softistx/telemetry-otlp` exporter before `createGraxia`, and await `telemetry.close()` on
+  shutdown (see [Telemetry](./telemetry.md#setup)). Leave `resolverSpans` and
   `document` off unless you are tracing a problem: they cost a span per field and may record
   literals.
 - **Logging.** `onUnexpected` is silent in production by default; give it your logger, with the

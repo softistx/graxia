@@ -142,8 +142,8 @@ export interface GraxiaOptions<
 	 */
 	trustedDocuments?: TrustedDocumentsOptions;
 	/**
-	 * OpenTelemetry spans (`graphql.request`, `graphql.parse`, `graphql.validate`, one per
-	 * operation, optional resolver spans). On when `@opentelemetry/api` (an optional peer) is
+	 * Spans on `@softistx/telemetry` (`graphql.request`, `graphql.parse`, `graphql.validate`, one per
+	 * operation, optional resolver spans). On when `@softistx/telemetry` (an optional peer) is
 	 * installed, a no-op otherwise; `false` turns it off.
 	 */
 	telemetry?: false | TelemetryOptions;

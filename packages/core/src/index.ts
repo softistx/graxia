@@ -118,7 +118,7 @@ export type {
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
-export type { TelemetryOptions } from './telemetry';
+export type { TelemetryInstance, TelemetryOptions } from './telemetry';
 export type {
 	ApolloPersistedQueryManifest,
 	TrustedDocumentsOptions,

@@ -20,7 +20,8 @@ and production-ready: CSRF prevention and a WebSocket `Origin` check, operation
 limits (depth, aliases, directives, root fields, `@cost` / `@listSize` cost),
 introspection and suggestions off under `NODE_ENV=production`, trusted
 documents (manifests, `documentId`, APQ, strict mode), `fieldRateLimit`, and
-OpenTelemetry spans (optional peer `@opentelemetry/api`). `@graxia/redis`
+spans on `@softistx/telemetry` (optional peer; `createTelemetry(...).install()`
+with an exporter such as `@softistx/telemetry-otlp`). `@graxia/redis`
 implements the PubSub and the cache on Bun's Redis client (`redisPubSub`,
 `redisCache`). The peer of core is `graphql ^17.1.0`.
 

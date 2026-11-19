@@ -5,11 +5,10 @@ import {
 } from 'graphql';
 import { isExposed } from '../errors/mask';
 import type { Outcome } from '../server/outcome';
-import { ATTR, type Env, EVENT_NAME, fail, type Operation } from './spans';
+import { ATTR, EVENT_NAME, fail, type Operation } from './spans';
 
 /** Counts the errors of one payload and records the unexpected ones (the ones that get masked). */
 export function observePayload(
-	env: Env,
 	schema: GraphQLSchema,
 	op: Operation,
 	payload: unknown,
@@ -30,7 +29,7 @@ export function observePayload(
 			if (!(error instanceof GraphQLError)) continue;
 			const cause = error.originalError;
 			if (cause !== undefined && !isExposed(error, schema))
-				fail(env, op.live.span, cause);
+				fail(op.live, cause);
 		}
 	}
 }
@@ -39,14 +38,13 @@ export function observePayload(
 export function endOperation(op: Operation, streamed: boolean): void {
 	if (op.ended) return;
 	op.ended = true;
-	if (op.errors > 0) op.live.span.setAttribute(ATTR.errorCount, op.errors);
-	if (streamed) op.live.span.setAttribute(ATTR.events, op.events);
-	op.live.span.end();
+	if (op.errors > 0) op.live.attribute(ATTR.errorCount, op.errors);
+	if (streamed) op.live.attribute(ATTR.events, op.events);
+	op.live.end();
 }
 
 /** The source of a stream outcome, counting each payload as a span event and ending the span with the stream. */
 export function observeSource(
-	env: Env,
 	schema: GraphQLSchema,
 	op: Operation,
 	source: AsyncIterator<unknown>,
@@ -58,14 +56,14 @@ export function observeSource(
 				if (step.done) endOperation(op, true);
 				else {
 					op.events++;
-					op.live.span.addEvent(EVENT_NAME, {
+					op.live.event(EVENT_NAME, {
 						'graxia.event.index': op.events,
 					});
-					observePayload(env, schema, op, step.value);
+					observePayload(schema, op, step.value);
 				}
 				return step;
 			} catch (error) {
-				fail(env, op.live.span, error);
+				fail(op.live, error);
 				endOperation(op, true);
 				throw error;
 			}
@@ -84,7 +82,6 @@ export function observeSource(
 
 /** Ends the span of an operation that is over, or hands a stream outcome a source that ends it. */
 export function settleOutcome(
-	env: Env,
 	schema: GraphQLSchema,
 	op: Operation,
 	outcome: Outcome,
@@ -92,11 +89,11 @@ export function settleOutcome(
 ): Outcome {
 	switch (outcome.kind) {
 		case 'result':
-			observePayload(env, schema, op, outcome.result);
+			observePayload(schema, op, outcome.result);
 			endOperation(op, false);
 			return outcome;
 		case 'unexpected':
-			fail(env, op.live.span, outcome.error);
+			fail(op.live, outcome.error);
 			endOperation(op, false);
 			return outcome;
 		case 'stream': {
@@ -109,7 +106,7 @@ export function settleOutcome(
 			const inner = outcome.scope;
 			return {
 				...outcome,
-				source: observeSource(env, schema, op, outcome.source),
+				source: observeSource(schema, op, outcome.source),
 				scope: ((work: () => unknown) =>
 					scope(() => inner(work))) as typeof inner,
 			};

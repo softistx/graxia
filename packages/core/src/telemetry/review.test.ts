@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
-import * as api from '@opentelemetry/api';
-import { trace } from '@opentelemetry/api';
-import {
-	InMemorySpanExporter,
-	SimpleSpanProcessor,
-	TracerProvider,
-} from '@opentelemetry/sdk-trace';
+import * as api from '@softistx/telemetry';
+import { createTelemetry, memoryExporter } from '@softistx/telemetry';
 import { jsonResponse } from '../http/respond';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
@@ -15,6 +10,7 @@ import { type Env, start } from './spans';
 import {
 	closeAll,
 	finished,
+	instance,
 	make,
 	post,
 	reset,
@@ -38,10 +34,10 @@ describe('review', () => {
 		expect(setups).toBe(0);
 	});
 
-	test('with a non-recording request span nothing is cloned, parsed or spanned', async () => {
+	test('with a detached request span (nothing installed) nothing is cloned, parsed or spanned', async () => {
 		const clone = spyOn(Response.prototype, 'clone');
 		try {
-			const graxia = make({ telemetry: { tracer: trace.getTracer('noop') } });
+			const graxia = make({ telemetry: {} });
 			const refused = await graxia.fetch(
 				new Request(
 					`http://x/graphql?query=${encodeURIComponent('{ hello }')}`,
@@ -64,26 +60,26 @@ describe('review', () => {
 			resolvers: { Query: { a: () => 'x' } },
 		});
 		const make2 = () => {
-			const exporter = new InMemorySpanExporter();
-			const tracer = new TracerProvider({
-				spanProcessors: [new SimpleSpanProcessor({ exporter })],
-			}).getTracer('t');
+			const exporter = memoryExporter();
+			const own = createTelemetry('t', { batch: 1, exporters: [exporter] });
 			const graxia = createGraxia({
 				schema: mine,
-				telemetry: { tracer, resolverSpans: true },
+				telemetry: { instance: own, resolverSpans: true },
 			});
-			return { exporter, graxia };
+			return { exporter, own, graxia };
 		};
 		const first = make2();
 		const second = make2();
-		const run = (g: { fetch: (r: Request) => Promise<Response> }) =>
-			g.fetch(post({ query: '{ a }' }));
-		await run(first.graxia);
-		const count = (e: InMemorySpanExporter, name: string) =>
-			e.getFinishedSpans().filter((s) => s.name === name).length;
+		const run = async (one: ReturnType<typeof make2>) => {
+			await one.graxia.fetch(post({ query: '{ a }' }));
+			await one.own.flush();
+		};
+		const count = (e: ReturnType<typeof memoryExporter>, name: string) =>
+			e.spans.filter((s) => s.name === name).length;
+		await run(first);
 		expect(count(first.exporter, 'graphql.resolve a')).toBe(1);
 		expect(count(second.exporter, 'graphql.resolve a')).toBe(0);
-		await run(second.graxia);
+		await run(second);
 		expect(count(first.exporter, 'graphql.resolve a')).toBe(1);
 		expect(count(second.exporter, 'graphql.resolve a')).toBe(1);
 		expect(count(second.exporter, 'graphql.request')).toBe(1);
@@ -91,26 +87,24 @@ describe('review', () => {
 		await second.graxia.dispose();
 	});
 
-	test('a stream whose stop signal is already aborted ends its span at once', () => {
-		const exporter = new InMemorySpanExporter();
-		const tr = new TracerProvider({
-			spanProcessors: [new SimpleSpanProcessor({ exporter })],
-		}).getTracer('t');
-		const env = { api, tracer: tr, document: false, propagate: false } as Env;
-		const live = start(env, 'graphql.operation', 1, api.context.active());
+	test('a stream whose stop signal is already aborted ends its span at once', async () => {
+		const env: Env = { api, instance, document: false, propagate: false };
+		const live = start(env, 'graphql.operation', undefined, {
+			kind: 'internal',
+		});
 		const op = { live, errors: 0, events: 0, ended: false };
 		const stop = new AbortController();
 		stop.abort();
 		const source = { next: async () => ({ done: true, value: undefined }) };
 		settleOutcome(
-			env,
 			schema,
 			op,
 			{ kind: 'stream', stop, source, scope: (w: any) => w() } as any,
 			(w) => w(),
 		);
 		expect(op.ended).toBe(true);
-		expect(exporter.getFinishedSpans()).toHaveLength(1);
+		await instance.flush();
+		expect(finished()).toHaveLength(1);
 	});
 });
 

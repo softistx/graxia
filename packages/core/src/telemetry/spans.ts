@@ -1,5 +1,10 @@
-import { createStateKey } from '../plugins/state';
-import type { OtelApi, SpanLike, TracerLike } from './api';
+import { createStateKey, type RequestState } from '../plugins/state';
+import type {
+	SpanLike,
+	StartOptions,
+	TelemetryApi,
+	TelemetryInstance,
+} from './api';
 
 /** Span and attribute names graxia emits (OpenTelemetry GraphQL conventions where they exist, `graxia.*` otherwise). */
 export const SPAN = {
@@ -33,27 +38,24 @@ export const ATTR = {
 /** The name of the span event added for each payload of a subscription or incremental result. */
 export const EVENT_NAME = 'graphql.event';
 
-/** What the spans need: the API, the tracer and the resolved options. */
+/** What the spans need: the API, the optional telemetry instance and the resolved options. */
 export interface Env {
-	api: OtelApi;
-	tracer: TracerLike;
+	api: TelemetryApi;
+	instance: TelemetryInstance | undefined;
 	document: boolean;
 	propagate: boolean;
 }
 
-/** A started span and the context that has it active. */
-export interface Live {
-	span: SpanLike;
-	ctx: unknown;
-}
+/** A started span (a handle that outlives the function that opened it). */
+export type Live = SpanLike;
 
 /** @internal The request span of an HTTP request, and the streams that keep it open. */
 export const requestKey = createStateKey<{
 	live: Live;
 	held: Promise<unknown>[];
 }>('graxia.telemetry.request');
-/** @internal The context an operation is parented to when there is no request span (a WebSocket). */
-export const parentKey = createStateKey<unknown>('graxia.telemetry.parent');
+/** @internal The span an operation is parented to when there is no request span in its state (a WebSocket: the upgrade's). */
+export const parentKey = createStateKey<Live>('graxia.telemetry.parent');
 /** @internal The operation span of the operation a state belongs to. */
 export const operationKey = createStateKey<Operation>(
 	'graxia.telemetry.operation',
@@ -70,40 +72,30 @@ export interface Operation {
 	ended: boolean;
 }
 
+/** Starts a span under `parent` (else under the active one, else a new trace). */
 export function start(
 	env: Env,
 	name: string,
-	kind: number,
-	parent: unknown,
-	attributes?: Record<string, string | number>,
+	parent: Live | undefined,
+	options: StartOptions,
 ): Live {
-	const span = env.tracer.startSpan(
-		name,
-		{ kind, ...(attributes ? { attributes } : {}) },
-		parent,
-	);
-	return { span, ctx: env.api.trace.setSpan(parent, span) };
+	const open = () => env.api.startSpan(name, options);
+	const within = () =>
+		env.instance ? env.api.withTelemetry(env.instance, open) : open();
+	return parent ? parent.run(within) : within();
 }
 
 /** Records `error` on `span` and marks it failed. */
-export function fail(env: Env, span: SpanLike, error: unknown): void {
-	span.recordException(error instanceof Error ? error : String(error));
-	span.setStatus({
-		code: env.api.SpanStatusCode.ERROR,
-		message: error instanceof Error ? error.message : String(error),
-	});
+export function fail(span: Live, error: unknown): void {
+	span.fail(error);
 }
 
-/** The context a span of this state hangs under. */
-export function parentOf(
-	env: Env,
-	state: import('../plugins/state').RequestState,
-) {
+/** The span a new span of this state hangs under. */
+export function parentOf(state: RequestState): Live | undefined {
 	return (
-		state.get(operationKey)?.live.ctx ??
-		state.get(requestKey)?.live.ctx ??
-		state.get(parentKey) ??
-		env.api.context.active()
+		state.get(operationKey)?.live ??
+		state.get(requestKey)?.live ??
+		state.get(parentKey)
 	);
 }
 

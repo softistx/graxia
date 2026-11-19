@@ -4,6 +4,11 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
+- **Telemetry on `@softistx/telemetry`** — the optional peer `@opentelemetry/api` is replaced by the
+  in-house `@softistx/telemetry`, with the same spans and attributes (see
+  [Telemetry](./guide/telemetry.md#migrating-from-opentelemetryapi),
+  [#67](https://github.com/softistx/graxia/issues/67)).
+
 - **A built-in explorer** — GraphiQL 4 bundled with no CDN under a strict content security
   policy ([#21](https://github.com/softistx/graxia/issues/21)), and an Apollo Sandbox option
   ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
@@ -43,9 +48,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   answers `429` with `Retry-After` (see [Rate limiting](./guide/rate-limiting.md)).
 - **A production profile** — a [production guide](./guide/production.md) and a spec that runs the
   whole secure-by-default profile end to end.
-- **OpenTelemetry** — spans for each request, parse, validation and operation, optional resolver
-  spans, W3C trace context in, with `@opentelemetry/api` as an optional peer (see
-  [OpenTelemetry](./guide/telemetry.md)).
+- **Telemetry** — spans for each request, parse, validation and operation, optional resolver
+  spans, W3C trace context in, on `@softistx/telemetry` as an optional peer (see
+  [Telemetry](./guide/telemetry.md)).
 
 ### 0.2.0
 

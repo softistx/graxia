@@ -12,8 +12,8 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
-- `@opentelemetry/api` `^1` is an optional peer: with it installed graxia emits OpenTelemetry spans,
-  without it tracing is off (see [OpenTelemetry](#opentelemetry)).
+- `@softistx/telemetry` `^0.4.1` is an optional peer: with it installed graxia emits spans,
+  without it tracing is off (see [Telemetry](#telemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
   both resolutions), but the sources are written for a bundler.
@@ -22,7 +22,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 ```sh
 bun add @graxia/core graphql@^17
-bun add @opentelemetry/api  # optional, enables OpenTelemetry spans
+bun add @softistx/telemetry  # optional, enables spans
 ```
 
 The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
@@ -244,17 +244,19 @@ createGraxia({
 proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
-## OpenTelemetry
+## Telemetry
 
-Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits spans for each
-request, parse, validation and operation, and the original exception of an unexpected error.
-Without the peer, nothing is wrapped and nothing runs.
+Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/telemetry-otlp` for an
+OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
+validation and operation, and the original exception of an unexpected error. Without the peer,
+nothing is wrapped and nothing runs.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
 ```
 
-Setup, the span tree, attributes and every option: [OpenTelemetry](./docs/guide/telemetry.md).
+Setup, the span tree, attributes, every option and the migration from `@opentelemetry/api`:
+[Telemetry](./docs/guide/telemetry.md).
 
 ## Trusted documents
 
@@ -438,7 +440,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
-|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                                                             |
+|                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
@@ -459,7 +461,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
-- [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
+- [Telemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
