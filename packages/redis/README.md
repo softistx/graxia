@@ -13,11 +13,20 @@ bun add @graxia/redis @graxia/core @softistx/redis zod
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`>=0.22.0 <1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install it alongside, `bun add zod`.
+- `@graxia/core` and `@softistx/redis` (`>=0.22.0 <1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
 - With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
   that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`; `nodenext` is not supported.
+
+## Migrating from 0.1
+
+0.2 has four breaks, detailed in the [guide](./docs/guide/redis.md#migrating-from-01):
+
+1. Topics follow core's Yoga-shaped PubSub: `subscribe('post:42', { signal })` becomes `subscribe('post', '42')`.
+2. `@softistx/redis` (and its peer `zod`) must be installed.
+3. A cache `prefix` is used with exactly one trailing `:`; one without it writes new keys.
+4. With `url`, adapters of one URI share one client, so the same URI needs the same options everywhere.
 
 Exports: `redisPubSub`, `redisCache`, `redisFieldLimit` and the types `RedisConnection`, `RedisPubSub`, `RedisPubSubOptions`,
 `RedisCacheOptions`, `RedisFieldLimit`, `RedisFieldLimitOptions`.
@@ -69,10 +78,10 @@ Options (all optional):
 ## Cache
 
 Options: `url` (`REDIS_URL`, then `redis://localhost:6379`, through `connectRedis`), `client` (as above) and `prefix`
-(default `graxia:cache:`, used with exactly one trailing `:`; keys are `<prefix>:<key>`).
+(default `graxia:cache:`, used with exactly one trailing `:`). Keys are `graxia:cache:<key>` by default; `app` and `app:` both give `app:<key>`.
 
 `redisCache` implements core's `KeyValueCache<string>`; `createMemoryCache` is its in-process twin. It is also the store of core's automatic persisted
-queries: `trustedDocuments: { store: redisCache({ url }) }` shares (`url` is optional: without it Bun's default connection is used) registrations across processes.
+queries: `trustedDocuments: { store: redisCache({ url }) }` shares registrations across processes (`url` is optional: `REDIS_URL`, then `redis://localhost:6379`, shared per URI).
 
 ```ts
 import { redisCache } from '@graxia/redis';
@@ -107,12 +116,10 @@ fieldRateLimit({
 });
 ```
 
-Options: `limit`, `windowMs` (integers of 1 or more), `burst` (default `limit`), `prefix` (default `graxia:limit:`), `timeoutMs`
+Options: `limit`, `windowMs` (integers of 1 or more), `burst` (default `limit`), `prefix` (default `graxia:limit:`; keys are `graxia:limit:<key>` by default, and `app` and `app:` both give `app:<key>`), `timeoutMs`
 (default 1000), `onError`, `url` / `client`. A cost over the burst is refused at once with a `retryAfter` of one window; a cost of 0
 spends nothing. A Redis error goes to `onError` and the call is let through (fail open). Unlike `memoryFieldLimit`'s fixed
 window, the bucket refills continuously; the guide compares them.
-
-Coming from 0.1? See [Migrating from 0.1](./docs/guide/redis.md#migrating-from-01).
 
 ## Delivery guarantees
 

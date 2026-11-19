@@ -172,6 +172,7 @@ async function publishTo(
 			ctx.serialize(payload ?? null),
 		);
 	} catch (error) {
+		if (ctx.isDisposed()) return;
 		ctx.report(error);
 	}
 }

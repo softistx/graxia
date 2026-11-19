@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { GraxiaConfigError } from '@graxia/core';
-import { closeRedis, connectRedis } from '@softistx/redis';
+import { connectRedis } from '@softistx/redis';
 import type { RedisClient } from 'bun';
 import { redisCache } from './cache';
 import { describeRedis, redisUrl } from './env.test-util';
@@ -30,6 +30,25 @@ describe('url adapters after dispose (no Redis needed)', () => {
 });
 
 describe('redisFieldLimit failures (no Redis needed)', () => {
+	test('a connection that never comes up fails open within timeoutMs', async () => {
+		const errors: unknown[] = [];
+		const limit = redisFieldLimit({
+			url: unreachable,
+			limit: 1,
+			windowMs: 1000,
+			timeoutMs: 100,
+			onError: (error) => errors.push(error),
+		});
+		const started = Date.now();
+		expect(await limit.consume('a', 1)).toEqual({
+			allowed: true,
+			retryAfter: 0,
+		});
+		expect(Date.now() - started).toBeLessThan(2000);
+		expect(errors.length).toBe(1);
+		// no dispose here: release() waits for the connect that never comes up
+	});
+
 	const broken = new Proxy(
 		{},
 		{
@@ -94,7 +113,6 @@ describeRedis('a URI connected with other options (Redis)', () => {
 		const cache = redisCache({ url });
 		const failure = await cache.get('k').catch((error: unknown) => error);
 		await taken.close();
-		await closeRedis();
 		expect(failure).toBeInstanceOf(GraxiaConfigError);
 		const message = (failure as Error).message;
 		expect(message).toContain('pass that client as { client }');

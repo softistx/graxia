@@ -1,5 +1,6 @@
 import { type FieldLimit, GraxiaConfigError } from '@graxia/core';
 import { consumeRateLimit } from '@softistx/redis';
+import type { RedisClient } from 'bun';
 import { type RedisConnection, resolveLink } from './connection';
 
 /** Options of {@link redisFieldLimit}. */
@@ -34,6 +35,26 @@ const MAX_REFILL_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 const positive = (value: unknown): value is number =>
 	typeof value === 'number' && Number.isInteger(value) && value >= 1;
+
+/** The link's client, or a rejection once `timeoutMs` passes (a connect that hangs fails open like a slow command). */
+function clientWithin(
+	link: { client(): Promise<RedisClient> },
+	timeoutMs: number,
+): Promise<RedisClient> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(
+			() =>
+				reject(
+					new Error(`redisFieldLimit: no Redis client within ${timeoutMs} ms`),
+				),
+			timeoutMs,
+		);
+	});
+	return Promise.race([link.client(), timeout]).finally(() =>
+		clearTimeout(timer),
+	);
+}
 
 /**
  * A {@link FieldLimit} for `fieldRateLimit` shared by every process on one
@@ -83,15 +104,18 @@ export function redisFieldLimit(
 				return { allowed: false, retryAfter: windowMs };
 			if (cost <= 0) return { allowed: true, retryAfter: 0 };
 			try {
-				const result = await consumeRateLimit(await link.client(), {
-					key: prefix + key,
-					name: 'graxia field limit',
-					limit,
-					per: windowMs,
-					burst,
-					cost: Math.ceil(cost),
-					timeoutMs,
-				});
+				const result = await consumeRateLimit(
+					await clientWithin(link, timeoutMs),
+					{
+						key: prefix + key,
+						name: 'graxia field limit',
+						limit,
+						per: windowMs,
+						burst,
+						cost: Math.ceil(cost),
+						timeoutMs,
+					},
+				);
 				return { allowed: result.allowed, retryAfter: result.retryAfter };
 			} catch (error) {
 				// a misuse (used after dispose, a URI connected with other options) is a bug, never failed open

@@ -42,12 +42,49 @@ options (`maxRetries`, `tls`), open the client there and pass it as `client`. Th
 calls: whoever connects second is refused, and that can be your application's own call rather than the adapter's. The
 URI's credentials are never in the message.
 
-## @graxia/redis: used after dispose()
-
-An adapter that opened its client from a `url` was used after `dispose()` (a `GraxiaConfigError`). It does not
-reconnect on its own; create a new one.
-
 ```ts
+import { connectRedis } from '@softistx/redis';
+
 const redis = await connectRedis(url, { maxRetries: 3 });
 redisPubSub({ client: redis.client });
 ```
+
+## @graxia/redis: used after dispose()
+
+An adapter that opened its client from a `url` was used after `dispose()` (a `GraxiaConfigError`). It does not
+reconnect on its own: create a new adapter.
+
+```ts
+const pubsub = redisPubSub({ url: process.env.REDIS_URL });
+await pubsub.dispose();
+const next = redisPubSub({ url: process.env.REDIS_URL }); // a new adapter, a new hold on the shared client
+```
+
+## @graxia/redis: redisCache prefix must hold at least one character before its ":"
+
+`redisCache({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): the prefix names the cache, and `@softistx/redis`
+builds keys as `<name>:<key>`. Give it a name, `app` or `app:`, or leave it out for `graxia:cache:`.
+
+## redisFieldLimit: limit must be an integer of 1 or more
+
+Also `windowMs` and `burst` (a `GraxiaConfigError`, thrown when the limit is created). They are whole numbers of 1 or
+more: `limit` units per `windowMs` milliseconds, `burst` (default `limit`) at once.
+
+```ts
+redisFieldLimit({ url, limit: 30, windowMs: 60_000 });
+```
+
+## redisFieldLimit: burst × windowMs must be at most 9007199254740
+
+The Redis script counts `burst × windowMs` exactly, so the product stays under `Number.MAX_SAFE_INTEGER / 1000`. A
+`windowMs` in microseconds or a huge `burst` gets there; lower one of them.
+
+## redisFieldLimit: an empty bucket would take over ten years to refill
+
+`burst × windowMs ÷ limit` is over ten years (a `GraxiaConfigError`). Usually `windowMs` is not in milliseconds (a
+duration in seconds multiplied twice, a timestamp), or `limit` is tiny against a large `burst`. Fix the unit or raise `limit`.
+
+## redisFieldLimit: timeoutMs must be an integer of 1 or more
+
+`timeoutMs` (default 1000) is how long one check waits for Redis, connecting included, before it fails open. Pass whole
+milliseconds of 1 or more, or leave it out.
