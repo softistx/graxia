@@ -23,12 +23,23 @@ the server listens there.
 
 ## Subscriptions stop after a Redis outage
 
-Bun reconnects on its own and `redisPubSub` subscribes again, but after `maxRetries` (default 20)
-Bun gives up and reports through `onclose`; the error reaches your `onError`. Events published
-while disconnected are lost. Create the `RedisClient` yourself with a larger `maxRetries` and pass
-it as `client`, or restart the instance when `onError` reports a closed connection.
+Bun reconnects on its own and `redisPubSub` subscribes again; after `maxRetries` (default 20)
+Bun gives up and reports through `onclose`; the error reaches your `onError`, and the subscriber
+opens a new connection itself after a backoff (250 ms doubling to 10 s) and subscribes again.
+Events published while disconnected are lost. Expect a few `onError` calls during a long outage.
 
 ## A subscriber misses the first event
 
 Another process published in the short window before Redis registered `SUBSCRIBE`. Await
 `pubsub.ready()` before telling publishers to start; on the same instance `publish` already waits.
+
+## connectRedis: this URI is already connected with other options
+
+`@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process) must
+use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
+options (`maxRetries`, `tls`), open the client there and pass it as `client`.
+
+```ts
+const redis = await connectRedis(url, { maxRetries: 3 });
+redisPubSub({ client: redis.client });
+```

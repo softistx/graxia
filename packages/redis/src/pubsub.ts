@@ -7,12 +7,9 @@ import {
 	type PubSubTopics,
 	tryGetContext,
 } from '@graxia/core';
+import { publishRaw } from '@softistx/redis';
 import { channelOf, splitPublishArgs } from './channel';
-import {
-	closeQuietly,
-	type RedisConnection,
-	resolveClient,
-} from './connection';
+import { type RedisConnection, resolveLink } from './connection';
 import { createTopicSubscriptions } from './subscriptions';
 
 /** The local fan-out is keyed by channel, one level below the typed interface. */
@@ -68,7 +65,7 @@ export interface RedisPubSub<Topics extends PubSubTopics>
 export function redisPubSub<Topics extends PubSubTopics>(
 	options: RedisPubSubOptions = {},
 ): RedisPubSub<Topics> {
-	const { client, owned } = resolveClient(options);
+	const link = resolveLink(options);
 	const prefix = options.prefix ?? 'graxia:';
 	const serialize = options.serialize ?? JSON.stringify;
 	const deserialize = options.deserialize ?? JSON.parse;
@@ -84,7 +81,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 		...(options.onOverflow && { onOverflow: options.onOverflow }),
 	});
 	const subscriptions = createTopicSubscriptions({
-		client,
+		client: link.client,
 		prefix,
 		report,
 		onMessage(topic, message) {
@@ -122,7 +119,8 @@ export function redisPubSub<Topics extends PubSubTopics>(
 			const { id, payload } = splitPublishArgs(args);
 			try {
 				await subscriptions.ready();
-				await client.publish(
+				await publishRaw(
+					await link.client(),
 					prefix + channelOf(topic, id),
 					serialize(payload ?? null),
 				);
@@ -142,7 +140,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 			disposed = true;
 			await local.dispose();
 			await subscriptions.close();
-			if (owned) closeQuietly(client);
+			await link.release();
 		},
 	};
 }

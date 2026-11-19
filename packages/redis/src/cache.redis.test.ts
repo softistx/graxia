@@ -21,6 +21,15 @@ describeRedis('redisCache (Redis)', () => {
 		expect(await cache.delete('a')).toBe(false);
 	});
 
+	test('a prefix with or without its colon stores the same key', async () => {
+		const bare = prefix.replace(/:$/, '');
+		const cache = redisCache({ client, prefix: bare });
+		await cache.set('c', '1');
+		expect(await client.get(`${bare}:c`)).toBe('1');
+		expect(await redisCache({ client, prefix }).get('c')).toBe('1');
+		await cache.delete('c');
+	});
+
 	test('ttlMs becomes a PX expiry and the entry vanishes', async () => {
 		const cache = redisCache({ client, prefix });
 		await cache.set('t', 'v', { ttlMs: 100 });

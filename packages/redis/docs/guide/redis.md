@@ -1,14 +1,18 @@
-# Redis PubSub and cache
+# Redis PubSub, cache and field rate limit
 
 ## Connections
 
 Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](../troubleshooting.md)).
 
-- `url` (default: `REDIS_URL`, then `redis://localhost:6379`): the adapter creates its own
-  `RedisClient` and closes it on `dispose()`.
+- `url` (default: `REDIS_URL`, then `redis://localhost:6379`): the adapter calls `@softistx/redis`'s `connectRedis`
+  on first use, so every adapter (and every other module of your process) on the same URI shares **one**
+  `RedisClient`; `dispose()` lets go of it and the client closes with the last holder. A connect that fails is
+  retried by the next call.
 - `client`: your `RedisClient`. The adapter uses it to publish (or for cache commands) and never
-  closes it. `redisPubSub` also opens one extra connection with `client.duplicate()` for
-  subscriptions, because a subscribed connection cannot run other commands; that one it closes.
+  closes it. `redisPubSub` also opens one extra connection for subscriptions (`createRawSubscriber` duplicates
+  the client), because a subscribed connection cannot run other commands; that one it closes.
+
+`@softistx/redis` is a peer dependency: install it (`bun add @softistx/redis`, `^0.22.0`).
 
 ## PubSub
 
@@ -58,10 +62,11 @@ template literals work, since they are concrete strings at runtime.
 ### Reconnect
 
 Bun reconnects a lost connection on its own (`autoReconnect`, up to `maxRetries`, default 20) but
-does not restore its subscriptions. `redisPubSub` subscribes again to every active topic on each
-`onconnect`, so open iterators keep receiving. Events published while disconnected are lost: Redis
-PubSub is at most once. When Bun gives up (`maxRetries` reached) it calls `onclose`; the error goes to
-`onError` and the iterators stay open but silent, so alert on `onError` and restart the instance.
+does not restore its subscriptions. The raw subscriber subscribes again to every active topic on each
+`onconnect`, so open iterators keep receiving, once per message. Events published while disconnected are
+lost: Redis PubSub is at most once. When Bun gives up (`maxRetries` reached), or Redis was down at the first
+`subscribe()`, the subscriber opens a new connection itself after a backoff (250 ms doubling to 10 s) and
+subscribes again; the error goes to `onError`. No restart is needed.
 
 ### Waiting while disconnected
 
@@ -92,8 +97,25 @@ Redis are unchanged, so old and new processes still talk during a rolling deploy
 
 ## Cache
 
-`redisCache` stores strings under `prefix + key` (default `graxia:cache:`). A `ttlMs` becomes `PX`;
+`redisCache` is a `@softistx/redis` raw cache: it stores strings under `<prefix>:<key>` (default prefix
+`graxia:cache:`; a trailing `:` on `prefix` is optional). A `ttlMs` becomes `PX`;
 a `set` without one clears a previous expiry. `delete` resolves true when a key was removed.
+
+## Field rate limit
+
+`redisFieldLimit({ limit, windowMs, burst?, prefix?, url? | client? })` is a core `FieldLimit` for `fieldRateLimit`,
+on `consumeRateLimit` (GCRA, timed by the Redis server). All processes on one Redis share the counters. A field with
+cost `n` spends `n` units at once; a cost over `burst` is refused immediately with `retryAfter` of one window. Keys are
+`<prefix>:<key>`. `await limit.dispose()` lets go of a shared client it opened.
+
+## Migrating from 0.1
+
+- Install the peer: `bun add @softistx/redis`.
+- A `prefix` for `redisCache` without a trailing `:` (`'app'`) now stores `app:<key>` (it stored `app<key>`); give the
+  old string a trailing `:` to keep the keys you have.
+- With `url`, adapters of one URI now share one client instead of one each, and `connectRedis` options apply
+  process-wide (the same URI must be connected with the same options everywhere).
+- Nothing else changes: `redisPubSub`, `redisCache` and their options, returns and wire formats are the same.
 
 ## Testing against Redis
 

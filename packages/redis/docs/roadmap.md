@@ -2,6 +2,10 @@
 
 Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 
+## Now
+
+- Nothing in flight.
+
 ## Next
 
 - Redis Streams based delivery for at-least-once subscriptions, if there is demand.
@@ -15,6 +19,13 @@ Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 - ioredis or node-redis adapters; the package is Bun only.
 
 ## Shipped
+
+### 0.2.0
+
+- **On `@softistx/redis`** — PubSub, cache and connection run on the in-house package: one shared client per URI,
+  one reconnecting subscriber connection (backoff, no double delivery, no restart after Bun gives up).
+- **`redisFieldLimit`** — a Redis-backed limit for `fieldRateLimit`, shared by every process and timed by the server.
+  See [the guide](./guide/redis.md).
 
 ### 0.1.0
 

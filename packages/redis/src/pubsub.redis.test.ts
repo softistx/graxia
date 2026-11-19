@@ -111,6 +111,32 @@ describeRedis('redisPubSub (Redis)', () => {
 		await events.return?.();
 	});
 
+	test('keeps delivering after the subscriber connection is killed twice', async () => {
+		const a = make();
+		const b = make();
+		const events = b.subscribe('tick');
+		await b.ready();
+		for (const n of [21, 22]) {
+			await admin.send('CLIENT', ['KILL', 'TYPE', 'pubsub']);
+			await until(async () => (await numsub(admin, `${prefix}tick`)) === 1);
+			await b.ready();
+			await a.publish('tick', n);
+			expect(await nextOrTimeout(events, 2000)).toBe(n);
+		}
+		await events.return?.();
+	});
+
+	test('two instances on one url share one client and survive each other disposing', async () => {
+		const first = make();
+		const second = make();
+		const events = second.subscribe('tick');
+		await second.ready();
+		await first.dispose();
+		await second.publish('tick', 31);
+		expect(await nextOrTimeout(events, 2000)).toBe(31);
+		await events.return?.();
+	});
+
 	test('dispose ends every iterator and publish becomes a no-op', async () => {
 		const own = uniquePrefix('dispose');
 		const a = make({ prefix: own });
