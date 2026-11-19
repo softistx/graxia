@@ -56,6 +56,31 @@ await graxia.ready; // rejects with the GraxiaPluginError
 Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
 runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
 
+## Type '…' is not assignable to type '(init: ContextInit<…>) => MaybePromise<{ … }>'
+
+A type error on the `context` option of `createGraxia` (or "Property 'context' is missing in type
+… but required in type '{ context: (init: ContextInit<…>) => MaybePromise<object>; }'" when there
+is no `context` at all). The schema was built with `createSchema<Ctx>()`, and the context that
+the `context` factory, the plugins and graxia build does not satisfy `Ctx`: a key is missing, or has
+another type. The last lines of the message name the key ("Property 'user' is missing…", "Types of
+property 'user' are incompatible").
+
+Return the missing keys from the factory, or add the plugin that provides them. Writing the
+context once avoids the drift:
+
+```ts
+const context = async ({ request }: ContextInit<object>) => ({
+	user: await authenticate(request),
+});
+type Ctx = InferContext<typeof context, typeof plugins>;
+const schema = createSchema<Ctx>()({ typeDefs, resolvers });
+createGraxia({ schema, context, plugins });
+```
+
+The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
+with an explicit type argument (`createGraxia<{ db: Db }>(…)`). See
+[Context](./guide/context.md#write-the-context-once).
+
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
 
 `getContext()` only works inside an operation (a resolver, or code one calls) and when `asyncContext`

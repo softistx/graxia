@@ -8,6 +8,10 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   policy ([#21](https://github.com/softistx/graxia/issues/21)), and an Apollo Sandbox option
   ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
 
+- **The resolver context, written once** — `InferContext<typeof context, typeof plugins>` derives the
+  type from the `context` factory, and `createGraxia` checks at compile time that it satisfies the
+  schema's `createSchema<Ctx>` ([#42](https://github.com/softistx/graxia/issues/42)).
+
 ## Later
 
 - **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted
