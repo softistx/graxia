@@ -43,8 +43,10 @@ needed.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
 [core's Security guide](../../../core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
-exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later (`api.transports` too). The `Origin` check
-stays on (with `csrf.sameOrigin` the page `GET` needs a same-origin `Origin`, which a browser sends), and an exempt request no plugin answers is refused as before.
+exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
+(`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
+foreign-`Origin` request for the page is refused like any other request, and a same-origin
+navigation passes. An exempt request no plugin answers is refused as before.
 
 ## Content security policy
 

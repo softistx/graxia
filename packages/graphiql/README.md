@@ -32,7 +32,8 @@ graxia.serve({ port: 3000 }); // open http://localhost:3000/graphql in a browser
 
 Open the endpoint in a browser: a `GET` that accepts `text/html` and has no `query` gets the page.
 Every other request (a JSON `GET`, a `POST`, a WebSocket) is the normal GraphQL endpoint. With
-`csrf.sameOrigin` on, the page `GET` still needs a same-origin `Origin` (a browser navigation sends it).
+`csrf.sameOrigin` on, a cross-site or foreign-`Origin` request for the page is refused like any
+other request; a same-origin navigation passes.
 
 > **`headers` are rendered into the HTML**: put no secret in them.
 
