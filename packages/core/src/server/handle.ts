@@ -49,7 +49,7 @@ export async function dispatch(
 		const sse = rt.options.sse && prefersEventStream(accept);
 		const streams = !sse && rt.options.incremental !== false;
 		const preferred = streams && prefersMultipart(accept);
-		// JSON listed first (GraphiQL, Apollo) still streams an incremental operation.
+		// JSON listed first (clients that list JSON first, such as GraphiQL) still streams an incremental operation.
 		const multipart = preferred || (streams && acceptsMultipart(accept));
 		const media = sse || preferred ? 'application/json' : negotiate(accept);
 		if (media === undefined)

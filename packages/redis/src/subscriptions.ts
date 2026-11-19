@@ -32,6 +32,24 @@ export interface TopicSubscriptions {
 	close(): Promise<void>;
 }
 
+/** `p`'s value, or `undefined` once `ms` passes; its timer is always cleared. */
+async function within<T>(
+	p: Promise<T> | undefined,
+	ms: number,
+): Promise<T | undefined> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			p,
+			new Promise<undefined>((done) => {
+				timer = setTimeout(() => done(undefined), ms);
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 /**
  * Keeps one Redis SUBSCRIBE per topic however many local subscribers it has,
  * on a `@softistx/redis` raw subscriber: one shared subscriber connection,
@@ -104,21 +122,12 @@ export function createTopicSubscriptions(
 			closed = true;
 			refs.clear();
 			// Bounded: a SUBSCRIBE stuck while the connection is down must not hang dispose.
-			const timers: ReturnType<typeof setTimeout>[] = [];
-			const wait = <T>(value: T) =>
-				new Promise<T>((done) => {
-					timers.push(setTimeout(done, CLOSE_WAIT_MS, value));
-				});
-			try {
-				await Promise.race([queue, wait(undefined)]);
-				const raw = await Promise.race([
-					subscriber?.catch(() => undefined),
-					wait<RawSubscriber | undefined>(undefined),
-				]);
-				await raw?.close();
-			} finally {
-				for (const timer of timers) clearTimeout(timer);
-			}
+			await within(queue, CLOSE_WAIT_MS);
+			const raw = await within(
+				subscriber?.catch(() => undefined),
+				CLOSE_WAIT_MS,
+			);
+			await raw?.close();
 		},
 	};
 }

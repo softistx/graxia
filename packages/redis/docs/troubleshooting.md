@@ -35,7 +35,7 @@ Another process published in the short window before Redis registered `SUBSCRIBE
 
 ## @graxia/redis: <uri> is already connected by another module with other options; pass that client as { client }
 
-A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `connectRedis: this URI is already connected with other
+A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `RedisError` with code `URI_CONFLICT`: `connectRedis: this URI is already connected with other
 options`). `@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process)
 must use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
 options (`maxRetries`, `tls`), open the client there and pass it as `client`. The error depends on the order of the

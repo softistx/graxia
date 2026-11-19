@@ -24,7 +24,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
-publish 0.1.0, released with core 0.2.0); the other packages stay `"private": true` until their own slice, and removing it is
+publish 0.1.0, released with core 0.2.0), and `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0); the other packages stay `"private": true` until their own slice, and removing it is
 a deliberate change, named in its PR.
 
 ## Scripts

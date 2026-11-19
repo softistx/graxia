@@ -375,7 +375,7 @@ With `subscriptions: { ws: false }` the request is handled as plain HTTP.
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
 
-## Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed" or "Accept: text/event-stream".
+## Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed", or "text/event-stream" ranked above JSON.
 
 A query with `@defer` or `@stream` came with a JSON `Accept` (or none): a single JSON body cannot carry
 the later payloads. The error has `extensions.code: "INCREMENTAL_NOT_SUPPORTED"`. Send

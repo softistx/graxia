@@ -114,8 +114,8 @@ export function prefersMultipart(accept: string | null): boolean {
 
 /**
  * Whether an `Accept` header names `multipart/mixed` with a q above 0, wherever
- * it ranks against JSON (never through a wildcard). Clients such as GraphiQL
- * and Apollo list JSON first as a fallback; an incremental operation (`@defer`,
+ * it ranks against JSON (never through a wildcard). Clients that list JSON
+ * first, such as GraphiQL; an incremental operation (`@defer`,
  * `@stream`) streams for them, while any other operation keeps
  * {@link negotiate}'s answer.
  */

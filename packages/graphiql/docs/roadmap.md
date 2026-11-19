@@ -12,6 +12,8 @@ Where `@graxia/graphiql` is going, as what you get. A direction, not a commitmen
 
 ## Shipped
 
+### 0.1.0
+
 - **GraphiQL page** — GraphiQL 4 bundled for a strict CSP, no CDN, development only; the
   subscription transport is detected from the instance. See [the guide](./guide/graphiql.md).
 - **Apollo Sandbox** — `apolloSandbox()`, Apollo's embeddable Sandbox on the endpoint, with a CSP

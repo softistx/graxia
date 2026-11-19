@@ -100,7 +100,7 @@ export async function execution(
 	return failure(
 		rt.options.incremental === false
 			? 'Incremental delivery (@defer, @stream) is disabled (incremental is false).'
-			: 'Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed" or "Accept: text/event-stream".',
+			: 'Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed", or "text/event-stream" ranked above JSON.',
 		{ code: 'INCREMENTAL_NOT_SUPPORTED' },
 	);
 }
