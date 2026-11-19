@@ -1,5 +1,5 @@
 import { createGraxia, createSchema } from '@graxia/core';
-import { createMcp, type Mcp } from './index';
+import { createMcp, type Mcp, type McpAuthInfo, mcpAuth } from './index';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { a: Int }',
@@ -52,3 +52,52 @@ Bun.serve({
 	routes: { '/mcp': (request, server) => a.fetch(request, { server }) },
 	fetch: plain.fetch,
 });
+
+// OAuth: `auth` needs the resource, the issuers and a verifier; the rest is optional.
+const secured = createMcp(plain, {
+	name: 'x',
+	auth: {
+		resource: 'https://api.example.com/mcp',
+		authorizationServers: ['https://auth.example.com'],
+		verifyToken: async (token, request) => {
+			const length: number = token.length + request.url.length;
+			return length > 0
+				? {
+						subject: 's',
+						clientId: 'c',
+						scopes: ['mcp:read'],
+						expiresAt: 1,
+						audience: ['https://api.example.com/mcp'],
+						extra: { tenant: 't' },
+					}
+				: undefined;
+		},
+		scopes: { read: 'r', write: 'w' },
+		resourceName: 'x',
+		documentation: 'https://docs',
+	},
+	can: (_request, _serverContext, auth) => {
+		const subject: string | undefined = auth?.subject;
+		return () => subject !== undefined;
+	},
+});
+const path: string | undefined = secured.metadataPath;
+const doc: Response = secured.metadata(new Request('http://x'));
+void path;
+void doc;
+// @ts-expect-error the verifier and the resource are required
+createMcp(plain, { name: 'x', auth: { authorizationServers: [] } });
+createMcp(plain, {
+	name: 'x',
+	auth: {
+		resource: 'r',
+		authorizationServers: [],
+		// @ts-expect-error scopes must be a list
+		verifyToken: () => ({ scopes: 'mcp:read' }),
+	},
+});
+
+// mcpAuth() reads the verified principal; it is not a promise.
+const principal: McpAuthInfo | undefined = mcpAuth();
+const granted: readonly string[] = principal?.scopes ?? [];
+void granted;

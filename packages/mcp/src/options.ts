@@ -1,4 +1,5 @@
 import type { Graxia, ServerContextArg } from '@graxia/core';
+import type { McpAuthInfo, McpAuthOptions } from './auth/types';
 
 /** Whether the caller holds a permission named by `@needs` (what `printSchemaFor`'s `can` takes). */
 export type Can = (permission: string) => boolean;
@@ -13,11 +14,23 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	instructions?: string;
 	/**
 	 * The permissions of the caller, from the request (a token, a session) and
-	 * the `serverContext` you passed to `fetch`. It may be async. Absent:
-	 * every field is visible. This is the only access control of this
-	 * package until OAuth lands: put the endpoint behind your own auth.
+	 * the `serverContext` you passed to `fetch`, and the verified token when
+	 * `auth` is set (`auth` is undefined otherwise). It may be async. Absent:
+	 * every field is visible.
 	 */
-	can?: (request: Request, serverContext: HostCtx) => Can | Promise<Can>;
+	can?: (
+		request: Request,
+		serverContext: HostCtx,
+		auth?: McpAuthInfo,
+	) => Can | Promise<Can>;
+	/**
+	 * Turn the endpoint into an OAuth 2.1 resource server: every request needs
+	 * a bearer token your `verifyToken` accepts, with the read scope
+	 * (`mcp:read`); `graphql_mutate` also needs the write scope (`mcp:write`).
+	 * Serve `mcp.metadata` at `mcp.metadataPath`. Absent: no authentication
+	 * here, put the endpoint behind your own.
+	 */
+	auth?: McpAuthOptions;
 	/**
 	 * List `graphql_mutate`. Default `false`: an agent that connects can read,
 	 * not write.
@@ -58,6 +71,17 @@ export interface Mcp<HostCtx extends object = Record<never, never>> {
 		request: Request,
 		...serverContext: ServerContextArg<HostCtx>
 	): Promise<Response>;
+	/**
+	 * Where to serve {@link Mcp.metadata}: `/.well-known/oauth-protected-resource`
+	 * plus the path of `auth.resource` (RFC 9728). `undefined` without `auth`.
+	 */
+	metadataPath: string | undefined;
+	/**
+	 * The protected resource metadata (RFC 9728) as a route handler: GET answers
+	 * the JSON document (CORS `*`, cached an hour), another method 405. Without
+	 * `auth` it answers 404.
+	 */
+	metadata(request: Request): Response;
 	/** Stops the handler: in-flight requests are aborted. */
 	close(): Promise<void>;
 }

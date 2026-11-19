@@ -38,7 +38,10 @@ export function withCors(
 		return response;
 	const headers = new Headers(response.headers);
 	headers.set('access-control-allow-origin', origin);
-	headers.set('access-control-expose-headers', 'mcp-protocol-version');
+	headers.set(
+		'access-control-expose-headers',
+		'mcp-protocol-version, www-authenticate',
+	);
 	headers.append('vary', 'Origin');
 	return new Response(response.body, {
 		status: response.status,

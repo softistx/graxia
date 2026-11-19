@@ -1,11 +1,14 @@
 # Security
 
-## No authentication yet
+## Authentication
 
-`@graxia/mcp` does not authenticate. Until OAuth lands, mount the endpoint behind your own auth
-(a reverse proxy, a check in the `Bun.serve` route before `mcp.fetch`) and treat the endpoint as
-you would `/graphql`. Keep `graphql_mutate` off (`mutations` defaults to `false`) unless the caller
-is trusted.
+Set `auth` and `@graxia/mcp` is an OAuth resource server: bearer tokens, scopes, protected
+resource metadata ([the auth guide](./auth.md)). Every request then needs a token your
+`verifyToken` accepts, and `graphql_mutate` needs the write scope.
+
+Without `auth` nothing authenticates: mount the endpoint behind your own auth (a reverse proxy, a
+check in the `Bun.serve` route before `mcp.fetch`) and treat it as you would `/graphql`. Keep
+`graphql_mutate` off (`mutations` defaults to `false`) unless the caller is trusted.
 
 ```ts
 routes: {
@@ -19,7 +22,7 @@ routes: {
 
 ## `can`
 
-`can(request, serverContext)` returns a function `permission => boolean` (it may be async). The
+`can(request, serverContext, auth)` (`auth` is the verified token, with `auth` set) returns a function `permission => boolean` (it may be async). The
 tools describe and validate against the schema as that caller sees it, so a field behind `@needs`
 they lack is "Cannot query field", exactly as if it did not exist. The `@needs` is also whatever
 your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
@@ -47,7 +50,8 @@ createMcp(graxia, { name: 'library', allowedHosts: ['mcp.example.com'] });
 A browser client on another origin needs `allowedOrigins: ['https://app.example']`. Its `OPTIONS`
 preflight is then answered 204 (`Access-Control-Allow-Origin`, `-Methods: POST`, `-Headers`
 including `content-type`, `authorization`, `mcp-protocol-version` and `mcp-session-id`,
-`Vary: Origin`) and every response to it carries `Access-Control-Allow-Origin`. A preflight from
+`Vary: Origin`) and every response to it carries `Access-Control-Allow-Origin` and exposes
+`WWW-Authenticate`. Preflights never need a token. A preflight from
 any other origin is a 403 and gets no CORS header.
 
 ## Body size and type

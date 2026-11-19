@@ -49,7 +49,8 @@ document holding a query and a mutation runs its query in `graphql_query`.
 
 ## `graphql_mutate`
 
-Listed only with `mutations: true`; same input. A query is refused with a fix pointing to
+Listed only with `mutations: true` (and, with `auth`, only for a token with the write scope,
+`mcp:write` by default; a read-only token calling it gets a 403 step-up, see [auth](./auth.md)); same input. A query is refused with a fix pointing to
 `graphql_query`. Without the option the tool does not exist: calling it is a JSON-RPC error.
 
 ## Results

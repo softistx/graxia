@@ -57,6 +57,34 @@ Reported with `extensions.code` `GRAPHQL_VALIDATION_FAILED`.
 The field is behind `@needs` and `can` says the caller lacks the permission, or `can` is not what
 you meant: the view is built from `can`'s answer. Check it with `graphql_schema` as that caller.
 
+## 401 `Bearer resource_metadata="…", scope="mcp:read"` (`MCP_UNAUTHORIZED`)
+
+`auth` is set and the request has no `Authorization: Bearer <token>`. A client with OAuth support
+follows `resource_metadata` to the authorization server; otherwise send the token yourself.
+
+## 401 `error="invalid_token"` (`MCP_UNAUTHORIZED`)
+
+`verifyToken` resolved `undefined` or threw (a throw also reaches `onError`), the token's
+`expiresAt` is past, or its `audience` does not contain `auth.resource`. Get a new token issued for
+the resource, with the same URL as `auth.resource`. Check the audience claim of the token first.
+
+## 403 `error="insufficient_scope", scope="mcp:read"` (`MCP_INSUFFICIENT_SCOPE`)
+
+The token lacks the read scope. Ask the authorization server for `mcp:read` (or your `scopes.read`).
+
+## 403 `insufficient_scope`, `scope="mcp:read mcp:write"` on `graphql_mutate`
+
+A read-only token called `graphql_mutate` from a stale tool list. Re-authorize with both scopes
+(the challenge's `scope`); the tool is not listed for a token without `mcp:write`.
+
+## 400 `The access token is in the query string.` (`MCP_TOKEN_IN_URL`)
+
+`?access_token=…` is refused (OAuth 2.1). Send `Authorization: Bearer <token>`.
+
+## `graphql_mutate` is missing from the list with `mutations: true`
+
+With `auth`, it is listed only for a token with the write scope (`mcp:write` by default).
+
 ## `GraphQL introspection has been disabled…` / `Use graphql_schema to read the schema.`
 
 `__schema` and `__type` are refused over MCP: they would show fields `@needs` hides. Call

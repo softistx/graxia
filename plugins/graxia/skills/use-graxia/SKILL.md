@@ -64,7 +64,7 @@ read `node_modules/@graxia/graphiql/docs/`.
 To let an agent use the API over MCP, `@graxia/mcp` (first publish 0.1.0, not yet on npm) is
 `createMcp(graxia, { name })`, mounted as `'/mcp': (req, server) => mcp.fetch(req, { server })`:
 stateless Streamable HTTP with the tools `graphql_schema`, `graphql_query` and, with `mutations: true`,
-`graphql_mutate`. It has no auth: put it behind the host's own and use `can`; read `node_modules/@graxia/mcp/docs/`.
+`graphql_mutate`. With `auth: { resource, authorizationServers, verifyToken }` it is an OAuth resource server (serve `mcp.metadata` at `mcp.metadataPath`; `mcp:read` and `mcp:write` scopes; `mcpAuth()` in the context builder); without it, put it behind the host's own auth and use `can`; read `node_modules/@graxia/mcp/docs/`.
 
 `node_modules/@graxia/core/docs/roadmap.md` says what is next.
 `references/packages.md` is the package index.

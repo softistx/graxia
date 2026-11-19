@@ -1,4 +1,9 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
+import { authenticate } from './auth/bearer';
+import { metadataHandler } from './auth/metadata';
+import { mcpAuth, runAs } from './auth/principal';
+import { resolveAuth } from './auth/resolve';
+import { canWrite, writeStepUp } from './auth/scopes';
 import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
 import type { Mcp, McpHost, McpOptions } from './options';
@@ -31,9 +36,10 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
  * with the generic tools `graphql_schema`, `graphql_query` and (with
  * `mutations: true`) `graphql_mutate`. Every operation runs through
  * `graxia.execute`, so limits, cost, trusted documents, masking and rate
- * limits apply; the schema and the body limit come from `graxia`. There is no
- * authentication here: put the endpoint behind your own, and use `can` for
- * permissions.
+ * limits apply; the schema and the body limit come from `graxia`. Without
+ * `auth` there is no authentication here: put the endpoint behind your own,
+ * and use `can` for permissions. With `auth` it is an OAuth resource server
+ * (bearer tokens, scopes, protected resource metadata).
  *
  * @example
  * const mcp = createMcp(graxia, { name: 'library' });
@@ -49,20 +55,30 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 		allowedHosts: options.allowedHosts ?? defaultHosts(),
 		maxBody: graxia.limits.bodyBytes,
 	};
+	const auth = options.auth ? resolveAuth(options.auth) : undefined;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
 	const handler = createMcpHandler(
 		({ requestInfo }) => {
 			const request = requestInfo as Request;
 			const serverContext = carrier.current();
-			return buildServer(options, {
-				graxia,
-				view: views(request, serverContext),
-				serverContext,
-				headers: forwardedHeaders(request),
-				signal: request.signal,
-				onError,
-			});
+			const principal = mcpAuth();
+			const mutations =
+				(options.mutations ?? false) &&
+				(auth === undefined ||
+					(principal !== undefined && canWrite(auth, principal)));
+			return buildServer(
+				options,
+				{
+					graxia,
+					view: views(request, serverContext, principal),
+					serverContext,
+					headers: forwardedHeaders(request),
+					signal: request.signal,
+					onError,
+				},
+				mutations,
+			);
 		},
 		{
 			maxRequestBodySize: settings.maxBody,
@@ -70,13 +86,24 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 		},
 	);
 	return {
+		metadataPath: auth?.metadataPath,
+		metadata: metadataHandler(auth),
 		async fetch(request, ...rest) {
 			const cors = corsOrigin(request, settings.allowedOrigins);
 			try {
-				const admitted = await admit(request, settings);
+				const admitted = await admit(
+					request,
+					settings,
+					auth && ((r) => authenticate(r, auth, onError)),
+				);
 				if (admitted instanceof Response) return withCors(admitted, cors);
+				const principal = admitted.gated;
+				if (auth && principal) {
+					const stepUp = await writeStepUp(admitted.request, auth, principal);
+					if (stepUp) return withCors(stepUp, cors);
+				}
 				const response = await carrier.run((rest[0] ?? {}) as object, () =>
-					handler.fetch(admitted),
+					runAs(principal, () => handler.fetch(admitted.request)),
 				);
 				return withCors(response, cors);
 			} catch (error) {

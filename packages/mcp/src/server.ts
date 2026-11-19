@@ -25,11 +25,12 @@ export function forwardedHeaders(request: Request): Headers {
 export function buildServer(
 	options: McpOptions<any>,
 	context: RequestContext,
+	mutations: boolean,
 ): McpServer {
 	const server = new McpServer(
 		{ name: options.name, version: options.version ?? '0.0.0' },
 		options.instructions ? { instructions: options.instructions } : undefined,
 	);
-	registerTools(server, { context, mutations: options.mutations ?? false });
+	registerTools(server, { context, mutations });
 	return server;
 }
