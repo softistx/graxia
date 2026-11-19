@@ -14,7 +14,7 @@ typed plugins, per-operation context and cancellation, error masking
 (`exposedError`), in-process `execute` with a test client
 (`@graxia/core/testing`), subscriptions over server-sent events and WebSocket
 (`graphql-transport-ws`, both on by default), `@defer` and `@stream` over
-`multipart/mixed` and SSE, a typed `PubSub` (`createMemoryPubSub`) and a
+`multipart/mixed` and SSE, a typed `PubSub` (`createPubSub`) and a
 `KeyValueCache` (`createMemoryCache`). Since 0.3.0 it is also secure by default
 and production-ready: CSRF prevention and a WebSocket `Origin` check, operation
 limits (depth, aliases, directives, root fields, `@cost` / `@listSize` cost),

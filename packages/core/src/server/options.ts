@@ -106,6 +106,9 @@ export interface GraxiaOptions<
 	/**
 	 * Makes `getContext()` work (an `AsyncLocalStorage` around each operation's
 	 * execution). `true` by default; `false` skips it and `getContext()` throws.
+	 * With `false`, `pubsub.subscribe()` cannot see the operation's signal: return
+	 * the iterator directly or through `pipe`, since an `async function*` relay
+	 * keeps its subscriber until the next event.
 	 */
 	asyncContext?: boolean;
 	/** Milliseconds `dispose()` waits for in-flight operations before aborting them. 10 000 by default. */

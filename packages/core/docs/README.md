@@ -17,7 +17,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Subscriptions over SSE](./guide/subscriptions.md): `graphql-sse` distinct connections mode, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./guide/websocket.md): `graphql-transport-ws`, `connectionParams` and `onConnect`, close codes, own `Bun.serve`.
 - [`@defer` and `@stream`](./guide/incremental.md): multipart/mixed and SSE, formats, clients, masking, cancellation.
-- [PubSub](./guide/pubsub.md): typed topics, the in-memory PubSub, `filterIterable` / `mapIterable`, cancellation.
+- [PubSub](./guide/pubsub.md): typed topics, `createPubSub` in Yoga's shape, `pipe` / `filter` / `map`, cancellation, coming from Yoga or Apollo.
 - [Limits and caches](./guide/limits-and-caches.md): parse limits, parse and validation caches, the `KeyValueCache` contract.
 - [Security: CSRF, origins, introspection](./guide/security.md): the CSRF header, `sameOrigin`, WebSocket origin, `introspection` and `suggestions`.
 - [Trusted documents and persisted queries](./guide/trusted-documents.md): manifests (Relay, codegen, Apollo), `documentId`, APQ, strict mode, error codes.

@@ -342,9 +342,9 @@ A typed in-memory PubSub for subscription resolvers. It lives in one process; fo
 instances, `redisPubSub` from `@graxia/redis` implements the same interface.
 
 ```ts
-import { createMemoryPubSub, createSchema } from '@graxia/core';
+import { createPubSub, createSchema } from '@graxia/core';
 
-const pubsub = createMemoryPubSub<{ tick: number }>();
+const pubsub = createPubSub<{ tick: [payload: number] }>();
 
 // This `schema` is the one the subscription examples below use.
 const schema = createSchema<{ signal: AbortSignal }>()({
@@ -353,8 +353,7 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 		Query: { hello: () => 'world' },
 		Subscription: {
 			tick: {
-				subscribe: (_root, _args, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 		},
@@ -362,7 +361,8 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 });
 
 await pubsub.publish('tick', 1);
-// `filterIterable(source, keep)` and `mapIterable(source, map)` wrap a subscription's source.
+// Yoga's shape: `subscribe('post', id)`, `publish('post', id, payload)`, and
+// `pipe(source, filter(keep), map(fn))` to wrap a subscription's source.
 ```
 
 ## Subscriptions
@@ -430,7 +430,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 | import                 | what it is                                                                                                                                                                                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                                              |
+|                        | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
 |                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |

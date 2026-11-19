@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { createGraxia, createSchema, GraxiaConfigError } from '@graxia/core';
 import type { RedisClient } from 'bun';
 import { until } from './env.test-util';
 import { redisPubSub } from './pubsub';
@@ -57,7 +57,10 @@ describe('redisPubSub (fake client)', () => {
 
 	test('one SUBSCRIBE per topic, shared; UNSUBSCRIBE when the last leaves', async () => {
 		const { calls, client } = fakeRedis();
-		const pubsub = redisPubSub<{ t: number }>({ client, prefix: 'p:' });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
+			client,
+			prefix: 'p:',
+		});
 		const a = pubsub.subscribe('t');
 		const b = pubsub.subscribe('t');
 		await pubsub.ready();
@@ -73,24 +76,38 @@ describe('redisPubSub (fake client)', () => {
 		expect(pubsub.subscriberCount('t')).toBe(0);
 	});
 
-	test('abort releases the topic and a pre-aborted signal registers nothing', async () => {
+	test('return() releases the topic and a later subscribe registers again', async () => {
 		const { calls, client } = fakeRedis();
-		const pubsub = redisPubSub<{ t: number }>({ client });
-		const controller = new AbortController();
-		const events = pubsub.subscribe('t', { signal: controller.signal });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
+		const events = pubsub.subscribe('t');
 		await pubsub.ready();
-		controller.abort();
+		await events.return?.();
 		expect((await events.next()).done).toBe(true);
 		await until(() => calls.includes('unsubscribe graxia:t'));
-		const aborted = pubsub.subscribe('t', { signal: controller.signal });
-		expect((await aborted.next()).done).toBe(true);
-		expect(calls.filter((c) => c.startsWith('subscribe'))).toHaveLength(1);
+		pubsub.subscribe('t');
+		await pubsub.ready();
+		expect(calls.filter((c) => c.startsWith('subscribe'))).toHaveLength(2);
+	});
+
+	test('an id is its own channel: topic:id', async () => {
+		const { calls, client } = fakeRedis();
+		const pubsub = redisPubSub<{ post: [id: string, payload: number] }>({
+			client,
+			prefix: 'p:',
+		});
+		const one = pubsub.subscribe('post', '1');
+		pubsub.subscribe('post', '2');
+		await pubsub.ready();
+		expect(calls).toEqual(['subscribe p:post:1', 'subscribe p:post:2']);
+		expect(pubsub.subscriberCount('post', '1')).toBe(1);
+		await pubsub.publish('post', '1', 7);
+		expect((await one.next()).value).toBe(7);
 	});
 
 	test('a malformed payload is skipped and reported', async () => {
 		const { listeners, client } = fakeRedis();
 		const errors: unknown[] = [];
-		const pubsub = redisPubSub<{ t: number }>({
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
 			client,
 			onError: (error) => errors.push(error),
 		});
@@ -105,7 +122,7 @@ describe('redisPubSub (fake client)', () => {
 
 	test('a reconnect re-issues the subscriptions without doubling them', async () => {
 		const { calls, subscriber, client } = fakeRedis();
-		const pubsub = redisPubSub<{ t: number }>({ client });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
 		const events = pubsub.subscribe('t');
 		await pubsub.ready();
 		subscriber.onconnect?.();
@@ -120,7 +137,7 @@ describe('redisPubSub (fake client)', () => {
 
 	test('many reconnects keep one listener per channel and one delivery', async () => {
 		const { listeners, subscriber, client } = fakeRedis();
-		const pubsub = redisPubSub<{ t: number }>({ client });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
 		const events = pubsub.subscribe('t');
 		await pubsub.ready();
 		for (let i = 0; i < 25; i++) {
@@ -145,7 +162,7 @@ describe('redisPubSub (fake client)', () => {
 				throw new Error('no connection');
 			};
 		const errors: unknown[] = [];
-		const pubsub = redisPubSub<{ t: number }>({
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
 			client,
 			onError: (error) => errors.push(error),
 		});
@@ -159,7 +176,7 @@ describe('redisPubSub (fake client)', () => {
 	test('dispose does not hang on a SUBSCRIBE that never completes', async () => {
 		const { subscriber, client } = fakeRedis();
 		subscriber.subscribe = () => new Promise(() => {});
-		const pubsub = redisPubSub<{ t: number }>({ client });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
 		pubsub.subscribe('t');
 		const start = Date.now();
 		await pubsub.dispose();
@@ -169,7 +186,7 @@ describe('redisPubSub (fake client)', () => {
 	test('a connection error goes to onError, not into the iterator', async () => {
 		const { subscriber, client } = fakeRedis();
 		const errors: unknown[] = [];
-		const pubsub = redisPubSub<{ t: number }>({
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
 			client,
 			onError: (error) => errors.push(error),
 		});
@@ -183,7 +200,7 @@ describe('redisPubSub (fake client)', () => {
 
 	test('dispose ends iterators, closes the subscriber but not a given client', async () => {
 		const { calls, client } = fakeRedis();
-		const pubsub = redisPubSub<{ t: number }>({ client });
+		const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
 		const events = pubsub.subscribe('t');
 		await pubsub.ready();
 		await pubsub.dispose();
@@ -192,5 +209,102 @@ describe('redisPubSub (fake client)', () => {
 		expect(calls).not.toContain('client closed');
 		await pubsub.publish('t', 1);
 		expect((await pubsub.subscribe('t').next()).done).toBe(true);
+	});
+
+	test('a topic without payload publishes null and delivers null', async () => {
+		const { calls, client } = fakeRedis();
+		const pubsub = redisPubSub<{ ping: [] }>({ client });
+		const events = pubsub.subscribe('ping');
+		await pubsub.publish('ping');
+		expect(await events.next()).toEqual({ done: false, value: null });
+		expect(calls).toContain('subscribe graxia:ping');
+	});
+
+	test('publish never rejects: a failing client goes to onError', async () => {
+		const { client } = fakeRedis();
+		const errors: unknown[] = [];
+		(client as unknown as { publish: () => Promise<number> }).publish =
+			async () => {
+				throw new Error('down');
+			};
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
+			client,
+			onError: (error) => errors.push(error),
+		});
+		await expect(pubsub.publish('t', 1)).resolves.toBeUndefined();
+		expect(errors).toHaveLength(1);
+	});
+
+	describe('abort of the operation', () => {
+		type Ctx = { signal: AbortSignal };
+		async function open(
+			pubsub: ReturnType<typeof redisPubSub<{ t: [payload: number] }>>,
+			gate?: (signal: AbortSignal) => Promise<void>,
+		) {
+			const schema = createSchema<Ctx>()({
+				typeDefs: 'type Query { a: Int } type Subscription { t: Int! }',
+				resolvers: {
+					Query: { a: () => 1 },
+					Subscription: {
+						t: {
+							// an async generator relay: only the signal can end it early
+							subscribe: async function* (_root, _args, ctx) {
+								await gate?.(ctx.signal);
+								yield* pubsub.subscribe('t');
+							},
+							resolve: (n: number) => n,
+						},
+					},
+				},
+			});
+			const graxia = createGraxia({ schema, onUnexpected: false });
+			const controller = new AbortController();
+			const response = await graxia.fetch(
+				new Request('http://x/graphql', {
+					method: 'POST',
+					signal: controller.signal,
+					headers: {
+						'content-type': 'application/json',
+						accept: 'text/event-stream',
+					},
+					body: JSON.stringify({ query: 'subscription { t }' }),
+				}),
+			);
+			// the generator only starts on the first read
+			void response.body?.getReader().read();
+			return { graxia, controller };
+		}
+
+		test('a client that leaves unsubscribes without any publish', async () => {
+			const { calls, client } = fakeRedis();
+			const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
+			const { graxia, controller } = await open(pubsub);
+			await until(() => calls.includes('subscribe graxia:t'));
+			expect(pubsub.subscriberCount('t')).toBe(1);
+			controller.abort();
+			await until(() => calls.includes('unsubscribe graxia:t'));
+			expect(pubsub.subscriberCount('t')).toBe(0);
+			await graxia.dispose({ timeout: 200 });
+			await pubsub.dispose();
+		});
+
+		test('an already aborted signal sends no SUBSCRIBE', async () => {
+			const { calls, client } = fakeRedis();
+			const pubsub = redisPubSub<{ t: [payload: number] }>({ client });
+			let reached = false;
+			const { graxia, controller } = await open(pubsub, async (signal) => {
+				await new Promise((resolve) =>
+					signal.addEventListener('abort', resolve, { once: true }),
+				);
+				reached = true;
+			});
+			controller.abort();
+			await until(() => reached);
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(calls.some((c) => c.startsWith('subscribe'))).toBe(false);
+			expect(pubsub.subscriberCount('t')).toBe(0);
+			await graxia.dispose({ timeout: 200 });
+			await pubsub.dispose();
+		});
 	});
 });

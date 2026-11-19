@@ -12,6 +12,10 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   type from the `context` factory, and `createGraxia` checks at compile time that it satisfies the
   schema's `createSchema<Ctx>` ([#42](https://github.com/softistx/graxia/issues/42)).
 
+- **PubSub in Yoga's shape** — `createPubSub` with `subscribe(topic, id?)`, `publish(topic, id?, payload)`
+  and `pipe` / `filter` / `map`, the operation's signal ending the subscriber by itself; breaking in 0.4
+  ([#69](https://github.com/softistx/graxia/issues/69), see [the guide](./guide/pubsub.md)).
+
 ## Later
 
 - **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted

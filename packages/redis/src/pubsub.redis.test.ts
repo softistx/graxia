@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { filterIterable } from '@graxia/core';
+import { filter, pipe } from '@graxia/core';
 import { RedisClient } from 'bun';
 import {
 	describeRedis,
@@ -12,8 +12,8 @@ import {
 import { type RedisPubSub, redisPubSub } from './pubsub';
 
 type Topics = {
-	[k: `post:${string}`]: { id: string; ok: boolean };
-	tick: number;
+	post: [id: string, payload: { id: string; ok: boolean }];
+	tick: [payload: number];
 };
 
 describeRedis('redisPubSub (Redis)', () => {
@@ -39,23 +39,26 @@ describeRedis('redisPubSub (Redis)', () => {
 		admin.close();
 	});
 
-	test('fans out across two instances, typed topics, template literals', async () => {
+	test('fans out across two instances, typed topics, id-scoped channels', async () => {
 		const a = make();
 		const b = make();
-		const events = b.subscribe('post:1');
+		const events = b.subscribe('post', '1');
 		await b.ready();
-		await a.publish('post:1', { id: '1', ok: true });
+		await a.publish('post', '1', { id: '1', ok: true });
 		expect((await events.next()).value).toEqual({ id: '1', ok: true });
 		await events.return?.();
 	});
 
-	test('filterIterable works on a Redis subscription', async () => {
+	test('pipe and filter work on a Redis subscription', async () => {
 		const a = make();
 		const b = make();
-		const events = filterIterable(b.subscribe('post:2'), (p) => p.ok);
+		const events = pipe(
+			b.subscribe('post', '2'),
+			filter((p) => p.ok),
+		);
 		await b.ready();
-		await a.publish('post:2', { id: 'x', ok: false });
-		await a.publish('post:2', { id: 'y', ok: true });
+		await a.publish('post', '2', { id: 'x', ok: false });
+		await a.publish('post', '2', { id: 'y', ok: true });
 		expect((await events.next()).value?.id).toBe('y');
 		await events.return?.();
 	});
@@ -70,13 +73,11 @@ describeRedis('redisPubSub (Redis)', () => {
 
 	test('the last local subscriber leaving sends UNSUBSCRIBE', async () => {
 		const a = make();
-		const controller = new AbortController();
-		const first = a.subscribe('tick', { signal: controller.signal });
+		const first = a.subscribe('tick');
 		const second = a.subscribe('tick');
 		await a.ready();
 		expect(await numsub(admin, `${prefix}tick`)).toBe(1);
-		controller.abort();
-		await first.next();
+		await first.return?.();
 		await a.ready();
 		expect(await numsub(admin, `${prefix}tick`)).toBe(1);
 		await second.return?.();

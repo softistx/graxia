@@ -51,7 +51,7 @@ import {
 import { redisPubSub } from '@graxia/redis';
 import { redisLimit } from './redis-limit'; // the adapter of Rate limiting, "Stores"
 
-type Topics = { tick: { n: number } };
+type Topics = { tick: [payload: { n: number }] };
 type AppContext = {
 	ip: string | undefined;
 	pubsub: PubSub<Topics>;
@@ -67,8 +67,7 @@ const schema = createSchema<AppContext>()({
 		Query: { hello: () => 'world', signIn: () => true },
 		Subscription: {
 			tick: {
-				subscribe: (_root, _args, { pubsub, signal }) =>
-					pubsub.subscribe('tick', { signal }),
+				subscribe: (_root, _args, { pubsub }) => pubsub.subscribe('tick'),
 				resolve: (event: { n: number }) => event.n,
 			},
 		},
@@ -114,7 +113,7 @@ Notes on each choice:
 - **Rate limit.** `memoryFieldLimit` counts per process: with several instances the real limit is
   the limit times the instances. Use a shared store. `single: true` makes `signIn` selectable once
   per operation, so aliases cannot multiply attempts. See [Rate limiting](./rate-limiting.md).
-- **PubSub.** `createMemoryPubSub` delivers inside one process. With several instances, a mutation
+- **PubSub.** `createPubSub` delivers inside one process. With several instances, a mutation
   on one must reach subscribers on the others: use `redisPubSub`. Delivery is at most once.
 - **Telemetry.** On when `@opentelemetry/api` is installed; register your OTLP provider before
   `createGraxia` (see [OpenTelemetry](./telemetry.md#setup)). Leave `resolverSpans` and

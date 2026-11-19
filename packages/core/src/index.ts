@@ -43,16 +43,20 @@ export { definePlugin } from './plugins/define';
 export type { RequestState, StateKey } from './plugins/state';
 export { createStateKey } from './plugins/state';
 export type * from './plugins/types';
-export { filterIterable, mapIterable } from './pubsub/iterables';
+export type { Operator } from './pubsub/iterables';
+export { filter, map } from './pubsub/iterables';
 export type {
 	MemoryPubSub,
 	MemoryPubSubOptions,
 } from './pubsub/memory';
-export { createMemoryPubSub } from './pubsub/memory';
+export { createPubSub } from './pubsub/memory';
+export { pipe } from './pubsub/pipe';
 export type {
 	PubSub,
+	PubSubIterator,
+	PubSubPayload,
+	PubSubSubscribeArgs,
 	PubSubTopics,
-	SubscribeOptions,
 } from './pubsub/types';
 export { fieldRateLimit } from './rate-limit/plugin';
 export type { MemoryFieldLimitOptions } from './rate-limit/store';
