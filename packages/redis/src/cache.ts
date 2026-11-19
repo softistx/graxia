@@ -1,4 +1,8 @@
-import type { CacheSetOptions, KeyValueCache } from '@graxia/core';
+import {
+	type CacheSetOptions,
+	GraxiaConfigError,
+	type KeyValueCache,
+} from '@graxia/core';
 import {
 	type BoundRawCache,
 	bindRawCache,
@@ -9,8 +13,9 @@ import { type RedisConnection, resolveLink } from './connection';
 /** Options of {@link redisCache}. */
 export type RedisCacheOptions = RedisConnection & {
 	/**
-	 * Prepended to every key, `:` included: `graxia:cache` and `graxia:cache:`
-	 * both store `graxia:cache:<key>`. Default `graxia:cache:`.
+	 * Prepended to every key with exactly one trailing `:` (`graxia:cache` and
+	 * `graxia:cache:` both store `graxia:cache:<key>`); at least one character
+	 * must precede it. Default `graxia:cache:`.
 	 */
 	prefix?: string;
 };
@@ -31,16 +36,21 @@ export function redisCache(
 ): KeyValueCache<string> {
 	const link = resolveLink(options);
 	const name = (options.prefix ?? 'graxia:cache:').replace(/:$/, '');
+	if (name.length === 0)
+		throw new GraxiaConfigError(
+			'@graxia/redis: redisCache prefix must hold at least one character before its ":"',
+		);
 	const definition = defineRawCache({ name });
 	let bound: Promise<BoundRawCache> | undefined;
-	const cache = (): Promise<BoundRawCache> =>
-		(bound ??= link.client().then(
-			(client) => bindRawCache(client, definition),
-			(error: unknown) => {
-				bound = undefined;
-				throw error;
-			},
-		));
+	const cache = (): Promise<BoundRawCache> => {
+		if (!bound)
+			bound = link.client().then((client) => bindRawCache(client, definition));
+		const pending = bound;
+		return pending.catch((error: unknown) => {
+			if (bound === pending) bound = undefined;
+			throw error;
+		});
+	};
 	return {
 		async get(key) {
 			return (await cache()).get(key);
@@ -51,12 +61,17 @@ export function redisCache(
 			await (await cache()).set(
 				key,
 				value,
-				valid ? { ttlMs: Math.ceil(ttl) } : {},
+				valid
+					? { ttlMs: Math.min(Math.ceil(ttl), Number.MAX_SAFE_INTEGER) }
+					: {},
 			);
 		},
 		async delete(key) {
 			return (await cache()).delete(key);
 		},
-		dispose: () => link.release(),
+		async dispose() {
+			bound = undefined;
+			await link.release();
+		},
 	};
 }

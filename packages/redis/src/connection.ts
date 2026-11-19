@@ -35,22 +35,52 @@ export function resolveLink(options: RedisConnection): RedisLink {
 		return { client: async () => given, release: async () => {} };
 	const uri = options.url ?? process.env['REDIS_URL'] ?? DEFAULT_URL;
 	let holder: Promise<Holder> | undefined;
+	let released = false;
 	return {
 		async client() {
+			if (released)
+				throw new GraxiaConfigError('@graxia/redis: used after dispose()');
 			holder ??= connectRedis(uri);
+			const pending = holder;
 			try {
-				return (await holder).client;
+				return (await pending).client;
 			} catch (error) {
-				holder = undefined;
-				throw error;
+				if (holder === pending) holder = undefined;
+				throw shared(error, uri);
 			}
 		},
 		async release() {
+			released = true;
 			const open = holder;
 			holder = undefined;
 			await (await open?.catch(() => undefined))?.close();
 		},
 	};
+}
+
+/** `connectRedis` refuses a URI another module connected with other options. */
+function shared(error: unknown, uri: string): unknown {
+	if (
+		error instanceof TypeError &&
+		error.message.startsWith('connectRedis: this URI is already connected')
+	)
+		return new GraxiaConfigError(
+			`@graxia/redis: ${redactUri(uri)} is already connected by another module with other options; pass that client as { client }`,
+			{ cause: error },
+		);
+	return error;
+}
+
+/** The URI without its credentials, which may be a password. */
+function redactUri(uri: string): string {
+	try {
+		const url = new URL(uri);
+		url.username = '';
+		url.password = '';
+		return url.toString();
+	} catch {
+		return '<redis uri>';
+	}
 }
 
 const DEFAULT_URL = 'redis://localhost:6379';

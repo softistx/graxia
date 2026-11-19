@@ -52,7 +52,7 @@
 	},
 	"peerDependencies": {
 		"@graxia/core": "workspace:^",
-		"@softistx/redis": "^0.22.0",
+		"@softistx/redis": ">=0.22.0 <1",
 		"typescript": "^6.0.3 || ^7.0.0"
 	},
 	"engines": {

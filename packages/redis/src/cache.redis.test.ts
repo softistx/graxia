@@ -55,9 +55,23 @@ describeRedis('redisCache (Redis)', () => {
 		const own = redisCache({ url: redisUrl, prefix });
 		await own.set('o', '1');
 		await own.dispose?.();
-		await own.delete('o').then(
-			() => undefined,
-			() => undefined,
-		);
+		await expect(own.delete('o')).rejects.toThrow('used after dispose');
+	});
+
+	test('a second url holder still works after the first one is disposed', async () => {
+		const first = redisCache({ url: redisUrl, prefix });
+		const second = redisCache({ url: redisUrl, prefix });
+		await second.set('s', '1');
+		await first.dispose?.();
+		expect(await second.get('s')).toBe('1');
+		await second.delete('s');
+		await second.dispose?.();
+	});
+
+	test('a prefix with no character before its colon is a config error', () => {
+		for (const bad of ['', ':'])
+			expect(() => redisCache({ client, prefix: bad })).toThrow(
+				'redisCache prefix must hold at least one character before its ":"',
+			);
 	});
 });

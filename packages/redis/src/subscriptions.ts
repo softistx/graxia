@@ -53,12 +53,12 @@ export function createTopicSubscriptions(
 			.client()
 			.then((client) =>
 				createRawSubscriber(client, { onError: (error) => report(error) }),
-			)
-			.catch((error: unknown) => {
-				subscriber = undefined;
-				throw error;
-			});
-		return subscriber;
+			);
+		const pending = subscriber;
+		pending.catch(() => {
+			if (subscriber === pending) subscriber = undefined;
+		});
+		return pending;
 	}
 
 	function enqueue(command: (raw: RawSubscriber) => Promise<unknown>): void {

@@ -4,7 +4,7 @@ The errors a consumer can hit, headed by the message as it appears.
 
 ## @graxia/redis: pass either "url" or "client", not both
 
-`redisPubSub` or `redisCache` received both `url` and `client` (a `GraxiaConfigError`). Pass a `url` and
+`redisPubSub`, `redisCache` or `redisFieldLimit` received both `url` and `client` (a `GraxiaConfigError`). Pass a `url` and
 the adapter owns its connection, or pass your `client` and you own it.
 
 ```ts
@@ -33,11 +33,19 @@ Events published while disconnected are lost. Expect a few `onError` calls durin
 Another process published in the short window before Redis registered `SUBSCRIBE`. Await
 `pubsub.ready()` before telling publishers to start; on the same instance `publish` already waits.
 
-## connectRedis: this URI is already connected with other options
+## @graxia/redis: <uri> is already connected by another module with other options; pass that client as { client }
 
-`@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process) must
-use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
-options (`maxRetries`, `tls`), open the client there and pass it as `client`.
+A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `connectRedis: this URI is already connected with other
+options`). `@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process)
+must use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
+options (`maxRetries`, `tls`), open the client there and pass it as `client`. The error depends on the order of the
+calls: whoever connects second is refused, and that can be your application's own call rather than the adapter's. The
+URI's credentials are never in the message.
+
+## @graxia/redis: used after dispose()
+
+An adapter that opened its client from a `url` was used after `dispose()` (a `GraxiaConfigError`). It does not
+reconnect on its own; create a new one.
 
 ```ts
 const redis = await connectRedis(url, { maxRetries: 3 });

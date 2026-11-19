@@ -149,8 +149,10 @@ describe('redisPubSub (fake client)', () => {
 			subscriber.onconnect?.();
 			await pubsub.ready();
 		}
-		// bounded: the listener of the first connection stays inert, never grows
-		expect(listeners.get('graxia:t')?.length).toBeLessThanOrEqual(2);
+		// 2 until nxgt-data#431 ships (inert first listener); never grows
+		const count = listeners.get('graxia:t')?.length ?? 0;
+		expect(count).toBeGreaterThanOrEqual(1);
+		expect(count).toBeLessThanOrEqual(2);
 		await pubsub.publish('t', 4);
 		expect((await events.next()).value).toBe(4);
 		expect(

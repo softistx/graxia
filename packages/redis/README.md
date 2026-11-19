@@ -13,8 +13,10 @@ bun add @graxia/redis @graxia/core @softistx/redis
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`^0.22.0`) as peer dependencies. `@softistx/redis` also lists `zod` as a peer
-  (its channel schemas); install it if your package manager asks, graxia never calls it.
+- `@graxia/core` and `@softistx/redis` (`>=0.22.0 <1`) as peer dependencies. `@softistx/redis` also lists `zod` as a peer
+  (its channel schemas); install it if your package manager asks, graxia never calls it (until nxgt-data#432).
+- With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
+  that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`; `nodenext` is not supported.
 
@@ -67,7 +69,8 @@ Options (all optional):
 
 ## Cache
 
-Options: `url`, `client` (as above) and `prefix` (default `graxia:cache:`; the `:` is added when missing).
+Options: `url` (`REDIS_URL`, then `redis://localhost:6379`, through `connectRedis`), `client` (as above) and `prefix`
+(default `graxia:cache:`, used with exactly one trailing `:`; keys are `<prefix>:<key>`).
 
 `redisCache` implements core's `KeyValueCache<string>`; `createMemoryCache` is its in-process twin. It is also the store of core's automatic persisted
 queries: `trustedDocuments: { store: redisCache({ url }) }` shares (`url` is optional: without it Bun's default connection is used) registrations across processes.
@@ -105,9 +108,12 @@ fieldRateLimit({
 });
 ```
 
-Options: `limit`, `windowMs` (integers of 1 or more), `burst` (default `limit`), `prefix` (default `graxia:limit:`), `url` / `client`.
-A cost over the burst is refused at once with a `retryAfter` of one window. Unlike `memoryFieldLimit`'s fixed window,
-the bucket refills continuously.
+Options: `limit`, `windowMs` (integers of 1 or more), `burst` (default `limit`), `prefix` (default `graxia:limit:`), `timeoutMs`
+(default 1000), `onError`, `url` / `client`. A cost over the burst is refused at once with a `retryAfter` of one window; a cost of 0
+spends nothing. A Redis error goes to `onError` and the call is let through (fail open). Unlike `memoryFieldLimit`'s fixed
+window, the bucket refills continuously; the guide compares them.
+
+Coming from 0.1? See [Migrating from 0.1](./docs/guide/redis.md#migrating-from-01).
 
 ## Delivery guarantees
 
