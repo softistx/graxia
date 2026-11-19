@@ -26,7 +26,7 @@
 		"@changesets/changelog-github": "^1.0.1",
 		"@changesets/cli": "^3.0.1",
 		"@types/bun": "^1.4.4",
-		"graphql-sse": "^2.6.3",
+		"graphql-sse": "^2.6.4",
 		"typescript": "~6.0.3"
 	},
 	"overrides": {
