@@ -8,7 +8,7 @@ export type PubSubTopics = Record<
 	[] | [unknown] | [string | number, unknown]
 >;
 
-/** The payload type of a topic's publish arguments. */
+/** The payload type of a topic's publish arguments; a topic without payload delivers `null`, as Yoga's. */
 export type PubSubPayload<Args extends unknown[]> = Args extends [
 	unknown,
 	infer P,
@@ -16,7 +16,7 @@ export type PubSubPayload<Args extends unknown[]> = Args extends [
 	? P
 	: Args extends [infer P]
 		? P
-		: undefined;
+		: null;
 
 /** The arguments of `subscribe()` for one topic: `[topic]`, or `[topic, id]` when the topic has an id. */
 export type PubSubSubscribeArgs<
@@ -26,15 +26,20 @@ export type PubSubSubscribeArgs<
 	? [topic: K]
 	: [topic: K, id: Topics[K][0]];
 
+/** An async iterator whose `return()` and `throw()` are always there, as Yoga's Repeater: `s.return()` compiles. */
+export interface PubSubIterator<T> extends AsyncIterableIterator<T> {
+	return(value?: unknown): Promise<IteratorResult<T>>;
+	throw(error?: unknown): Promise<IteratorResult<T>>;
+}
+
 /**
  * A typed publish/subscribe contract, shaped like GraphQL Yoga's `PubSub`.
  * Payloads are plain data so a networked implementation (Redis) honours the
  * same interface. A topic with an id is a channel of its own: `publish('post',
  * 42, p)` reaches `subscribe('post', 42)` only (the channel is `post:42`).
  *
- * The operation's abort signal ends a subscription by itself: the engine
- * returns the iterator a resolver gave when the operation stops, so nothing
- * is passed to `subscribe()`.
+ * The operation's abort signal ends a subscription by itself: `subscribe()`
+ * reads it from the operation context, so nothing is passed to it.
  *
  * @example
  * const pubsub = createPubSub<{ post: [id: string, payload: Post]; tick: [payload: number] }>();
@@ -50,7 +55,7 @@ export interface PubSub<Topics extends PubSubTopics> {
 	/** Registers synchronously: an event published right after this returns is delivered. */
 	subscribe<K extends keyof Topics & string>(
 		...args: PubSubSubscribeArgs<Topics, K>
-	): AsyncIterableIterator<PubSubPayload<Topics[K]>>;
+	): PubSubIterator<PubSubPayload<Topics[K]>>;
 	/** Ends every open iterator; later `subscribe()` returns a finished iterator and `publish()` does nothing. */
 	dispose(): Promise<void>;
 }

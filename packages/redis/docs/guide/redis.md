@@ -72,8 +72,9 @@ wait while the subscriber connection is down. `ready()` never rejects (failures 
 ### Errors
 
 `onError` receives connection errors, failed `SUBSCRIBE` commands and payloads whose `deserialize`
-threw (the message is skipped). Nothing is thrown into an iterator. `publish` rejects when Redis
-rejects the command or `serialize` throws.
+threw (the message is skipped). Nothing is thrown into an iterator. `publish` never rejects: when
+Redis rejects the command or `serialize` throws, the error goes to `onError` and `publish` resolves,
+so an un-awaited `publish(...)`, as in Yoga, is safe.
 
 ### Shutdown
 

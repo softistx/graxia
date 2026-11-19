@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { runWithContext } from '../server/context';
 import { createPubSub } from './memory';
 
 type Topics = {
@@ -113,11 +114,11 @@ describe('createPubSub', () => {
 		expect(pubsub.subscriberCount('post', '1')).toBe(0);
 	});
 
-	test('a topic without payload publishes and yields undefined', async () => {
+	test('a topic without payload publishes and yields null like Yoga', async () => {
 		const pubsub = createPubSub<Topics>();
 		const events = pubsub.subscribe('ping');
 		await pubsub.publish('ping');
-		expect(await events.next()).toEqual({ done: false, value: undefined });
+		expect(await events.next()).toEqual({ done: false, value: null });
 	});
 
 	test('return() while next() is pending ends the iterator and unsubscribes', async () => {
@@ -136,5 +137,46 @@ describe('createPubSub', () => {
 			for (let n = 0; n < 5; n++) await pubsub.publish('tick', n);
 			expect((await events.next()).value).toBe(0);
 		}
+	});
+
+	test('the operation signal ends the subscriber at once, with no next() pending', async () => {
+		const pubsub = createPubSub<Topics>();
+		const controller = new AbortController();
+		const events = runWithContext({ signal: controller.signal }, () =>
+			pubsub.subscribe('tick'),
+		);
+		expect(pubsub.subscriberCount('tick')).toBe(1);
+		controller.abort();
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+		expect((await events.next()).done).toBe(true);
+	});
+
+	test('an already aborted operation signal registers nothing', async () => {
+		const pubsub = createPubSub<Topics>();
+		const events = runWithContext({ signal: AbortSignal.abort() }, () =>
+			pubsub.subscribe('tick'),
+		);
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+		expect((await events.next()).done).toBe(true);
+	});
+
+	test('no abort listener is left on the signal once the subscription ends', async () => {
+		const signal = new AbortController().signal;
+		let added = 0;
+		let removed = 0;
+		const add = signal.addEventListener.bind(signal);
+		const remove = signal.removeEventListener.bind(signal);
+		signal.addEventListener = ((...args: Parameters<typeof add>) => {
+			added++;
+			add(...args);
+		}) as typeof add;
+		signal.removeEventListener = ((...args: Parameters<typeof remove>) => {
+			removed++;
+			remove(...args);
+		}) as typeof remove;
+		const pubsub = createPubSub<Topics>();
+		const events = runWithContext({ signal }, () => pubsub.subscribe('tick'));
+		await events.return();
+		expect([added, removed]).toEqual([1, 1]);
 	});
 });

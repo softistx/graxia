@@ -1,6 +1,8 @@
+import { tryGetContext } from '../server/context';
 import {
 	channelOf,
 	type PubSub,
+	type PubSubIterator,
 	type PubSubPayload,
 	type PubSubSubscribeArgs,
 	type PubSubTopics,
@@ -19,7 +21,9 @@ export interface MemoryPubSubOptions {
 export interface MemoryPubSub<Topics extends PubSubTopics>
 	extends PubSub<Topics> {
 	/** Number of open subscriptions on `topic`. */
-	subscriberCount(topic: keyof Topics & string, id?: string | number): number;
+	subscriberCount<K extends keyof Topics & string>(
+		...args: PubSubSubscribeArgs<Topics, K>
+	): number;
 }
 
 interface Subscriber {
@@ -40,6 +44,8 @@ interface SubscriberInit {
 	topic: string;
 	limit: number;
 	onOverflow: MemoryPubSubOptions['onOverflow'];
+	/** The operation's signal, when subscribing inside one: aborting ends the subscriber at once. */
+	signal: AbortSignal | undefined;
 	/** Removes the subscriber from the registry. */
 	detach(subscriber: Subscriber): void;
 }
@@ -47,9 +53,9 @@ interface SubscriberInit {
 /** One subscriber: its bounded buffer, its pending readers and its iterator. */
 function createSubscriber<T>(init: SubscriberInit): {
 	subscriber: Subscriber;
-	iterator: AsyncIterableIterator<T>;
+	iterator: PubSubIterator<T>;
 } {
-	const { topic, limit, onOverflow } = init;
+	const { topic, limit, onOverflow, signal } = init;
 	const buffer: T[] = [];
 	const waiting: ((result: IteratorResult<T>) => void)[] = [];
 	let ended = false;
@@ -74,12 +80,16 @@ function createSubscriber<T>(init: SubscriberInit): {
 	function end(): void {
 		if (ended) return;
 		ended = true;
+		signal?.removeEventListener('abort', end);
 		buffer.length = 0;
 		init.detach(subscriber);
 		for (const waiter of waiting.splice(0)) waiter(DONE);
 	}
 
-	const iterator: AsyncIterableIterator<T> = {
+	if (signal?.aborted) end();
+	else signal?.addEventListener('abort', end, { once: true });
+
+	const iterator: PubSubIterator<T> = {
 		next() {
 			if (buffer.length > 0)
 				return Promise.resolve({ done: false, value: buffer.shift() as T });
@@ -122,7 +132,7 @@ export function createPubSub<Topics extends PubSubTopics>(
 	const channels = new Map<string, Set<Subscriber>>();
 	let disposed = false;
 
-	const finishedIterator = (): AsyncIterableIterator<never> => ({
+	const finishedIterator = (): PubSubIterator<never> => ({
 		next: async () => DONE,
 		return: async () => DONE,
 		throw: async (error?: unknown) => {
@@ -135,14 +145,16 @@ export function createPubSub<Topics extends PubSubTopics>(
 
 	function subscribe<K extends keyof Topics & string>(
 		...args: PubSubSubscribeArgs<Topics, K>
-	): AsyncIterableIterator<PubSubPayload<Topics[K]>> {
+	): PubSubIterator<PubSubPayload<Topics[K]>> {
 		const channel = channelOf(args[0], args[1] as string | number | undefined);
-		if (disposed) return finishedIterator();
+		const signal = tryGetContext<{ signal?: AbortSignal }>()?.signal;
+		if (disposed || signal?.aborted) return finishedIterator();
 		const { subscriber, iterator } = createSubscriber<PubSubPayload<Topics[K]>>(
 			{
 				topic: channel,
 				limit: defaultSize,
 				onOverflow: options.onOverflow,
+				signal,
 				detach(done) {
 					const set = channels.get(channel);
 					set?.delete(done);
@@ -162,7 +174,8 @@ export function createPubSub<Topics extends PubSubTopics>(
 			if (disposed) return;
 			const { id, payload } = splitPublishArgs(args);
 			const set = channels.get(channelOf(topic, id));
-			if (set) for (const subscriber of [...set]) subscriber.push(payload);
+			if (set)
+				for (const subscriber of [...set]) subscriber.push(payload ?? null);
 		},
 		subscribe,
 		async dispose() {
@@ -171,7 +184,8 @@ export function createPubSub<Topics extends PubSubTopics>(
 				for (const subscriber of [...set]) subscriber.end();
 			channels.clear();
 		},
-		subscriberCount: (topic, id) =>
-			channels.get(channelOf(topic, id))?.size ?? 0,
+		subscriberCount: (...args) =>
+			channels.get(channelOf(args[0], args[1] as string | number | undefined))
+				?.size ?? 0,
 	};
 }

@@ -14,7 +14,7 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 	typeDefs: `
 		type Query { hello: String }
 		type Mutation { bump: Int }
-		type Subscription { tick: Int! bad: Int! who: String! ended: Int! }
+		type Subscription { tick: Int! bad: Int! who: String! ended: Int! relayed: Int! }
 	`,
 	resolvers: {
 		Query: { hello: () => 'world' },
@@ -33,6 +33,14 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 			who: {
 				subscribe: () => pubsub.subscribe('tick'),
 				resolve: () => String((getContext() as { user?: string }).user),
+			},
+			relayed: {
+				// an async generator keeps its subscriber until return() is served:
+				// the signal in the operation context must end it at once
+				subscribe: async function* () {
+					for await (const n of pubsub.subscribe('tick')) yield n;
+				},
+				resolve: (n: number) => n,
 			},
 			ended: {
 				subscribe: async function* () {
@@ -328,6 +336,31 @@ describe('cancellation', () => {
 		});
 		const response = await graxia.fetch(request);
 		expect(pubsub.subscriberCount('tick')).toBe(1);
+		controller.abort();
+		await sleep(30);
+		expect(pubsub.subscriberCount('tick')).toBe(0);
+		await response.body?.cancel().catch(() => {});
+	});
+	test('an async generator relaying a subscription unsubscribes when the client leaves, without a publish', async () => {
+		const graxia = make({ subscriptions: { sse: { keepAliveMs: 20 } } });
+		const controller = new AbortController();
+		const response = await graxia.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					accept: 'text/event-stream',
+				},
+				body: JSON.stringify({ query: 'subscription { relayed }' }),
+				signal: controller.signal,
+			}),
+		);
+		// the generator starts on the first read of the stream
+		void response.body
+			?.getReader()
+			.read()
+			.catch(() => {});
+		while (pubsub.subscriberCount('tick') === 0) await sleep(5);
 		controller.abort();
 		await sleep(30);
 		expect(pubsub.subscriberCount('tick')).toBe(0);

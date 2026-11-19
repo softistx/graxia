@@ -1,7 +1,7 @@
+import type { PubSubIterator } from './types';
+
 /** An operator: turns one async iterable into another, as GraphQL Yoga's `filter` and `map` return. */
-export type Operator<T, U> = (
-	source: AsyncIterable<T>,
-) => AsyncIterableIterator<U>;
+export type Operator<T, U> = (source: AsyncIterable<T>) => PubSubIterator<U>;
 
 /**
  * Keeps the events that pass `predicate`, as Yoga's `filter` (use it with
@@ -47,21 +47,80 @@ export function map<T, U>(fn: (value: T) => U | Promise<U>): Operator<T, U> {
  * pipe(pubsub.subscribe('post', id), filter((p) => p.published), map((p) => p.title))
  */
 export function pipe<A>(a: A): A;
-export function pipe<A, B>(a: A, ab: (a: A) => B): B;
-export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C;
+export function pipe<A, B>(a: A, ab: (value: A) => B): B;
+export function pipe<A, B, C>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+): C;
 export function pipe<A, B, C, D>(
 	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
 ): D;
 export function pipe<A, B, C, D, E>(
 	a: A,
-	ab: (a: A) => B,
-	bc: (b: B) => C,
-	cd: (c: C) => D,
-	de: (d: D) => E,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
 ): E;
+export function pipe<A, B, C, D, E, F>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
+	ef: (value: E) => F,
+): F;
+export function pipe<A, B, C, D, E, F, G>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
+	ef: (value: E) => F,
+	fg: (value: F) => G,
+): G;
+export function pipe<A, B, C, D, E, F, G, H>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
+	ef: (value: E) => F,
+	fg: (value: F) => G,
+	gh: (value: G) => H,
+): H;
+export function pipe<A, B, C, D, E, F, G, H, I>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
+	ef: (value: E) => F,
+	fg: (value: F) => G,
+	gh: (value: G) => H,
+	hi: (value: H) => I,
+): I;
+export function pipe<A, B, C, D, E, F, G, H, I, J>(
+	a: A,
+	ab: (value: A) => B,
+	bc: (value: B) => C,
+	cd: (value: C) => D,
+	de: (value: D) => E,
+	ef: (value: E) => F,
+	fg: (value: F) => G,
+	gh: (value: G) => H,
+	hi: (value: H) => I,
+	ij: (value: I) => J,
+): J;
+/** Any longer chain: the operators are applied in order, the result type is not tracked. */
+export function pipe(
+	source: unknown,
+	...operators: ((value: never) => unknown)[]
+): unknown;
 export function pipe(
 	source: unknown,
 	...operators: ((value: never) => unknown)[]
@@ -76,7 +135,7 @@ export function pipe(
 function derive<T, U>(
 	source: AsyncIterable<T>,
 	step: (value: T) => Promise<{ value: U } | undefined>,
-): AsyncIterableIterator<U> {
+): PubSubIterator<U> {
 	const inner = source[Symbol.asyncIterator]();
 	const done = { done: true, value: undefined } as const;
 	let finished = false;

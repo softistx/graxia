@@ -68,11 +68,16 @@ subscribe: (_: unknown, { id }: { id: string }) =>
 
 ## Cancellation
 
-Nothing is passed to `subscribe()`. When the operation stops (the client sends `complete`,
-disconnects, or the request's `signal` aborts, or the server shuts down), the engine returns the
-iterator your resolver gave: a pending `next()` resolves `{ done: true }` and the subscriber is
-removed. `return()`, `throw()` and a `break` in `for await` do the same; events still buffered
-are discarded, so a later `next()` returns `{ done: true }`.
+Nothing is passed to `subscribe()`. Called inside an operation, it reads the operation's `signal`
+from the operation context (so `asyncContext`, on by default, must stay on). **Guarantee:** when
+the operation stops (the client sends `complete`, disconnects, the request's `signal` aborts, or
+the server shuts down), the subscriber is removed at once, whether or not a `next()` is pending
+and whatever the resolver does with the iterator: an `async function*` that relays
+`for await (const x of pubsub.subscribe('t')) yield x` no longer keeps its subscriber until the
+next publish. An already aborted signal gives a finished iterator and registers nothing. The
+engine also returns the iterator your resolver gave; `return()`, `throw()` and a `break` in
+`for await` remove the subscriber too. Events still buffered are discarded, so a later `next()`
+returns `{ done: true }`. Outside an operation (a unit test), end it with `return()`.
 
 `pubsub.subscriberCount(topic, id?)` (memory implementation only) reports open subscriptions,
 which is handy in tests.
@@ -95,23 +100,35 @@ const pubsub = createPubSub<Topics>({
 
 | You write                                                            | In graxia                                                             |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, imported from `@graxia/core`                           |
-| Yoga `pubsub.subscribe('post', id)`, `publish('post', id, p)`        | identical                                                             |
-| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | identical, from `@graxia/core`                                        |
+| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, from `@graxia/core` (options differ, see below)        |
+| Yoga `pubsub.subscribe('post', id)`, `publish('post', id, p)`        | same names, arguments and typing                                      |
+| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | same names and typing, from `@graxia/core`                            |
 | Apollo `graphql-subscriptions` `pubsub.asyncIterableIterator(['A'])` | `pubsub.subscribe('A')`                                               |
 | Apollo `pubsub.publish('A', { a: payload })`                         | `pubsub.publish('A', payload)`, the payload is not wrapped in a field |
 
-Two differences from Yoga: `publish` returns a promise (so a Redis implementation can await the
-network), and `createPubSub` takes `bufferSize` and `onOverflow` instead of an `eventTarget`.
+The same shape, not the same package. The real differences from Yoga:
+
+- **Options.** `createPubSub({ bufferSize, onOverflow })` replaces Yoga's `eventTarget` and
+  `repeaterBuffer`.
+- **Buffer.** A slow subscriber's buffer slides (the oldest event is dropped, 1000 by default,
+  `onOverflow` called); Yoga's overflows with a `RepeaterOverflowError` at 1024.
+- **No Repeater re-exports.** `Repeater`, `FixedBuffer` and friends are not re-exported: use
+  `@repeaterjs/repeater` if you need them. `subscribe` returns a `PubSubIterator` (an async
+  iterator whose `return()` and `throw()` are always typed).
+- **`publish` returns a Promise that never rejects** (a Redis failure goes to `onError`), so an
+  un-awaited `publish(...)` is safe, as in Yoga.
+- **Payload of a topic without data.** `[]` topics deliver `null`, as Yoga's.
+- **Abort.** The operation's signal ends the subscriber by itself; Yoga relies on the executor
+  calling `return()`.
 
 ## Migrating from 0.3
 
 | 0.3                                                 | 0.4                                            |
 | --------------------------------------------------- | ---------------------------------------------- |
 | `createMemoryPubSub<{ tick: number }>()`            | `createPubSub<{ tick: [payload: number] }>()`  |
-| `{ [k: \`post:${string}\`]: Post }`                 | `{ post: [id: string, payload: Post] }`        |
-| `subscribe(\`post:${id}\`, { signal: ctx.signal })` | `subscribe('post', id)`                        |
-| `publish(\`post:${id}\`, post)`                     | `publish('post', id, post)`                    |
+| ``{ [k: `post:${string}`]: Post }``                 | `{ post: [id: string, payload: Post] }`        |
+| ``subscribe(`post:${id}`, { signal: ctx.signal })`` | `subscribe('post', id)`                        |
+| ``publish(`post:${id}`, post)``                     | `publish('post', id, post)`                    |
 | `filterIterable(src, fn)` / `mapIterable(src, fn)`  | `pipe(src, filter(fn))` / `pipe(src, map(fn))` |
 | `subscribe(topic, { bufferSize })`                  | `createPubSub({ bufferSize })` (per PubSub)    |
 | `subscriberCount('post:42')`                        | `subscriberCount('post', '42')`                |

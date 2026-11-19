@@ -210,4 +210,28 @@ describe('redisPubSub (fake client)', () => {
 		await pubsub.publish('t', 1);
 		expect((await pubsub.subscribe('t').next()).done).toBe(true);
 	});
+
+	test('a topic without payload publishes null and delivers null', async () => {
+		const { calls, client } = fakeRedis();
+		const pubsub = redisPubSub<{ ping: [] }>({ client });
+		const events = pubsub.subscribe('ping');
+		await pubsub.publish('ping');
+		expect(await events.next()).toEqual({ done: false, value: null });
+		expect(calls).toContain('subscribe graxia:ping');
+	});
+
+	test('publish never rejects: a failing client goes to onError', async () => {
+		const { client } = fakeRedis();
+		const errors: unknown[] = [];
+		(client as unknown as { publish: () => Promise<number> }).publish =
+			async () => {
+				throw new Error('down');
+			};
+		const pubsub = redisPubSub<{ t: [payload: number] }>({
+			client,
+			onError: (error) => errors.push(error),
+		});
+		await expect(pubsub.publish('t', 1)).resolves.toBeUndefined();
+		expect(errors).toHaveLength(1);
+	});
 });

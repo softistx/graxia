@@ -88,6 +88,7 @@ Redis PubSub is at most once, and graxia adds nothing on top:
 
 - One dedicated subscriber connection, opened on the first `subscribe()`, carries one `SUBSCRIBE`
   per topic, shared by every local subscriber and dropped with the last.
+- `publish()` never rejects: a failing command or `serialize` goes to `onError` and `publish` resolves, so an un-awaited call is safe. A topic without payload (`[]`) publishes and delivers `null`.
 - Events published while a connection is down are lost. Iterators stay open across a reconnect
   and receive later events.
 - `publish()` and `ready()` wait for this instance's own pending SUBSCRIBEs, so they can wait while

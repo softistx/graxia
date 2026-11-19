@@ -1,9 +1,11 @@
 import {
 	createPubSub,
 	type PubSub,
+	type PubSubIterator,
 	type PubSubPayload,
 	type PubSubSubscribeArgs,
 	type PubSubTopics,
+	tryGetContext,
 } from '@graxia/core';
 import { channelOf, splitPublishArgs } from './channel';
 import {
@@ -42,7 +44,9 @@ export interface RedisPubSub<Topics extends PubSubTopics>
 	 */
 	ready(): Promise<void>;
 	/** Number of open local subscriptions on `topic`. */
-	subscriberCount(topic: keyof Topics & string, id?: string | number): number;
+	subscriberCount<K extends keyof Topics & string>(
+		...args: PubSubSubscribeArgs<Topics, K>
+	): number;
 }
 
 /**
@@ -98,19 +102,22 @@ export function redisPubSub<Topics extends PubSubTopics>(
 
 	function subscribe<K extends keyof Topics & string>(
 		...args: PubSubSubscribeArgs<Topics, K>
-	): AsyncIterableIterator<PubSubPayload<Topics[K]>> {
+	): PubSubIterator<PubSubPayload<Topics[K]>> {
+		const signal = tryGetContext<{ signal?: AbortSignal }>()?.signal;
 		const channel = channelOf(args[0], args[1] as string | number | undefined);
-		const inner = local.subscribe(channel) as AsyncIterableIterator<
+		const inner = local.subscribe(channel) as PubSubIterator<
 			PubSubPayload<Topics[K]>
 		>;
-		if (disposed) return inner;
+		if (disposed || signal?.aborted) return inner;
 		subscriptions.acquire(channel);
 		let released = false;
 		const leave = (): void => {
 			if (released) return;
 			released = true;
+			signal?.removeEventListener('abort', leave);
 			if (!disposed) subscriptions.release(channel);
 		};
+		signal?.addEventListener('abort', leave, { once: true });
 		return releasing(inner, leave);
 	}
 
@@ -118,12 +125,23 @@ export function redisPubSub<Topics extends PubSubTopics>(
 		async publish(topic, ...args) {
 			if (disposed) return;
 			const { id, payload } = splitPublishArgs(args);
-			await subscriptions.ready();
-			await client.publish(prefix + channelOf(topic, id), serialize(payload));
+			try {
+				await subscriptions.ready();
+				await client.publish(
+					prefix + channelOf(topic, id),
+					serialize(payload ?? null),
+				);
+			} catch (error) {
+				// never rejects, so an un-awaited publish (as in Yoga) is safe
+				report(error);
+			}
 		},
 		subscribe,
 		ready: () => subscriptions.ready(),
-		subscriberCount: (topic, id) => local.subscriberCount(channelOf(topic, id)),
+		subscriberCount: (...args) =>
+			local.subscriberCount(
+				channelOf(args[0], args[1] as string | number | undefined),
+			),
 		async dispose() {
 			if (disposed) return;
 			disposed = true;
@@ -136,9 +154,9 @@ export function redisPubSub<Topics extends PubSubTopics>(
 
 /** Wraps `inner` so that finishing, `return()` or `throw()` calls `leave` once. */
 function releasing<T>(
-	inner: AsyncIterableIterator<T>,
+	inner: PubSubIterator<T>,
 	leave: () => void,
-): AsyncIterableIterator<T> {
+): PubSubIterator<T> {
 	return {
 		async next() {
 			const result = await inner.next();
@@ -147,11 +165,11 @@ function releasing<T>(
 		},
 		async return() {
 			leave();
-			return inner.return?.() ?? { done: true, value: undefined };
+			return inner.return();
 		},
 		async throw(error?: unknown) {
 			leave();
-			return inner.throw?.(error) ?? Promise.reject(error);
+			return inner.throw(error);
 		},
 		[Symbol.asyncIterator]() {
 			return this;

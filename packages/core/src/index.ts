@@ -52,6 +52,7 @@ export type {
 export { createPubSub } from './pubsub/memory';
 export type {
 	PubSub,
+	PubSubIterator,
 	PubSubPayload,
 	PubSubSubscribeArgs,
 	PubSubTopics,

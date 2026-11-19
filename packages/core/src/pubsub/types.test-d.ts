@@ -1,6 +1,6 @@
 import { filter, map, pipe } from './iterables';
 import { createPubSub } from './memory';
-import type { PubSub } from './types';
+import type { PubSub, PubSubIterator } from './types';
 
 type Equal<A, B> =
 	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -30,11 +30,13 @@ pubsub.publish('tick', 'x');
 pubsub.publish('nope', 1);
 
 const posts = pubsub.subscribe('post', '42');
-assertType<Equal<typeof posts, AsyncIterableIterator<Post>>>();
+assertType<Equal<typeof posts, PubSubIterator<Post>>>();
 const ticks = pubsub.subscribe('tick');
-assertType<Equal<typeof ticks, AsyncIterableIterator<number>>>();
+assertType<Equal<typeof ticks, PubSubIterator<number>>>();
 const pings = pubsub.subscribe('ping');
-assertType<Equal<typeof pings, AsyncIterableIterator<undefined>>>();
+assertType<Equal<typeof pings, PubSubIterator<null>>>();
+// @ts-expect-error the id is a string
+pubsub.subscribe('post', 42);
 // @ts-expect-error a topic with an id needs it
 pubsub.subscribe('post');
 // @ts-expect-error a topic without an id takes none
@@ -54,22 +56,33 @@ const strings = pipe(
 	mixed,
 	filter((v): v is string => typeof v === 'string'),
 );
-assertType<Equal<typeof strings, AsyncIterableIterator<string>>>();
+assertType<Equal<typeof strings, PubSubIterator<string>>>();
 const plain = pipe(
 	mixed,
 	filter((v) => v !== 0),
 );
-assertType<Equal<typeof plain, AsyncIterableIterator<string | number>>>();
+assertType<Equal<typeof plain, PubSubIterator<string | number>>>();
 
 // map follows the mapper's return type, and pipe chains operators
 const lengths = pipe(
 	posts,
 	map((p) => p.id.length),
 );
-assertType<Equal<typeof lengths, AsyncIterableIterator<number>>>();
+assertType<Equal<typeof lengths, PubSubIterator<number>>>();
 const chained = pipe(
 	ticks,
 	filter((n) => n > 0),
 	map(async (n) => String(n)),
 );
-assertType<Equal<typeof chained, AsyncIterableIterator<string>>>();
+assertType<Equal<typeof chained, PubSubIterator<string>>>();
+
+// return() and throw() are always there, as Yoga's Repeater
+void posts.return();
+void posts.throw(new Error('x'));
+
+// a long chain still compiles (the 10th operator falls back to the variadic overload)
+const id = <T>(v: T) => v;
+const long = pipe(ticks, id, id, id, id, id, id, id, id, id, id);
+void long;
+// @ts-expect-error the id is a string
+memory.subscriberCount('post', 42);
