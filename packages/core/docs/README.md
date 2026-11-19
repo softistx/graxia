@@ -13,6 +13,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Plugins](./guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Schema](./guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
+- [Codegen](./guide/codegen.md): graphql-codegen's `Resolvers`, `contextType` with `InferContext`, mappers, `enumValues`, coming from Yoga / Apollo.
 - [Subscriptions over SSE](./guide/subscriptions.md): `graphql-sse` distinct connections mode, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./guide/websocket.md): `graphql-transport-ws`, `connectionParams` and `onConnect`, close codes, own `Bun.serve`.
 - [`@defer` and `@stream`](./guide/incremental.md): multipart/mixed and SSE, formats, clients, masking, cancellation.

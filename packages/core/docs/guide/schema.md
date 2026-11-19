@@ -85,6 +85,8 @@ import type { Resolvers } from './generated/graphql';
 createSchema<AppContext, Resolvers>()({ typeDefs, resolvers });
 ```
 
+See [Codegen](./codegen.md) for the `codegen.ts` (`contextType` from `InferContext`, mappers, `enumValues`). Resolvers keep the `(parent, args, context, info)` signature of Yoga and Apollo.
+
 ## Errors
 
 Every failure is a `GraxiaConfigError` (`code: "GRAXIA_CONFIG"`): invalid SDL (the `GraphQLError` is its
