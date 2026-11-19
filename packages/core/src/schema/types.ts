@@ -86,3 +86,55 @@ export type SchemaOptions<R> = {
 	 */
 	incremental?: false;
 };
+
+type Fn = (...args: any[]) => any;
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type ValueFns<V> =
+	IsAny<V> extends true
+		? never
+		: V extends Fn
+			? V
+			: V extends { subscribe?: infer S; resolve?: infer R }
+				? Extract<S | R, Fn>
+				: never;
+type MapFns<M> = M extends GraphQLScalarType
+	? never
+	: M extends object
+		? ValueFns<M[Exclude<keyof M, `__${string}`>]>
+		: never;
+type CtxOfFn<F> = F extends (p: any, a: any, c: infer C, ...rest: any[]) => any
+	? IsAny<C> extends true
+		? never
+		: C
+	: never;
+type Intersect<U> = (U extends unknown ? (u: U) => void : never) extends (
+	u: infer I,
+) => void
+	? I
+	: never;
+
+/**
+ * The context the field resolvers of a map expect: the intersection of their
+ * third parameters (`unknown` when none declares one; `any` ones are ignored).
+ */
+export type ResolversContext<R> = [
+	Intersect<CtxOfFn<{ [T in keyof R]-?: MapFns<NonNullable<R[T]>> }[keyof R]>>,
+] extends [never]
+	? unknown
+	: Intersect<
+			CtxOfFn<{ [T in keyof R]-?: MapFns<NonNullable<R[T]>> }[keyof R]>
+		>;
+
+/** Reported on `resolvers` when the map expects a context the schema's `Ctx` does not satisfy. */
+export type ResolversContextMismatch<Expected, Ctx> = {
+	readonly '~error': 'the resolvers expect another context than createSchema<Ctx>';
+	readonly expected: Expected;
+	readonly actual: Ctx;
+};
+
+/** Intersected into the options: refuses a map (or array of maps) built for a context `Ctx` does not satisfy. */
+export type ContextCheck<Ctx, R> = unknown extends Ctx
+	? unknown
+	: [Ctx] extends [ResolversContext<R>]
+		? unknown
+		: { resolvers: ResolversContextMismatch<ResolversContext<R>, Ctx> };

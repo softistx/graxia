@@ -1,0 +1,47 @@
+scalar Date
+
+enum Role {
+	ADMIN
+	MEMBER
+}
+
+interface Node {
+	id: ID!
+}
+
+type User implements Node {
+	id: ID!
+	name: String!
+	role: Role!
+	joined: Date!
+}
+
+type Post implements Node {
+	id: ID!
+	title: String!
+	author: User!
+}
+
+union SearchResult = User | Post
+
+input PostInput {
+	title: String!
+}
+
+type Query {
+	me: User
+	node(id: ID!): Node
+	search(term: String!): [SearchResult!]!
+	today: Date!
+}
+
+type Mutation {
+	addPost(input: PostInput!): Post!
+}
+
+type Subscription {
+	# without resolve: the stream yields the field value itself
+	clock: Int!
+	# with resolve: each event is mapped
+	postAdded: Post!
+}

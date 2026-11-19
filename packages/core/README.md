@@ -452,6 +452,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
+- [Codegen](./docs/guide/codegen.md): graphql-codegen's `Resolvers` with `createSchema`, `contextType`, mappers, `enumValues`.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.

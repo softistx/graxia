@@ -51,7 +51,8 @@
 	"scripts": {
 		"build": "bun run ../../build.ts",
 		"test": "bun test --pass-with-no-tests src",
-		"typecheck": "bun check"
+		"typecheck": "bun check",
+		"codegen:fixture": "graphql-codegen --config src/schema/codegen-fixture/codegen.ts"
 	},
 	"nxgt": {
 		"entrypoints": [
@@ -60,6 +61,9 @@
 		]
 	},
 	"devDependencies": {
+		"@graphql-codegen/cli": "^8.0.0",
+		"@graphql-codegen/typescript": "^7.0.1",
+		"@graphql-codegen/typescript-resolvers": "^7.0.1",
 		"@opentelemetry/api": "1.10.0",
 		"@opentelemetry/sdk-trace": "3.1.1",
 		"@types/bun": "^1.4.4",
