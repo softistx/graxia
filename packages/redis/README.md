@@ -7,14 +7,13 @@ Redis client. No ioredis or node-redis.
 ## Install
 
 ```sh
-bun add @graxia/redis @graxia/core @softistx/redis
+bun add @graxia/redis @graxia/core @softistx/redis zod
 ```
 
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`>=0.22.0 <1`) as peer dependencies. `@softistx/redis` also lists `zod` as a peer
-  (its channel schemas); install it if your package manager asks, graxia never calls it (until nxgt-data#432).
+- `@graxia/core` and `@softistx/redis` (`>=0.22.0 <1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install it alongside, `bun add zod`.
 - With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
   that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
