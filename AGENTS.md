@@ -48,6 +48,8 @@ a deliberate change, named in its PR.
   core keeps them internal (not in its public surface), and the `topic:id` channel is a wire format that two
   processes on different versions must agree on, so Redis owns it. `channel.test.ts` pins both copies to the
   same output; change one, change the other.
+- `packages/mcp/src/tools/operation.ts` copies core's parse fix texts (`PARSE_FIX`, the token-limit fix):
+  core does not export them. Change core's wording, change the copy.
 
 ## Divergences from nxgt-data
 

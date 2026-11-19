@@ -64,7 +64,9 @@ own `onError` to see them, or `false` to silence everything.
 
 A document that does not parse is refused by the MCP server itself (`GRAPHQL_PARSE_FAILED`) and never
 reaches `graxia.execute`, so a lenient parser set by a plugin cannot run what the visibility checks
-have not seen.
+have not seen. The checks see the document graphql's own parser reads: a plugin parser
+(`setParseFn`) that rewrites a valid document into another one is trusted like any plugin, since it
+already decides what runs on `/graphql` too.
 
 CORS preflights echo the headers the browser asks for (`Access-Control-Request-Headers`), so custom
 auth headers work from an allowed origin.
