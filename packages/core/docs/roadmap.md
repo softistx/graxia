@@ -45,8 +45,8 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ### 0.2.0
 
-- **A typed PubSub** — `createMemoryPubSub` with typed topics (template keys included), per-subscriber
-  buffers, abort-safe iterators, and `filterIterable` / `mapIterable` (see [the guide](./guide/pubsub.md)).
+- **A typed PubSub** — `createPubSub` with typed topics in Yoga's shape (`subscribe(topic, id?)`, `publish(topic, id?, payload)`), per-subscriber
+  buffers, abort-safe iterators, and `pipe` / `filter` / `map` (see [the guide](./guide/pubsub.md)).
 - **Subscriptions over SSE** — the `graphql-sse` protocol (distinct connections), keep-alives, Bun's
   idle timeout handled (see [the guide](./guide/subscriptions.md)).
 - **Subscriptions over WebSocket** — `graphql-transport-ws` on Bun's WebSocket, `connectionParams` and

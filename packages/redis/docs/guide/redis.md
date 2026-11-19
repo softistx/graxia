@@ -16,7 +16,7 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
 import { createGraxia, createSchema } from '@graxia/core';
 import { redisPubSub } from '@graxia/redis';
 
-const pubsub = redisPubSub<{ tick: number }>({
+const pubsub = redisPubSub<{ tick: [payload: number] }>({
 	url: process.env.REDIS_URL,
 	onError: (error) => console.error('redis', error),
 });
@@ -27,8 +27,7 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 		Query: { ok: () => true },
 		Subscription: {
 			tick: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 		},
@@ -81,6 +80,15 @@ rejects the command or `serialize` throws.
 `await pubsub.dispose()` ends every iterator, closes the subscriber connection (and the client when
 it created it) and turns later `publish()` into a no-op and `subscribe()` into a finished iterator.
 
+### Channels and ids
+
+Typed topics are Yoga's: `[payload]` or `[id, payload]`. A topic with an id is the Redis channel
+`<prefix>topic:id` (`publish('post', '42', p)` goes to `graxia:post:42`), with one `SUBSCRIBE` per
+channel. **Migrating from 0.1:** `subscribe('post:42', { signal })` becomes `subscribe('post', '42')`
+(no signal: the engine returns the iterator when the operation stops), and the topic type
+`{ [k: `post:${string}`]: Post }` becomes `{ post: [id: string, payload: Post] }`. Channel names on
+Redis are unchanged, so old and new processes still talk during a rolling deploy.
+
 ## Cache
 
 `redisCache` stores strings under `prefix + key` (default `graxia:cache:`). A `ttlMs` becomes `PX`;
@@ -96,5 +104,5 @@ REDIS_URL=redis://localhost:6379 bun test
 docker stop redis-test
 ```
 
-For application code, use `createMemoryPubSub` and `createMemoryCache` in unit tests and Redis in
+For application code, use `createPubSub` and `createMemoryCache` in unit tests and Redis in
 integration tests; the contracts are the same.

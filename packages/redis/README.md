@@ -20,35 +20,33 @@ Exported types: `RedisConnection`, `RedisPubSub`, `RedisPubSubOptions`, `RedisCa
 
 ## PubSub: swap memory for Redis
 
-`redisPubSub` implements the same `PubSub` contract as `createMemoryPubSub`, so resolvers and
-`filterIterable` do not change. Subscribers in other processes receive what you publish.
+`redisPubSub` implements the same `PubSub` contract as `createPubSub` (Yoga's shape: `subscribe('post', id)`, `publish('post', id, payload)`), so resolvers
+and `pipe` / `filter` / `map` do not change. A topic with an id is the Redis channel `<prefix>topic:id`. Subscribers in other processes receive what you publish.
 
 ```ts
-import { filterIterable } from '@graxia/core';
+import { filter, pipe } from '@graxia/core';
 import { redisPubSub } from '@graxia/redis';
 
-type Topics = { [k: `post:${string}`]: { id: string; published: boolean } };
+type Topics = {
+	post: [id: string, payload: { id: string; published: boolean }];
+};
 const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
 
-// the Subscription resolver: `ctx.signal` removes the subscriber when the client leaves
+// the Subscription resolver: the engine returns the iterator when the client leaves
 const resolvers = {
 	Subscription: {
 		postPublished: {
-			subscribe: (
-				_root: unknown,
-				_args: unknown,
-				ctx: { signal: AbortSignal },
-			) =>
-				filterIterable(
-					pubsub.subscribe('post:42', { signal: ctx.signal }),
-					(post) => post.published,
+			subscribe: () =>
+				pipe(
+					pubsub.subscribe('post', '42'),
+					filter((post) => post.published),
 				),
 			resolve: (post: { id: string }) => post,
 		},
 	},
 };
 
-await pubsub.publish('post:42', { id: '42', published: true });
+await pubsub.publish('post', '42', { id: '42', published: true });
 await pubsub.dispose(); // on shutdown
 ```
 

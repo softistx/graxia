@@ -1,15 +1,20 @@
 import {
-	createMemoryPubSub,
+	createPubSub,
 	type PubSub,
+	type PubSubPayload,
+	type PubSubSubscribeArgs,
 	type PubSubTopics,
-	type SubscribeOptions,
 } from '@graxia/core';
+import { channelOf, splitPublishArgs } from './channel';
 import {
 	closeQuietly,
 	type RedisConnection,
 	resolveClient,
 } from './connection';
 import { createTopicSubscriptions } from './subscriptions';
+
+/** The local fan-out is keyed by channel, one level below the typed interface. */
+type ChannelTopics = Record<string, [unknown]>;
 
 /** Options of {@link redisPubSub}. */
 export type RedisPubSubOptions = RedisConnection & {
@@ -37,11 +42,11 @@ export interface RedisPubSub<Topics extends PubSubTopics>
 	 */
 	ready(): Promise<void>;
 	/** Number of open local subscriptions on `topic`. */
-	subscriberCount(topic: keyof Topics & string): number;
+	subscriberCount(topic: keyof Topics & string, id?: string | number): number;
 }
 
 /**
- * A {@link PubSub} on Redis, interchangeable with `createMemoryPubSub`. One
+ * A {@link PubSub} on Redis, interchangeable with `createPubSub`. One
  * dedicated subscriber connection (opened on the first `subscribe()`) carries
  * one Redis SUBSCRIBE per topic, shared by every local subscriber of that
  * topic and dropped when the last one leaves. Delivery is at most once: events
@@ -51,10 +56,10 @@ export interface RedisPubSub<Topics extends PubSubTopics>
  * its own pending subscriptions first.
  *
  * @example
- * type Topics = { [k: `post:${string}`]: { id: string } };
+ * type Topics = { post: [id: string, payload: { id: string }] };
  * const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
- * const events = pubsub.subscribe('post:42', { signal });
- * await pubsub.publish('post:42', { id: '42' });
+ * const events = pubsub.subscribe('post', '42'); // Redis channel `graxia:post:42`
+ * await pubsub.publish('post', '42', { id: '42' });
  */
 export function redisPubSub<Topics extends PubSubTopics>(
 	options: RedisPubSubOptions = {},
@@ -70,7 +75,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 			// a faulty observer never breaks delivery
 		}
 	};
-	const local = createMemoryPubSub<Topics>({
+	const local = createPubSub<ChannelTopics>({
 		...(options.bufferSize !== undefined && { bufferSize: options.bufferSize }),
 		...(options.onOverflow && { onOverflow: options.onOverflow }),
 	});
@@ -86,39 +91,39 @@ export function redisPubSub<Topics extends PubSubTopics>(
 				report(error);
 				return;
 			}
-			void local.publish(topic as keyof Topics & string, payload as never);
+			void local.publish(topic, payload);
 		},
 	});
 	let disposed = false;
 
 	function subscribe<K extends keyof Topics & string>(
-		topic: K,
-		subscribeOptions: SubscribeOptions = {},
-	): AsyncIterableIterator<Topics[K]> {
-		const { signal } = subscribeOptions;
-		const inner = local.subscribe(topic, subscribeOptions);
-		if (disposed || signal?.aborted) return inner;
-		subscriptions.acquire(topic);
+		...args: PubSubSubscribeArgs<Topics, K>
+	): AsyncIterableIterator<PubSubPayload<Topics[K]>> {
+		const channel = channelOf(args[0], args[1] as string | number | undefined);
+		const inner = local.subscribe(channel) as AsyncIterableIterator<
+			PubSubPayload<Topics[K]>
+		>;
+		if (disposed) return inner;
+		subscriptions.acquire(channel);
 		let released = false;
 		const leave = (): void => {
 			if (released) return;
 			released = true;
-			signal?.removeEventListener('abort', leave);
-			if (!disposed) subscriptions.release(topic);
+			if (!disposed) subscriptions.release(channel);
 		};
-		signal?.addEventListener('abort', leave, { once: true });
 		return releasing(inner, leave);
 	}
 
 	return {
-		async publish(topic, payload) {
+		async publish(topic, ...args) {
 			if (disposed) return;
+			const { id, payload } = splitPublishArgs(args);
 			await subscriptions.ready();
-			await client.publish(prefix + topic, serialize(payload));
+			await client.publish(prefix + channelOf(topic, id), serialize(payload));
 		},
 		subscribe,
 		ready: () => subscriptions.ready(),
-		subscriberCount: (topic) => local.subscriberCount(topic),
+		subscriberCount: (topic, id) => local.subscriberCount(channelOf(topic, id)),
 		async dispose() {
 			if (disposed) return;
 			disposed = true;

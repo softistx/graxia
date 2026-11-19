@@ -15,9 +15,9 @@ stream, for any operation type:
 | subscription    | one `next` per event, then `complete` at the end |
 
 ```ts
-import { createGraxia, createMemoryPubSub, createSchema } from '@graxia/core';
+import { createGraxia, createPubSub, createSchema } from '@graxia/core';
 
-const pubsub = createMemoryPubSub<{ tick: number }>();
+const pubsub = createPubSub<{ tick: [payload: number] }>();
 const schema = createSchema<{ signal: AbortSignal }>()({
 	typeDefs: `
 		type Query { _: Int }
@@ -26,9 +26,8 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 	resolvers: {
 		Subscription: {
 			tick: {
-				// ctx.signal aborts when the client leaves or the server shuts down
-				subscribe: (_, __, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				// the engine returns the iterator when the client leaves or the server shuts down
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 		},
@@ -37,6 +36,10 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 
 createGraxia({ schema }).serve({ port: 3000 });
 ```
+
+The PubSub has Yoga's shape, so a Yoga resolver moves over unchanged: `subscribe('post', id)`,
+`publish('post', id, payload)`, `pipe` / `filter` / `map`. See [PubSub](./pubsub.md) for the topic
+typing, the "Coming from Yoga or Apollo" table and the 0.3 migration.
 
 ## Client
 

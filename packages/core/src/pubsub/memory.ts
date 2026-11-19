@@ -1,6 +1,13 @@
-import type { PubSub, PubSubTopics, SubscribeOptions } from './types';
+import {
+	channelOf,
+	type PubSub,
+	type PubSubPayload,
+	type PubSubSubscribeArgs,
+	type PubSubTopics,
+	splitPublishArgs,
+} from './types';
 
-/** Options of `createMemoryPubSub`. */
+/** Options of `createPubSub`. */
 export interface MemoryPubSubOptions {
 	/** Events buffered per subscriber before the oldest is dropped. Default 1000. */
 	bufferSize?: number;
@@ -12,7 +19,7 @@ export interface MemoryPubSubOptions {
 export interface MemoryPubSub<Topics extends PubSubTopics>
 	extends PubSub<Topics> {
 	/** Number of open subscriptions on `topic`. */
-	subscriberCount(topic: keyof Topics & string): number;
+	subscriberCount(topic: keyof Topics & string, id?: string | number): number;
 }
 
 interface Subscriber {
@@ -32,7 +39,6 @@ function toBufferSize(value: number | undefined, fallback: number): number {
 interface SubscriberInit {
 	topic: string;
 	limit: number;
-	signal: AbortSignal | undefined;
 	onOverflow: MemoryPubSubOptions['onOverflow'];
 	/** Removes the subscriber from the registry. */
 	detach(subscriber: Subscriber): void;
@@ -43,7 +49,7 @@ function createSubscriber<T>(init: SubscriberInit): {
 	subscriber: Subscriber;
 	iterator: AsyncIterableIterator<T>;
 } {
-	const { topic, limit, signal, onOverflow } = init;
+	const { topic, limit, onOverflow } = init;
 	const buffer: T[] = [];
 	const waiting: ((result: IteratorResult<T>) => void)[] = [];
 	let ended = false;
@@ -68,12 +74,10 @@ function createSubscriber<T>(init: SubscriberInit): {
 	function end(): void {
 		if (ended) return;
 		ended = true;
-		signal?.removeEventListener('abort', end);
 		buffer.length = 0;
 		init.detach(subscriber);
 		for (const waiter of waiting.splice(0)) waiter(DONE);
 	}
-	signal?.addEventListener('abort', end, { once: true });
 
 	const iterator: AsyncIterableIterator<T> = {
 		next() {
@@ -98,23 +102,24 @@ function createSubscriber<T>(init: SubscriberInit): {
 }
 
 /**
- * Creates an in-memory PubSub. It lives in one process: use a networked
- * implementation to fan out across processes. A slow subscriber never blocks
- * `publish`; its oldest events are dropped past `bufferSize`. Aborting a
- * signal, `return()` or `dispose()` stop a subscription at once: buffered
- * events are discarded.
+ * Creates an in-memory PubSub, with the shape of GraphQL Yoga's `createPubSub`.
+ * It lives in one process: use a networked implementation to fan out across
+ * processes. A slow subscriber never blocks `publish`; its oldest events are
+ * dropped past `bufferSize`. `return()` (which the engine calls when the
+ * operation's signal aborts) and `dispose()` stop a subscription at once:
+ * buffered events are discarded.
  *
  * @example
- * const pubsub = createMemoryPubSub<{ tick: number }>();
+ * const pubsub = createPubSub<{ tick: [payload: number] }>();
  * const events = pubsub.subscribe('tick');
  * await pubsub.publish('tick', 1);
  * (await events.next()).value; // 1
  */
-export function createMemoryPubSub<Topics extends PubSubTopics>(
+export function createPubSub<Topics extends PubSubTopics>(
 	options: MemoryPubSubOptions = {},
 ): MemoryPubSub<Topics> {
 	const defaultSize = toBufferSize(options.bufferSize, 1000);
-	const topics = new Map<string, Set<Subscriber>>();
+	const channels = new Map<string, Set<Subscriber>>();
 	let disposed = false;
 
 	const finishedIterator = (): AsyncIterableIterator<never> => ({
@@ -129,42 +134,44 @@ export function createMemoryPubSub<Topics extends PubSubTopics>(
 	});
 
 	function subscribe<K extends keyof Topics & string>(
-		topic: K,
-		subscribeOptions: SubscribeOptions = {},
-	): AsyncIterableIterator<Topics[K]> {
-		const { signal } = subscribeOptions;
-		if (disposed || signal?.aborted) return finishedIterator();
-		const { subscriber, iterator } = createSubscriber<Topics[K]>({
-			topic,
-			limit: toBufferSize(subscribeOptions.bufferSize, defaultSize),
-			signal,
-			onOverflow: options.onOverflow,
-			detach(done) {
-				const set = topics.get(topic);
-				set?.delete(done);
-				if (set?.size === 0) topics.delete(topic);
+		...args: PubSubSubscribeArgs<Topics, K>
+	): AsyncIterableIterator<PubSubPayload<Topics[K]>> {
+		const channel = channelOf(args[0], args[1] as string | number | undefined);
+		if (disposed) return finishedIterator();
+		const { subscriber, iterator } = createSubscriber<PubSubPayload<Topics[K]>>(
+			{
+				topic: channel,
+				limit: defaultSize,
+				onOverflow: options.onOverflow,
+				detach(done) {
+					const set = channels.get(channel);
+					set?.delete(done);
+					if (set?.size === 0) channels.delete(channel);
+				},
 			},
-		});
-		const existing = topics.get(topic);
+		);
+		const existing = channels.get(channel);
 		const set = existing ?? new Set<Subscriber>();
-		if (!existing) topics.set(topic, set);
+		if (!existing) channels.set(channel, set);
 		set.add(subscriber);
 		return iterator;
 	}
 
 	return {
-		async publish(topic, payload) {
+		async publish(topic, ...args) {
 			if (disposed) return;
-			const set = topics.get(topic);
+			const { id, payload } = splitPublishArgs(args);
+			const set = channels.get(channelOf(topic, id));
 			if (set) for (const subscriber of [...set]) subscriber.push(payload);
 		},
 		subscribe,
 		async dispose() {
 			disposed = true;
-			for (const set of [...topics.values()])
+			for (const set of [...channels.values()])
 				for (const subscriber of [...set]) subscriber.end();
-			topics.clear();
+			channels.clear();
 		},
-		subscriberCount: (topic) => topics.get(topic)?.size ?? 0,
+		subscriberCount: (topic, id) =>
+			channels.get(channelOf(topic, id))?.size ?? 0,
 	};
 }

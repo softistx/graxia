@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createClient } from 'graphql-sse';
 import { definePlugin } from '../plugins/define';
-import { createMemoryPubSub } from '../pubsub/memory';
+import { createPubSub } from '../pubsub/memory';
 import { createSchema } from '../schema/create-schema';
 import { getContext } from './context';
 import { createGraxia, type Graxia } from './create-graxia';
 
-type Topics = { tick: number; bad: number };
-const pubsub = createMemoryPubSub<Topics>();
+type Topics = { tick: [payload: number]; bad: [payload: number] };
+const pubsub = createPubSub<Topics>();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const schema = createSchema<{ signal: AbortSignal }>()({
@@ -21,20 +21,17 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 		Mutation: { bump: () => 1 },
 		Subscription: {
 			tick: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 			bad: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('bad', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('bad'),
 				resolve: () => {
 					throw new Error('secret detail');
 				},
 			},
 			who: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: () => String((getContext() as { user?: string }).user),
 			},
 			ended: {

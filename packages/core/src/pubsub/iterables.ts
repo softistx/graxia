@@ -1,41 +1,75 @@
+/** An operator: turns one async iterable into another, as GraphQL Yoga's `filter` and `map` return. */
+export type Operator<T, U> = (
+	source: AsyncIterable<T>,
+) => AsyncIterableIterator<U>;
+
 /**
- * Keeps the events of `source` that pass `predicate`. A type guard narrows the
- * element type. `return()` is forwarded to the source, and a throw in
- * `predicate` returns the source then rejects.
+ * Keeps the events that pass `predicate`, as Yoga's `filter` (use it with
+ * {@link pipe}). A type guard narrows the element type. `return()` is
+ * forwarded to the source, and a throw in `predicate` returns the source then
+ * rejects.
  *
  * @example
- * subscribe: (_, { id }, ctx) =>
- *   filterIterable(pubsub.subscribe(`post:${id}`, { signal: ctx.signal }), (p) => p.published)
+ * pipe(pubsub.subscribe('post', id), filter((p) => p.published))
  */
-export function filterIterable<T, S extends T>(
-	source: AsyncIterable<T>,
+export function filter<T, S extends T>(
 	predicate: (value: T) => value is S,
-): AsyncIterableIterator<S>;
-export function filterIterable<T>(
-	source: AsyncIterable<T>,
+): Operator<T, S>;
+export function filter<T>(
 	predicate: (value: T) => boolean | Promise<boolean>,
-): AsyncIterableIterator<T>;
-export function filterIterable<T>(
-	source: AsyncIterable<T>,
+): Operator<T, T>;
+export function filter<T>(
 	predicate: (value: T) => boolean | Promise<boolean>,
-): AsyncIterableIterator<T> {
-	return derive(source, async (value) =>
-		(await predicate(value)) ? { value } : undefined,
-	);
+): Operator<T, T> {
+	return (source) =>
+		derive(source, async (value) =>
+			(await predicate(value)) ? { value } : undefined,
+		);
 }
 
 /**
- * Maps each event of `source` through `fn` (sync or async). `return()` is
+ * Maps each event through `fn` (sync or async), as Yoga's `map`. `return()` is
  * forwarded to the source, and a throw in `fn` returns the source then rejects.
  *
  * @example
- * mapIterable(pubsub.subscribe('tick'), (n) => ({ tick: n }))
+ * pipe(pubsub.subscribe('tick'), map((n) => ({ tick: n })))
  */
-export function mapIterable<T, U>(
-	source: AsyncIterable<T>,
-	fn: (value: T) => U | Promise<U>,
-): AsyncIterableIterator<U> {
-	return derive(source, async (value) => ({ value: await fn(value) }));
+export function map<T, U>(fn: (value: T) => U | Promise<U>): Operator<T, U> {
+	return (source) =>
+		derive(source, async (value) => ({ value: await fn(value) }));
+}
+
+/**
+ * Applies the operators to `source` from left to right, as Yoga's `pipe`:
+ * `pipe(a, f, g)` is `g(f(a))`.
+ *
+ * @example
+ * pipe(pubsub.subscribe('post', id), filter((p) => p.published), map((p) => p.title))
+ */
+export function pipe<A>(a: A): A;
+export function pipe<A, B>(a: A, ab: (a: A) => B): B;
+export function pipe<A, B, C>(a: A, ab: (a: A) => B, bc: (b: B) => C): C;
+export function pipe<A, B, C, D>(
+	a: A,
+	ab: (a: A) => B,
+	bc: (b: B) => C,
+	cd: (c: C) => D,
+): D;
+export function pipe<A, B, C, D, E>(
+	a: A,
+	ab: (a: A) => B,
+	bc: (b: B) => C,
+	cd: (c: C) => D,
+	de: (d: D) => E,
+): E;
+export function pipe(
+	source: unknown,
+	...operators: ((value: never) => unknown)[]
+): unknown {
+	return operators.reduce(
+		(value, operator) => operator(value as never),
+		source,
+	);
 }
 
 /** Shared engine: `step` returns a box to emit, or `undefined` to skip. */
