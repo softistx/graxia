@@ -89,7 +89,7 @@ import {
 	type InferContext,
 } from '@graxia/core';
 
-const context = async ({ request }: ContextInit<object>) => ({
+const context = async ({ request }: ContextInit) => ({
 	user: await authenticate(request), // { id: string } | null
 });
 type Ctx = InferContext<typeof context>; // { user: … } & { signal: AbortSignal }

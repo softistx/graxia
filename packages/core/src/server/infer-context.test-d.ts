@@ -12,7 +12,7 @@ const assertType = <_T extends true>() => {};
 
 type User = { id: string } | null;
 const auth = async (_request: Request): Promise<User> => ({ id: '1' });
-const context = async ({ request }: ContextInit<object>) => ({
+const context = async ({ request }: ContextInit) => ({
 	user: await auth(request),
 });
 const tenant = definePlugin({
@@ -26,7 +26,7 @@ type Ctx = InferContext<typeof context, typeof plugins>;
 assertType<
 	Equal<
 		Ctx,
-		{ user: User } & { tenant: string } & unknown & {
+		{ user: User } & { tenant: string } & Record<never, never> & {
 				readonly signal: AbortSignal;
 			}
 	>
@@ -91,4 +91,28 @@ createGraxia({
 	schema: createSchema<{ tenant: number }>()({ typeDefs }),
 	context: () => ({ tenant: 1 }),
 	plugins: [tenant],
+});
+
+// optional-only keys need no factory
+createGraxia({
+	schema: createSchema<{ opt?: string }>()({ typeDefs }),
+});
+
+// the host type is written once, in the factory's annotation
+const hostContext = ({ serverContext }: ContextInit<{ db: string }>) => ({
+	user: serverContext.db,
+});
+type HostCtx = InferContext<typeof hostContext>;
+assertType<Equal<HostCtx['db'], string>>();
+const hostSchema = createSchema<HostCtx>()({ typeDefs });
+const hosted = createGraxia({ schema: hostSchema, context: hostContext });
+export async function hostCalls() {
+	await hosted.fetch(new Request('http://x'), { db: 'x' });
+	// @ts-expect-error serverContext is required
+	await hosted.fetch(new Request('http://x'));
+}
+createGraxia({
+	schema: createSchema<{ db: string; user: number }>()({ typeDefs }),
+	// @ts-expect-error the check still applies: `user` must be a number
+	context: hostContext,
 });

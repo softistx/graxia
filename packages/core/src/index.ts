@@ -100,9 +100,6 @@ export type {
 export type {
 	CoreContext,
 	InferContext,
-	NeededContext,
-	RequireContext,
-	SchemaContext,
 } from './server/infer-context';
 export type {
 	ContextFactory,

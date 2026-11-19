@@ -56,20 +56,26 @@ await graxia.ready; // rejects with the GraxiaPluginError
 Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
 runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
 
-## Type '…' is not assignable to type '(init: ContextInit<…>) => MaybePromise<{ … }>'
+## Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'
 
-A type error on the `context` option of `createGraxia` (or "Property 'context' is missing in type
-… but required in type '{ context: (init: ContextInit<…>) => MaybePromise<object>; }'" when there
-is no `context` at all). The schema was built with `createSchema<Ctx>()`, and the context that
-the `context` factory, the plugins and graxia build does not satisfy `Ctx`: a key is missing, or has
-another type. The last lines of the message name the key ("Property 'user' is missing…", "Types of
-property 'user' are incompatible").
+A type error on the `context` option of `createGraxia`. The schema was built with
+`createSchema<Ctx>()`, and the context that the `context` factory, the plugins and graxia build does
+not satisfy `Ctx`. The three forms:
+
+- A key is missing: `Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'`,
+  then `Property 'n' is missing in type '{ user: string; }' but required in type '{ user: string; n: number; }'`.
+- A key has another type: `Type 'number' is not assignable to type 'string'`, on the key of the returned object.
+- No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
+  '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
+
+The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
+plugins, `serverContext` and graxia do not already provide.
 
 Return the missing keys from the factory, or add the plugin that provides them. Writing the
 context once avoids the drift:
 
 ```ts
-const context = async ({ request }: ContextInit<object>) => ({
+const context = async ({ request }: ContextInit) => ({
 	user: await authenticate(request),
 });
 type Ctx = InferContext<typeof context, typeof plugins>;
@@ -78,7 +84,8 @@ createGraxia({ schema, context, plugins });
 ```
 
 The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
-with an explicit type argument (`createGraxia<{ db: Db }>(…)`). See
+with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
+`ContextInit<{ db: Db }>`). See
 [Context](./guide/context.md#write-the-context-once).
 
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false

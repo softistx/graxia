@@ -18,7 +18,7 @@ import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
 /** What the `context` option receives for each operation. */
-export interface ContextInit<HostCtx> {
+export interface ContextInit<HostCtx = Record<never, never>> {
 	/** The incoming request. */
 	request: Request;
 	/** The host's context, as passed to `fetch(request, serverContext)`. */

@@ -16,18 +16,18 @@ export type FactoryContext<Make> = Make extends (...args: any[]) => infer R
 /**
  * The context resolvers receive, written once: what the `context` factory
  * returns, what the plugins add (a tuple, as `ContextOf`) and what graxia
- * itself adds (`signal`). `HostCtx` is the `serverContext` type when the host
- * passes one to `fetch`.
+ * itself adds (`signal`). `HostCtx`, the `serverContext` type, is the one the
+ * factory's `ContextInit<…>` annotation declares, so it is written once.
  *
  * @example
- * const context = async ({ request }: ContextInit<object>) => ({ user: await auth(request) });
+ * const context = async ({ request }: ContextInit) => ({ user: await auth(request) });
  * type Ctx = InferContext<typeof context, typeof plugins>;
  * const schema = createSchema<Ctx>()({ typeDefs, resolvers });
  */
 export type InferContext<
 	Make extends ContextFactory<any> | undefined = undefined,
 	Plugins extends readonly unknown[] = [],
-	HostCtx = unknown,
+	HostCtx = Make extends (init: ContextInit<infer H>) => any ? H : unknown,
 > = FactoryContext<Make> & ContextOf<Plugins> & HostCtx & CoreContext;
 
 /** The context type a schema built with `createSchema<Ctx>()` expects (`{}` for a plain schema). */
@@ -67,9 +67,10 @@ type Without<Ctx, Others> = string extends keyof Ctx
 				: K]: Ctx[K];
 		};
 
-/** `context` becomes required when the factory has something to provide. */
-export type RequireContext<Needed, HostCtx> = keyof Needed extends never
-	? unknown
-	: {
-			context: (init: ContextInit<HostCtx>) => MaybePromise<object>;
-		};
+/** `context` becomes required when the factory has keys to provide; its result must then include them. */
+export type RequireContext<Needed, HostCtx> =
+	Record<never, never> extends Needed
+		? unknown
+		: {
+				context: (init: ContextInit<HostCtx>) => MaybePromise<Needed>;
+			};

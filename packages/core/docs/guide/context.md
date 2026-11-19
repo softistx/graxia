@@ -38,7 +38,7 @@ const tenant = definePlugin({
 });
 const plugins = [tenant] as const;
 
-const context = async ({ request }: ContextInit<object>) => ({
+const context = async ({ request }: ContextInit) => ({
 	user: await authenticate(request), // { id: string } | null
 });
 
@@ -57,9 +57,35 @@ Bun.serve({ port: 3000, fetch: graxia.fetch });
 ```
 
 `InferContext<Make, Plugins, HostCtx>` is what the factory returns (awaited), what the plugins add
-(`ContextOf`, a tuple, so declare the list `as const` or inline), the `serverContext` type if you
-pass one, and what graxia always adds (`CoreContext`, the `signal`). Without a factory, use
+(`ContextOf`, a tuple, so declare the list `as const` or inline), the `serverContext` type the
+factory's `ContextInit<…>` declares, and what graxia always adds (`CoreContext`, the `signal`). Without a factory, use
 `InferContext<undefined, typeof plugins>` or `InferContext` alone.
+
+### The host's `serverContext`
+
+Annotate the factory with the host's type, `ContextInit<{ tenant: string }>`: `InferContext` reads
+it, and `fetch`, `execute` and `serve` then require that `serverContext`. Never write
+`createGraxia<…>`: an explicit type argument switches the context check off.
+
+```ts
+const context = ({
+	request,
+	serverContext,
+}: ContextInit<{ tenant: string }>) => ({
+	user: request.headers.get('x-user') ?? 'anonymous',
+	tenant: serverContext.tenant,
+});
+type Ctx = InferContext<typeof context>; // { user: string; tenant: string; … }
+
+const graxia = createGraxia({
+	schema: createSchema<Ctx>()({ typeDefs, resolvers }),
+	context,
+});
+Bun.serve({
+	port: 3000,
+	fetch: (request) => graxia.fetch(request, { tenant: 'acme' }),
+});
+```
 
 ### What the compiler checks
 
@@ -71,8 +97,8 @@ plugins, `serverContext` and graxia provide are taken into account; the rest mus
   type, is a type error on `context` (a missing `context` option is "Property 'context' is missing").
 - A plain `GraphQLSchema`, or `createSchema()` without `Ctx`, is not checked.
 - A plugin list that is not a tuple (`GraxiaPlugin[]`) is not checked either.
-- The check needs the type arguments of `createGraxia` to be inferred: `createGraxia<{ tenant: string }>(…)`
-  (an explicit `serverContext` type) turns it off, since TypeScript then infers none of the others.
+- Do not write `createGraxia<…>`: an explicit type argument stops TypeScript inferring the others
+  and turns the check off. Type the host on the factory, as above.
 
 The errors are listed in [Troubleshooting](../troubleshooting.md).
 
