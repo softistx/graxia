@@ -3,6 +3,8 @@ import { GraxiaConfigError } from '@graxia/core';
 export interface Manifest {
 	script: string;
 	style: string;
+	/** The Apollo Sandbox bootstrap script. */
+	sandbox: string;
 	files: Record<string, { type: 'script' | 'style'; size: number }>;
 }
 

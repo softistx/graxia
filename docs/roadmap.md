@@ -9,7 +9,7 @@ Where graxia is going, as what you get. A direction, not a commitment.
   ([#67](https://github.com/softistx/graxia/issues/67)).
 - **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
   content security policy ([#21](https://github.com/softistx/graxia/issues/21), done), and an Apollo Sandbox option
-  ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
+  ([#22](https://github.com/softistx/graxia/issues/22), done), both development-only.
 
 ## Later
 

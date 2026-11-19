@@ -3,7 +3,10 @@
 The [GraphiQL](https://github.com/graphql/graphiql) 4 page for graxia, bundled at build time: it runs
 under a strict content security policy, with no CDN, no external font and no analytics.
 
-> Status: first slice of the explorer effort, unreleased (first publish 0.1.0). Apollo Sandbox follows.
+The Apollo Sandbox option is the one exception: it loads Apollo's script and iframe (see below). Install one
+explorer, not both.
+
+> Status: unreleased (first publish 0.1.0): `graphiql()` and `apolloSandbox()`.
 > **Development only**: the page is off when `NODE_ENV` is `production`.
 
 ## Install
@@ -57,7 +60,27 @@ img-src 'self' data:; font-src 'self' data:; connect-src 'self'; worker-src 'non
 `Cache-Control: no-store`. Scripts never need `'unsafe-inline'`; GraphiQL 4 sets inline styles at run
 time, hence `'unsafe-inline'` for styles only. See [the guide](./docs/guide/graphiql.md).
 
+## Apollo Sandbox
+
+```ts
+import { apolloSandbox } from '@graxia/graphiql';
+
+createGraxia({ schema, plugins: [apolloSandbox({ title: 'My API' })] });
+```
+
+Serves [Apollo Sandbox](https://www.apollographql.com/docs/graphos/platform/sandbox) the same way
+(a browser `GET` on the endpoint, development only by default, `enabled` with the same meaning), but it
+is **not self-contained**: it loads Apollo's embed script and iframe from two Apollo hosts, a third-party
+script on your API's origin. Its CSP names only `https://embeddable-sandbox.cdn.apollographql.com`
+(script) and `https://sandbox.embed.apollographql.com` (frame), and it runs subscriptions over WebSocket
+when the instance has it on.
+
+Options: `enabled`, `title`, `initialState` (`document`, `variables`, `headers`, `includeCookies`, default
+`false`). `graphiql()` and `apolloSandbox()` cannot both be enabled on one instance: startup throws, so
+pick one with `enabled`. The exact CSP (`sandboxContentSecurityPolicy`), the risks and the
+troubleshooting are in [the guide](./docs/guide/apollo-sandbox.md).
+
 ## Documentation
 
-See [`docs/`](./docs): the [guide](./docs/guide/graphiql.md), [troubleshooting](./docs/troubleshooting.md)
+See [`docs/`](./docs): the [GraphiQL guide](./docs/guide/graphiql.md), [Apollo Sandbox guide](./docs/guide/apollo-sandbox.md), [troubleshooting](./docs/troubleshooting.md)
 and [roadmap](./docs/roadmap.md).
