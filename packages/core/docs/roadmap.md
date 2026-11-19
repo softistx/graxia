@@ -48,9 +48,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
   answers `429` with `Retry-After` (see [Rate limiting](./guide/rate-limiting.md)).
 - **A production profile** — a [production guide](./guide/production.md) and a spec that runs the
   whole secure-by-default profile end to end.
-- **Telemetry** — spans for each request, parse, validation and operation, optional resolver
-  spans, W3C trace context in, on `@softistx/telemetry` as an optional peer (see
-  [Telemetry](./guide/telemetry.md)).
+- **OpenTelemetry** — spans for each request, parse, validation and operation, optional resolver
+  spans, W3C trace context in, with `@opentelemetry/api` as an optional peer (moved to
+  `@softistx/telemetry` in 0.4.0; see [Telemetry](./guide/telemetry.md)).
 
 ### 0.2.0
 
