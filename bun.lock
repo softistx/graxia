@@ -9,7 +9,7 @@
         "@changesets/changelog-github": "^1.0.1",
         "@changesets/cli": "^3.0.1",
         "@types/bun": "^1.4.4",
-        "graphql-sse": "^2.6.3",
+        "graphql-sse": "^2.6.4",
         "typescript": "~6.0.3",
       },
     },
@@ -201,7 +201,7 @@
 
     "graphql-http": ["graphql-http@1.23.1", "", { "peerDependencies": { "graphql": ">=0.11 <=17" } }, "sha512-h6AcykL7+xp22QvOnK0fu1eHk9AZG1ngF71rk0ZGuGupnjm1yqXRFrZ/eMv4Q1FTCWILJ5o6hVAxzt3S8/wPHQ=="],
 
-    "graphql-sse": ["graphql-sse@2.6.3", "", { "peerDependencies": { "graphql": ">=0.11 <=17" } }, "sha512-UCSx3a+IklDOqJt8gpxGwDhnmWiZLJ5wNPMJ7TLGOQ68PhiKIDxLJBB2i+nKEGyWYLtiSLpTJ5fFEG5kkAxppA=="],
+    "graphql-sse": ["graphql-sse@2.6.4", "", { "peerDependencies": { "graphql": ">=0.11 <=17" } }, "sha512-5FJucErfubgQGXXmu6kQiIZ5/pp6eeIXmr+ypqhIjJx0H/xA1koD+xLu3Z0ptSRWp/w9N8Ua9Qnc9+mnWSj0bA=="],
 
     "graphql-ws": ["graphql-ws@6.4.3", "", { "peerDependencies": { "@fastify/websocket": "^10 || ^11", "crossws": "~0.3 || ~0.4", "graphql": "^15.10.1 || ^16 || ^17", "ws": "^8" }, "optionalPeers": ["@fastify/websocket", "crossws", "ws"] }, "sha512-wdnv6+iQF0U3rPeaoCALqyFHLE7zansTAqBnsrbwyzgj/Iu0kaglAsA8k3nGDHu9AmeGOQI3uH6C+ojz3DO9AA=="],
 
