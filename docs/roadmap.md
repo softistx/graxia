@@ -2,12 +2,15 @@
 
 Where graxia is going, as what you get. A direction, not a commitment.
 
+## Now
+
+- **Ready for agents** (M5) — a schema printer that shows an agent what it may do
+  (`@graxia/core/agent`, done), an MCP server over Streamable HTTP with schema, query
+  and mutation tools (`@graxia/mcp`, in progress), then OAuth, persisted operations
+  as typed tools, `llms.txt` and a Claude Code plugin.
+
 ## Later
 
-- **Ready for agents** (M5) — an MCP server over Streamable HTTP with schema,
-  query and mutation tools, OAuth, persisted operations as typed tools, a
-  schema printer that shows an agent what it may do, `llms.txt` and a Claude Code
-  plugin.
 - **Envelop and migration** (M6) — run Envelop plugins unchanged, multipart
   uploads, and a parity suite so applications on `@alxia/graphql` can move to
   graxia.

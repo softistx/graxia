@@ -61,5 +61,10 @@ For a browser explorer in development, `@graxia/graphiql` (0.1.0) adds `graphiql
 `plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
 read `node_modules/@graxia/graphiql/docs/`.
 
+To let an agent use the API over MCP, `@graxia/mcp` (first publish 0.1.0, not yet on npm) is
+`createMcp(graxia, { name })`, mounted as `'/mcp': (req, server) => mcp.fetch(req, { server })`:
+stateless Streamable HTTP with the tools `graphql_schema`, `graphql_query` and, with `mutations: true`,
+`graphql_mutate`. It has no auth: put it behind the host's own and use `can`; read `node_modules/@graxia/mcp/docs/`.
+
 `node_modules/@graxia/core/docs/roadmap.md` says what is next.
 `references/packages.md` is the package index.

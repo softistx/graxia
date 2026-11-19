@@ -306,6 +306,10 @@ id (without it the result is `Must provide a query string.`).
 It rejects with a `GraxiaExecuteError` when a plugin answered with its own response (a 401, for
 example) instead of a result. See [Testing](./docs/guide/testing.md).
 
+The instance also exposes `graxia.schema` (the schema it serves) and `graxia.limits`
+(`{ bodyBytes, tokens }`, defaults applied), so a layer in front of it, such as an MCP server,
+needs neither passed twice.
+
 ## Testing client
 
 `graxia` is the instance from the quick start. `@graxia/core/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a

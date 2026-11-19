@@ -111,6 +111,12 @@ createGraxia({
 depth, aliases, directives and rootFields are validation rules, so the validation cache still
 serves them (the limits are fixed per instance). A plugin's `onValidate` rules keep working.
 
+### Reading the limits in force
+
+`graxia.limits` holds the resolved `bodyBytes` and `tokens` (`tokens` is `false` when that limit is
+off), and `graxia.schema` the schema served. A layer in front of the instance, such as
+`@graxia/mcp`, reads them to enforce the same numbers instead of asking you to repeat them.
+
 ### Cost
 
 The cost follows the `@cost` and `@listSize` directives (the IBM GraphQL cost directive
