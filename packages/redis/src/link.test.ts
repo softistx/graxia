@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { GraxiaConfigError } from '@graxia/core';
-import { connectRedis } from '@softistx/redis';
+import { connectRedis, RedisError } from '@softistx/redis';
 import type { RedisClient } from 'bun';
 import { redisCache } from './cache';
 import { describeRedis, redisUrl } from './env.test-util';
@@ -119,6 +119,7 @@ describeRedis('a URI connected with other options (Redis)', () => {
 		expect(failure).toBeInstanceOf(GraxiaConfigError);
 		const message = (failure as Error).message;
 		expect(message).toContain('pass that client as { client }');
-		expect((failure as Error).cause).toBeInstanceOf(TypeError);
+		expect((failure as Error).cause).toBeInstanceOf(RedisError);
+		expect(((failure as Error).cause as RedisError).code).toBe('URI_CONFLICT');
 	});
 });
