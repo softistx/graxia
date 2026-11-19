@@ -1,3 +1,6 @@
+/** How the page runs subscriptions. */
+export type Subscriptions = 'ws' | 'sse' | false;
+
 /** Options of {@link graphiql}. */
 export interface GraphiQLOptions {
 	/**
@@ -16,11 +19,11 @@ export interface GraphiQLOptions {
 	shouldPersistHeaders?: boolean;
 	/**
 	 * How the page runs subscriptions: `'ws'` (graphql-transport-ws on the same
-	 * path), `'sse'` (distinct connections mode) or `false`. A plugin cannot read
-	 * the instance's `ws` and `sse` settings, so this is not detected: default
-	 * `'sse'`, the transport that needs no upgrade.
+	 * path), `'sse'` (distinct connections mode) or `false`. Default: detected
+	 * from the instance, `'ws'` if its WebSocket is on, else `'sse'` if its SSE
+	 * is on, else `false`. An explicit value wins.
 	 */
-	subscriptions?: 'ws' | 'sse' | false;
+	subscriptions?: Subscriptions;
 }
 
 /** The config the page hands its script, as JSON. */
@@ -29,10 +32,21 @@ export interface ClientConfig {
 	defaultQuery?: string;
 	headers?: Record<string, string>;
 	shouldPersistHeaders: boolean;
-	subscriptions: 'ws' | 'sse' | false;
+	subscriptions: Subscriptions;
 }
 
-export function clientConfig(options: GraphiQLOptions): ClientConfig {
+/** The transport to use when `subscriptions` is not set: the best one the instance has on. */
+export function detectSubscriptions(transports: {
+	readonly sse: boolean;
+	readonly ws: boolean;
+}): Subscriptions {
+	return transports.ws ? 'ws' : transports.sse ? 'sse' : false;
+}
+
+export function clientConfig(
+	options: GraphiQLOptions,
+	detected: Subscriptions,
+): ClientConfig {
 	return {
 		title: options.title ?? 'GraphiQL',
 		...(options.defaultQuery !== undefined
@@ -40,6 +54,6 @@ export function clientConfig(options: GraphiQLOptions): ClientConfig {
 			: {}),
 		...(options.headers ? { headers: options.headers } : {}),
 		shouldPersistHeaders: options.shouldPersistHeaders ?? false,
-		subscriptions: options.subscriptions ?? 'sse',
+		subscriptions: options.subscriptions ?? detected,
 	};
 }

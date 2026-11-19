@@ -2,10 +2,6 @@
 
 Where `@graxia/graphiql` is going, as what you get. A direction, not a commitment.
 
-## Now
-
-- **GraphiQL 4 page** — bundled for a strict CSP, no CDN, development only.
-
 ## Next
 
 - **Apollo Sandbox** option, loaded from the package, not a CDN.
@@ -17,3 +13,8 @@ Where `@graxia/graphiql` is going, as what you get. A direction, not a commitmen
 ## Not planned
 
 - A CDN build of the explorer.
+
+## Shipped
+
+- **GraphiQL page** — GraphiQL 4 bundled for a strict CSP, no CDN, development only; the
+  subscription transport is detected from the instance. See [the guide](./guide/graphiql.md).

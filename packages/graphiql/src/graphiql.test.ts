@@ -25,8 +25,11 @@ describe('page', () => {
 
 	test('the CSP has no external source', async () => {
 		const csp =
-			(await on().fetch(browser())).headers.get('content-security-policy') ??
-			'';
+			(
+				await host(createGraphiQL({ enabled: true }, fakeAssets), {
+					subscriptions: { ws: false },
+				}).fetch(browser())
+			).headers.get('content-security-policy') ?? '';
 		expect(csp).toContain("default-src 'none'");
 		expect(csp).toContain("script-src 'self'");
 		expect(csp).toContain("style-src 'self' 'unsafe-inline'");

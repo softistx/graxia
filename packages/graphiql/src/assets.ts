@@ -1,3 +1,5 @@
+import { GraxiaConfigError } from '@graxia/core';
+
 export interface Manifest {
 	script: string;
 	style: string;
@@ -17,7 +19,10 @@ export function bundledAssets(
 	let manifest: Promise<Manifest> | undefined;
 	return {
 		manifest: () => {
-			manifest ??= Bun.file(new URL('manifest.json', base)).json();
+			manifest ??= loadManifest(base).catch((error: unknown) => {
+				manifest = undefined; // a failed load is retried, never cached
+				throw error;
+			});
 			return manifest;
 		},
 		async read(name, gzip) {
@@ -27,6 +32,18 @@ export function bundledAssets(
 				: undefined;
 		},
 	};
+}
+
+async function loadManifest(base: URL): Promise<Manifest> {
+	const url = new URL('manifest.json', base);
+	try {
+		return (await Bun.file(url).json()) as Manifest;
+	} catch (cause) {
+		throw new GraxiaConfigError(
+			`GraphiQL assets not found at ${url.href}: build @graxia/graphiql (bun run build at the repository root)`,
+			{ cause },
+		);
+	}
 }
 
 const TYPES = {
@@ -45,7 +62,7 @@ export async function assetResponse(
 		? manifest.files[name]
 		: undefined;
 	if (!entry) return notFound();
-	const wantsGzip = /\bgzip\b/.test(acceptEncoding ?? '');
+	const wantsGzip = acceptsGzip(acceptEncoding);
 	const zipped = wantsGzip ? await source.read(name, true) : undefined;
 	const body = zipped ?? (await source.read(name, false));
 	if (!body) return notFound();
@@ -58,6 +75,22 @@ export async function assetResponse(
 			...(zipped !== undefined ? { 'content-encoding': 'gzip' } : {}),
 		},
 	});
+}
+
+/** Whether `Accept-Encoding` allows gzip: listed (or `*`) with a q-value above 0. */
+function acceptsGzip(header: string | null): boolean {
+	let allowed: boolean | undefined;
+	for (const part of (header ?? '').split(',')) {
+		const [coding = '', ...params] = part.trim().toLowerCase().split(';');
+		if (coding.trim() !== 'gzip' && coding.trim() !== '*') continue;
+		const q = params
+			.map((p) => /^\s*q\s*=\s*([\d.]+)\s*$/.exec(p)?.[1])
+			.find((v) => v !== undefined);
+		const ok = q === undefined || Number(q) > 0;
+		if (coding.trim() === 'gzip') return ok;
+		allowed = ok;
+	}
+	return allowed ?? false;
 }
 
 function notFound(): Response {

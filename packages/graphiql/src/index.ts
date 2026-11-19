@@ -1,6 +1,11 @@
 import { definePlugin, type GraxiaPlugin } from '@graxia/core';
 import { type AssetSource, assetResponse, bundledAssets } from './assets';
-import { clientConfig, type GraphiQLOptions } from './options';
+import {
+	clientConfig,
+	detectSubscriptions,
+	type GraphiQLOptions,
+	type Subscriptions,
+} from './options';
 import { contentSecurityPolicy, renderPage } from './page';
 
 export type { GraphiQLOptions } from './options';
@@ -27,8 +32,9 @@ function pageResponse(
 	request: Request,
 	options: GraphiQLOptions,
 	assets: { script: string; style: string },
+	detected: Subscriptions,
 ): Response {
-	const config = clientConfig(options);
+	const config = clientConfig(options, detected);
 	const url = new URL(request.url);
 	const wsOrigin =
 		config.subscriptions === 'ws'
@@ -53,8 +59,12 @@ export function createGraphiQL(
 ): GraxiaPlugin {
 	const enabled = options.enabled ?? process.env['NODE_ENV'] !== 'production';
 	if (!enabled) return definePlugin({ name: 'graphiql' });
+	let detected: Subscriptions = 'sse';
 	return definePlugin({
 		name: 'graphiql',
+		setup({ transports }) {
+			detected = detectSubscriptions(transports);
+		},
 		// A browser navigation and the page's own script and style loads carry
 		// no CSRF header: only these GETs are exempt, and `onRequest` answers
 		// them (core refuses an exempt GET that no plugin answers).
@@ -70,7 +80,9 @@ export function createGraphiQL(
 						request.headers.get('accept-encoding'),
 					),
 				);
-			respond(pageResponse(request, options, await source.manifest()));
+			respond(
+				pageResponse(request, options, await source.manifest(), detected),
+			);
 		},
 	});
 }

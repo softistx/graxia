@@ -9,9 +9,11 @@ under a strict content security policy, with no CDN, no external font and no ana
 ## Install
 
 ```sh
-bun add -d @graxia/graphiql
-bun add @graxia/core
+bun add @graxia/graphiql @graxia/core
 ```
+
+A normal dependency, not `-d`: the plugin is off in production by default, so it can stay in
+`dependencies`; the bundle costs disk only.
 
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported. The package has no runtime dependency besides the
@@ -23,26 +25,27 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 import { createGraxia } from '@graxia/core';
 import { graphiql } from '@graxia/graphiql';
 
-const graxia = createGraxia({
-	schema,
-	plugins: [graphiql({ title: 'My API' })],
-});
-Bun.serve({ routes: { '/graphql': graxia.fetch } });
+// `schema` is the one from the core quick start
+const graxia = createGraxia({ schema, plugins: [graphiql()] });
+graxia.serve({ port: 3000 }); // open http://localhost:3000/graphql in a browser
 ```
 
 Open the endpoint in a browser: a `GET` that accepts `text/html` and has no `query` gets the page.
-Every other request (a JSON `GET`, a `POST`, a WebSocket) is the normal GraphQL endpoint.
+Every other request (a JSON `GET`, a `POST`, a WebSocket) is the normal GraphQL endpoint. With
+`csrf.sameOrigin` on, the page `GET` still needs a same-origin `Origin` (a browser navigation sends it).
+
+> **`headers` are rendered into the HTML**: put no secret in them.
 
 ## Options
 
-| Option                 | Default                     | What                                                                      |
-| ---------------------- | --------------------------- | ------------------------------------------------------------------------- |
-| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk.     |
-| `title`                | `"GraphiQL"`                | The page title.                                                           |
-| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                         |
-| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).         |
-| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                 |
-| `subscriptions`        | `'sse'`                     | `'ws'` (graphql-transport-ws), `'sse'` (distinct connections) or `false`. |
+| Option                 | Default                     | What                                                                                            |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk.                           |
+| `title`                | `"GraphiQL"`                | The page title.                                                                                 |
+| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                               |
+| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                               |
+| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                       |
+| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one. |
 
 ## Content security policy
 

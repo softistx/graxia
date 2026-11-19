@@ -140,6 +140,11 @@ the sequence stops there (later plugins do not run `setup`), `graxia.ready` reje
 `GraxiaPluginError` naming the plugin, and the failure is reported once through `onUnexpected`
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
+`setup` receives `{ plugins, transports }`: `plugins` lists the plugin names in execution order, and
+`transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
+instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
+that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.
+
 ```ts
 const graxia = createGraxia({ schema, plugins: [db] });
 await graxia.ready; // throws GraxiaPluginError: Plugin "db" failed during setup: ...

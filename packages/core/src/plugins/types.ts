@@ -152,6 +152,8 @@ export interface OnResponsePayload extends BasePayload {
 export interface SetupApi {
 	/** Names of every plugin, in execution order. */
 	plugins: readonly string[];
+	/** Subscription transports the instance has on (its resolved `subscriptions` options). */
+	transports: { readonly sse: boolean; readonly ws: boolean };
 }
 
 /**

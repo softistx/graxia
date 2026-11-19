@@ -3,11 +3,28 @@
 `graphiql()` is a graxia plugin that serves the GraphiQL 4 page from the GraphQL endpoint itself.
 
 ```ts
+import { createGraxia } from '@graxia/core';
 import { graphiql } from '@graxia/graphiql';
 
-createGraxia({
-	schema,
-	plugins: [graphiql({ title: 'My API', subscriptions: 'ws' })],
+// `schema` is the one from the core quick start
+const graxia = createGraxia({ schema, plugins: [graphiql()] });
+graxia.serve({ port: 3000 });
+```
+
+Install it as a normal dependency (`bun add @graxia/graphiql`): the plugin is off in production by
+default, so it can stay in `dependencies`; the bundle costs disk only.
+
+## Options in one snippet
+
+```ts
+graphiql({
+	title: 'My API',
+	defaultQuery: '{ __typename }',
+	// Rendered into the HTML: no secret here.
+	headers: { 'x-tenant': 'demo' },
+	shouldPersistHeaders: true,
+	// Serve it in production too, behind the host's own auth (see the end of this page).
+	enabled: true,
 });
 ```
 
@@ -26,8 +43,8 @@ needed.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
 [core's Security guide](../../../core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
-exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later. The `Origin` check
-stays on, and an exempt request no plugin answers is refused as before.
+exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later (`api.transports` too). The `Origin` check
+stays on (with `csrf.sameOrigin` the page `GET` needs a same-origin `Origin`, which a browser sends), and an exempt request no plugin answers is refused as before.
 
 ## Content security policy
 
@@ -52,14 +69,16 @@ subscription clients into two hashed files.
 `dist/assets/` holds `main-<hash>.js`, `main-<hash>.css`, their `.gz` variants and `manifest.json`.
 Assets are served with `Cache-Control: public, max-age=31536000, immutable` (the name carries the
 hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip variant with
-`Content-Encoding: gzip` and `Vary: Accept-Encoding` when the client accepts it. The bundle is about
-3 to 5 MB raw (see the package's release notes for the exact size).
+`Content-Encoding: gzip` and `Vary: Accept-Encoding` when the client accepts it. The bundle is two files: the script is 1.37 MB raw (446 KB gzip) and the stylesheet 413 KB raw
+(273 KB gzip).
 
 ## Subscriptions
 
-The plugin cannot read the instance's `ws` and `sse` settings, so choose with `subscriptions`:
+The plugin reads the instance's `subscriptions.ws` and `subscriptions.sse` in `setup` (core's
+`api.transports`), so there is nothing to set: `'ws'` if the WebSocket is on (core's default), else
+`'sse'` if SSE is on, else `false`. Set `subscriptions` only to force one:
 
-- `'sse'` (default): subscriptions are sent as a `POST` and read as `text/event-stream`, the
+- `'sse'`: subscriptions are sent as a `POST` and read as `text/event-stream`, the
   graphql-sse distinct connections mode core speaks.
 - `'ws'`: graphql-transport-ws on the same path; the CSP gains the same-host `ws(s)://` origin.
 - `false`: queries and mutations only.

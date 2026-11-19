@@ -1,5 +1,5 @@
 import { orderPlugins } from '../order';
-import type { GraxiaPlugin, HookStage } from '../types';
+import type { GraxiaPlugin, HookStage, SetupApi } from '../types';
 import { createDispose } from './dispose';
 import type { PluginRunners } from './outputs';
 import { createSetup } from './setup';
@@ -47,6 +47,8 @@ export interface PluginEngine {
  */
 export function createPluginEngine(
 	plugins: readonly GraxiaPlugin<any, any>[],
+	/** What `setup` sees as `api.transports`. Default: both on, as an instance without options. */
+	transports: SetupApi['transports'] = { sse: true, ws: true },
 ): PluginEngine {
 	const ordered = orderPlugins(plugins);
 	const names = ordered.map((p) => p.name);
@@ -71,7 +73,7 @@ export function createPluginEngine(
 				}
 			}),
 		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
-		init: createSetup(ordered, names, ready),
+		init: createSetup(ordered, names, ready, transports),
 		dispose: createDispose(ordered, ready),
 	};
 }
