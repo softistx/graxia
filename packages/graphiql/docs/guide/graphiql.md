@@ -14,6 +14,8 @@ graxia.serve({ port: 3000 });
 Install it as a normal dependency (`bun add @graxia/graphiql`): the plugin is off in production by
 default, so it can stay in `dependencies`; the bundle costs disk only.
 
+Looking for Apollo Sandbox? See [its guide](./apollo-sandbox.md); the two cannot be enabled together.
+
 ## Options in one snippet
 
 ```ts

@@ -1,6 +1,14 @@
 import { definePlugin, type GraxiaPlugin } from '@graxia/core';
 import { type AssetSource, assetResponse, bundledAssets } from './assets';
 import {
+	assertSingleExplorer,
+	explorerName,
+	GRAPHIQL,
+	isEnabled,
+	isPageRequest,
+	pageResponse,
+} from './explorer';
+import {
 	clientConfig,
 	detectSubscriptions,
 	type GraphiQLOptions,
@@ -9,6 +17,8 @@ import {
 import { contentSecurityPolicy, renderPage } from './page';
 
 export type { GraphiQLOptions } from './options';
+export type { ApolloSandboxOptions, SandboxInitialState } from './sandbox';
+export { apolloSandbox, SANDBOX_CSP } from './sandbox';
 
 const ASSET_PARAM = 'graphiql-asset';
 
@@ -20,15 +30,10 @@ function classify(request: Request): Kind {
 	const { searchParams } = new URL(request.url);
 	const asset = searchParams.get(ASSET_PARAM);
 	if (asset !== null) return { asset };
-	if (searchParams.has('query') || searchParams.has('extensions'))
-		return undefined;
-	if (searchParams.has('documentId')) return undefined;
-	return (request.headers.get('accept') ?? '').includes('text/html')
-		? { page: true }
-		: undefined;
+	return isPageRequest(request) ? { page: true } : undefined;
 }
 
-function pageResponse(
+function renderResponse(
 	request: Request,
 	options: GraphiQLOptions,
 	assets: { script: string; style: string },
@@ -40,16 +45,10 @@ function pageResponse(
 		config.subscriptions === 'ws'
 			? `${url.protocol === 'https:' ? 'wss' : 'ws'}://${url.host}`
 			: undefined;
-	return new Response(renderPage(config, assets), {
-		headers: {
-			'content-type': 'text/html; charset=utf-8',
-			'content-security-policy': contentSecurityPolicy(wsOrigin),
-			'x-frame-options': 'DENY',
-			'referrer-policy': 'no-referrer',
-			'cache-control': 'no-store',
-			'x-content-type-options': 'nosniff',
-		},
-	});
+	return pageResponse(
+		renderPage(config, assets),
+		contentSecurityPolicy(wsOrigin),
+	);
 }
 
 /** @internal `graphiql` with the assets source injected (tests). */
@@ -57,12 +56,13 @@ export function createGraphiQL(
 	options: GraphiQLOptions,
 	source: AssetSource,
 ): GraxiaPlugin {
-	const enabled = options.enabled ?? process.env['NODE_ENV'] !== 'production';
-	if (!enabled) return definePlugin({ name: 'graphiql' });
+	const enabled = isEnabled(options.enabled);
+	if (!enabled) return definePlugin({ name: explorerName(GRAPHIQL, false) });
 	let detected: Subscriptions = 'sse';
 	return definePlugin({
-		name: 'graphiql',
-		setup({ transports }) {
+		name: GRAPHIQL,
+		setup({ transports, plugins }) {
+			assertSingleExplorer(GRAPHIQL, plugins);
 			detected = detectSubscriptions(transports);
 		},
 		// A browser navigation and the page's own script and style loads carry
@@ -81,7 +81,7 @@ export function createGraphiQL(
 					),
 				);
 			respond(
-				pageResponse(request, options, await source.manifest(), detected),
+				renderResponse(request, options, await source.manifest(), detected),
 			);
 		},
 	});

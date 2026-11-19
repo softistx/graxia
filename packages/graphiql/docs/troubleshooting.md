@@ -30,3 +30,27 @@ GraphiQL reads the schema through introspection. Core turns it off in production
 `enabled` defaults to `NODE_ENV !== 'production'`. A production process, or a host that sets
 `NODE_ENV=production` locally, serves nothing; the request falls through to the endpoint's normal
 answer.
+
+## Apollo Sandbox
+
+### The Sandbox page is blank
+
+The browser could not load Apollo's embed script or its iframe. Open the console: a `Refused to load…`
+message means a proxy replaced or added a `Content-Security-Policy` (the page needs `script-src`
+`https://embeddable-sandbox.cdn.apollographql.com` and `frame-src` `https://sandbox.embed.apollographql.com`); a
+network error means the two hosts are blocked (offline, a firewall, an ad blocker). An error
+`the Apollo embed script did not load` from `?apollo-sandbox-asset=…` says the same. Use `graphiql()` where
+the hosts are unreachable.
+
+### The Sandbox cannot reach the endpoint
+
+The page makes the requests itself, so they are same-origin and need no CORS. If they fail, check that
+the endpoint it shows is the right one (behind a proxy, the browser URL is what counts, without its
+query) and that `csrf` is not refusing them: the Sandbox sends the GraphQL request as a normal `POST`
+with a JSON body. Cookies are sent only with `initialState.includeCookies: true` or the toggle in the
+Sandbox's connection settings.
+
+### `graphiql() and apollo-sandbox() are both enabled`
+
+Both explorers answer the same `GET`. Install one, or disable the other (`enabled: false`). See
+[the guide](./guide/apollo-sandbox.md#with-graphiql).
