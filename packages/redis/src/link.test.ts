@@ -46,7 +46,10 @@ describe('redisFieldLimit failures (no Redis needed)', () => {
 		});
 		expect(Date.now() - started).toBeLessThan(2000);
 		expect(errors.length).toBe(1);
-		// no dispose here: release() waits for the connect that never comes up
+		// a dispose never waits for a connect that is still pending
+		const disposing = Date.now();
+		await limit.dispose();
+		expect(Date.now() - disposing).toBeLessThan(100);
 	});
 
 	const broken = new Proxy(

@@ -35,6 +35,7 @@ export function resolveLink(options: RedisConnection): RedisLink {
 		return { client: async () => given, release: async () => {} };
 	const uri = options.url ?? process.env['REDIS_URL'] ?? DEFAULT_URL;
 	let holder: Promise<Holder> | undefined;
+	let connected: Holder | undefined;
 	let released = false;
 	return {
 		async client() {
@@ -43,7 +44,9 @@ export function resolveLink(options: RedisConnection): RedisLink {
 			holder ??= connectRedis(uri);
 			const pending = holder;
 			try {
-				return (await pending).client;
+				const open = await pending;
+				connected = open;
+				return open.client;
 			} catch (error) {
 				if (holder === pending) holder = undefined;
 				throw shared(error, uri);
@@ -53,7 +56,18 @@ export function resolveLink(options: RedisConnection): RedisLink {
 			released = true;
 			const open = holder;
 			holder = undefined;
-			await (await open?.catch(() => undefined))?.close();
+			if (open === undefined) return;
+			// A connect still pending (Redis down) never holds up a shutdown: the late holder is closed when it settles.
+			if (connected === undefined) {
+				void open.then(
+					(late) => late.close(),
+					() => undefined,
+				);
+				return;
+			}
+			const done = connected;
+			connected = undefined;
+			await done.close();
 		},
 	};
 }
