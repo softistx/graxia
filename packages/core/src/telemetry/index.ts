@@ -74,7 +74,7 @@ const OFF: Telemetry = {
 	scope: (_state, _contextValue, scope) => scope,
 };
 
-/** @internal The tracing hooks for `options`, or the off implementation (`telemetry: false`, or no `@opentelemetry/api`). */
+/** @internal The tracing hooks for `options`, or the off implementation (`telemetry: false`, or no `@softistx/telemetry`). */
 export function createTelemetry(
 	option: false | TelemetryOptions | undefined,
 	schema: GraphQLSchema,
@@ -86,7 +86,7 @@ export function createTelemetry(
 	if (!api) return OFF;
 	const env: Env = {
 		api,
-		tracer: resolved.tracer ?? api.trace.getTracer('@graxia/core'),
+		instance: resolved.instance,
 		document: resolved.document,
 		propagate: resolved.propagate,
 	};

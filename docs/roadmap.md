@@ -4,6 +4,9 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
+- **Telemetry on `@softistx/telemetry`** — the optional peer `@opentelemetry/api` is replaced by the
+  in-house `@softistx/telemetry`, with the same spans and attributes
+  ([#67](https://github.com/softistx/graxia/issues/67)).
 - **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
   content security policy ([#21](https://github.com/softistx/graxia/issues/21), done), and an Apollo Sandbox option
   ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
@@ -42,5 +45,5 @@ Where graxia is going, as what you get. A direction, not a commitment.
 - **Secure by default** (M3, in `@graxia/core` 0.3.0 and `@graxia/redis` 0.1.1) — operation
   limits (depth, aliases, cost with `@cost` / `@listSize`), CSRF prevention and a WebSocket
   `Origin` check, introspection and suggestions off in production, trusted documents (manifests,
-  `documentId`, automatic persisted queries, strict mode), `fieldRateLimit`, OpenTelemetry spans
+  `documentId`, automatic persisted queries, strict mode), `fieldRateLimit`, spans on `@opentelemetry/api`
   and a production guide.

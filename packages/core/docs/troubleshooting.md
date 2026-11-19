@@ -790,13 +790,14 @@ Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, 
 
 ## telemetry must be false or an object
 
-`telemetry` was `true`, a string or an array. Omit it (on when `@opentelemetry/api` is installed),
+`telemetry` was `true`, a string or an array. Omit it (on when `@softistx/telemetry` is installed),
 pass `false`, or pass an options object.
 
-## telemetry.tracer must be an OpenTelemetry Tracer
+## telemetry.instance must be a @softistx/telemetry Telemetry
 
-`tracer` has no `startSpan` method. Pass what `trace.getTracer(...)` or your provider's
-`getTracer(...)` returns.
+`instance` is not the object `createTelemetry(...)` returns. Pass it, or leave the option out to use
+the installed one. A `tracer` option from before 0.4 is no longer read: see
+[Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
 
 ## telemetry.document must be a boolean
 
@@ -810,20 +811,20 @@ Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fiel
 
 The server answers but your backend shows nothing. In order:
 
-1. `@opentelemetry/api` is not installed next to `@graxia/core`. It is an optional peer: graxia
-   traces nothing without it. `bun add @opentelemetry/api`.
-2. No SDK is registered, or it is registered after `createGraxia`. Without an SDK the API's tracer
-   is a no-op. Register the provider (or pass `telemetry: { tracer }`) before creating the server.
-3. Two copies of `@opentelemetry/api`: your SDK registers on one and graxia reads the other.
-   The API shares its global through a version-keyed symbol, so a major mismatch or a nested
-   `node_modules` copy of another major breaks it. Check `bun pm ls @opentelemetry/api` shows one version
-   (`^1`).
+1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
+   traces nothing without it. `bun add @softistx/telemetry`.
+2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
+   call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such
+   as `@softistx/telemetry-otlp`'s `otlpExporter`.
+3. Two copies of `@softistx/telemetry`: you installed the telemetry on one and graxia reads the
+   other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
 
 ## A resolver span has no child spans of mine
 
-A span you start inside a resolver nests under the active span, which needs a context manager
-registered. Without one, `trace.getActiveSpan()` returns `undefined` in a resolver; graxia's own
-spans are still parented correctly. Register `AsyncLocalStorageContextManager` as in the
-[Setup](./guide/telemetry.md#setup) snippet.
+A span you start inside a resolver nests under the active span. It is the resolver span (or the
+operation span) when the telemetry is the one graxia emits to: with `telemetry: { instance }`, start
+your span inside that same telemetry (`withTelemetry(instance, ...)` is already in scope in a
+resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
+appear".

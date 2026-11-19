@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { SpanStatusCode } from '@opentelemetry/api';
 import { pubsub, raw, start, until } from '../ws/ws.test-util';
 import {
 	closeAll,
 	idOf,
+	instance,
 	make,
 	named,
 	parentId,
 	post,
 	reset,
-	tracer,
+	traceOf,
 } from './telemetry.test-util';
 
 beforeEach(reset);
@@ -34,7 +34,7 @@ describe('server-sent events', () => {
 		expect(parentId(operation as any)).toBe(
 			idOf(named('graphql.request')[0] as any),
 		);
-		expect(operation?.status.code).toBe(SpanStatusCode.UNSET);
+		expect(operation?.status).toBe('ok');
 	});
 
 	test('a cancelled stream still ends its spans', async () => {
@@ -73,7 +73,7 @@ describe('multipart incremental delivery', () => {
 
 describe('WebSocket', () => {
 	test('the upgrade has a short request span and each subscribe an operation span', async () => {
-		const { url } = start({ telemetry: { tracer } });
+		const { url } = start({ telemetry: { instance } });
 		const socket = raw(url);
 		await socket.init();
 		await socket.send({
@@ -94,8 +94,8 @@ describe('WebSocket', () => {
 		expect(operation?.attributes['graxia.events']).toBe(1);
 	});
 
-	test('an operation parents to the traceparent of the upgrade request', async () => {
-		const { server } = start({ telemetry: { tracer } });
+	test('an operation joins the trace of the upgrade request', async () => {
+		const { server } = start({ telemetry: { instance } });
 		const traceId = '0af7651916cd43dd8448eb211c80319c';
 		const socket = new WebSocket(`ws://localhost:${server.port}/graphql`, {
 			protocols: ['graphql-transport-ws'],
@@ -118,7 +118,7 @@ describe('WebSocket', () => {
 			}),
 		);
 		await until(() => named('query').length === 1);
-		expect(named('query')[0]?.spanContext().traceId).toBe(traceId);
+		expect(traceOf(named('query')[0] as any)).toBe(traceId);
 		socket.close();
 	});
 });

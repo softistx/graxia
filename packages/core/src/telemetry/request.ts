@@ -1,6 +1,5 @@
 import { requestIdKey } from '../http/request-id';
 import type { RequestState } from '../plugins/state';
-import { headerGetter } from './api';
 import {
 	ATTR,
 	type Env,
@@ -31,56 +30,42 @@ async function refusalCode(response: Response): Promise<string | undefined> {
 
 /** Sets the status of the request span from the response and ends it. */
 async function finish(
-	env: Env,
 	live: Live,
 	response: Response | undefined,
 	status: number | undefined,
 ): Promise<void> {
 	const code = status ?? response?.status;
 	if (code !== undefined) {
-		live.span.setAttribute(ATTR.httpStatus, code);
-		if (code >= 500)
-			live.span.setStatus({ code: env.api.SpanStatusCode.ERROR });
+		live.attribute(ATTR.httpStatus, code);
+		if (code >= 500) live.status = 'error';
 	}
 	const refusal = response ? await refusalCode(response) : undefined;
-	if (refusal) live.span.setAttribute(ATTR.refusalCode, refusal);
-	live.span.end();
-}
-
-/** The context a request hangs under: the active span's, else the one in its `traceparent`. */
-function incoming(env: Env, request: Request) {
-	const active = env.api.context.active();
-	if (env.api.trace.getActiveSpan() || !env.propagate)
-		return { active, kind: 'internal' };
-	return {
-		active: env.api.propagation.extract(active, request.headers, headerGetter),
-		kind: 'server',
-	};
+	if (refusal) live.attribute(ATTR.refusalCode, refusal);
+	live.end();
 }
 
 /**
- * A request span that records nothing (no SDK registered, or sampled out):
+ * A request span that records nothing (nothing installed, or sampled out):
  * the context still flows, but no clone, attribute or child span is made.
  */
 async function untraced<R>(
-	env: Env,
 	state: RequestState,
 	live: Live,
 	run: () => Promise<R>,
 ): Promise<R> {
 	state.set(quietKey, true);
 	try {
-		return await env.api.context.with(live.ctx, run);
+		return await live.run(run);
 	} finally {
-		live.span.end();
+		live.end();
 	}
 }
 
 /**
  * Runs `run` inside a `graphql.request` span. `upgrade` marks a WebSocket
- * handshake: it ends with the handshake, and the context it extracted is
- * kept for the operations of the socket. A stream response keeps the span
- * open until its `held` promises settle.
+ * handshake: it ends with the handshake, and the operations of the socket
+ * hang under it. A stream response keeps the span open until its `held`
+ * promises settle.
  */
 export async function traceRequest<R extends Response | undefined>(
 	env: Env,
@@ -89,33 +74,32 @@ export async function traceRequest<R extends Response | undefined>(
 	run: () => Promise<R>,
 	upgrade: boolean,
 ): Promise<R> {
-	const { active, kind } = incoming(env, request);
-	state.set(parentKey, active);
+	// A span already active (a host's) is the parent; otherwise a `traceparent` header is.
+	const nested = !env.propagate || env.api.currentSpan() !== undefined;
 	const id = state.get(requestIdKey);
-	const live = start(
-		env,
-		SPAN.request,
-		kind === 'internal' ? env.api.SpanKind.INTERNAL : env.api.SpanKind.SERVER,
-		active,
-		{
+	const live = start(env, SPAN.request, undefined, {
+		kind: nested ? 'internal' : 'server',
+		traceparent: nested ? null : request.headers.get('traceparent'),
+		attributes: {
 			[ATTR.httpMethod]: request.method,
 			...(id ? { [ATTR.requestId]: id } : {}),
 			...(upgrade ? { [ATTR.upgrade]: 1 } : {}),
 		},
-	);
-	if (!live.span.isRecording()) return untraced(env, state, live, run);
+	});
+	state.set(parentKey, live);
+	if (!live.context.sampled) return untraced(state, live, run);
 	const held: Promise<unknown>[] = [];
 	if (!upgrade) state.set(requestKey, { live, held });
 	let response: R | undefined;
 	try {
-		response = await env.api.context.with(live.ctx, run);
+		response = await live.run(run);
 		return response;
 	} catch (error) {
-		fail(env, live.span, error);
+		fail(live, error);
 		throw error;
 	} finally {
 		const status = upgrade && response === undefined ? 101 : undefined;
-		const end = () => finish(env, live, response, status);
+		const end = () => finish(live, response, status);
 		if (held.length > 0) void Promise.allSettled(held).then(end);
 		else await end();
 	}

@@ -1,63 +1,44 @@
 import { createRequire } from 'node:module';
 
 /**
- * The part of `@opentelemetry/api` graxia uses, described structurally so
+ * The part of `@softistx/telemetry` graxia uses, described structurally so
  * the published declarations never import the optional peer. The real
- * `Tracer`, `Span`, `trace`, `context` and `propagation` satisfy it.
+ * `startSpan`, `currentSpan` and `withTelemetry` satisfy it.
  */
 export interface SpanLike {
-	setAttribute(key: string, value: string | number | boolean): unknown;
-	addEvent(name: string, attributes?: Record<string, string | number>): unknown;
-	setStatus(status: { code: number; message?: string }): unknown;
-	recordException(exception: unknown): unknown;
-	updateName(name: string): unknown;
-	isRecording(): boolean;
+	/** Writable: the operation span is renamed once the operation is chosen. */
+	name: string;
+	/** Writable: `'error'` marks a failure that was not thrown (a 5xx answer). */
+	status: 'ok' | 'error' | 'cancelled';
+	/** `sampled` is false for a detached span (nothing installed) and for a sampled-out trace. */
+	readonly context: { readonly sampled: boolean };
+	attribute(name: string, value: unknown): void;
+	event(name: string, attributes?: Record<string, unknown>): void;
+	fail(failure: unknown): void;
+	/** Ends and emits the span; idempotent. */
 	end(): void;
+	/** Runs `fn` with this span current, so spans started inside are its children. */
+	run<T>(fn: () => T): T;
 }
 
-/** A tracer, as `trace.getTracer()` returns it. */
-export interface TracerLike {
-	startSpan(
-		name: string,
-		options?: { kind?: number; attributes?: Record<string, string | number> },
-		context?: unknown,
-	): SpanLike;
+/** The options `startSpan` takes that graxia sets. */
+export interface StartOptions {
+	kind: 'internal' | 'server';
+	attributes?: Record<string, string | number>;
+	traceparent?: string | null;
 }
 
-/** The module `@opentelemetry/api`, as far as graxia reads it. */
-export interface OtelApi {
-	trace: {
-		getTracer(name: string, version?: string): TracerLike;
-		setSpan(context: unknown, span: unknown): unknown;
-		getActiveSpan(): unknown;
-	};
-	context: {
-		active(): unknown;
-		with<T>(context: unknown, fn: () => T): T;
-	};
-	propagation: {
-		extract(context: unknown, carrier: Headers, getter: HeaderGetter): unknown;
-	};
-	SpanKind: { SERVER: number; INTERNAL: number };
-	SpanStatusCode: { ERROR: number };
+/** The module `@softistx/telemetry`, as far as graxia reads it. */
+export interface TelemetryApi {
+	startSpan(name: string, options?: StartOptions): SpanLike;
+	currentSpan(): unknown;
+	withTelemetry<T>(telemetry: object, fn: () => T): T;
 }
 
-/** Reads W3C trace context headers from a Web `Headers`. */
-export interface HeaderGetter {
-	keys(carrier: Headers): string[];
-	get(carrier: Headers, key: string): string | undefined;
-}
+/** @internal Loads `@softistx/telemetry`, or `undefined` when it is not installed. */
+export type ApiLoader = () => TelemetryApi | undefined;
 
-/** @internal Reads the headers `propagation.extract` asks for. */
-export const headerGetter: HeaderGetter = {
-	keys: (carrier) => [...carrier.keys()],
-	get: (carrier, key) => carrier.get(key) ?? undefined,
-};
-
-/** @internal Loads `@opentelemetry/api`, or `undefined` when it is not installed. */
-export type ApiLoader = () => OtelApi | undefined;
-
-const PACKAGE = '@opentelemetry/api';
+const PACKAGE = '@softistx/telemetry';
 
 /** @internal The loader `createGraxia` uses. Specs replace `load` to simulate a missing peer. */
 export const apiLoader: { load: ApiLoader } = { load: () => loadApi() };
@@ -65,7 +46,7 @@ export const apiLoader: { load: ApiLoader } = { load: () => loadApi() };
 /** @internal The default loader: a synchronous `require` of the optional peer, never a hard dependency. */
 export const loadApi: ApiLoader = () => {
 	try {
-		return createRequire(import.meta.url)(PACKAGE) as OtelApi;
+		return createRequire(import.meta.url)(PACKAGE) as TelemetryApi;
 	} catch {
 		return undefined;
 	}

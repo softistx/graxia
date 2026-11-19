@@ -1,10 +1,12 @@
 import { GraxiaConfigError } from '../errors/config-error';
-import type { TracerLike } from './api';
 
-/** The `telemetry` option of `createGraxia`: OpenTelemetry spans. */
+/** The `telemetry` option of `createGraxia`: spans on `@softistx/telemetry`. */
 export interface TelemetryOptions {
-	/** The tracer to use. Default: `trace.getTracer('@graxia/core')`. */
-	tracer?: TracerLike;
+	/**
+	 * The `Telemetry` (from `createTelemetry`) that receives the spans. Default: the one in scope
+	 * or installed (`createTelemetry(...).install()`). Without either, spans are detached no-ops.
+	 */
+	instance?: object;
 	/**
 	 * One span per resolver call (`graphql.resolve <field>`). `false` by default: it costs a span
 	 * per field. `true` traces resolvers you wrote; `{ trivial: true }` also traces fields with no
@@ -19,7 +21,7 @@ export interface TelemetryOptions {
 
 /** @internal {@link TelemetryOptions} with defaults applied. */
 export interface ResolvedTelemetry {
-	tracer: TracerLike | undefined;
+	instance: object | undefined;
 	resolvers: false | { trivial: boolean };
 	document: boolean;
 	propagate: boolean;
@@ -35,14 +37,14 @@ export function resolveTelemetry(
 	if (option === undefined) option = {};
 	if (typeof option !== 'object' || option === null || Array.isArray(option))
 		throw bad('telemetry must be false or an object');
-	const { tracer, resolverSpans, document, propagate } = option;
+	const { instance, resolverSpans, document, propagate } = option;
 	if (
-		tracer !== undefined &&
-		(typeof tracer !== 'object' ||
-			tracer === null ||
-			typeof tracer.startSpan !== 'function')
+		instance !== undefined &&
+		(typeof instance !== 'object' ||
+			instance === null ||
+			typeof (instance as { emit?: unknown }).emit !== 'function')
 	)
-		throw bad('telemetry.tracer must be an OpenTelemetry Tracer');
+		throw bad('telemetry.instance must be a @softistx/telemetry Telemetry');
 	for (const [name, value] of [
 		['document', document],
 		['propagate', propagate],
@@ -64,7 +66,7 @@ export function resolveTelemetry(
 			'telemetry.resolverSpans must be a boolean or { trivial?: boolean }',
 		);
 	return {
-		tracer,
+		instance,
 		resolvers:
 			resolverSpans === undefined || resolverSpans === false
 				? false

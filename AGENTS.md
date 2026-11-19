@@ -10,18 +10,18 @@ repository's own.
 
 graxia is a Bun-only GraphQL server engine on graphql 17: typed plugins,
 GraphQL over HTTP, SSE, graphql-transport-ws on Bun's WebSocket, `@defer`/`@stream`,
-trusted documents, OpenTelemetry, an MCP server. It is open source (MIT) and
+trusted documents, telemetry on `@softistx/telemetry`, an MCP server. It is open source (MIT) and
 published to npm under `@graxia/*`. The plan is `docs/plan.md`, the consumer
 roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 (tracking issue "graxia v0 roadmap").
 
-| package            | what it is                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `@graxia/core`     | the engine (`createGraxia`, plugins, transports, limits, trusted documents, OTel). Peer `graphql ^17` |
-| `@graxia/redis`    | `redisPubSub()` and `redisCache()` on Bun.redis                                                       |
-| `@graxia/graphiql` | GraphiQL 4 bundled, Apollo Sandbox option                                                             |
-| `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                       |
-| `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                        |
+| package            | what it is                                                                                                 |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `@graxia/core`     | the engine (`createGraxia`, plugins, transports, limits, trusted documents, telemetry). Peer `graphql ^17` |
+| `@graxia/redis`    | `redisPubSub()` and `redisCache()` on Bun.redis                                                            |
+| `@graxia/graphiql` | GraphiQL 4 bundled, Apollo Sandbox option                                                                  |
+| `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                            |
+| `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
 publish 0.1.0, released with core 0.2.0); the other packages stay `"private": true` until their own slice, and removing it is

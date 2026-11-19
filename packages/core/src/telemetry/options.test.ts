@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
+import { span, withTelemetry } from '@softistx/telemetry';
 import { createGraxia } from '../server/create-graxia';
 import { schema as plain } from '../server/fixtures.test-util';
 import { apiLoader } from './api';
@@ -7,6 +7,7 @@ import {
 	closeAll,
 	finished,
 	idOf,
+	instance,
 	make,
 	named,
 	parentId,
@@ -14,7 +15,7 @@ import {
 	reset,
 	schema,
 	seen,
-	tracer,
+	traceOf,
 	until,
 } from './telemetry.test-util';
 
@@ -29,7 +30,7 @@ const one = (name: string) => {
 
 describe('options', () => {
 	test('document: true puts the source on the operation span', async () => {
-		await make({ telemetry: { tracer, document: true } }).fetch(
+		await make({ telemetry: { instance, document: true } }).fetch(
 			post({ query: '{ hello }' }),
 		);
 		expect(one('query').attributes['graphql.document']).toBe('{ hello }');
@@ -40,7 +41,7 @@ describe('options', () => {
 		expect(finished()).toHaveLength(0);
 	});
 
-	test('without the API (loader finds nothing) there is no span and no wrapping', async () => {
+	test('without the package (loader finds nothing) there is no span and no wrapping', async () => {
 		const resolve = plain.getQueryType()?.getFields()['hello']?.resolve;
 		const original = apiLoader.load;
 		apiLoader.load = () => undefined;
@@ -64,7 +65,10 @@ describe('options', () => {
 		const bad = (telemetry: unknown, message: string) =>
 			expect(() => createGraxia({ schema, telemetry } as any)).toThrow(message);
 		bad(true, 'telemetry must be false or an object');
-		bad({ tracer: 'x' }, 'telemetry.tracer must be an OpenTelemetry Tracer');
+		bad(
+			{ instance: 'x' },
+			'telemetry.instance must be a @softistx/telemetry Telemetry',
+		);
 		bad({ document: 1 }, 'telemetry.document must be a boolean');
 		bad({ propagate: 'yes' }, 'telemetry.propagate must be a boolean');
 		bad(
@@ -85,29 +89,33 @@ describe('propagation', () => {
 	test('a traceparent header parents the request span', async () => {
 		await make().fetch(post({ query: '{ hello }' }, { traceparent: parent }));
 		const request = one('graphql.request');
-		expect(request.spanContext().traceId).toBe(traceId);
+		expect(traceOf(request)).toBe(traceId);
 		expect(parentId(request)).toBe('b7ad6b7169203331');
-		expect(request.kind).toBe(SpanKind.SERVER);
+		expect(request.kind).toBe('server');
 	});
 
 	test('propagate: false ignores it', async () => {
-		await make({ telemetry: { tracer, propagate: false } }).fetch(
+		await make({ telemetry: { instance, propagate: false } }).fetch(
 			post({ query: '{ hello }' }, { traceparent: parent }),
 		);
-		expect(one('graphql.request').spanContext().traceId).not.toBe(traceId);
+		expect(traceOf(one('graphql.request'))).not.toBe(traceId);
 	});
 
 	test('with a host span active the request span is its INTERNAL child', async () => {
-		const { context, trace } = await import('@opentelemetry/api');
-		const host = tracer.startSpan('host');
 		const graxia = make();
-		await context.with(trace.setSpan(context.active(), host), () =>
-			graxia.fetch(post({ query: '{ hello }' }, { traceparent: parent })),
+		let hostId = '';
+		await withTelemetry(instance, () =>
+			span('host', async (scope) => {
+				hostId = scope.spanId;
+				await graxia.fetch(
+					post({ query: '{ hello }' }, { traceparent: parent }),
+				);
+			}),
 		);
-		host.end();
+		await instance.flush();
 		const request = one('graphql.request');
-		expect(parentId(request)).toBe(idOf(host as any));
-		expect(request.kind).toBe(SpanKind.INTERNAL);
+		expect(parentId(request)).toBe(hostId);
+		expect(request.kind).toBe('internal');
 	});
 });
 
@@ -120,7 +128,7 @@ describe('resolver spans', () => {
 	});
 
 	test('on: a span per resolver you wrote, under the operation, with field attributes', async () => {
-		await make({ telemetry: { tracer, resolverSpans: true } }).fetch(
+		await make({ telemetry: { instance, resolverSpans: true } }).fetch(
 			post({ query }),
 		);
 		const operation = one('query');
@@ -140,35 +148,33 @@ describe('resolver spans', () => {
 
 	test('trivial: true adds the fields with no resolver', async () => {
 		await make({
-			telemetry: { tracer, resolverSpans: { trivial: true } },
+			telemetry: { instance, resolverSpans: { trivial: true } },
 		}).fetch(post({ query: '{ user { name } }' }));
 		expect(named('graphql.resolve name')).toHaveLength(1);
 	});
 
 	test('a throwing resolver span is ERROR with the exception', async () => {
-		await make({ telemetry: { tracer, resolverSpans: true } }).fetch(
+		await make({ telemetry: { instance, resolverSpans: true } }).fetch(
 			post({ query: '{ boom }' }),
 		);
 		const boom = one('graphql.resolve boom');
-		expect(boom.status.code).toBe(SpanStatusCode.ERROR);
-		expect(boom.events.some((e) => e.name === 'exception')).toBe(true);
+		expect(boom.status).toBe('error');
+		expect(boom.error?.message).toBe('secret detail');
 	});
 
 	test('the active span in a resolver is the resolver span, or the operation span without resolver spans', async () => {
 		seen.span = undefined;
 		await make().fetch(post({ query: '{ hello }' }));
-		expect((seen.span as any).spanContext().spanId).toBe(idOf(one('query')));
+		expect((seen.span as any).spanId).toBe(idOf(one('query')));
 		reset();
-		await make({ telemetry: { tracer, resolverSpans: true } }).fetch(
+		await make({ telemetry: { instance, resolverSpans: true } }).fetch(
 			post({ query: '{ hello }' }),
 		);
-		expect((seen.span as any).spanContext().spanId).toBe(
-			idOf(one('graphql.resolve hello')),
-		);
+		expect((seen.span as any).spanId).toBe(idOf(one('graphql.resolve hello')));
 	});
 
 	test('a resolver of an instance with tracing off runs unwrapped', async () => {
-		await make({ telemetry: { tracer, resolverSpans: true } }).dispose();
+		await make({ telemetry: { instance, resolverSpans: true } }).dispose();
 		reset();
 		await make({ telemetry: false }).fetch(post({ query: '{ hello }' }));
 		expect(finished()).toHaveLength(0);
