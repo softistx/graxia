@@ -77,32 +77,40 @@ A plugin that reads something from the context declares it with the curried form
 `definePlugin<{ request: Request }>()({ ... })`, so `onContext` still infers what it adds. See
 [Plugins](./docs/guide/plugins.md) and its [Typed context](./docs/guide/plugins.md#typed-context) section.
 
-## Context and `getContext`
+## Context, written once
 
-The `context` option builds one context per operation; resolvers get it as their third argument,
-and any code they call can read it with `getContext()`.
+The `context` option builds one context per operation. Write it once, derive its type with
+`InferContext`, and resolvers get it as their third argument. `createGraxia` then checks, at compile
+time, that the schema's context is what the factory, the plugins and graxia provide.
 
 ```ts
-import { createGraxia, createSchema, getContext } from '@graxia/core';
+import {
+	type ContextInit,
+	createGraxia,
+	createSchema,
+	type InferContext,
+} from '@graxia/core';
 
-const schema = createSchema<{ user: string }>()({
+const context = async ({ request }: ContextInit) => ({
+	user: await authenticate(request), // { id: string } | null
+});
+type Ctx = InferContext<typeof context>; // { user: … } & { signal: AbortSignal }
+
+const schema = createSchema<Ctx>()({
 	typeDefs: 'type Query { me: String }',
-	resolvers: { Query: { me: () => getContext<{ user: string }>().user } },
+	resolvers: { Query: { me: (_, __, ctx) => ctx.user?.id } },
 });
 
-const graxia = createGraxia({
-	schema,
-	context: ({ request }) => ({
-		user: request.headers.get('x-user') ?? 'anonymous',
-	}),
-});
+const graxia = createGraxia({ schema, context }); // a missing or wrong key is a type error
 
 // Stop cleanly: drains in-flight operations, answers 503 to new ones.
 process.on('SIGTERM', () => graxia.dispose());
 ```
 
-Every context also carries a `signal` that aborts when the client leaves or the server shuts
-down. See [Context, cancellation and shutdown](./docs/guide/context.md).
+Plugins that add context go in the second parameter, `InferContext<typeof context, typeof plugins>`.
+Every context also carries a `signal` that aborts when the client leaves or the server shuts down;
+`getContext()` reads the context from code far below a resolver. See
+[Context, cancellation and shutdown](./docs/guide/context.md).
 
 ## Errors
 
@@ -439,7 +447,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Guides and index](./docs/README.md)
 - [GraphQL over HTTP](./docs/guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
-- [Context, cancellation and shutdown](./docs/guide/context.md): `getContext()`, `signal`, `dispose()`.
+- [Context, cancellation and shutdown](./docs/guide/context.md): `InferContext`, the resolver context, `signal`, `getContext()`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.

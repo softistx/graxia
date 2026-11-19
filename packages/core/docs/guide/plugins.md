@@ -203,7 +203,7 @@ type Ctx = ContextOf<[typeof auth, typeof tenant]>; // { user: { id: string } } 
 the plugins before it) do not provide. Returning something other than an object or nothing from
 `onContext` throws a `GraxiaConfigError`.
 
-**Not checked yet**: `createGraxia` does not verify, at compile time, that the context the
-`context` option, the host's `serverContext` and the plugins build is what the schema's resolvers
-(`createSchema<Ctx>`) or a plugin's `definePlugin<Requires>` expect. `RequiresContext` is a helper
-you can assert with yourself; a missing key shows up at run time, so cover it with a test.
+**Checked against the schema**: `createGraxia` verifies that the context the `context` option, the
+host's `serverContext` and the plugins build satisfies the schema's `createSchema<Ctx>` (see
+[Context](./context.md#write-the-context-once), and `InferContext` to write it once). A plugin's
+`definePlugin<Requires>` is still checked with `RequiresContext`, which you can assert yourself.

@@ -98,6 +98,11 @@ export type {
 	WithServerContext,
 } from './server/host-context';
 export type {
+	CoreContext,
+	InferContext,
+} from './server/infer-context';
+export type {
+	ContextFactory,
 	ContextInit,
 	GraxiaLimits,
 	GraxiaOptions,

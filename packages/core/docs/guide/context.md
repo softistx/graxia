@@ -13,39 +13,96 @@ For each operation (each entry of a batch included), in this order:
 3. The `onContext` plugin hooks, each merging what it returns.
 4. `signal`, set last, always the operation's own signal.
 
-The compiler does not check that the context you build matches what the schema's resolvers (the
-`createSchema<Ctx>` type) or the plugins need: that check does not exist yet, so a missing key
-is `undefined` at run time. Cover it with a test that runs the operation (`graxia.execute`).
-
 The object is built again for every operation and never shared: a batch of three entries runs
 with three contexts, so a plugin or resolver that mutates its context cannot leak into a sibling.
 
-```ts
-import { createGraxia, createSchema } from '@graxia/core';
+## Write the context once
 
-const schema = createSchema<{ tenant: string; user: string }>()({
+Declare the factory, derive the type from it, and use that type for the schema. The resolver's
+third argument is the context, typed.
+
+```ts
+import {
+	type ContextInit,
+	createGraxia,
+	createSchema,
+	definePlugin,
+	type InferContext,
+} from '@graxia/core';
+
+const tenant = definePlugin({
+	name: 'tenant',
+	onContext: ({ request }) => ({
+		tenant: request.headers.get('x-tenant') ?? 'public',
+	}),
+});
+const plugins = [tenant] as const;
+
+const context = async ({ request }: ContextInit) => ({
+	user: await authenticate(request), // { id: string } | null
+});
+
+// { user: … } & { tenant: string } & { signal: AbortSignal }
+type Ctx = InferContext<typeof context, typeof plugins>;
+
+const schema = createSchema<Ctx>()({
 	typeDefs: 'type Query { whoami: String }',
 	resolvers: {
-		Query: { whoami: (_root, _args, ctx) => `${ctx.tenant}/${ctx.user}` },
+		Query: { whoami: (_root, _args, ctx) => `${ctx.tenant}/${ctx.user?.id}` },
 	},
 });
 
-const graxia = createGraxia<{ tenant: string }>({
-	schema,
-	context: ({ request, serverContext }) => ({
-		user: request.headers.get('x-user') ?? 'anonymous',
-		tenant: serverContext.tenant,
-	}),
-});
+const graxia = createGraxia({ schema, context, plugins });
+Bun.serve({ port: 3000, fetch: graxia.fetch });
+```
 
+`InferContext<Make, Plugins, HostCtx>` is what the factory returns (awaited), what the plugins add
+(`ContextOf`, a tuple, so declare the list `as const` or inline), the `serverContext` type the
+factory's `ContextInit<…>` declares, and what graxia always adds (`CoreContext`, the `signal`). Without a factory, use
+`InferContext<undefined, typeof plugins>` or `InferContext` alone.
+
+### The host's `serverContext`
+
+Annotate the factory with the host's type, `ContextInit<{ tenant: string }>`: `InferContext` reads
+it, and `fetch`, `execute` and `serve` then require that `serverContext`. Never write
+`createGraxia<…>`: an explicit type argument switches the context check off.
+
+```ts
+const context = ({
+	request,
+	serverContext,
+}: ContextInit<{ tenant: string }>) => ({
+	user: request.headers.get('x-user') ?? 'anonymous',
+	tenant: serverContext.tenant,
+});
+type Ctx = InferContext<typeof context>; // { user: string; tenant: string; … }
+
+const graxia = createGraxia({
+	schema: createSchema<Ctx>()({ typeDefs, resolvers }),
+	context,
+});
 Bun.serve({
 	port: 3000,
 	fetch: (request) => graxia.fetch(request, { tenant: 'acme' }),
 });
 ```
 
-`ContextInit` is `{ request, serverContext, params, signal }`. The resolver's third argument is
-the primary, explicit way to reach the context.
+### What the compiler checks
+
+`createGraxia` compares the schema's `createSchema<Ctx>` type with the context it builds. Keys the
+plugins, `serverContext` and graxia provide are taken into account; the rest must come from the
+`context` factory.
+
+- A `createSchema<Ctx>()` schema whose context needs a key nobody provides, or provides with another
+  type, is a type error on `context` (a missing `context` option is "Property 'context' is missing").
+- A plain `GraphQLSchema`, or `createSchema()` without `Ctx`, is not checked.
+- A plugin list that is not a tuple (`GraxiaPlugin[]`) is not checked either.
+- Do not write `createGraxia<…>`: an explicit type argument stops TypeScript inferring the others
+  and turns the check off. Type the host on the factory, as above.
+
+The errors are listed in [Troubleshooting](../troubleshooting.md).
+
+`ContextInit` is `{ request, serverContext, params, signal }`.
 
 ## Cancellation: `signal`
 
@@ -71,23 +128,22 @@ An aborted operation answers `{"errors":[{"message":"The operation was aborted."
 with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
-## `getContext()` without passing the context down
+## `getContext()` for code far below a resolver
 
-Inside an operation, `getContext()` returns the same object the resolvers receive, so helpers and
+The resolver's third argument is the way to reach the context. When a helper or a logger is called
+deep below a resolver and threading the context through would be noise, `getContext()` is the
+shortcut. Inside an operation, `getContext()` returns the same object the resolvers receive, so helpers and
 loggers need no extra parameter. It is backed by `AsyncLocalStorage` (`node:async_hooks`).
 
 ```ts
 import { getContext, tryGetContext } from '@graxia/core';
 
-export function currentUser(): string {
-	return getContext<{ user: string }>().user;
+export function currentUser(): string | undefined {
+	return getContext<Ctx>().user?.id;
 }
 
 export const log = (message: string) =>
-	console.log(
-		tryGetContext<{ user: string }>()?.user ?? 'no operation',
-		message,
-	);
+	console.log(tryGetContext<Ctx>()?.user?.id ?? 'no operation', message);
 ```
 
 - `getContext()` throws a `GraxiaConfigError` outside an operation ("getContext() called outside a graxia operation…").
@@ -96,8 +152,7 @@ export const log = (message: string) =>
   throws, its message naming the option. Pass the context explicitly in that case.
 
 The store covers the plugins' `onExecute` hooks and the execution itself, not `onRequest`,
-`onParams` or the earlier stages. Prefer the explicit context argument; use `getContext()` where
-threading it through would be noise. The cost of the store is measured in
+`onParams` or the earlier stages. Prefer the explicit context argument. The cost of the store is measured in
 `packages/core/bench/als.ts` (see the pull request that added it).
 
 ## `dispose()` and draining

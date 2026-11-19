@@ -1,10 +1,11 @@
-import type { ExecutionResult } from 'graphql';
+import type { ExecutionResult, GraphQLSchema } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
 import { assertCostDirectives } from '../limits/clash';
 import { resolveOperationLimits } from '../limits/options';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
+import type { GraxiaPlugin } from '../plugins/types';
 import { exposeCsrfHeader } from '../security/header-key';
 import { resolveSecurity } from '../security/options';
 import { createTelemetry } from '../telemetry';
@@ -13,8 +14,9 @@ import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
+import type { NeededContext, RequireContext } from './infer-context';
 import { createLifecycle } from './lifecycle';
-import type { GraxiaOptions, ResolvedOptions } from './options';
+import type { GraxiaOptions, NoPlugins, ResolvedOptions } from './options';
 import { buildRuntime } from './runtime';
 import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
 import { resolveStreaming } from './streaming-options';
@@ -147,8 +149,18 @@ function resolve(options: GraxiaOptions<any>): ResolvedOptions {
  * const graxia = createGraxia({ schema });
  * graxia.serve({ port: 3000 }); // or: Bun.serve({ fetch: graxia.fetch })
  */
-export function createGraxia<HostCtx extends object = Record<never, never>>(
-	options: GraxiaOptions<HostCtx>,
+export function createGraxia<
+	HostCtx extends object = Record<never, never>,
+	Schema extends GraphQLSchema = GraphQLSchema,
+	const Plugins extends readonly GraxiaPlugin<any, any>[] = NoPlugins,
+	Made extends NeededContext<Schema, HostCtx, Plugins> = NeededContext<
+		Schema,
+		HostCtx,
+		Plugins
+	>,
+>(
+	options: GraxiaOptions<HostCtx, Schema, Plugins, Made> &
+		RequireContext<NeededContext<Schema, HostCtx, Plugins>, HostCtx>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const trusted = resolveTrusted(options.trustedDocuments);

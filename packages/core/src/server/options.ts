@@ -18,7 +18,7 @@ import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
 /** What the `context` option receives for each operation. */
-export interface ContextInit<HostCtx> {
+export interface ContextInit<HostCtx = Record<never, never>> {
 	/** The incoming request. */
 	request: Request;
 	/** The host's context, as passed to `fetch(request, serverContext)`. */
@@ -69,17 +69,40 @@ export interface IncrementalOptions {
 	format?: 'graphql17' | 'legacy';
 }
 
-/** Options of {@link createGraxia}. */
-export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
-	/** The schema to serve (a `SchemaWithContext<Ctx>` from `createSchema` is accepted). */
-	schema: GraphQLSchema;
+/** What `Plugins` defaults to when `plugins` is not given: any list of plugins, marked so the context check knows none was passed. */
+export type NoPlugins = readonly GraxiaPlugin<any, any>[] & {
+	readonly '~none'?: true;
+};
+
+/** The `context` option: builds the context of each operation. */
+export type ContextFactory<HostCtx = Record<never, never>> = (
+	init: ContextInit<HostCtx>,
+) => MaybePromise<object>;
+
+/**
+ * Options of {@link createGraxia}. Every type parameter is inferred from the
+ * call: type the host on the `context` factory (`ContextInit<{ … }>`), never
+ * with `createGraxia<…>`, which turns the schema's context check off.
+ */
+export interface GraxiaOptions<
+	HostCtx extends object = Record<never, never>,
+	Schema extends GraphQLSchema = GraphQLSchema,
+	Plugins extends readonly GraxiaPlugin<any, any>[] = NoPlugins,
+	Made extends object = object,
+> {
+	/**
+	 * The schema to serve. A `SchemaWithContext<Ctx>` from `createSchema<Ctx>()`
+	 * is checked at compile time: the context factory, the plugins and the
+	 * core must produce `Ctx`. A plain `GraphQLSchema` is not checked.
+	 */
+	schema: Schema;
 	/** Path served; `/graphql` by default. `false` serves any path (the host routes). */
 	path?: string | false;
 	/**
 	 * Builds the context of each operation, merged over `serverContext`
 	 * (`{ ...serverContext, ...returned }`), before `onContext` plugins run.
 	 */
-	context?: (init: ContextInit<HostCtx>) => MaybePromise<object>;
+	context?: (init: ContextInit<HostCtx>) => MaybePromise<Made>;
 	/**
 	 * Makes `getContext()` work (an `AsyncLocalStorage` around each operation's
 	 * execution). `true` by default; `false` skips it and `getContext()` throws.
@@ -88,7 +111,7 @@ export interface GraxiaOptions<HostCtx extends object = Record<never, never>> {
 	/** Milliseconds `dispose()` waits for in-flight operations before aborting them. 10 000 by default. */
 	shutdownTimeout?: number;
 	/** Plugins (see `definePlugin`). */
-	plugins?: readonly GraxiaPlugin<any, any>[];
+	plugins?: Plugins;
 	/** Document and body limits. */
 	limits?: GraxiaLimits;
 	/** Parse and validation caches, or `false` to disable both. */

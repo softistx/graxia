@@ -45,5 +45,9 @@ each off):
 - under `NODE_ENV=production` introspection and "Did you mean" hints are off,
   and trusted documents (when configured) are `strict`.
 
+Write the resolver context once: `type Ctx = InferContext<typeof context, typeof plugins>`, then
+`createSchema<Ctx>()`; `createGraxia` checks at compile time that the factory, plugins and
+`signal` provide it. Type the host as `ContextInit<{ … }>` on the factory, never `createGraxia<…>`.
+
 `node_modules/@graxia/core/docs/roadmap.md` says what is next.
 `references/packages.md` is the package index.
