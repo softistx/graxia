@@ -796,8 +796,8 @@ pass `false`, or pass an options object.
 ## telemetry.instance must be a @softistx/telemetry Telemetry
 
 `instance` is not the object `createTelemetry(...)` returns. Pass it, or leave the option out to use
-the installed one. A `tracer` option from before 0.4 is no longer read: see
-[Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
+the installed one. A `tracer` option from before 0.4 throws its own error: see
+[telemetry.tracer was replaced by telemetry.instance](#telemetrytracer-was-replaced-by-telemetryinstance).
 
 ## telemetry.tracer was replaced by telemetry.instance
 
