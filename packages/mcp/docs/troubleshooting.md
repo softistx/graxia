@@ -52,6 +52,8 @@ The handler was called without going through `mcp.fetch`. Always mount `mcp.fetc
 
 ## `Cannot query field "x" on type "Y"` for a field that exists
 
+Reported with `extensions.code` `GRAPHQL_VALIDATION_FAILED`.
+
 The field is behind `@needs` and `can` says the caller lacks the permission, or `can` is not what
 you meant: the view is built from `can`'s answer. Check it with `graphql_schema` as that caller.
 
@@ -81,7 +83,7 @@ Code `INCREMENTAL_NOT_SUPPORTED`. Remove the directive: the tool returns one com
 
 ## A parse failure (`Syntax Error: …`, `Document contains more than N tokens.`)
 
-Code `GRAPHQL_PARSE_FAILED`, from graxia: correct the syntax at the position the error gives, or
+Code `GRAPHQL_PARSE_FAILED`, raised by the MCP server before `graxia.execute`: correct the syntax at the position the error gives, or
 raise `limits.tokens` on `createGraxia` for a very large document.
 
 ## `graphql_mutate` is not found

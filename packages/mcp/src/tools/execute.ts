@@ -57,28 +57,33 @@ export async function runOperation(
 	input: OperationInput,
 	context: ExecuteContext,
 ): Promise<CallToolResult> {
-	const document = parseOperation(input.query, context.graxia.limits.tokens);
-	if (document) {
-		const refusal = checkOperations(document, kind, input.operationName);
-		if (refusal) return refused(refusal.message, refusal.code, refusal.fix);
-		const problems = validate(
-			(await context.view()).schema,
-			document,
-			VIEW_RULES,
+	const parsed = parseOperation(input.query, context.graxia.limits.tokens);
+	if ('refusal' in parsed)
+		return refused(
+			parsed.refusal.message,
+			parsed.refusal.code,
+			parsed.refusal.fix,
 		);
-		if (problems.length > 0)
-			return resultOf({
-				errors: problems.map((error) => ({
-					...plain(error),
-					extensions: {
-						code: 'GRAPHQL_VALIDATION_FAILED',
-						fix: /introspection/i.test(error.message)
-							? INTROSPECTION_FIX
-							: SCHEMA_FIX,
-					},
-				})),
-			});
-	}
+	const { document } = parsed;
+	const refusal = checkOperations(document, kind, input.operationName);
+	if (refusal) return refused(refusal.message, refusal.code, refusal.fix);
+	const problems = validate(
+		(await context.view()).schema,
+		document,
+		VIEW_RULES,
+	);
+	if (problems.length > 0)
+		return resultOf({
+			errors: problems.map((error) => ({
+				...plain(error),
+				extensions: {
+					code: 'GRAPHQL_VALIDATION_FAILED',
+					fix: /introspection/i.test(error.message)
+						? INTROSPECTION_FIX
+						: SCHEMA_FIX,
+				},
+			})),
+		});
 	try {
 		const result = await context.graxia.execute({
 			document: input.query,

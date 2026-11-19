@@ -76,6 +76,19 @@ describe('origin, host and CORS', () => {
 			'mcp-protocol-version',
 		);
 		expect(preflight.headers.get('vary')).toBe('Origin');
+		const custom = await mcp.fetch(
+			new Request('http://localhost/mcp', {
+				method: 'OPTIONS',
+				headers: {
+					origin: 'https://app.example',
+					'access-control-request-method': 'POST',
+					'access-control-request-headers': 'mcp-method, x-api-key',
+				},
+			}),
+		);
+		const allowed = custom.headers.get('access-control-allow-headers') ?? '';
+		expect(allowed).toContain('mcp-method');
+		expect(allowed).toContain('x-api-key');
 		const answer = await mcp.fetch(
 			rpc('tools/list', {}, { origin: 'https://app.example' }),
 		);

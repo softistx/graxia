@@ -27,13 +27,13 @@ Introspection (`__schema`, `__type`) is refused: it would show fields `@needs` h
 `graphql_schema`. `__typename` stays allowed. Only the validation rules that decide what the caller
 may see run on the view (unknown fields, types and arguments, impossible fragment spreads);
 limits, cost and the rest of validation are graxia's, when the operation runs, with graxia's own
-codes. A document that does not parse is handed to graxia too (its token limit decides).
+codes. A document that does not parse is refused here (the token limit of graxia applies) and never handed to graxia.
 
 ### Refusals
 
 | input                                           | `extensions.code`                        | message                                     | fix                                                                                         |
 | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| a document that does not parse                  | `GRAPHQL_PARSE_FAILED`                   | the parser's message (graxia's)             | correct the syntax                                                                          |
+| a document that does not parse                  | `GRAPHQL_PARSE_FAILED`                   | the parser's message                        | correct the syntax                                                                          |
 | an unknown or hidden field, type or argument    | `GRAPHQL_VALIDATION_FAILED`              | `Cannot query field "x" on type "Y".`       | call `graphql_schema`, correct the operation                                                |
 | `__schema` or `__type`                          | `GRAPHQL_VALIDATION_FAILED`              | graphql's introspection message             | `Use graphql_schema to read the schema.`                                                    |
 | a mutation in `graphql_query`                   | `MCP_OPERATION_NOT_ALLOWED`              | `A mutation cannot run in graphql_query.`   | use `graphql_mutate`                                                                        |

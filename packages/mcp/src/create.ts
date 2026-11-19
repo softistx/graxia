@@ -13,7 +13,12 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
 	if (option === false) return () => {};
 	const sink =
 		option ??
-		((error: unknown) => console.error('[graxia/mcp] unexpected error', error));
+		((error: unknown) => {
+			// The SDK reports a client's protocol mistakes too ("Rejected ..."); they are not ours.
+			if (error instanceof Error && error.message.startsWith('Rejected '))
+				return;
+			console.error('[graxia/mcp] unexpected error', error);
+		});
 	return (error) => {
 		try {
 			sink(error);

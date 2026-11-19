@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { definePlugin } from '@graxia/core';
+import { parse } from 'graphql';
 import { call, mcpFor } from './fixtures.test-util';
 
 describe('what graxia refuses reaches the agent', () => {
@@ -71,5 +72,31 @@ describe('what graxia refuses reaches the agent', () => {
 		const [error] = r.result.structuredContent.errors;
 		expect(error.extensions.code).toBe('MCP_EXECUTION_REFUSED');
 		expect(error.extensions.fix).toContain('Retry later');
+	});
+
+	test('a lenient parser plugin cannot slip a document past the MCP checks', async () => {
+		const lenient = definePlugin({
+			name: 'lenient',
+			onParse: ({ setParseFn }: any) =>
+				setParseFn((source: string) =>
+					parse(source.startsWith('X') ? source.slice(1) : source),
+				),
+		});
+		const { mcp } = mcpFor(
+			{ can: () => () => false },
+			{ plugins: [lenient], csrf: false },
+		);
+		for (const query of [
+			'X{ staffReport }',
+			'X mutation { rename(id: "1", title: "t") { id } }',
+		]) {
+			const r = await call(mcp, 'graphql_query', { query });
+			const [error] = r.result.structuredContent.errors;
+			expect(error.extensions.code).toBe('GRAPHQL_PARSE_FAILED');
+			expect(typeof error.extensions.fix).toBe('string');
+			expect(JSON.stringify(r.result.structuredContent)).not.toContain(
+				'report',
+			);
+		}
 	});
 });

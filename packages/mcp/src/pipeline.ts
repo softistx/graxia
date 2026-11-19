@@ -21,7 +21,10 @@ export async function admit(
 	if (forbidden) return forbidden;
 	const cors = corsOrigin(request, settings.allowedOrigins);
 	if (request.method === 'OPTIONS' && cors !== undefined)
-		return preflight(cors);
+		return preflight(
+			cors,
+			request.headers.get('access-control-request-headers'),
+		);
 	if (request.method !== 'POST')
 		return refusal(
 			405,

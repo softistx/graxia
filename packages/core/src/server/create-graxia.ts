@@ -177,6 +177,7 @@ export function createGraxia<
 		RequireContext<NeededContext<Schema, HostCtx, Plugins>, HostCtx>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
+	const documentLimits = resolveLimits(options.limits);
 	const trusted = resolveTrusted(options.trustedDocuments);
 	// Before `engine.init()`: a bad option throws before any plugin's setup runs.
 	const telemetry = createTelemetry(options.telemetry, options.schema);
@@ -220,7 +221,7 @@ export function createGraxia<
 		schema: options.schema,
 		limits: {
 			bodyBytes: resolved.bodyBytes,
-			tokens: resolveLimits(options.limits).tokens,
+			tokens: documentLimits.tokens,
 		},
 		ready,
 		execute,

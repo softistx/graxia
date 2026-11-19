@@ -38,16 +38,29 @@ export const INTROSPECTION_FIX = 'Use graphql_schema to read the schema.';
 
 /**
  * Parses `query` under graxia's token limit. A document that does not parse
- * is `undefined`: `graxia.execute` refuses it with its own error, code and fix.
+ * is refused here (fail closed): `graxia.execute` is never reached, so a
+ * lenient plugin parser cannot run what the MCP checks have not seen.
  */
 export function parseOperation(
 	query: string,
 	tokens: number | false,
-): DocumentNode | undefined {
+): { document: DocumentNode } | { refusal: Refusal } {
 	try {
-		return parse(query, tokens === false ? {} : { maxTokens: tokens });
-	} catch {
-		return undefined;
+		return {
+			document: parse(query, tokens === false ? {} : { maxTokens: tokens }),
+		};
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		const overflow = /more than \d+ tokens/.test(message);
+		return {
+			refusal: {
+				message,
+				code: 'GRAPHQL_PARSE_FAILED',
+				fix: overflow
+					? 'Split the operation or raise limits.tokens.'
+					: 'Correct the syntax of the document at the position the error points to.',
+			},
+		};
 	}
 }
 

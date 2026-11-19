@@ -58,7 +58,16 @@ a 413. Only `application/json` is accepted (415 otherwise).
 ## Failures are reported, not shown
 
 An unexpected failure (a throwing `can`, a failing transport) is sent to `onError` (default
-`console.error`) with its cause; the agent only sees a generic message.
+`console.error`) with its cause; the agent only sees a generic message. The default sink skips the
+SDK's protocol rejections (messages starting with `Rejected `, a client's own mistake); pass your
+own `onError` to see them, or `false` to silence everything.
+
+A document that does not parse is refused by the MCP server itself (`GRAPHQL_PARSE_FAILED`) and never
+reaches `graxia.execute`, so a lenient parser set by a plugin cannot run what the visibility checks
+have not seen.
+
+CORS preflights echo the headers the browser asks for (`Access-Control-Request-Headers`), so custom
+auth headers work from an allowed origin.
 
 ## What graxia still enforces
 
