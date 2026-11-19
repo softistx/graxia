@@ -156,7 +156,10 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(
 	const telemetry = createTelemetry(options.telemetry, options.schema);
 	const lifecycle = createLifecycle();
 	const servers: Bun.Server<GraxiaSocketData>[] = [];
-	const engine = createPluginEngine(options.plugins ?? []);
+	const engine = createPluginEngine(options.plugins ?? [], {
+		sse: resolved.sse,
+		ws: resolved.ws !== false,
+	});
 	const ready = engine.init();
 	// Handled here so a failing `setup` is never an unhandled rejection; reported once.
 	ready.catch(() => {});

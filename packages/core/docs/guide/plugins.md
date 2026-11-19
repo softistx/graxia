@@ -119,6 +119,12 @@ Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `se
 wins, and the caller skips the step when `out.document`, `out.errors` or `out.result` is set.
 `addRule` accumulates across plugins.
 
+## Exempting a GET from the CSRF header
+
+A plugin field `csrfExempt(request)` (not a hook) lets a plugin serve its own `GET` pages without the
+CSRF header, provided its `onRequest` answers them with `respond`; otherwise core refuses with 403
+`CSRF_HEADER_REQUIRED`. See [Security](./security.md#exempting-a-plugins-own-get-requests).
+
 ## Hook errors
 
 A hook that throws does not abort its stage mid-way: the hooks after the thrower are skipped, the
@@ -133,6 +139,11 @@ receive is the original thrown value, not wrapped. Only a `setup` error is wrapp
 the sequence stops there (later plugins do not run `setup`), `graxia.ready` rejects with a
 `GraxiaPluginError` naming the plugin, and the failure is reported once through `onUnexpected`
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
+
+`setup` receives `{ plugins, transports }`: `plugins` lists the plugin names in execution order, and
+`transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
+instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
+that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.
 
 ```ts
 const graxia = createGraxia({ schema, plugins: [db] });

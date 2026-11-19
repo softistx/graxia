@@ -38,6 +38,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { assetsServe } from './artifacts/assets';
 import { classesDefinedOnce } from './artifacts/classes';
 import { declarationsEmit } from './artifacts/emit';
 import { importsDeclared } from './artifacts/imports';
@@ -98,6 +99,7 @@ async function main(): Promise<boolean> {
 			(await importsDeclared(workdir, packages)) &&
 			(await typesReachConsumer(workdir, packages)) &&
 			(await binsRun(workdir, packages)) &&
+			(await assetsServe(workdir, packages)) &&
 			(await declarationsEmit(workdir, packages))
 		);
 	} finally {

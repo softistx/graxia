@@ -537,6 +537,10 @@ await fetch(url, {
 });
 ```
 
+A plugin's `csrfExempt` that matches a `GET` no plugin answers gets this same 403 on purpose (an
+exempt request never executes an operation): make the plugin's `onRequest` answer it with `respond`,
+or narrow the predicate. See [Security](./guide/security.md).
+
 A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
 custom `requireHeader` list the message names your headers instead.
 

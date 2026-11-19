@@ -1,5 +1,5 @@
 import { GraxiaPluginError } from '../../errors/plugin-error';
-import type { GraxiaPlugin } from '../types';
+import type { GraxiaPlugin, SetupApi } from '../types';
 
 /**
  * Creates the memoized `init`: runs each plugin's `setup` once, in order,
@@ -11,13 +11,14 @@ export function createSetup(
 	names: readonly string[],
 	/** Receives each plugin whose `setup` completed (a plugin without `setup` counts). */
 	ready: Set<GraxiaPlugin<any, any>>,
+	transports: SetupApi['transports'],
 ): () => Promise<void> {
 	let initialised: Promise<void> | undefined;
 	return () => {
 		initialised ??= (async () => {
 			for (const plugin of ordered) {
 				try {
-					await plugin.setup?.({ plugins: names });
+					await plugin.setup?.({ plugins: names, transports });
 					ready.add(plugin);
 				} catch (error) {
 					throw new GraxiaPluginError(plugin.name, error);

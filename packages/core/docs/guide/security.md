@@ -45,6 +45,32 @@ createClient({ url, fetchOptions: { headers: { 'x-graphql-csrf': '1' } } });
 
 `createTestClient` adds the instance's CSRF header (the first of its list) to its `GET` requests, so tests need no change.
 
+## Exempting a plugin's own GET requests
+
+A plugin may declare `csrfExempt(request: Request): boolean` for the few `GET` requests it serves
+itself and a browser cannot send with a custom header: a page opened by navigation, or the
+`<script>` and `<link>` it loads (the GraphiQL page of `@graxia/graphiql` is the case).
+
+- Core consults it for `GET` only, and only for the CSRF **header** check. The `Origin` check
+  (`csrf.sameOrigin`), the path check and the method check still apply.
+- **Invariant**: an exempt request must be answered by a plugin's `onRequest` through `respond`.
+  If no plugin responds, core refuses it with the 403 `CSRF_HEADER_REQUIRED` it would have given, so
+  an exempt `GET` can never execute an operation, even if the predicate matches `?query={__typename}`.
+- A predicate that throws counts as `false` and is reported to `onUnexpected` (`phase: "request"`).
+- Match as narrowly as you can (a path plus a marker parameter, never `() => true`), and let only
+  plugins you trust declare it: it removes the CSRF protection of what it matches.
+
+```ts
+definePlugin({
+	name: 'status-page',
+	csrfExempt: (request) => new URL(request.url).searchParams.has('status-page'),
+	onRequest: ({ request, respond }) => {
+		if (new URL(request.url).searchParams.has('status-page'))
+			respond(new Response('ok'));
+	},
+});
+```
+
 ## Same-origin check
 
 `csrf.sameOrigin` checks the `Origin` header of every HTTP request (off by default; `true` is
