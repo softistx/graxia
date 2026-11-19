@@ -323,6 +323,26 @@ result.status; // 200
 result.data?.hello; // 'hello world'
 ```
 
+## Ready for agents
+
+`@graxia/core/agent` adds descriptive `@needs`, `@constraint` and `@errors` directives, prints the schema one caller may see, and lints descriptions. Every error graxia emits carries `extensions.fix`.
+
+```ts
+import {
+	agentTypeDefs,
+	lintDescriptions,
+	printSchemaFor,
+} from '@graxia/core/agent';
+
+// createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers })
+const sdl = printSchemaFor(schema, {
+	can: (permission) => permissions.has(permission),
+});
+expect(lintDescriptions(schema)).toEqual([]); // in a spec
+```
+
+See [Ready for agents](./docs/guide/agent.md).
+
 ## Key-value cache
 
 `KeyValueCache` (with `CacheSetOptions`) is a small asynchronous string store; `createMemoryCache` is the
@@ -442,6 +462,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
 |                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
+| `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
 ## Documentation
@@ -452,6 +473,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Context, cancellation and shutdown](./docs/guide/context.md): `InferContext`, the resolver context, `signal`, `getContext()`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
+- [Ready for agents](./docs/guide/agent.md): `@graxia/core/agent`, directives, `printSchemaFor`, `visibleSchema`, `lintDescriptions`, the `fix` contract.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Codegen](./docs/guide/codegen.md): graphql-codegen's `Resolvers` with `createSchema`, `contextType`, mappers, `enumValues`.

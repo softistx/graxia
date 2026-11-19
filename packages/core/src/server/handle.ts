@@ -20,6 +20,11 @@ import type { Outcome } from './outcome';
 import type { Runtime } from './runtime';
 import { streamResponse } from './stream-response';
 
+const PARAMS_FIX =
+	'Send a JSON object with "query" (a string) and, optionally, "variables" (an object) and "operationName" (a string).';
+const BATCH_FIX =
+	'Send one operation per request, or fewer operations in the batch.';
+
 type Read =
 	| { response: Response }
 	| { single: GraphQLParams }
@@ -56,6 +61,7 @@ export async function dispatch(
 			return refusal(
 				406,
 				'The Accept header must allow application/graphql-response+json or application/json.',
+				'Send "Accept: application/graphql-response+json" (or application/json).',
 			);
 		const method = request.method === 'GET' ? 'GET' : 'POST';
 		const read =
@@ -91,6 +97,7 @@ export async function dispatch(
 			return refusal(
 				400,
 				`Batched operations cannot be sent over ${sse ? 'text/event-stream' : 'multipart/mixed'}.`,
+				'Send one operation, or ask for a JSON response to batch several.',
 			);
 		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {
@@ -102,7 +109,7 @@ function readGet(request: Request): Read {
 	const parsed = paramsFromUrl(new URL(request.url));
 	return parsed.ok
 		? { single: parsed.params }
-		: { response: refusal(400, parsed.message) };
+		: { response: refusal(400, parsed.message, PARAMS_FIX) };
 }
 
 async function readPost(rt: Runtime, request: Request): Promise<Read> {
@@ -111,28 +118,42 @@ async function readPost(rt: Runtime, request: Request): Promise<Read> {
 			response: refusal(
 				415,
 				'The Content-Type must be application/json (UTF-8).',
+				'Send the body as JSON with "Content-Type: application/json".',
 			),
 		};
 	const body: BodyResult = await readBody(request, rt.options.bodyBytes);
 	if (body.kind === 'too-large')
-		return { response: refusal(413, 'The request body is too large.') };
-	if (body.kind === 'invalid') return { response: refusal(400, body.message) };
+		return {
+			response: refusal(
+				413,
+				'The request body is too large.',
+				'Send a smaller body.',
+			),
+		};
+	if (body.kind === 'invalid')
+		return { response: refusal(400, body.message, PARAMS_FIX) };
 	let json: unknown;
 	try {
 		json = JSON.parse(body.text);
 	} catch {
-		return { response: refusal(400, 'The request body is not valid JSON.') };
+		return {
+			response: refusal(
+				400,
+				'The request body is not valid JSON.',
+				'Send a valid JSON object { "query": "..." } as the body.',
+			),
+		};
 	}
 	if (Array.isArray(json)) {
 		const batch = parseBatch(json, rt.options.batching);
 		return batch.ok
 			? { batch: batch.entries }
-			: { response: refusal(400, batch.message) };
+			: { response: refusal(400, batch.message, BATCH_FIX) };
 	}
 	const parsed = paramsFromJson(json);
 	return parsed.ok
 		? { single: parsed.params }
-		: { response: refusal(400, parsed.message) };
+		: { response: refusal(400, parsed.message, PARAMS_FIX) };
 }
 
 /**

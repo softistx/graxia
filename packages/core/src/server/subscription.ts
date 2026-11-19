@@ -35,6 +35,9 @@ export async function subscription(
 	await release(result);
 	return failure(
 		'Incremental delivery (@defer, @stream) is not supported over this transport yet.',
-		{ code: 'INCREMENTAL_NOT_SUPPORTED' },
+		{
+			code: 'INCREMENTAL_NOT_SUPPORTED',
+			fix: 'Remove @defer and @stream from the subscription.',
+		},
 	);
 }

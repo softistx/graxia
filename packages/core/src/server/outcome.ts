@@ -36,22 +36,19 @@ export function failure(
 		status?: number;
 		headers?: HeadersInit;
 		code?: string;
-		fix?: string;
-	} = {},
+		/** What the client changes to fix the error; always set. */
+		fix: string;
+	},
 ): Outcome {
 	return {
 		kind: 'result',
 		result: {
 			errors: [
 				new GraphQLError(message, {
-					...(options.code
-						? {
-								extensions: {
-									code: options.code,
-									...(options.fix ? { fix: options.fix } : {}),
-								},
-							}
-						: {}),
+					extensions: {
+						...(options.code ? { code: options.code } : {}),
+						fix: options.fix,
+					},
 				}),
 			],
 		},

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GraphQLError } from 'graphql';
 import { exposedError, isGraxiaError } from '../errors/exposed';
+import { INTERNAL_FIX, NON_NULL_FIX } from '../errors/fixes';
 import { defaultMask, maskResult } from '../errors/mask';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
@@ -92,7 +93,11 @@ describe('masking', () => {
 				message: 'Unexpected error.',
 				path: ['plain'],
 				locations: [{ line: 1, column: 3 }],
-				extensions: { code: 'INTERNAL_SERVER_ERROR', correlationId: id },
+				extensions: {
+					code: 'INTERNAL_SERVER_ERROR',
+					fix: INTERNAL_FIX,
+					correlationId: id,
+				},
 			},
 		]);
 		expect(JSON.stringify(body)).not.toContain('secret');
@@ -199,7 +204,11 @@ describe('the generic 500', () => {
 		expect(res.status).toBe(500);
 		expect(body.errors[0]).toEqual({
 			message: 'Unexpected error.',
-			extensions: { code: 'INTERNAL_SERVER_ERROR', correlationId: id },
+			extensions: {
+				code: 'INTERNAL_SERVER_ERROR',
+				fix: INTERNAL_FIX,
+				correlationId: id,
+			},
 		});
 		expect(seen[0]?.info).toEqual({
 			requestId: id,
@@ -235,7 +244,7 @@ describe('forged and inherited', () => {
 			schema,
 		);
 		expect(out.unexpected).toHaveLength(0);
-		expect(out.result.errors?.[0]?.extensions).toEqual({});
+		expect(out.result.errors?.[0]?.extensions).toEqual({ fix: NON_NULL_FIX });
 	});
 });
 

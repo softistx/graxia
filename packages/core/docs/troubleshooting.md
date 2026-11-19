@@ -2,6 +2,42 @@
 
 The errors a consumer can hit, headed by the message as it appears.
 
+## Unknown directive "@needs" (or "@constraint", "@errors")
+
+`createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
+`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
+built in code.
+
+```ts
+createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers });
+```
+
+## Duplicate `@constraint` directive, or "There can be only one directive named "@constraint""
+
+`agentTypeDefs` defines `@constraint`, and so does `graphql-constraint-directive` (or another library) if
+you also use it: the schema then has two definitions of the same directive. graxia's `@constraint` only
+describes limits for agents (it enforces nothing) and its arguments are a superset of the common ones
+(`minLength`, `maxLength`, `min`, `max`, `exclusiveMin`, `exclusiveMax`, `multipleOf`, `minItems`, `maxItems`,
+`pattern`, `format`). Keep one definition: leave `agentTypeDefs` out and declare the directive yourself with
+the arguments you use, or remove the other library's definition. `printSchemaFor` declares only the agent
+directives it prints, so it adds a second definition to a schema that already has one: print from a schema
+that has the library's directive removed.
+
+## `printSchemaFor` output does not build: "Unknown directive" or "Type X not found"
+
+`buildSchema(printSchemaFor(schema))` fails when the schema uses a directive or type that the printer does not
+write: only the agent directives (`@needs`, `@constraint`, `@errors`), `@deprecated`, `@specifiedBy` and `@oneOf`
+are printed. Other applied directives (your own, `@cost`, `@listSize`) are left out, and a type reachable only
+through them is dropped. Build the visible schema with `visibleSchema(schema, { can })`, which is always
+valid, and validate against it. Pass a permission check that names every permission your `@needs` use: a
+typo in a permission hides the field for every caller.
+
+## `@needs` gives both `permission` and `anyOf`, or neither
+
+`lintDescriptions` reports `invalid-needs`, and the field stays hidden from every caller (it fails closed).
+Give exactly one: `@needs(permission: "books:write")` or `@needs(anyOf: ["books:write", "books:admin"])`.
+Repeat `@needs` to require several (AND).
+
 ## Unexpected error.
 
 A response carries `Unexpected error.` with `extensions.code: "INTERNAL_SERVER_ERROR"` and a

@@ -74,7 +74,10 @@ async function prepare(
 	const refused = await validateStep(rt, input, parsed);
 	if (refused) return refused;
 	const operation = selectOperation(parsed.document, final.operationName);
-	if (typeof operation === 'string') return failure(operation);
+	if (typeof operation === 'string')
+		return failure(operation, {
+			fix: 'Send operationName when the document holds several operations, and name one of them.',
+		});
 	const { cost } = rt.options.operationLimits;
 	if (cost) {
 		const over = costRefusal(
@@ -88,8 +91,7 @@ async function prepare(
 	}
 	if (operation.operation === 'subscription' && !input.sse)
 		return failure(
-			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
-			{ code: 'SUBSCRIPTION_NOT_SUPPORTED' },
+			...subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
 		);
 	// Only a document that passed every check is stored, and only the query the
 	// client sent, never one a plugin rewrote.
@@ -150,13 +152,38 @@ async function executeOperation(
 	return withHttpRefusal(state, await outcome);
 }
 
-/** Why a subscription sent as plain JSON is refused, naming the transports that are on. */
-function subscriptionRefusal(sse: boolean, ws: boolean): string {
+/** Why a subscription sent as plain JSON is refused, naming the transports that are on, and what to send instead. */
+function subscriptionRefusal(
+	sse: boolean,
+	ws: boolean,
+): [message: string, options: { code: string; fix: string }] {
+	const code = 'SUBSCRIPTION_NOT_SUPPORTED';
 	if (sse && ws)
-		return 'Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).';
+		return [
+			'Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).',
+			{
+				code,
+				fix: 'Send the subscription with "Accept: text/event-stream", or over a graphql-transport-ws WebSocket.',
+			},
+		];
 	if (sse)
-		return 'Subscriptions are served over server-sent events: send "Accept: text/event-stream".';
+		return [
+			'Subscriptions are served over server-sent events: send "Accept: text/event-stream".',
+			{ code, fix: 'Send the subscription with "Accept: text/event-stream".' },
+		];
 	if (ws)
-		return 'Subscriptions are served over WebSocket (graphql-transport-ws); subscriptions.sse is false.';
-	return 'Subscriptions are not supported over this transport (subscriptions.sse is false).';
+		return [
+			'Subscriptions are served over WebSocket (graphql-transport-ws); subscriptions.sse is false.',
+			{
+				code,
+				fix: 'Open a graphql-transport-ws WebSocket and subscribe there.',
+			},
+		];
+	return [
+		'Subscriptions are not supported over this transport (subscriptions.sse is false).',
+		{
+			code,
+			fix: 'Run the operation as a query or a mutation: this server does not serve subscriptions here.',
+		},
+	];
 }

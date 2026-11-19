@@ -28,8 +28,8 @@ export function shuttingDown(): Response {
 	return refusal(
 		503,
 		'Server is shutting down.',
-		{ connection: 'close' },
-		'SHUTTING_DOWN',
+		'Retry the request in a few seconds, once the server is back.',
+		{ headers: { connection: 'close' }, code: 'SHUTTING_DOWN' },
 	);
 }
 
@@ -42,11 +42,18 @@ export async function handle(
 ): Promise<Response> {
 	const { path } = rt.options;
 	if (path !== false && new URL(request.url).pathname !== path)
-		return refusal(404, 'Not found.');
+		return refusal(
+			404,
+			'Not found.',
+			`Send the request to the GraphQL path, ${path}.`,
+		);
 	if (request.method !== 'GET' && request.method !== 'POST')
-		return refusal(405, 'Only GET and POST are allowed.', {
-			allow: 'GET, POST',
-		});
+		return refusal(
+			405,
+			'Only GET and POST are allowed.',
+			'Use GET for queries or POST for any operation.',
+			{ headers: { allow: 'GET, POST' } },
+		);
 	return rt.telemetry.request(request, state, () =>
 		respond(rt, request, serverContext, state),
 	);

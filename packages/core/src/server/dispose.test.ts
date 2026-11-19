@@ -55,7 +55,7 @@ describe('dispose', () => {
 			errors: [
 				{
 					message: 'Server is shutting down.',
-					extensions: { code: 'SHUTTING_DOWN' },
+					extensions: { code: 'SHUTTING_DOWN', fix: expect.any(String) },
 				},
 			],
 		});
