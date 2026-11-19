@@ -16,7 +16,7 @@ Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
 
 ## Shipped
 
-### 0.2.0 (in core 0.4.0's release)
+### 0.2.0
 
 - **On `@softistx/redis`** — PubSub, cache and connection run on the in-house package: one shared client per URI,
   one reconnecting subscriber connection (backoff, no double delivery, no restart of the subscriptions after Bun gives up).

@@ -59,7 +59,8 @@ Bun.serve({ port: 3000, fetch: graxia.fetch });
 `InferContext<Make, Plugins, HostCtx>` is what the factory returns (awaited), what the plugins add
 (`ContextOf`, a tuple, so declare the list `as const` or inline), the `serverContext` type the
 factory's `ContextInit<…>` declares, and what graxia always adds (`CoreContext`, the `signal`). Without a factory, use
-`InferContext<undefined, typeof plugins>` or `InferContext` alone.
+`InferContext<undefined, typeof plugins>` or `InferContext` alone. `ContextFactory<HostCtx>` is the type of the
+`context` option itself, for a factory declared apart from `createGraxia` (`const context: ContextFactory = …`).
 
 ### The host's `serverContext`
 

@@ -6,7 +6,7 @@ under a strict content security policy, with no CDN, no external font and no ana
 The Apollo Sandbox option is the one exception: it loads Apollo's script and iframe (see below). Install one
 explorer, not both.
 
-> Status: unreleased (first publish 0.1.0): `graphiql()` and `apolloSandbox()`.
+> Since 0.1.0: `graphiql()` and `apolloSandbox()`.
 > **Development only**: the page is off when `NODE_ENV` is `production`.
 
 ## Install
