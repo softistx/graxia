@@ -2,7 +2,8 @@
 /**
  * Applies the operators to `source` from left to right, as Yoga's `pipe`:
  * `pipe(a, f, g)` is `g(f(a))`. Typed up to 19 operators, with no untyped
- * fallback: a mistyped operator is an error on that operator.
+ * fallback: a mistyped operator fails the `pipe(...)` call (TypeScript reports
+ * it on the argument feeding that operator).
  *
  * @example
  * pipe(pubsub.subscribe('post', id), filter((p) => p.published), map((p) => p.title))
