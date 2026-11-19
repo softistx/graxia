@@ -1,10 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { browser, fakeAssets, host } from './fixtures.test-util';
 import { createGraphiQL } from './index';
-import { createApolloSandbox, SANDBOX_CSP } from './sandbox';
+import { createApolloSandbox, sandboxContentSecurityPolicy } from './sandbox';
 
-const on = (options = {}) =>
-	host(createApolloSandbox({ enabled: true, ...options }, fakeAssets));
+const on = (options = {}, instance: Record<string, unknown> = {}) =>
+	host(
+		createApolloSandbox({ enabled: true, ...options }, fakeAssets),
+		instance,
+	);
+const noWs = { subscriptions: { ws: false } };
 const configOf = (html: string) =>
 	JSON.parse(
 		(/data-config="([^"]*)"/.exec(html)?.[1] ?? '')
@@ -43,19 +47,41 @@ describe('page', () => {
 	});
 
 	test('the CSP names the exact Apollo hosts and nothing else', async () => {
-		const csp = (await on().fetch(browser())).headers.get(
+		const csp = (await on({}, noWs).fetch(browser())).headers.get(
 			'content-security-policy',
 		);
-		expect(csp).toBe(SANDBOX_CSP);
+		expect(csp).toBe(sandboxContentSecurityPolicy());
 		expect(csp).toBe(
 			"default-src 'none'; script-src 'self' https://embeddable-sandbox.cdn.apollographql.com; style-src 'self'; img-src data:; connect-src 'self'; frame-src https://sandbox.embed.apollographql.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
 		);
 		expect(csp).not.toMatch(/\*|unsafe-|ws:|wss:/);
 	});
 
+	test('a WebSocket instance adds the same-host ws origin and tells the bootstrap', async () => {
+		const response = await on().fetch(browser());
+		expect(response.headers.get('content-security-policy')).toContain(
+			"connect-src 'self' ws://localhost;",
+		);
+		expect(configOf(await response.text()).subscriptions).toBe(true);
+	});
+
+	test('an SSE-only instance has no subscriptions in the Sandbox', async () => {
+		const response = await on(
+			{},
+			{ subscriptions: { ws: false, sse: true } },
+		).fetch(browser());
+		expect(response.headers.get('content-security-policy')).not.toContain(
+			'ws:',
+		);
+		expect(configOf(await response.text()).subscriptions).toBe(false);
+	});
+
 	test('the initial state defaults to no cookies and is passed through', async () => {
-		expect(configOf(await (await on().fetch(browser())).text())).toEqual({
+		expect(
+			configOf(await (await on({}, noWs).fetch(browser())).text()),
+		).toEqual({
 			title: 'Apollo Sandbox',
+			subscriptions: false,
 			initialState: { includeCookies: false },
 		});
 		const state = {
@@ -69,7 +95,11 @@ describe('page', () => {
 				await on({ title: 'Mine', initialState: state }).fetch(browser())
 			).text(),
 		);
-		expect(config).toEqual({ title: 'Mine', initialState: state });
+		expect(config).toEqual({
+			title: 'Mine',
+			subscriptions: true,
+			initialState: state,
+		});
 	});
 
 	test('the config is attribute-escaped', async () => {
@@ -150,6 +180,15 @@ describe('enabled', () => {
 		expect((await host(plugin).fetch(browser())).status).toBe(403);
 	});
 
+	test('a disabled plugin is named apart, so it never counts as installed', () => {
+		expect(createApolloSandbox({ enabled: false }, fakeAssets).name).toBe(
+			'apollo-sandbox (disabled)',
+		);
+		expect(createGraphiQL({ enabled: false }, fakeAssets).name).toBe(
+			'graphiql (disabled)',
+		);
+	});
+
 	test('production disables it by default, true enables it', () => {
 		const before = process.env['NODE_ENV'];
 		process.env['NODE_ENV'] = 'production';
@@ -182,7 +221,7 @@ describe('with graphiql()', () => {
 			[sandbox, graphiql],
 		])
 			await expect(host(graphiql, { plugins }).ready).rejects.toThrow(
-				/graphiql\(\) and apollo-sandbox\(\) are both enabled/,
+				/graphiql\(\) and apolloSandbox\(\) are both enabled/,
 			);
 	});
 

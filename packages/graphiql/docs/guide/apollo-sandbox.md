@@ -66,7 +66,8 @@ frame-ancestors 'none'; base-uri 'none'; form-action 'none'
 ```
 
 The same headers as the GraphiQL page: `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`,
-`Cache-Control: no-store`. The exact value is exported as `SANDBOX_CSP`.
+`Cache-Control: no-store`. The value above is for an instance without WebSocket; with it, `connect-src` also holds the same-host
+`ws(s)://` origin (see [Subscriptions](#subscriptions)). `sandboxContentSecurityPolicy(wsOrigin?)` returns it.
 
 | Host                                               | Directive    | Why                                                                          |
 | -------------------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
@@ -74,10 +75,23 @@ The same headers as the GraphiQL page: `X-Frame-Options: DENY`, `Referrer-Policy
 | `https://sandbox.embed.apollographql.com`          | `frame-src`  | The Sandbox UI, in an iframe.                                                |
 
 No wildcard. `connect-src 'self'` is the page itself running the Sandbox's requests against your
-endpoint (the iframe asks the page through `postMessage`), so no WebSocket origin is needed. Styles
+endpoint (the iframe asks the page through `postMessage`), so `'self'` is enough unless subscriptions run over WebSocket. Styles
 need no `'unsafe-inline'`: the script is told not to set inline styles (`allowDynamicStyles: false`)
 and the bootstrap styles the page with a constructed stylesheet. `img-src data:` is for an empty
 favicon, so the embed script does not fetch one from Apollo.
+
+## Subscriptions
+
+The Sandbox runs subscriptions from the page, not from the iframe. The plugin reads the instance's
+transports in `setup`, like `graphiql()`:
+
+- **WebSocket on** (core's default): the page passes `initialSubscriptionEndpoint`, the `ws(s)://`
+  form of the endpoint URL (graphql-transport-ws on the same path), and the CSP's `connect-src` gains
+  that same-host origin.
+- **SSE only**: there are no subscriptions in the Sandbox, because Apollo's Sandbox does not speak
+  graphql-sse. Use `graphiql()` for them.
+- **`@defer` and `@stream`**: the Sandbox expects the `deferSpec=20220824` incremental format. It may
+  not render graphql 17's incremental format; this is unverified.
 
 ## The risk of a third-party script
 
@@ -100,7 +114,8 @@ Hence development only by default.
 
 Both plugins answer the same `GET`, so **two enabled explorers on one instance throw a
 `GraxiaConfigError` at startup**. A disabled one (`enabled: false`, or production by default) does not
-count: pick one with the option.
+count: pick one with the option. The disabled plugin is named `<name> (disabled)`
+(`apollo-sandbox (disabled)`, `graphiql (disabled)`), which is what keeps it from counting.
 
 ```ts
 plugins: [

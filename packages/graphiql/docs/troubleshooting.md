@@ -50,7 +50,7 @@ query) and that `csrf` is not refusing them: the Sandbox sends the GraphQL reque
 with a JSON body. Cookies are sent only with `initialState.includeCookies: true` or the toggle in the
 Sandbox's connection settings.
 
-### `graphiql() and apollo-sandbox() are both enabled`
+### `graphiql() and apolloSandbox() are both enabled`
 
 Both explorers answer the same `GET`. Install one, or disable the other (`enabled: false`). See
 [the guide](./guide/apollo-sandbox.md#with-graphiql).

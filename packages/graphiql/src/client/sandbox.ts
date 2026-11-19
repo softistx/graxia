@@ -9,6 +9,7 @@ export {};
 interface EmbeddedSandboxOptions {
 	target: string;
 	initialEndpoint: string;
+	initialSubscriptionEndpoint?: string;
 	initialState: Record<string, unknown>;
 	endpointIsEditable: boolean;
 	hideCookieToggle: boolean;
@@ -28,6 +29,7 @@ if (!window.EmbeddedSandbox)
 	throw new Error('apollo-sandbox: the Apollo embed script did not load');
 const config = JSON.parse(root.dataset['config'] ?? '{}') as {
 	title?: string;
+	subscriptions?: boolean;
 	initialState?: Record<string, unknown>;
 };
 document.title = config.title ?? 'Apollo Sandbox';
@@ -38,9 +40,14 @@ sheet.replaceSync(
 );
 document.adoptedStyleSheets = [sheet];
 
+const endpoint = location.origin + location.pathname;
+
 new window.EmbeddedSandbox({
 	target: '#sandbox',
-	initialEndpoint: location.origin + location.pathname,
+	initialEndpoint: endpoint,
+	...(config.subscriptions
+		? { initialSubscriptionEndpoint: endpoint.replace(/^http/, 'ws') }
+		: {}),
 	initialState: config.initialState ?? {},
 	endpointIsEditable: false,
 	hideCookieToggle: false,

@@ -1,7 +1,10 @@
 # @graxia/graphiql
 
 The [GraphiQL](https://github.com/graphql/graphiql) 4 page for graxia, bundled at build time: it runs
-under a strict content security policy, with no CDN, no external font and no analytics. An Apollo Sandbox option is the one exception (below).
+under a strict content security policy, with no CDN, no external font and no analytics.
+
+The Apollo Sandbox option is the one exception: it loads Apollo's script and iframe (see below). Install one
+explorer, not both.
 
 > Status: unreleased (first publish 0.1.0): `graphiql()` and `apolloSandbox()`.
 > **Development only**: the page is off when `NODE_ENV` is `production`.
@@ -68,18 +71,14 @@ createGraxia({ schema, plugins: [apolloSandbox({ title: 'My API' })] });
 Serves [Apollo Sandbox](https://www.apollographql.com/docs/graphos/platform/sandbox) the same way
 (a browser `GET` on the endpoint, development only by default, `enabled` with the same meaning), but it
 is **not self-contained**: it loads Apollo's embed script and iframe from two Apollo hosts, a third-party
-script on your API's origin. Its CSP names only those two hosts:
-
-```
-default-src 'none'; script-src 'self' https://embeddable-sandbox.cdn.apollographql.com;
-style-src 'self'; img-src data:; connect-src 'self';
-frame-src https://sandbox.embed.apollographql.com;
-frame-ancestors 'none'; base-uri 'none'; form-action 'none'
-```
+script on your API's origin. Its CSP names only `https://embeddable-sandbox.cdn.apollographql.com`
+(script) and `https://sandbox.embed.apollographql.com` (frame), and it runs subscriptions over WebSocket
+when the instance has it on.
 
 Options: `enabled`, `title`, `initialState` (`document`, `variables`, `headers`, `includeCookies`, default
-`false`). `graphiql()` and `apolloSandbox()` cannot both be enabled on one instance: the second throws
-at startup, so pick one with `enabled`. See [the guide](./docs/guide/apollo-sandbox.md).
+`false`). `graphiql()` and `apolloSandbox()` cannot both be enabled on one instance: startup throws, so
+pick one with `enabled`. The exact CSP (`sandboxContentSecurityPolicy`), the risks and the
+troubleshooting are in [the guide](./docs/guide/apollo-sandbox.md).
 
 ## Documentation
 

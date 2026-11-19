@@ -3,6 +3,7 @@ import { readdirSync } from 'node:fs';
 import { bundledAssets } from './assets';
 import { browser, host } from './fixtures.test-util';
 import { createGraphiQL } from './index';
+import { createApolloSandbox } from './sandbox';
 
 const dir = new URL('../dist/assets/', import.meta.url);
 const built = await Bun.file(new URL('manifest.json', dir)).exists();
@@ -26,6 +27,19 @@ describe.skipIf(!built)('built bundle', () => {
 			expect(asset.status).toBe(200);
 			expect(asset.headers.get('content-type')).toContain(type);
 		}
+	});
+
+	test('the Sandbox page serves its bootstrap from dist/assets', async () => {
+		const sandbox = host(
+			createApolloSandbox({ enabled: true }, bundledAssets(dir)),
+		);
+		const html = await (await sandbox.fetch(browser())).text();
+		const href = /src="(\?apollo-sandbox-asset=[^"]+)"/.exec(html)?.[1] ?? '';
+		const asset = await sandbox.fetch(
+			new Request(`http://localhost/graphql${href}`),
+		);
+		expect(asset.status).toBe(200);
+		expect(asset.headers.get('content-type')).toContain('text/javascript');
 	});
 
 	test('no loaded external URL in the bundle', async () => {

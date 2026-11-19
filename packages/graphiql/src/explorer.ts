@@ -19,7 +19,7 @@ export function explorerName(name: string, enabled: boolean): string {
 
 /**
  * Both explorers answer the same `GET`: two enabled ones cannot share an
- * endpoint, so the second `setup` refuses it at startup, naming the fix.
+ * endpoint, so the first explorer's `setup` to run refuses it at startup, naming the fix.
  */
 export function assertSingleExplorer(
 	self: string,
@@ -28,7 +28,7 @@ export function assertSingleExplorer(
 	const other = self === GRAPHIQL ? SANDBOX : GRAPHIQL;
 	if (plugins.includes(other))
 		throw new GraxiaConfigError(
-			'graphiql() and apollo-sandbox() are both enabled: they answer the same GET. Install one, or set enabled: false on the other.',
+			'graphiql() and apolloSandbox() are both enabled: they answer the same GET. Install one, or set enabled: false on the other.',
 		);
 }
 

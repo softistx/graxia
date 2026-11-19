@@ -18,7 +18,7 @@ import { contentSecurityPolicy, renderPage } from './page';
 
 export type { GraphiQLOptions } from './options';
 export type { ApolloSandboxOptions, SandboxInitialState } from './sandbox';
-export { apolloSandbox, SANDBOX_CSP } from './sandbox';
+export { apolloSandbox, sandboxContentSecurityPolicy } from './sandbox';
 
 const ASSET_PARAM = 'graphiql-asset';
 
