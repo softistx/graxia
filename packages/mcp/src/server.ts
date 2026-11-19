@@ -3,6 +3,9 @@ import { mcpAuth } from './auth/principal';
 import { canWrite } from './auth/scopes';
 import type { ResolvedAuth } from './auth/types';
 import type { ContextCarrier } from './context';
+import { registerOperationTools } from './operations/register';
+import type { OperationTool } from './operations/types';
+import type { VisibleTools } from './operations/visible';
 import type { McpHost, McpOptions } from './options';
 import { registerTools } from './tools';
 import type { ExecuteContext } from './tools/execute';
@@ -37,12 +40,19 @@ export function buildServer(
 	options: McpOptions<any>,
 	context: RequestContext,
 	mutations: boolean,
+	typed: readonly OperationTool[] = [],
 ): McpServer {
 	const server = new McpServer(
 		{ name: options.name, version: options.version ?? '0.0.0' },
 		options.instructions ? { instructions: options.instructions } : undefined,
 	);
-	registerTools(server, { context, mutations });
+	registerTools(server, {
+		context,
+		mutations,
+		generic: options.genericTools ?? true,
+		typed: typed.map((tool) => tool.name),
+	});
+	registerOperationTools(server, typed, context);
 	return server;
 }
 
@@ -53,18 +63,24 @@ export interface ServerSettings {
 	auth: ResolvedAuth | undefined;
 	carrier: ContextCarrier;
 	views: ViewSource;
+	/** The typed tools a view allows; absent without `operations`. */
+	visibleTools?: VisibleTools | undefined;
 	onError: (error: unknown) => void;
 }
 
 /**
  * The SDK's per-request factory: the server of one caller, from the
  * `serverContext` and the principal `fetch` put in their stores.
- * `graphql_mutate` is registered when `mutations` is on and, with `auth`, the
- * token has the write scope.
+ * `graphql_mutate` and the typed tools of mutations are registered when
+ * `mutations` is on and, with `auth`, the token has the write scope. A typed
+ * tool is registered only when the caller's view allows its operation, so
+ * with `operations` the view is built for every request (once for all
+ * without `can`); a view that fails to build offers no typed tool.
  */
 export function serverFactory(settings: ServerSettings): McpServerFactory {
-	const { graxia, options, auth, carrier, views, onError } = settings;
-	return ({ requestInfo }) => {
+	const { graxia, options, auth, carrier, views, visibleTools, onError } =
+		settings;
+	return async ({ requestInfo }) => {
 		const request = requestInfo as Request;
 		const serverContext = carrier.current();
 		const principal = mcpAuth();
@@ -72,11 +88,21 @@ export function serverFactory(settings: ServerSettings): McpServerFactory {
 			(options.mutations ?? false) &&
 			(auth === undefined ||
 				(principal !== undefined && canWrite(auth, principal)));
+		const view = views(request, serverContext, principal);
+		let typed: readonly OperationTool[] = [];
+		if (visibleTools)
+			try {
+				typed = visibleTools(await view()).filter(
+					(tool) => mutations || tool.kind === 'query',
+				);
+			} catch (error) {
+				onError(error);
+			}
 		return buildServer(
 			options,
 			{
 				graxia,
-				view: views(request, serverContext, principal),
+				view,
 				serverContext,
 				headers: forwardedHeaders(request),
 				signal: request.signal,
@@ -84,6 +110,7 @@ export function serverFactory(settings: ServerSettings): McpServerFactory {
 				onError,
 			},
 			mutations,
+			typed,
 		);
 	};
 }

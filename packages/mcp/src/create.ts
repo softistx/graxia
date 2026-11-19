@@ -1,3 +1,4 @@
+import { GraxiaConfigError } from '@graxia/core';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { authenticate } from './auth/bearer';
 import { metadataHandler } from './auth/metadata';
@@ -7,6 +8,10 @@ import { writeStepUp } from './auth/scopes';
 import type { McpAuthOptions } from './auth/types';
 import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
+import { buildOperationTools } from './operations/build';
+import { operationsError, problem } from './operations/problems';
+import type { OperationTool } from './operations/types';
+import { createVisibleTools } from './operations/visible';
 import type { Mcp, McpHost, McpOptions } from './options';
 import { defaultHosts } from './origin';
 import { admit, type PipelineSettings } from './pipeline';
@@ -32,12 +37,36 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
 	};
 }
 
+/** The typed tools of `operations`, built once; `genericTools: false` needs at least one. */
+function typedTools(
+	graxia: McpHost<any>,
+	options: McpOptions<any>,
+	mutations: boolean,
+): OperationTool[] {
+	const generic = options.genericTools ?? true;
+	if (!options.operations) {
+		if (!generic)
+			throw new GraxiaConfigError(
+				'createMcp: genericTools is false and there is no operations: an agent would have nothing to call. Fix: pass operations: { documents: manifest }, or remove genericTools: false.',
+			);
+		return [];
+	}
+	const typed = buildOperationTools(
+		graxia.schema,
+		options.operations,
+		mutations,
+	);
+	if (!generic && typed.length === 0) throw operationsError([problem.empty()]);
+	return typed;
+}
+
 /**
  * Creates an MCP server over a graxia instance: Streamable HTTP, stateless,
  * with the generic tools `graphql_schema`, `graphql_query` and (with
  * `mutations: true`) `graphql_mutate`. Every operation runs through
  * `graxia.execute`, so limits, cost, trusted documents, masking and rate
- * limits apply; the schema and the body limit come from `graxia`. Without
+ * limits apply; the schema and the body limit come from `graxia`. With
+ * `operations`, each persisted operation is also a typed tool. Without
  * `auth` there is no authentication here: put the endpoint behind your own,
  * and use `can` for permissions. With `auth` it is an OAuth resource server
  * (bearer tokens, scopes, protected resource metadata), and `metadataPath`
@@ -69,8 +98,21 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	const mutations = options.mutations ?? false;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
+	const typed = typedTools(graxia, options, mutations);
+	const writeTools = new Set([
+		'graphql_mutate',
+		...typed.filter((tool) => tool.kind === 'mutation').map((t) => t.name),
+	]);
 	const handler = createMcpHandler(
-		serverFactory({ graxia, options, auth, carrier, views, onError }),
+		serverFactory({
+			graxia,
+			options,
+			auth,
+			carrier,
+			views,
+			visibleTools: options.operations ? createVisibleTools(typed) : undefined,
+			onError,
+		}),
 		{
 			maxRequestBodySize: settings.maxBody,
 			onerror: (error) => onError(error),
@@ -89,9 +131,14 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 				);
 				if (admitted instanceof Response) return withCors(admitted, cors);
 				const principal = admitted.gated;
-				// With mutations off no scope opens graphql_mutate: the SDK answers tool-not-found.
+				// With mutations off no scope opens a writing tool: the SDK answers tool-not-found.
 				if (auth && principal && mutations) {
-					const stepUp = await writeStepUp(admitted.request, auth, principal);
+					const stepUp = await writeStepUp(
+						admitted.request,
+						auth,
+						principal,
+						writeTools,
+					);
 					if (stepUp) return withCors(stepUp, cors);
 				}
 				// authInfo is not passed to the SDK (mcpAuth() carries the principal), so its tool scopeChallenge is unused.

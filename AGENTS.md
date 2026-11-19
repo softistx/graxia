@@ -50,6 +50,10 @@ a deliberate change, named in its PR.
   same output; change one, change the other.
 - `packages/mcp/src/tools/operation.ts` copies core's parse fix texts (`PARSE_FIX`, the token-limit fix):
   core does not export them. Change core's wording, change the copy.
+- `packages/mcp/src/operations/documents.ts` reads the three `TrustedManifest` formats itself instead of using
+  core's `normalizeManifest`: core keeps it internal, and the reader must also report a bad entry by its id
+  rather than throw on the first. A fourth manifest format in core is added there too
+  (`operations-tools.test.ts` runs the three).
 
 ## Divergences from nxgt-data
 

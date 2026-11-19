@@ -1,5 +1,6 @@
 import type { Graxia, ServerContextArg } from '@graxia/core';
 import type { McpAuthInfo, McpAuthOptions } from './auth/types';
+import type { McpOperationsOptions } from './operations/types';
 
 /** Whether the caller holds a permission named by `@needs` (what `printSchemaFor`'s `can` takes). */
 export type Can = (permission: string) => boolean;
@@ -33,10 +34,27 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	 */
 	auth?: McpAuthOptions;
 	/**
-	 * List `graphql_mutate`. Default `false`: an agent that connects can read,
-	 * not write.
+	 * List `graphql_mutate` and the typed tools of mutations. Default `false`:
+	 * an agent that connects can read, not write.
 	 */
 	mutations?: boolean;
+	/**
+	 * Persisted operations as typed tools: each named operation of
+	 * `operations.documents` is one tool (`BookById` is `book_by_id`) whose
+	 * input schema comes from its variables and output schema from its
+	 * selection set. An operation needs a description (its own, or
+	 * `operations.descriptions`). A problem is a `GraxiaConfigError` at boot.
+	 *
+	 * @example
+	 * createMcp(graxia, { name: 'library', operations: { documents: manifest } });
+	 */
+	operations?: McpOperationsOptions;
+	/**
+	 * List `graphql_query` and `graphql_mutate`. Default `true`. `false` keeps
+	 * `graphql_schema` and the typed tools only, so an agent runs nothing but
+	 * the operations you persisted; it needs `operations`.
+	 */
+	genericTools?: boolean;
 	/**
 	 * Browser origins (`https://app.example`) allowed to call the endpoint:
 	 * their preflight is answered and their responses carry

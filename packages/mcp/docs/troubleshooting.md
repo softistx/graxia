@@ -188,12 +188,57 @@ raise `limits.tokens` on `createGraxia` for a very large document.
 ## `Tool graphql_mutate not found`
 
 It is listed only with `mutations: true` (and, with `auth`, for a token with the write scope).
+`Tool graphql_query not found`: `genericTools` is `false`; call a typed tool.
+
+## `Tool book_by_id not found` for an operation of the manifest
+
+The tool is not offered to this caller: its operation uses a field `can` hides from them, it is a
+mutation without `mutations: true`, `include` left it out, or it is a subscription. The answer is
+the same as for a tool that does not exist. Call `graphql_schema` for the typed tools you have.
+
+## `createMcp: operations has N problems:`
+
+One error lists every problem of `operations.documents`, one per line, each ending with its fix:
+
+- `document "a1" holds an anonymous operation: a tool needs a name.` Name it and regenerate.
+- `BookById (document "a1") has no description: …` Write `"""…"""` above the operation, or set
+  `operations.descriptions.BookById`. A toolchain that drops descriptions needs the option.
+- `BookById (document "a1") and Book_by_id (document "a2") both give the tool name book_by_id.`
+  Rename one, or leave one out with `include`.
+- `GraphqlQuery (document "a1") gives the tool name graphql_query, and graphql_* names are the
+  generic tools'.` Rename the operation, or leave it out.
+- `document "a1" does not parse: Syntax Error: …` Regenerate the manifest.
+- `BookById (document "a1") is not valid against the schema: Cannot query field …` The manifest is
+  older than the schema (or belongs to another server): regenerate it. Introspection (`__schema`)
+  is reported here too.
+- `BookById (document "a1") uses @defer, which is not available over MCP: …` (or `@stream`).
+- `document "a1" is not a GraphQL source string.` Map every id to the text of its document.
+- `operations.documents is not a manifest.` Pass a `Map`, an object of id to source, or an Apollo
+  persisted query manifest.
+
+Operations `include` leaves out, subscriptions, and mutations without `mutations: true` are not
+checked.
+
+## `createMcp: genericTools is false and there is no operations: …`
+
+Also `genericTools is false and operations gives no tool: …`. Without the generic tools an agent
+needs at least one typed tool: pass `operations` (mutations need `mutations: true`), or remove
+`genericTools: false`.
+
+## A typed tool answers `Variable "$id" …`
+
+The arguments are the operation's variables, checked by graxia: read `extensions.fix`, and the
+tool's `inputSchema` in `tools/list`.
+
+## 403 `insufficient_scope`, `rename_book needs the scope mcp:write`
+
+A mutation typed tool was called with a read-only token: the same step-up as `graphql_mutate`.
 
 ## Every query is refused with a trusted-documents error
 
 `trustedDocuments` is `strict` (the default under `NODE_ENV=production`): graxia refuses any
 document outside the manifest (`PERSISTED_QUERY_ONLY`), so an agent cannot send arbitrary queries.
-Persisted operations as typed tools are on the [roadmap](./roadmap.md).
+Give the agent [typed tools](./guide/operations.md) (`operations`), which run in strict mode.
 
 ## `graxia.execute: the request ended with an HTTP … response instead of a result; see error.response.`
 

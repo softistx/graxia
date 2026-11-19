@@ -36,7 +36,7 @@ function listed(view: View, mutations: boolean): string[] {
 }
 
 /** No input: what the caller can do, and the type names to ask about. */
-export function overview(view: View, mutations: boolean) {
+export function overview(view: View, mutations: boolean, note = '') {
 	const { schema } = view;
 	const lines = [
 		...rootBlock('Query', schema.getQueryType() ?? undefined),
@@ -45,6 +45,7 @@ export function overview(view: View, mutations: boolean) {
 			: []),
 		`Types: ${listed(view, mutations).join(', ')}`,
 		'',
+		...(note ? [note, ''] : []),
 		'Next: call graphql_schema with { types: ["Name"] } for the SDL of a type, or { search: "word" } to find types by name or description.',
 	];
 	return textResult(lines.join('\n'));

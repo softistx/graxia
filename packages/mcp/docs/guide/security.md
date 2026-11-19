@@ -28,6 +28,26 @@ tools describe and validate against the schema as that caller sees it, so a fiel
 they lack is "Cannot query field", exactly as if it did not exist. The `@needs` is also whatever
 your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
 
+## Typed tools only
+
+`graphql_query` lets an agent write any operation the caller may see. To let it run only
+operations you have reviewed, give them as [typed tools](./operations.md) and turn the generic
+ones off:
+
+```ts
+createMcp(graxia, {
+	name: 'library',
+	operations: { documents: manifest },
+	genericTools: false,
+});
+```
+
+The agent then chooses a tool and gives its variables; it never sends a document. A typed tool is
+listed only when its operation is valid in the caller's view, and a mutation tool needs
+`mutations: true` and, with `auth`, the write scope. The operations run in process, which
+`trustedDocuments` in `strict` mode accepts, so `operations.documents` is trusted like your own
+code: build it from your repository, never from a request.
+
 ## Origin, Host and DNS rebinding
 
 A browser can be tricked into calling a local MCP server by a hostile page whose domain is

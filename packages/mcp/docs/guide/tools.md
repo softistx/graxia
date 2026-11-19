@@ -3,6 +3,10 @@
 Every tool sees the schema as the caller may see it: with `can`, a field behind `@needs` the caller
 lacks does not exist for them (it is neither described nor accepted).
 
+With `operations`, each persisted operation is one more tool, with typed arguments: see
+[persisted operations as typed tools](./operations.md). `genericTools: false` removes
+`graphql_query` and `graphql_mutate` and keeps `graphql_schema` and the typed tools.
+
 ## `graphql_schema`
 
 Input `{ search?: string, types?: string[] }`.
@@ -10,6 +14,7 @@ Input `{ search?: string, types?: string[] }`.
 - **No input**: the operations the caller can use (root fields with their arguments and the first
   line of their description, `Query`, and `Mutation` only when `mutations` is on) and the list of
   type names (the `Mutation` root is not offered, nor found by `search`, unless `mutations` is on).
+  With `operations` it ends with the typed tools this caller has, and says to prefer them.
 - **`types`**: the SDL of those types, with descriptions, `@deprecated` and the applied `@needs`,
   `@constraint` and `@errors`, plus the definition of each of those directives used. A name that
   does not exist is listed as unknown, with a fix.
@@ -70,7 +75,8 @@ Listed only with `mutations: true` (and, with `auth`, only for a token with the 
 
 With `trustedDocuments` in `strict` mode (the default in production) graxia refuses any document
 that is not in the manifest, so `graphql_query` and `graphql_mutate` answer with that refusal.
-Persisted operations as typed tools are planned: see the [roadmap](../roadmap.md).
+The [typed tools](./operations.md) of `operations` still run: give the agent those, and set
+`genericTools: false` so it is not offered tools that can only refuse.
 
 ## Cost of `can`
 
@@ -78,3 +84,5 @@ The caller view is built lazily, by the tool that needs it: `initialize` and `to
 build it. Without `can` it is computed once, on the first tool call. With `can`, it is computed on
 every tool call (the schema is printed and rebuilt for that caller's permissions). It is cheap for a
 small schema; for a large one, keep `can` fast and expect a few milliseconds per request.
+With `operations` the view decides which typed tools exist, so `tools/list` and every `tools/call`
+build it too (still once for all callers without `can`).
