@@ -64,7 +64,11 @@ export function parseOperation(
 	}
 }
 
-const wrongKind = (allowed: Allowed, found: string): Refusal => {
+const wrongKind = (
+	allowed: Allowed,
+	found: string,
+	writeScope?: string,
+): Refusal => {
 	if (found === 'subscription')
 		return {
 			message: 'Subscriptions are not available over MCP.',
@@ -76,7 +80,7 @@ const wrongKind = (allowed: Allowed, found: string): Refusal => {
 		code: 'MCP_OPERATION_NOT_ALLOWED',
 		fix:
 			found === 'mutation'
-				? 'Use graphql_mutate for mutations (it is listed only when the server enables mutations).'
+				? `Use graphql_mutate for mutations (it is listed only when the server enables mutations${writeScope ? ` and the token has the scope ${writeScope}` : ''}).`
 				: 'Use graphql_query for queries.',
 	};
 };
@@ -98,15 +102,17 @@ function selected(
 /**
  * Refuses what MCP does not run: the selected operation when it is another
  * kind than the tool's, and `@defer` / `@stream` (the result is one JSON value).
+ * `writeScope` is the scope `graphql_mutate` needs when `auth` is on, for the fix.
  */
 export function checkOperations(
 	document: DocumentNode,
 	allowed: Allowed,
 	operationName?: string,
+	writeScope?: string,
 ): Refusal | undefined {
 	const operation = selected(document, operationName);
 	if (operation && operation.operation !== allowed)
-		return wrongKind(allowed, operation.operation);
+		return wrongKind(allowed, operation.operation, writeScope);
 	let incremental: string | undefined;
 	visit(document, {
 		Directive(node) {

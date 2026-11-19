@@ -27,6 +27,8 @@ export interface ExecuteContext {
 	serverContext: object;
 	headers: Headers;
 	signal?: AbortSignal | undefined;
+	/** The scope `graphql_mutate` needs, when `auth` is on: named in the fix of a mutation sent to `graphql_query`. */
+	writeScope?: string | undefined;
 	/** Receives an unexpected failure with its cause. */
 	onError: (error: unknown) => void;
 }
@@ -65,7 +67,12 @@ export async function runOperation(
 			parsed.refusal.fix,
 		);
 	const { document } = parsed;
-	const refusal = checkOperations(document, kind, input.operationName);
+	const refusal = checkOperations(
+		document,
+		kind,
+		input.operationName,
+		context.writeScope,
+	);
 	if (refusal) return refused(refusal.message, refusal.code, refusal.fix);
 	const problems = validate(
 		(await context.view()).schema,

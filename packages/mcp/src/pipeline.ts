@@ -10,13 +10,15 @@ export interface PipelineSettings extends OriginPolicy {
 
 /**
  * The HTTP checks before the MCP handler, in order: origin and host (403),
- * CORS preflight, method (405), content type (415) and body size (413).
- * Resolves the refusal, or a copy of the request whose body is read.
+ * CORS preflight, method (405), the optional `gate` (authentication, before
+ * the body is read), content type (415) and body size (413). Resolves the
+ * refusal, or a copy of the request whose body is read with the gate's result.
  */
-export async function admit(
+export async function admit<T = undefined>(
 	request: Request,
 	settings: PipelineSettings,
-): Promise<Response | Request> {
+	gate?: (request: Request) => Promise<T | Response>,
+): Promise<Response | { request: Request; gated: T | undefined }> {
 	const forbidden = checkOrigin(request, settings);
 	if (forbidden) return forbidden;
 	const cors = corsOrigin(request, settings.allowedOrigins);
@@ -32,5 +34,8 @@ export async function admit(
 			'Send the JSON-RPC message with POST. There is no server-initiated stream to open or session to close.',
 			{ allow: 'POST' },
 		);
-	return boundedRequest(request, settings.maxBody);
+	const gated = gate ? await gate(request) : undefined;
+	if (gated instanceof Response) return gated;
+	const bounded = await boundedRequest(request, settings.maxBody);
+	return bounded instanceof Response ? bounded : { request: bounded, gated };
 }

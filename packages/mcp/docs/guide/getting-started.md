@@ -38,7 +38,8 @@ Claude Code:
 claude mcp add --transport http library http://localhost:3000/mcp
 ```
 
-Any other client takes the URL as a Streamable HTTP server. In a test, use
+With `auth` set, give the client its token (`--header "Authorization: Bearer <token>"`) or let its
+OAuth support follow the 401 to the metadata ([auth](./auth.md)). Any other client takes the URL as a Streamable HTTP server. In a test, use
 `@modelcontextprotocol/client` (`Client` and `StreamableHTTPClientTransport`) against `Bun.serve({ port: 0 })`.
 
 ## Host context

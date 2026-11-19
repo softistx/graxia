@@ -5,8 +5,9 @@ A Model Context Protocol server for a [graxia](https://github.com/softistx/graxi
 see, and runs GraphQL operations through your server, with every graxia protection on: limits,
 cost, trusted documents, error masking and rate limits.
 
-> **No authentication here yet.** Put the endpoint behind your own auth. `can` decides which
-> fields a caller sees; OAuth lands in the next release. See [security](./docs/guide/security.md).
+> Without `auth` there is no authentication here: put the endpoint behind your own, or set `auth`
+> to make it an OAuth resource server ([guide](./docs/guide/auth.md)). `can` decides which fields
+> a caller sees. See [security](./docs/guide/security.md).
 
 ## Install
 
@@ -57,8 +58,15 @@ createMcp(graxia, {
 	name: 'library', // serverInfo.name (required)
 	version: '1.0.0', // serverInfo.version, default '0.0.0'
 	instructions: 'Books and loans.', // shown to the model
-	can: async (request, serverContext) => (permission) =>
-		permissions.has(permission),
+	can: async (request, serverContext, auth) => (permission) =>
+		permissions.has(permission), // auth: the verified token, with `auth` set
+	auth: {
+		// an OAuth resource server: see the auth guide
+		resource: 'https://mcp.example.com/mcp',
+		authorizationServers: ['https://auth.example.com'],
+		verifyToken: async (token, request) => verify(token), // McpAuthInfo | Response | undefined
+		audience: 'resource', // default: the info's audience must contain `resource`
+	},
 	mutations: true, // list graphql_mutate, default false
 	allowedOrigins: ['https://app.example'], // browser origins: CORS and the origin check
 	allowedHosts: ['mcp.example.com'], // hostnames of the endpoint, default localhost
@@ -66,9 +74,56 @@ createMcp(graxia, {
 });
 ```
 
+## OAuth
+
+```ts
+import { createGraxia } from '@graxia/core';
+import { createMcp, mcpAuth } from '@graxia/mcp';
+
+// `schema` is the one from the core quick start. `verifyJwt` is your token check (signature and
+// issuer): it resolves the claims, and must resolve undefined for a bad token, not throw
+// (a throw is an outage: a 503 the client retries).
+const graxia = createGraxia({
+	schema,
+	context: () => ({ userId: mcpAuth()?.subject }), // the verified token, in a tool call
+});
+const mcp = createMcp(graxia, {
+	name: 'library',
+	mutations: true,
+	auth: {
+		resource: 'https://api.example.com/mcp', // the public URL of the endpoint
+		authorizationServers: ['https://auth.example.com'],
+		verifyToken: async (token) => {
+			const claims = await verifyJwt(token);
+			if (!claims) return undefined; // a 401
+			return {
+				subject: claims.sub,
+				scopes: claims.scope.split(' '),
+				expiresAt: claims.exp, // seconds
+				audience: claims.aud, // must contain `resource`
+			};
+		},
+	},
+});
+
+Bun.serve({
+	routes: {
+		[mcp.metadataPath]: mcp.metadata, // RFC 9728 metadata
+		'/mcp': (request, server) => mcp.fetch(request, { server }),
+	},
+	fetch: graxia.fetch,
+});
+```
+
+A request without a valid bearer token with `mcp:read` is a 401 with a `WWW-Authenticate`
+challenge pointing at the metadata; `graphql_mutate` needs `mcp:write`. The token's audience is
+checked against `resource` unless `audience: 'verifier'` says your verifier did it; a verifier
+that throws is a 503, and it may resolve its own `Response`. Bearer only, no DPoP. See
+[the auth guide](./docs/guide/auth.md).
+
 ## Documentation
 
-See [`docs/`](./docs): [getting started](./docs/guide/getting-started.md), [tools](./docs/guide/tools.md),
+See [`docs/`](./docs): [getting started](./docs/guide/getting-started.md), [auth](./docs/guide/auth.md), [tools](./docs/guide/tools.md),
 [security](./docs/guide/security.md), [troubleshooting](./docs/troubleshooting.md) and the
 [roadmap](./docs/roadmap.md). The schema and the body limit come from the graxia instance
 (`graxia.schema`, `graxia.limits`, core 0.5).

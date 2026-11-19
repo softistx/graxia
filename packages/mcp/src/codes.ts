@@ -2,6 +2,9 @@
 export const MCP_ERROR_CODES = [
 	'MCP_OPERATION_NOT_ALLOWED',
 	'MCP_EXECUTION_REFUSED',
+	'MCP_UNAUTHORIZED',
+	'MCP_INSUFFICIENT_SCOPE',
+	'MCP_TOKEN_IN_URL',
 ] as const;
 
 /** A code only `@graxia/mcp` emits. */
@@ -13,5 +16,11 @@ declare module '@graxia/core' {
 		MCP_OPERATION_NOT_ALLOWED: true;
 		/** Emitted by @graxia/mcp: `graxia.execute` ended without a GraphQL result and its response carried no error to relay (a plugin's bare `respond`, a shutdown). */
 		MCP_EXECUTION_REFUSED: true;
+		/** Emitted by @graxia/mcp: a 401, the request has no valid bearer token (`auth` is set). */
+		MCP_UNAUTHORIZED: true;
+		/** Emitted by @graxia/mcp: a 403, the token lacks the read scope, or the write scope `graphql_mutate` needs. */
+		MCP_INSUFFICIENT_SCOPE: true;
+		/** Emitted by @graxia/mcp: a 400, the access token was sent in the query string. */
+		MCP_TOKEN_IN_URL: true;
 	}
 }

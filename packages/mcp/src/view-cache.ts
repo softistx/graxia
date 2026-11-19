@@ -1,4 +1,5 @@
 import type { GraphQLSchema } from 'graphql';
+import type { McpAuthInfo } from './auth/types';
 import type { Can } from './options';
 import { buildView, type View } from './view';
 
@@ -6,6 +7,7 @@ import { buildView, type View } from './view';
 export type ViewSource = (
 	request: Request,
 	serverContext: object,
+	auth: McpAuthInfo | undefined,
 ) => () => Promise<View>;
 
 /**
@@ -15,19 +17,33 @@ export type ViewSource = (
 export function createViewSource(
 	schema: GraphQLSchema,
 	can:
-		| ((request: Request, serverContext: any) => Can | Promise<Can>)
+		| ((
+				request: Request,
+				serverContext: any,
+				auth?: McpAuthInfo,
+		  ) => Can | Promise<Can>)
 		| undefined,
 ): ViewSource {
 	let shared: View | undefined;
-	const viewOf = async (request: Request, serverContext: object) => {
-		if (can) return buildView(schema, await can(request, serverContext));
+	const viewOf = async (
+		request: Request,
+		serverContext: object,
+		auth: McpAuthInfo | undefined,
+	) => {
+		if (can)
+			return buildView(
+				schema,
+				await (auth
+					? can(request, serverContext, auth)
+					: can(request, serverContext)),
+			);
 		shared ??= buildView(schema);
 		return shared;
 	};
-	return (request, serverContext) => {
+	return (request, serverContext, auth) => {
 		let pending: Promise<View> | undefined;
 		return () => {
-			pending ??= viewOf(request, serverContext);
+			pending ??= viewOf(request, serverContext, auth);
 			return pending;
 		};
 	};
