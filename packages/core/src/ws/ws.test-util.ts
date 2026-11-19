@@ -1,12 +1,12 @@
 import { afterEach } from 'bun:test';
-import { createMemoryPubSub } from '../pubsub/memory';
+import { createPubSub } from '../pubsub/memory';
 import { createSchema } from '../schema/create-schema';
 import { getContext } from '../server/context';
 import { createGraxia, type Graxia } from '../server/create-graxia';
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export const pubsub = createMemoryPubSub<{ tick: number }>();
+export const pubsub = createPubSub<{ tick: [payload: number] }>();
 
 export const schema = createSchema<{ signal: AbortSignal }>()({
 	typeDefs: `
@@ -35,20 +35,17 @@ export const schema = createSchema<{ signal: AbortSignal }>()({
 		Mutation: { bump: () => 1 },
 		Subscription: {
 			tick: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 			boom: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: () => {
 					throw new Error('secret detail');
 				},
 			},
 			who: {
-				subscribe: (_: unknown, __: unknown, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: () => String((getContext() as { who?: string }).who),
 			},
 		},

@@ -14,22 +14,24 @@ typed plugins, per-operation context and cancellation, error masking
 (`exposedError`), in-process `execute` with a test client
 (`@graxia/core/testing`), subscriptions over server-sent events and WebSocket
 (`graphql-transport-ws`, both on by default), `@defer` and `@stream` over
-`multipart/mixed` and SSE, a typed `PubSub` (`createMemoryPubSub`) and a
+`multipart/mixed` and SSE, a typed `PubSub` (`createPubSub`) and a
 `KeyValueCache` (`createMemoryCache`). Since 0.3.0 it is also secure by default
 and production-ready: CSRF prevention and a WebSocket `Origin` check, operation
 limits (depth, aliases, directives, root fields, `@cost` / `@listSize` cost),
 introspection and suggestions off under `NODE_ENV=production`, trusted
 documents (manifests, `documentId`, APQ, strict mode), `fieldRateLimit`, and
-OpenTelemetry spans (optional peer `@opentelemetry/api`). `@graxia/redis`
-implements the PubSub and the cache on Bun's Redis client (`redisPubSub`,
-`redisCache`). The peer of core is `graphql ^17.1.0`.
+spans on `@softistx/telemetry` (optional peer; `createTelemetry(...).install()`
+with an exporter such as `@softistx/telemetry-otlp`). `@graxia/redis`
+puts the PubSub, the cache and a field rate limit on Redis (`redisPubSub`, `redisCache`,
+`redisFieldLimit`), on `@softistx/redis` (peer, with `@graxia/core`); breaking in 0.2: see
+`node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`.
 
 The detail lives in the installed packages: `node_modules/@graxia/core/README.md`
 and `node_modules/@graxia/core/docs/` (guides: `security.md`,
 `limits-and-caches.md`, `trusted-documents.md`, `rate-limiting.md`,
 `telemetry.md`, `production.md`, `subscriptions.md` for SSE, `websocket.md` for
 `graphql-transport-ws`, `incremental.md` for `@defer` and `@stream`,
-`pubsub.md`), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
+`pubsub.md`, `codegen.md` for graphql-codegen), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
 points at them and never copies them. Read `security.md` and `production.md`
 before shipping.
 
@@ -44,6 +46,17 @@ each off):
   5 000 are refused;
 - under `NODE_ENV=production` introspection and "Did you mean" hints are off,
   and trusted documents (when configured) are `strict`.
+
+Write the resolver context once: `type Ctx = InferContext<typeof context, typeof plugins>`, then
+`createSchema<Ctx>()`; `createGraxia` checks at compile time that the factory, plugins and
+`signal` provide it. Type the host as `ContextInit<{ … }>` on the factory, never `createGraxia<…>`.
+
+With graphql-codegen, point `contextType` at the `InferContext` type and pass the generated `Resolvers` as
+`createSchema<Ctx, Resolvers>()`'s second generic; a map generated for another context is a type error.
+
+For a browser explorer in development, `@graxia/graphiql` (0.1.0) adds `graphiql()` or `apolloSandbox()` to
+`plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
+read `node_modules/@graxia/graphiql/docs/`.
 
 `node_modules/@graxia/core/docs/roadmap.md` says what is next.
 `references/packages.md` is the package index.

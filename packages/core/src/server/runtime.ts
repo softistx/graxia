@@ -30,7 +30,7 @@ export interface Runtime {
 	/** Masks the unexpected errors of a result before it is encoded. */
 	maskResult: ResultMasker;
 	lifecycle: Lifecycle;
-	/** The OpenTelemetry hooks; the off implementation when tracing is off. */
+	/** The tracing hooks; the off implementation when tracing is off. */
 	telemetry: Telemetry;
 	/** Resolves once every plugin's `setup` ran. */
 	ready: Promise<void>;

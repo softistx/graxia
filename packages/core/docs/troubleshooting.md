@@ -56,11 +56,53 @@ await graxia.ready; // rejects with the GraxiaPluginError
 Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
 runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
 
+## Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'
+
+A type error on the `context` option of `createGraxia`. The schema was built with
+`createSchema<Ctx>()`, and the context that the `context` factory, the plugins and graxia build does
+not satisfy `Ctx`. The three forms:
+
+- A key is missing: `Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'`,
+  then `Property 'n' is missing in type '{ user: string; }' but required in type '{ user: string; n: number; }'`.
+- A key has another type: `Type 'number' is not assignable to type 'string'`, on the key of the returned object.
+- No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
+  '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
+
+When the factory is a named function passed as a variable, the first line can show a long
+intersection `(…) & (…)`; read the last line of the message, which names the missing or mistyped key.
+
+The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
+plugins, `serverContext` and graxia do not already provide.
+
+Return the missing keys from the factory, or add the plugin that provides them. Writing the
+context once avoids the drift:
+
+```ts
+const context = async ({ request }: ContextInit) => ({
+	user: await authenticate(request),
+});
+type Ctx = InferContext<typeof context, typeof plugins>;
+const schema = createSchema<Ctx>()({ typeDefs, resolvers });
+createGraxia({ schema, context, plugins });
+```
+
+The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
+with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
+`ContextInit<{ db: Db }>`). See
+[Context](./guide/context.md#write-the-context-once).
+
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
 
 `getContext()` only works inside an operation (a resolver, or code one calls) and when `asyncContext`
 is not `false`. Call it from a resolver, leave `asyncContext` on, or read the resolver's context
 argument. See [Context](./guide/context.md).
+
+## Property ''createSchema<Ctx>: these resolvers expect another context (see expected)'' is missing
+
+A type error on `resolvers`: the resolver map (typically graphql-codegen's `Resolvers<X>`) was built
+for a context `X` that `createSchema<Ctx, …>()`'s `Ctx` does not provide. The message shows
+`expected` (what the resolvers need) and `actual` (your `Ctx`). Point codegen's `contextType` at
+the same `InferContext` type you pass to `createSchema`, regenerate, and see [Codegen](./guide/codegen.md).
 
 ## Invalid type definitions: …
 
@@ -333,7 +375,7 @@ With `subscriptions: { ws: false }` the request is handled as plain HTTP.
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
 
-## Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed" or "Accept: text/event-stream".
+## Incremental delivery (@defer, @stream) needs "Accept: multipart/mixed", or "text/event-stream" ranked above JSON.
 
 A query with `@defer` or `@stream` came with a JSON `Accept` (or none): a single JSON body cannot carry
 the later payloads. The error has `extensions.code: "INCREMENTAL_NOT_SUPPORTED"`. Send
@@ -536,6 +578,10 @@ await fetch(url, {
 	body: JSON.stringify({ query: '{ hello }' }),
 });
 ```
+
+A plugin's `csrfExempt` that matches a `GET` no plugin answers gets this same 403 on purpose (an
+exempt request never executes an operation): make the plugin's `onRequest` answer it with `respond`,
+or narrow the predicate. See [Security](./guide/security.md).
 
 A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
 custom `requireHeader` list the message names your headers instead.
@@ -744,13 +790,20 @@ Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, 
 
 ## telemetry must be false or an object
 
-`telemetry` was `true`, a string or an array. Omit it (on when `@opentelemetry/api` is installed),
+`telemetry` was `true`, a string or an array. Omit it (on when `@softistx/telemetry` is installed),
 pass `false`, or pass an options object.
 
-## telemetry.tracer must be an OpenTelemetry Tracer
+## telemetry.instance must be a @softistx/telemetry Telemetry
 
-`tracer` has no `startSpan` method. Pass what `trace.getTracer(...)` or your provider's
-`getTracer(...)` returns.
+`instance` is not the object `createTelemetry(...)` returns. Pass it, or leave the option out to use
+the installed one. A `tracer` option from before 0.4 throws its own error: see
+[telemetry.tracer was replaced by telemetry.instance](#telemetrytracer-was-replaced-by-telemetryinstance).
+
+## telemetry.tracer was replaced by telemetry.instance
+
+The `telemetry` option still has `tracer`, the OpenTelemetry option of graxia before 0.4. Replace it
+with `instance`, a `Telemetry` from `createTelemetry` in `@softistx/telemetry`, or leave it out to use
+the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
 
 ## telemetry.document must be a boolean
 
@@ -764,20 +817,20 @@ Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fiel
 
 The server answers but your backend shows nothing. In order:
 
-1. `@opentelemetry/api` is not installed next to `@graxia/core`. It is an optional peer: graxia
-   traces nothing without it. `bun add @opentelemetry/api`.
-2. No SDK is registered, or it is registered after `createGraxia`. Without an SDK the API's tracer
-   is a no-op. Register the provider (or pass `telemetry: { tracer }`) before creating the server.
-3. Two copies of `@opentelemetry/api`: your SDK registers on one and graxia reads the other.
-   The API shares its global through a version-keyed symbol, so a major mismatch or a nested
-   `node_modules` copy of another major breaks it. Check `bun pm ls @opentelemetry/api` shows one version
-   (`^1`).
+1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
+   traces nothing without it. `bun add @softistx/telemetry`.
+2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
+   call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such
+   as `@softistx/telemetry-otlp`'s `otlpExporter`.
+3. Two copies of `@softistx/telemetry`: you installed the telemetry on one and graxia reads the
+   other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
 
 ## A resolver span has no child spans of mine
 
-A span you start inside a resolver nests under the active span, which needs a context manager
-registered. Without one, `trace.getActiveSpan()` returns `undefined` in a resolver; graxia's own
-spans are still parented correctly. Register `AsyncLocalStorageContextManager` as in the
-[Setup](./guide/telemetry.md#setup) snippet.
+A span you start inside a resolver nests under the active span. It is the resolver span (or the
+operation span) when the telemetry is the one graxia emits to: with `telemetry: { instance }`, start
+your span inside that same telemetry (`withTelemetry(instance, ...)` is already in scope in a
+resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
+appear".

@@ -3,13 +3,13 @@ import {
 	type GraphQLSchema,
 	isObjectType,
 } from 'graphql';
-import { ATTR, type Env, fail, SPAN, start } from './spans';
+import { ATTR, type Env, fail, type Live, SPAN, start } from './spans';
 
 /** What a wrapped resolver reads for the operation it runs in. */
 interface Bound {
 	env: Env;
-	/** The operation span's context: resolver spans hang under it. */
-	parent: unknown;
+	/** The operation span: resolver spans hang under it. */
+	parent: Live;
 	trivial: boolean;
 }
 
@@ -22,7 +22,7 @@ const WRAPPED = Symbol.for('graxia.telemetry.wrapped');
 export function bindResolvers(
 	contextValue: object,
 	env: Env,
-	parent: unknown,
+	parent: Live,
 	trivial: boolean,
 ): void {
 	bound.set(contextValue, { env, parent, trivial });
@@ -51,31 +51,28 @@ function traced(
 	args: [any, any, any, any],
 ): unknown {
 	const info = args[3];
-	const live = start(
-		env,
-		`${SPAN.resolve} ${info.fieldName}`,
-		env.api.SpanKind.INTERNAL,
-		parent,
-		{
+	const live = start(env, `${SPAN.resolve} ${info.fieldName}`, parent, {
+		kind: 'internal',
+		attributes: {
 			[ATTR.fieldName]: info.fieldName,
 			[ATTR.fieldPath]: pathOf(info.path),
 			[ATTR.fieldType]: String(info.returnType),
 			[ATTR.parentType]: info.parentType.name,
 		},
-	);
+	});
 	const failed = (error: unknown) => {
-		fail(env, live.span, error);
-		live.span.end();
+		fail(live, error);
+		live.end();
 	};
 	try {
-		const out = env.api.context.with(live.ctx, () => run(...args));
+		const out = live.run(() => run(...args));
 		if (!isThenable(out)) {
-			live.span.end();
+			live.end();
 			return out;
 		}
 		return out.then(
 			(value) => {
-				live.span.end();
+				live.end();
 				return value;
 			},
 			(error) => {

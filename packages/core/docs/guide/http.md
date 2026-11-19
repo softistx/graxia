@@ -33,7 +33,7 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 | `batching`         | `false`                                           | `false`, or `{ limit: n }`                                                                                                                                                   |
 | `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                          |
 | `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                              |
-| `telemetry`        | on when `@opentelemetry/api` is installed         | OpenTelemetry spans, or `false`, see [Telemetry](./telemetry.md)                                                                                                             |
+| `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                  |
 | `introspection`    | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                                              |
 | `suggestions`      | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                                                   |
 | `asyncContext`     | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                                      |
@@ -72,12 +72,13 @@ same path, `serve()` does it for you.
 The second argument is the `serverContext`, merged into every operation's context. With `path: false`
 graxia answers whatever path it is handed.
 
-The host context is typed by `createGraxia<HostCtx>`: when `HostCtx` has a required key, the
-`serverContext` of `fetch`, of `graxia.execute` and of `serve` (`graxia.serve({ serverContext })`)
-is required too, and leaving it out is a type error; when every key is optional (or there is no
-`HostCtx`) it stays optional. `serve` adds `server` (Bun's server) to it. The compiler does not
-check that this context matches what your schema's resolvers or plugins expect (see
-[Context](./context.md#how-the-context-is-built)).
+The host context is typed on the `context` factory, `({ serverContext }: ContextInit<{ db: Db }>) => …`
+(do not write `createGraxia<…>`: an explicit type argument turns the schema check off). When the
+type has a required key, the `serverContext` of `fetch`, of `graxia.execute` and of `serve`
+(`graxia.serve({ serverContext })`) is required too, and leaving it out is a type error; when
+every key is optional (or there is no annotation) it stays optional. `serve` adds `server` (Bun's
+server) to it. The compiler checks that the context matches your schema's `createSchema<Ctx>` (see
+[Context](./context.md#write-the-context-once)).
 
 ## Requests
 

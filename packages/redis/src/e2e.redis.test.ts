@@ -6,16 +6,21 @@ import { redisPubSub } from './pubsub';
 describeRedis('graxia server on redisPubSub', () => {
 	test('an SSE subscription receives an event published by another instance', async () => {
 		const prefix = uniquePrefix('e2e');
-		const server = redisPubSub<{ tick: number }>({ url: redisUrl, prefix });
-		const other = redisPubSub<{ tick: number }>({ url: redisUrl, prefix });
+		const server = redisPubSub<{ tick: [payload: number] }>({
+			url: redisUrl,
+			prefix,
+		});
+		const other = redisPubSub<{ tick: [payload: number] }>({
+			url: redisUrl,
+			prefix,
+		});
 		const schema = createSchema<{ signal: AbortSignal }>()({
 			typeDefs: 'type Query { hello: String } type Subscription { tick: Int! }',
 			resolvers: {
 				Query: { hello: () => 'world' },
 				Subscription: {
 					tick: {
-						subscribe: (_: unknown, __: unknown, ctx) =>
-							server.subscribe('tick', { signal: ctx.signal }),
+						subscribe: () => server.subscribe('tick'),
 						resolve: (n: number) => n,
 					},
 				},

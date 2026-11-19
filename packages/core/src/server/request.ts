@@ -1,6 +1,6 @@
 import { refusal } from '../http/respond';
 import type { StateBag } from '../plugins/state';
-import { checkRequest } from '../security/check';
+import { checkRequest, exemptRefusal } from '../security/check';
 import { inProcessKey } from './execute-state';
 import { dispatch } from './handle';
 import type { Runtime } from './runtime';
@@ -86,15 +86,22 @@ async function answer(
 	serverContext: Record<string, unknown>,
 	state: StateBag,
 ): Promise<Response> {
-	const forbidden = state.get(inProcessKey)
-		? undefined
-		: checkRequest(rt, request);
+	const inProcess = state.get(inProcessKey) === true;
+	const exempt =
+		!inProcess &&
+		rt.engine.csrfExempt(request, (error) =>
+			rt.unexpected.report(error, state, 'request'),
+		);
+	const forbidden = inProcess ? undefined : checkRequest(rt, request, exempt);
 	if (forbidden) return forbidden;
 	const entered = await rt.engine.runners.onRequest({ request, state });
+	// An exempt request is answered by a plugin or refused as it would have
+	// been: it never reaches the dispatch.
 	let response =
 		entered.error !== undefined
 			? rt.unexpected.respond(entered.error, state)
 			: (entered.out.response ??
+				(exempt ? exemptRefusal(rt, request) : undefined) ??
 				(await dispatch(rt, request, serverContext, state)));
 	const afterError = await entered.runAfter({ response }).then(
 		() => undefined,

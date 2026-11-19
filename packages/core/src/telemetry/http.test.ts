@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import {
 	closeAll,
 	finished,
@@ -26,7 +25,7 @@ describe('span tree', () => {
 		expect(response.status).toBe(200);
 		const request = one('graphql.request');
 		const operation = one('query');
-		expect(request.kind).toBe(SpanKind.SERVER);
+		expect(request.kind).toBe('server');
 		expect(parentId(operation)).toBe(idOf(request));
 		expect(parentId(one('graphql.parse'))).toBe(idOf(operation));
 		expect(parentId(one('graphql.validate'))).toBe(idOf(operation));
@@ -35,7 +34,7 @@ describe('span tree', () => {
 		expect(request.attributes['graxia.request.id']).toBe(
 			response.headers.get('x-request-id'),
 		);
-		expect(request.status.code).toBe(SpanStatusCode.UNSET);
+		expect(request.status).toBe('ok');
 		expect(operation.attributes['graphql.operation.type']).toBe('query');
 		expect(operation.attributes['graphql.operation.name']).toBeUndefined();
 		expect(operation.attributes['graphql.document']).toBeUndefined();
@@ -111,8 +110,8 @@ describe('errors', () => {
 	test('a validation error counts errors and is not an ERROR status', async () => {
 		await make().fetch(post({ query: '{ nope }' }));
 		expect(one('graphql.validate').attributes['graphql.error.count']).toBe(1);
-		expect(one('graphql.validate').status.code).toBe(SpanStatusCode.UNSET);
-		expect(one('graphql.request').status.code).toBe(SpanStatusCode.UNSET);
+		expect(one('graphql.validate').status).toBe('ok');
+		expect(one('graphql.request').status).toBe('ok');
 	});
 
 	test('an unexpected resolver error records the original and marks the operation ERROR; the client sees it masked', async () => {
@@ -121,12 +120,11 @@ describe('errors', () => {
 			'secret detail',
 		);
 		const operation = one('query');
-		expect(operation.status.code).toBe(SpanStatusCode.ERROR);
+		expect(operation.status).toBe('error');
 		expect(operation.attributes['graphql.error.count']).toBe(1);
-		const event = operation.events.find((e) => e.name === 'exception');
-		expect(event?.attributes?.['exception.message']).toBe('secret detail');
+		expect(operation.error?.message).toBe('secret detail');
 		// A request that answered 200 is not an ERROR request.
-		expect(one('graphql.request').status.code).toBe(SpanStatusCode.UNSET);
+		expect(one('graphql.request').status).toBe('ok');
 	});
 
 	test('a plugin that throws is an ERROR operation and a 500 ERROR request', async () => {
@@ -141,8 +139,8 @@ describe('errors', () => {
 			],
 		}).fetch(post({ query: '{ hello }' }));
 		expect(response.status).toBe(500);
-		expect(one('query').status.code).toBe(SpanStatusCode.ERROR);
-		expect(one('graphql.request').status.code).toBe(SpanStatusCode.ERROR);
+		expect(one('query').status).toBe('error');
+		expect(one('graphql.request').status).toBe('error');
 		expect(one('graphql.request').attributes['http.response.status_code']).toBe(
 			500,
 		);
@@ -158,7 +156,7 @@ describe('errors', () => {
 		expect(request.attributes['graxia.refusal.code']).toBe(
 			'CSRF_HEADER_REQUIRED',
 		);
-		expect(request.status.code).toBe(SpanStatusCode.UNSET);
+		expect(request.status).toBe('ok');
 		expect(named('query')).toHaveLength(0);
 	});
 

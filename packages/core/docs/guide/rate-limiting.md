@@ -117,34 +117,22 @@ Put `request` in the context (`context: ({ request }) => ({ request })`) or use 
   `limit` can never pass: it is one call, refused, with that call's `retryAfter` (or `windowMs`
   when the call allowed). The policy
   comes from `store.policy`, from `policy`, or both when they agree.
-- Your own: shared state across servers belongs in Redis. `@graxia/redis` ships no rate limiter;
-  this one runs a single `EVAL` on the `RedisClient` of Bun, so the count and the window start are
-  atomic across instances. A refused call still adds its cost to the window's count:
+- `redisFieldLimit({ url, limit, windowMs })` from `@graxia/redis`: shared state across servers, a GCRA bucket
+  timed by the Redis server, failing open when Redis is down. See the
+  [Redis guide](https://github.com/softistx/graxia/blob/develop/packages/redis/docs/guide/redis.md#field-rate-limit). Or your own `{ consume }`: any object that
+  answers `{ allowed, retryAfter }` for a key and a cost is a `FieldLimit`.
 
 ```ts
-import type { FieldLimit } from '@graxia/core';
-import { RedisClient } from 'bun';
+import { fieldRateLimit } from '@graxia/core';
+import { redisFieldLimit } from '@graxia/redis';
 
-const redis = new RedisClient(process.env['REDIS_URL']);
-
-// One atomic round trip: add the cost, start the window on the first units, read what is left.
-const SCRIPT = `
-local used = redis.call('INCRBY', KEYS[1], ARGV[1])
-if used == tonumber(ARGV[1]) then redis.call('PEXPIRE', KEYS[1], ARGV[2]) end
-return { used, redis.call('PTTL', KEYS[1]) }
-`;
-
-export const redisLimit = (limit: number, windowMs: number): FieldLimit => ({
-	async consume(key, cost) {
-		const [used, ttl] = (await redis.eval(
-			SCRIPT,
-			1,
-			`rl:${key}`,
-			cost,
-			windowMs,
-		)) as [number, number];
-		if (used <= limit) return { allowed: true, retryAfter: 0 };
-		return { allowed: false, retryAfter: Math.max(ttl, 1) };
+fieldRateLimit({
+	fields: {
+		search: redisFieldLimit({
+			url: process.env['REDIS_URL'],
+			limit: 30,
+			windowMs: 60_000,
+		}),
 	},
 });
 ```

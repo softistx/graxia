@@ -12,6 +12,7 @@
 		"dist",
 		"test",
 		"**/*.spec.ts",
+		"src/schema/codegen-fixture",
 		"**/*.test.ts",
 		"**/*.test-util.ts",
 		"**/*.test-d.ts"

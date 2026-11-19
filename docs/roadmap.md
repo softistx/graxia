@@ -2,12 +2,6 @@
 
 Where graxia is going, as what you get. A direction, not a commitment.
 
-## Now
-
-- **A built-in explorer** (M4) — GraphiQL 4 bundled with no CDN under a strict
-  content security policy ([#21](https://github.com/softistx/graxia/issues/21)), and an Apollo Sandbox option
-  ([#22](https://github.com/softistx/graxia/issues/22)), both development-only.
-
 ## Later
 
 - **Ready for agents** (M5) — an MCP server over Streamable HTTP with schema,
@@ -42,5 +36,14 @@ Where graxia is going, as what you get. A direction, not a commitment.
 - **Secure by default** (M3, in `@graxia/core` 0.3.0 and `@graxia/redis` 0.1.1) — operation
   limits (depth, aliases, cost with `@cost` / `@listSize`), CSRF prevention and a WebSocket
   `Origin` check, introspection and suggestions off in production, trusted documents (manifests,
-  `documentId`, automatic persisted queries, strict mode), `fieldRateLimit`, OpenTelemetry spans
+  `documentId`, automatic persisted queries, strict mode), `fieldRateLimit`, spans on `@opentelemetry/api`
   and a production guide.
+- **A built-in explorer, telemetry and typed context** (M4, in `@graxia/core` 0.4.0,
+  `@graxia/redis` 0.2.0 and `@graxia/graphiql` 0.1.0) — GraphiQL 4 bundled with no CDN under a
+  strict content security policy ([#21](https://github.com/softistx/graxia/issues/21)) and an Apollo
+  Sandbox option ([#22](https://github.com/softistx/graxia/issues/22)), both development-only;
+  telemetry on `@softistx/telemetry` instead of `@opentelemetry/api`
+  ([#67](https://github.com/softistx/graxia/issues/67)); `InferContext` writes the resolver context
+  once ([#42](https://github.com/softistx/graxia/issues/42)); a PubSub in Yoga's shape
+  ([#69](https://github.com/softistx/graxia/issues/69)); a codegen-proof `createSchema` that refuses
+  resolvers generated for another context.

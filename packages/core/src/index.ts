@@ -43,16 +43,20 @@ export { definePlugin } from './plugins/define';
 export type { RequestState, StateKey } from './plugins/state';
 export { createStateKey } from './plugins/state';
 export type * from './plugins/types';
-export { filterIterable, mapIterable } from './pubsub/iterables';
+export type { Operator } from './pubsub/iterables';
+export { filter, map } from './pubsub/iterables';
 export type {
 	MemoryPubSub,
 	MemoryPubSubOptions,
 } from './pubsub/memory';
-export { createMemoryPubSub } from './pubsub/memory';
+export { createPubSub } from './pubsub/memory';
+export { pipe } from './pubsub/pipe';
 export type {
 	PubSub,
+	PubSubIterator,
+	PubSubPayload,
+	PubSubSubscribeArgs,
 	PubSubTopics,
-	SubscribeOptions,
 } from './pubsub/types';
 export { fieldRateLimit } from './rate-limit/plugin';
 export type { MemoryFieldLimitOptions } from './rate-limit/store';
@@ -98,6 +102,11 @@ export type {
 	WithServerContext,
 } from './server/host-context';
 export type {
+	CoreContext,
+	InferContext,
+} from './server/infer-context';
+export type {
+	ContextFactory,
 	ContextInit,
 	GraxiaLimits,
 	GraxiaOptions,
@@ -109,7 +118,7 @@ export type {
 	UnexpectedInfo,
 	UnexpectedPhase,
 } from './server/unexpected';
-export type { TelemetryOptions } from './telemetry';
+export type { TelemetryInstance, TelemetryOptions } from './telemetry';
 export type {
 	ApolloPersistedQueryManifest,
 	TrustedDocumentsOptions,

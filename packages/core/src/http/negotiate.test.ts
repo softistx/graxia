@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { negotiate, prefersEventStream, prefersMultipart } from './negotiate';
+import {
+	acceptsMultipart,
+	negotiate,
+	prefersEventStream,
+	prefersMultipart,
+} from './negotiate';
 
 describe('negotiate', () => {
 	test('absent, empty and wildcard accept give application/json', () => {
@@ -100,5 +105,17 @@ describe('prefersMultipart', () => {
 		expect(prefersMultipart('*/*')).toBe(false);
 		expect(prefersMultipart('multipart/mixed;q=0')).toBe(false);
 		expect(prefersMultipart('application/json, multipart/mixed')).toBe(false);
+	});
+});
+
+describe('acceptsMultipart', () => {
+	test('named at any rank with a q above 0, never through a wildcard', () => {
+		expect(acceptsMultipart('application/json, multipart/mixed')).toBe(true);
+		expect(acceptsMultipart('multipart/mixed;deferSpec=20220824')).toBe(true);
+		expect(acceptsMultipart(null)).toBe(false);
+		expect(acceptsMultipart('*/*')).toBe(false);
+		expect(acceptsMultipart('application/json, multipart/mixed;q=0')).toBe(
+			false,
+		);
 	});
 });

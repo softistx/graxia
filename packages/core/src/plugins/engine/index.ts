@@ -1,5 +1,5 @@
 import { orderPlugins } from '../order';
-import type { GraxiaPlugin, HookStage } from '../types';
+import type { GraxiaPlugin, HookStage, SetupApi } from '../types';
 import { createDispose } from './dispose';
 import type { PluginRunners } from './outputs';
 import { createSetup } from './setup';
@@ -27,6 +27,11 @@ export interface PluginEngine {
 	init(): Promise<void>;
 	/** Runs every plugin's `onDispose` once, in reverse plugin order; later calls return the same promise. */
 	dispose(): Promise<void>;
+	/**
+	 * Whether a plugin's `csrfExempt` accepts this `GET` request. A throwing
+	 * predicate counts as `false` and is handed to `onError`.
+	 */
+	csrfExempt(request: Request, onError: (error: unknown) => void): boolean;
 	/** The stage runners (see {@link PluginRunners}). */
 	readonly runners: PluginRunners;
 }
@@ -42,6 +47,8 @@ export interface PluginEngine {
  */
 export function createPluginEngine(
 	plugins: readonly GraxiaPlugin<any, any>[],
+	/** What `setup` sees as `api.transports`. Default: both on, as an instance without options. */
+	transports: SetupApi['transports'] = { sse: true, ws: true },
 ): PluginEngine {
 	const ordered = orderPlugins(plugins);
 	const names = ordered.map((p) => p.name);
@@ -54,8 +61,19 @@ export function createPluginEngine(
 	return {
 		names,
 		runners: buildRunners(hooksOf),
+		csrfExempt: (request, onError) =>
+			request.method === 'GET' &&
+			ordered.some((plugin) => {
+				if (typeof plugin.csrfExempt !== 'function') return false;
+				try {
+					return plugin.csrfExempt(request) === true;
+				} catch (error) {
+					onError(error);
+					return false;
+				}
+			}),
 		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
-		init: createSetup(ordered, names, ready),
+		init: createSetup(ordered, names, ready, transports),
 		dispose: createDispose(ordered, ready),
 	};
 }

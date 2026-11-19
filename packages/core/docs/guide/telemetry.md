@@ -1,48 +1,44 @@
-# OpenTelemetry
+# Telemetry
 
-graxia emits OpenTelemetry spans for each request, parse, validation and operation, and optionally
-for each resolver. It needs only `@opentelemetry/api`, an optional peer: installed, tracing is on
-and costs what your SDK costs; absent, graxia does nothing and wraps nothing.
+graxia emits spans for each request, parse, validation and operation, and optionally for each
+resolver, on [`@softistx/telemetry`](https://www.npmjs.com/package/@softistx/telemetry). It is an
+optional peer: installed, tracing is on and costs what your telemetry costs; absent, graxia does
+nothing and wraps nothing. The spans follow OpenTelemetry's GraphQL names and reach any OTLP
+backend through `@softistx/telemetry-otlp`.
 
 ## Setup
 
-Install the API, an SDK, an exporter and a context manager. Register them once at startup, before
+Install the package and an exporter. Create and install one telemetry at startup, before
 `createGraxia`.
 
 ```sh
-bun add @opentelemetry/api @opentelemetry/sdk-trace @opentelemetry/context-async-hooks @opentelemetry/exporter-trace-otlp-http
+bun add @softistx/telemetry @softistx/telemetry-otlp
 ```
 
 ```ts
-import { context, trace } from '@opentelemetry/api';
-import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { BatchSpanProcessor, TracerProvider } from '@opentelemetry/sdk-trace';
+import { createTelemetry } from '@softistx/telemetry';
+import { otlpExporter } from '@softistx/telemetry-otlp';
 import { createGraxia } from '@graxia/core';
 
-// The context manager makes `trace.getActiveSpan()` and the spans you start in a resolver nest.
-context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+const telemetry = createTelemetry('my-api', {
+	exporters: [otlpExporter({ endpoint: 'http://localhost:4318' })],
+}).install();
 
-trace.setGlobalTracerProvider(
-	new TracerProvider({
-		spanProcessors: [
-			new BatchSpanProcessor({
-				exporter: new OTLPTraceExporter({
-					url: 'http://localhost:4318/v1/traces',
-				}),
-			}),
-		],
-	}),
-);
-
-// graxia uses `trace.getTracer('@graxia/core')`, so the provider above is picked up.
+// graxia finds the installed telemetry, so the exporter above receives its spans.
 const graxia = createGraxia({ schema });
+
+// On shutdown, await it, or the last batch is lost.
+process.on('SIGTERM', async () => {
+	await graxia.dispose();
+	await telemetry.close();
+});
 ```
 
-To keep the provider out of the global, pass its tracer instead:
-`createGraxia({ schema, telemetry: { tracer: provider.getTracer('my-app') } })`. Without any SDK
-registered, the API's tracer records nothing and graxia skips the rest of the work for the request
-(no attribute, no child span, no copy of the response).
+To keep the telemetry out of the global, pass it:
+`createGraxia({ schema, telemetry: { instance: telemetry } })`. With none installed or passed, spans
+are detached: nothing is emitted, and graxia skips the rest of the work for the request (no
+attribute, no child span, no copy of the response). The span context travels in an
+`AsyncLocalStorage`, so no context manager is needed.
 
 ## The span tree
 
@@ -76,22 +72,24 @@ The operation span's name uses the `operationName` the client sent, which is unb
 | `graphql.validate`  | `graxia.cache.hit` (the validation cache served it), `graphql.error.count`                                     |
 | `graphql.resolve x` | `graphql.field.name`, `graphql.field.path` (`user.posts.0.title`), `graphql.field.type`, `graphql.parent.type` |
 
-Status: a span is `ERROR` only for a failure of the server. The request span is `ERROR` on a 5xx.
-The operation span is `ERROR`, with the original exception recorded, when a resolver threw an
+Status: a span is `error` only for a failure of the server. The request span is `error` on a 5xx.
+The operation span is `error`, with the original exception recorded, when a resolver threw an
 unexpected error (the ones `onUnexpected` reports and the client sees masked), when a plugin hook
 or the executor threw, or when a stream failed. A validation error, a 4xx refusal (CSRF, rate limit,
-a persisted document that is not found) and an exposed `GraphQLError` are the client's: no `ERROR`,
+a persisted document that is not found) and an exposed `GraphQLError` are the client's: no `error`,
 only `graphql.error.count` and `graxia.refusal.code`.
 
 Spans are server-side: the **original** exception, with its real message and stack, is recorded
-even though the client got a masked error. Treat your trace backend like your logs.
+even though the client got a masked error. Treat your trace backend like your logs. A failure that is
+an `AbortError` or a `TimeoutError` ends the span `cancelled`, not `error`: a shutdown or a timeout
+is not a bug to page for.
 
 ## Request kind and propagation
 
-With no active span, `graphql.request` is a `SERVER` span and its parent is read from the request's
-`traceparent` header through the registered propagator (`propagate: false` skips it). When your host
-already has an active span (graxia mounted in your own handler under an instrumented server), the
-request span is its `INTERNAL` child and the header is not read again.
+With no active span, `graphql.request` is a `server` span and its parent is read from the request's
+`traceparent` header (`propagate: false` skips it). When your host already has an active span
+(graxia mounted in your own handler under an instrumented server), the request span is its
+`internal` child and the header is not read again.
 
 ## Subscriptions, SSE and incremental delivery
 
@@ -102,7 +100,8 @@ request span is its `INTERNAL` child and the header is not read again.
   holds the count when it ends.
 - **WebSocket**: the upgrade has a short `graphql.request` span (`GET`, `graxia.request.upgrade`,
   status 101 when it succeeded). There is no request span per message: each `subscribe` is its own
-  operation span, parented to the context extracted from the upgrade request's headers.
+  operation span, a child of the upgrade's `graphql.request` span, so it is in the trace the upgrade
+  request's `traceparent` header started.
 
 ## Resolver spans
 
@@ -127,11 +126,9 @@ traces only the operations of an instance that asked for it, and otherwise calls
 
 ## Active span
 
-Execution runs inside the operation span's context, so `trace.getActiveSpan()` in a resolver is the
-operation span (or its resolver span with `resolverSpans`), and a span you start there nests under
-it. That needs a context manager registered, as any OpenTelemetry code does: the
-`AsyncLocalStorageContextManager` line of [Setup](#setup). Parenting of graxia's own spans does not
-depend on it.
+Execution runs inside the operation span, so `currentSpan()` from `@softistx/telemetry` in a
+resolver is the operation span (or its resolver span with `resolverSpans`), and a `span()` you start
+there nests under it, and logs written there carry its `traceId`.
 
 ## The document and PII
 
@@ -141,28 +138,43 @@ operations (`graxia.document.id` always identifies them).
 
 ## Without the peer
 
-When `@opentelemetry/api` cannot be loaded, or `telemetry: false`, graxia creates no span object,
-wraps no resolver and adds no work to a request. Passing `telemetry: { tracer }` without the API
-installed does the same: the tracer needs the API's context to parent spans.
+When `@softistx/telemetry` cannot be loaded, or `telemetry: false`, graxia creates no span object,
+wraps no resolver and adds no work to a request. Passing `telemetry: { instance }` without the
+package installed does the same.
 
 ## Options
 
 ```ts
 telemetry?: false | {
-	tracer?: Tracer;
+	instance?: TelemetryInstance; // a Telemetry from createTelemetry (@softistx/telemetry)
 	resolverSpans?: boolean | { trivial?: boolean };
 	document?: boolean;
 	propagate?: boolean;
 };
 ```
 
-| option          | default                                   | meaning                                                                  |
-| --------------- | ----------------------------------------- | ------------------------------------------------------------------------ |
-| `telemetry`     | on when `@opentelemetry/api` is installed | `false` turns every span off                                             |
-| `tracer`        | `trace.getTracer('@graxia/core')`         | the tracer the spans come from                                           |
-| `resolverSpans` | `false`                                   | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
-| `document`      | `false`                                   | the document source on `graphql.document` (may hold literals)            |
-| `propagate`     | `true`                                    | read the `traceparent` header of a request with no active span           |
+| option          | default                                        | meaning                                                                  |
+| --------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `telemetry`     | on when `@softistx/telemetry` is installed     | `false` turns every span off                                             |
+| `instance`      | the telemetry in scope, else the installed one | the `Telemetry` the spans are emitted to                                 |
+| `resolverSpans` | `false`                                        | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
+| `document`      | `false`                                        | the document source on `graphql.document` (may hold literals)            |
+| `propagate`     | `true`                                         | read the `traceparent` header of a request with no active span           |
+
+## Migrating from `@opentelemetry/api`
+
+Before 0.4 graxia traced through `@opentelemetry/api`. Now: `bun add @softistx/telemetry` (and an
+exporter such as `@softistx/telemetry-otlp`) in place of the OpenTelemetry API and SDK packages,
+`createTelemetry(...).install()` in place of the provider and context manager, and
+`telemetry: { instance }` in place of `telemetry: { tracer }`. Span names and attributes are
+unchanged. Differences:
+
+- A failure that is a timeout or an abort is `cancelled` instead of `error`.
+- A WebSocket operation span is now a child of the upgrade's `graphql.request` span.
+- The operation span records the first unexpected error only; `graphql.error.count` still counts
+  all of them.
+- The `tracer` option is not ignored: it throws, see
+  [Troubleshooting](../troubleshooting.md#telemetrytracer-was-replaced-by-telemetryinstance).
 
 An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).

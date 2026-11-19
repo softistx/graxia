@@ -167,7 +167,7 @@ describe('production profile: rate limit and telemetry', () => {
 		expect(codes(body)).toEqual(['RATE_LIMITED']);
 	});
 
-	test('the no-op tracer path answers like telemetry: false', async () => {
+	test('the detached-span path (no telemetry installed) answers like telemetry: false', async () => {
 		const plain = await byId(
 			build('production', [], { telemetry: false }),
 			'hello',

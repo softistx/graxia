@@ -11,6 +11,7 @@
 		"includes": [
 			"**",
 			"!**/dist",
+			"!packages/core/src/schema/codegen-fixture/generated.ts",
 			"!.changeset/*.md",
 			"!plugins/**/SKILL.md",
 			"!plugins/**/agents/*.md"

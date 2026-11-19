@@ -37,8 +37,8 @@ production, always give it.
 ## A recommended configuration
 
 One instance with trusted documents, a rate limit shared across instances, Redis for the
-PubSub, OpenTelemetry and an error logger. It needs `@graxia/redis` and the tracing packages of
-[OpenTelemetry](./telemetry.md#setup).
+PubSub, telemetry and an error logger. It needs `@graxia/redis`, `@softistx/telemetry` and an
+exporter such as `@softistx/telemetry-otlp` (see [Telemetry](./telemetry.md#setup)).
 
 ```ts
 // server.ts
@@ -51,7 +51,7 @@ import {
 import { redisPubSub } from '@graxia/redis';
 import { redisLimit } from './redis-limit'; // the adapter of Rate limiting, "Stores"
 
-type Topics = { tick: { n: number } };
+type Topics = { tick: [payload: { n: number }] };
 type AppContext = {
 	ip: string | undefined;
 	pubsub: PubSub<Topics>;
@@ -67,8 +67,7 @@ const schema = createSchema<AppContext>()({
 		Query: { hello: () => 'world', signIn: () => true },
 		Subscription: {
 			tick: {
-				subscribe: (_root, _args, { pubsub, signal }) =>
-					pubsub.subscribe('tick', { signal }),
+				subscribe: (_root, _args, { pubsub }) => pubsub.subscribe('tick'),
 				resolve: (event: { n: number }) => event.n,
 			},
 		},
@@ -114,10 +113,11 @@ Notes on each choice:
 - **Rate limit.** `memoryFieldLimit` counts per process: with several instances the real limit is
   the limit times the instances. Use a shared store. `single: true` makes `signIn` selectable once
   per operation, so aliases cannot multiply attempts. See [Rate limiting](./rate-limiting.md).
-- **PubSub.** `createMemoryPubSub` delivers inside one process. With several instances, a mutation
+- **PubSub.** `createPubSub` delivers inside one process. With several instances, a mutation
   on one must reach subscribers on the others: use `redisPubSub`. Delivery is at most once.
-- **Telemetry.** On when `@opentelemetry/api` is installed; register your OTLP provider before
-  `createGraxia` (see [OpenTelemetry](./telemetry.md#setup)). Leave `resolverSpans` and
+- **Telemetry.** On when `@softistx/telemetry` is installed; install your telemetry with the
+  `@softistx/telemetry-otlp` exporter before `createGraxia`, and await `telemetry.close()` on
+  shutdown (see [Telemetry](./telemetry.md#setup)). Leave `resolverSpans` and
   `document` off unless you are tracing a problem: they cost a span per field and may record
   literals.
 - **Logging.** `onUnexpected` is silent in production by default; give it your logger, with the

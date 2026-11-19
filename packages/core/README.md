@@ -12,8 +12,8 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
-- `@opentelemetry/api` `^1` is an optional peer: with it installed graxia emits OpenTelemetry spans,
-  without it tracing is off (see [OpenTelemetry](#opentelemetry)).
+- `@softistx/telemetry` `^0.4.1` is an optional peer: with it installed graxia emits spans,
+  without it tracing is off (see [Telemetry](#telemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
   both resolutions), but the sources are written for a bundler.
@@ -22,7 +22,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 ```sh
 bun add @graxia/core graphql@^17
-bun add @opentelemetry/api  # optional, enables OpenTelemetry spans
+bun add @softistx/telemetry  # optional, enables spans
 ```
 
 The snippets below reuse the `graxia` and `schema` of the quick start instead of repeating them.
@@ -55,7 +55,9 @@ Details in [GraphQL over HTTP](./docs/guide/http.md).
 A plugin is a plain object with a `name` and the hooks it needs (`onRequest`, `onParams`,
 `onParse`, `onValidate`, `onContext`, `onExecute`, `onResponse`, ...). Returning a function from a
 hook runs it after the stage (except `onContext` and `onResponse`, which have no
-after-hook; `onResponse` replaces the response with `setResponse`).
+after-hook; `onResponse` replaces the response with `setResponse`). A plugin may also declare
+`csrfExempt(request)` for its own `GET` requests (see [Security](./docs/guide/security.md)); for an
+in-browser explorer see `@graxia/graphiql`.
 
 ```ts
 import { createGraxia, definePlugin } from '@graxia/core';
@@ -75,32 +77,40 @@ A plugin that reads something from the context declares it with the curried form
 `definePlugin<{ request: Request }>()({ ... })`, so `onContext` still infers what it adds. See
 [Plugins](./docs/guide/plugins.md) and its [Typed context](./docs/guide/plugins.md#typed-context) section.
 
-## Context and `getContext`
+## Context, written once
 
-The `context` option builds one context per operation; resolvers get it as their third argument,
-and any code they call can read it with `getContext()`.
+The `context` option builds one context per operation. Write it once, derive its type with
+`InferContext`, and resolvers get it as their third argument. `createGraxia` then checks, at compile
+time, that the schema's context is what the factory, the plugins and graxia provide.
 
 ```ts
-import { createGraxia, createSchema, getContext } from '@graxia/core';
+import {
+	type ContextInit,
+	createGraxia,
+	createSchema,
+	type InferContext,
+} from '@graxia/core';
 
-const schema = createSchema<{ user: string }>()({
+const context = async ({ request }: ContextInit) => ({
+	user: await authenticate(request), // { id: string } | null
+});
+type Ctx = InferContext<typeof context>; // { user: … } & { signal: AbortSignal }
+
+const schema = createSchema<Ctx>()({
 	typeDefs: 'type Query { me: String }',
-	resolvers: { Query: { me: () => getContext<{ user: string }>().user } },
+	resolvers: { Query: { me: (_, __, ctx) => ctx.user?.id } },
 });
 
-const graxia = createGraxia({
-	schema,
-	context: ({ request }) => ({
-		user: request.headers.get('x-user') ?? 'anonymous',
-	}),
-});
+const graxia = createGraxia({ schema, context }); // a missing or wrong key is a type error
 
 // Stop cleanly: drains in-flight operations, answers 503 to new ones.
 process.on('SIGTERM', () => graxia.dispose());
 ```
 
-Every context also carries a `signal` that aborts when the client leaves or the server shuts
-down. See [Context, cancellation and shutdown](./docs/guide/context.md).
+Plugins that add context go in the second parameter, `InferContext<typeof context, typeof plugins>`.
+Every context also carries a `signal` that aborts when the client leaves or the server shuts down;
+`getContext()` reads the context from code far below a resolver. See
+[Context, cancellation and shutdown](./docs/guide/context.md).
 
 ## Errors
 
@@ -196,6 +206,7 @@ createGraxia({
 ```
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
+A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
 **Opt-in**
 
@@ -230,20 +241,22 @@ createGraxia({
 
 `single: true` also refuses the field selected twice in one operation (`400`,
 `FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
-proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
+proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the limit across processes. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
-## OpenTelemetry
+## Telemetry
 
-Install `@opentelemetry/api` (an optional peer) and register your SDK: graxia emits spans for each
-request, parse, validation and operation, and the original exception of an unexpected error.
-Without the peer, nothing is wrapped and nothing runs.
+Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/telemetry-otlp` for an
+OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
+validation and operation, and the original exception of an unexpected error. Without the peer,
+nothing is wrapped and nothing runs.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
 ```
 
-Setup, the span tree, attributes and every option: [OpenTelemetry](./docs/guide/telemetry.md).
+Setup, the span tree, attributes, every option and the migration from `@opentelemetry/api`:
+[Telemetry](./docs/guide/telemetry.md).
 
 ## Trusted documents
 
@@ -331,9 +344,9 @@ A typed in-memory PubSub for subscription resolvers. It lives in one process; fo
 instances, `redisPubSub` from `@graxia/redis` implements the same interface.
 
 ```ts
-import { createMemoryPubSub, createSchema } from '@graxia/core';
+import { createPubSub, createSchema } from '@graxia/core';
 
-const pubsub = createMemoryPubSub<{ tick: number }>();
+const pubsub = createPubSub<{ tick: [payload: number] }>();
 
 // This `schema` is the one the subscription examples below use.
 const schema = createSchema<{ signal: AbortSignal }>()({
@@ -342,8 +355,7 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 		Query: { hello: () => 'world' },
 		Subscription: {
 			tick: {
-				subscribe: (_root, _args, ctx) =>
-					pubsub.subscribe('tick', { signal: ctx.signal }),
+				subscribe: () => pubsub.subscribe('tick'),
 				resolve: (n: number) => n,
 			},
 		},
@@ -351,7 +363,8 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 });
 
 await pubsub.publish('tick', 1);
-// `filterIterable(source, keep)` and `mapIterable(source, map)` wrap a subscription's source.
+// Yoga's shape: `subscribe('post', id)`, `publish('post', id, payload)`, and
+// `pipe(source, filter(keep), map(fn))` to wrap a subscription's source.
 ```
 
 ## Subscriptions
@@ -419,7 +432,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 | import                 | what it is                                                                                                                                                                                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
-|                        | PubSub: `createMemoryPubSub`, `filterIterable`, `mapIterable`; types `PubSub`, `PubSubTopics`, `SubscribeOptions`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                                              |
+|                        | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
 |                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
@@ -427,7 +440,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
-|                        | Telemetry: type `TelemetryOptions` (the `telemetry` option; needs the optional peer `@opentelemetry/api`)                                                                                                                                             |
+|                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
@@ -436,18 +449,19 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Guides and index](./docs/README.md)
 - [GraphQL over HTTP](./docs/guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
 - [Plugins](./docs/guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
-- [Context, cancellation and shutdown](./docs/guide/context.md): `getContext()`, `signal`, `dispose()`.
+- [Context, cancellation and shutdown](./docs/guide/context.md): `InferContext`, the resolver context, `signal`, `getContext()`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
+- [Codegen](./docs/guide/codegen.md): graphql-codegen's `Resolvers` with `createSchema`, `contextType`, mappers, `enumValues`.
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
-- [OpenTelemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
+- [Telemetry](./docs/guide/telemetry.md): spans, attributes, resolver spans, propagation, the optional peer.
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.

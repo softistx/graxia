@@ -21,7 +21,8 @@ export const schema = createSchema<AppContext>()({
 ```
 
 The result is typed `SchemaWithContext<AppContext>` (a `GraphQLSchema` carrying a type-only brand), so
-later stages can check that the context they build matches what the resolvers expect.
+`createGraxia` checks that the context it builds matches what the resolvers expect (see
+[Context](./context.md#write-the-context-once)).
 
 ## Type definitions
 
@@ -83,6 +84,8 @@ import type { Resolvers } from './generated/graphql';
 
 createSchema<AppContext, Resolvers>()({ typeDefs, resolvers });
 ```
+
+See [Codegen](./codegen.md) for the `codegen.ts` (`contextType` from `InferContext`, mappers, `enumValues`). Resolvers keep the `(parent, args, context, info)` signature of Yoga and Apollo.
 
 ## Errors
 

@@ -5,7 +5,12 @@ import { attachResolvers } from './attach';
 import { withIncrementalDirectives } from './directives';
 import { mergeResolvers } from './merge';
 import { sdlError, toDocument } from './typedefs';
-import type { Resolvers, SchemaOptions, SchemaWithContext } from './types';
+import type {
+	ContextCheck,
+	Resolvers,
+	SchemaOptions,
+	SchemaWithContext,
+} from './types';
 
 /**
  * Builds a `GraphQLSchema` from SDL and typed resolvers. Curried so `Ctx` is
@@ -23,7 +28,9 @@ import type { Resolvers, SchemaOptions, SchemaWithContext } from './types';
  * resolver, or a resolver for a type or field the schema lacks.
  */
 export function createSchema<Ctx = unknown, R = Resolvers<Ctx>>() {
-	return (options: SchemaOptions<R>): SchemaWithContext<Ctx> => {
+	return (
+		options: SchemaOptions<R> & ContextCheck<Ctx, R>,
+	): SchemaWithContext<Ctx> => {
 		const document = withCostDefinitions(toDocument(options.typeDefs));
 		let schema: SchemaWithContext<Ctx>;
 		try {

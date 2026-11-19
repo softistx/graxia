@@ -1,18 +1,17 @@
 import { describe, expect, test } from 'bun:test';
-import { createMemoryPubSub } from '../pubsub/memory';
+import { createPubSub } from '../pubsub/memory';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
 
 describe('SSE on a real Bun server', () => {
 	test('a stream outlives the server idleTimeout', async () => {
-		const pubsub = createMemoryPubSub<{ tick: number }>();
+		const pubsub = createPubSub<{ tick: [payload: number] }>();
 		const schema = createSchema<{ signal: AbortSignal }>()({
 			typeDefs: 'type Query { _: Int } type Subscription { tick: Int! }',
 			resolvers: {
 				Subscription: {
 					tick: {
-						subscribe: (_: unknown, __: unknown, ctx) =>
-							pubsub.subscribe('tick', { signal: ctx.signal }),
+						subscribe: () => pubsub.subscribe('tick'),
 						resolve: (n: number) => n,
 					},
 				},

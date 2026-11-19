@@ -1,1 +1,7 @@
-{ "root": false, "extends": "//" }
+{
+	"root": false,
+	"extends": "//",
+	"files": {
+		"includes": ["**", "!src/schema/codegen-fixture/generated.ts"]
+	}
+}

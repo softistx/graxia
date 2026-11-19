@@ -1,48 +1,49 @@
+import type { PubSubIterator } from './types';
+
+/** An operator: turns one async iterable into another, as GraphQL Yoga's `filter` and `map` return. */
+export type Operator<T, U> = (source: AsyncIterable<T>) => PubSubIterator<U>;
+
 /**
- * Keeps the events of `source` that pass `predicate`. A type guard narrows the
- * element type. `return()` is forwarded to the source, and a throw in
- * `predicate` returns the source then rejects.
+ * Keeps the events that pass `predicate`, as Yoga's `filter` (use it with
+ * {@link pipe}). A type guard narrows the element type. `return()` is
+ * forwarded to the source, and a throw in `predicate` returns the source then
+ * rejects.
  *
  * @example
- * subscribe: (_, { id }, ctx) =>
- *   filterIterable(pubsub.subscribe(`post:${id}`, { signal: ctx.signal }), (p) => p.published)
+ * pipe(pubsub.subscribe('post', id), filter((p) => p.published))
  */
-export function filterIterable<T, S extends T>(
-	source: AsyncIterable<T>,
+export function filter<T, S extends T>(
 	predicate: (value: T) => value is S,
-): AsyncIterableIterator<S>;
-export function filterIterable<T>(
-	source: AsyncIterable<T>,
+): Operator<T, S>;
+export function filter<T>(
 	predicate: (value: T) => boolean | Promise<boolean>,
-): AsyncIterableIterator<T>;
-export function filterIterable<T>(
-	source: AsyncIterable<T>,
+): Operator<T, T>;
+export function filter<T>(
 	predicate: (value: T) => boolean | Promise<boolean>,
-): AsyncIterableIterator<T> {
-	return derive(source, async (value) =>
-		(await predicate(value)) ? { value } : undefined,
-	);
+): Operator<T, T> {
+	return (source) =>
+		derive(source, async (value) =>
+			(await predicate(value)) ? { value } : undefined,
+		);
 }
 
 /**
- * Maps each event of `source` through `fn` (sync or async). `return()` is
+ * Maps each event through `fn` (sync or async), as Yoga's `map`. `return()` is
  * forwarded to the source, and a throw in `fn` returns the source then rejects.
  *
  * @example
- * mapIterable(pubsub.subscribe('tick'), (n) => ({ tick: n }))
+ * pipe(pubsub.subscribe('tick'), map((n) => ({ tick: n })))
  */
-export function mapIterable<T, U>(
-	source: AsyncIterable<T>,
-	fn: (value: T) => U | Promise<U>,
-): AsyncIterableIterator<U> {
-	return derive(source, async (value) => ({ value: await fn(value) }));
+export function map<T, U>(fn: (value: T) => U | Promise<U>): Operator<T, U> {
+	return (source) =>
+		derive(source, async (value) => ({ value: await fn(value) }));
 }
 
 /** Shared engine: `step` returns a box to emit, or `undefined` to skip. */
 function derive<T, U>(
 	source: AsyncIterable<T>,
 	step: (value: T) => Promise<{ value: U } | undefined>,
-): AsyncIterableIterator<U> {
+): PubSubIterator<U> {
 	const inner = source[Symbol.asyncIterator]();
 	const done = { done: true, value: undefined } as const;
 	let finished = false;

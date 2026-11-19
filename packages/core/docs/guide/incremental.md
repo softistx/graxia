@@ -47,8 +47,11 @@ new GraphQLSchema({
 | `text/event-stream`                                                  | one `next` event per payload, then `complete`              |
 | `application/graphql-response+json`, `application/json`, `*/*`       | refused with `INCREMENTAL_NOT_SUPPORTED` (400 / 200)       |
 
-`multipart/mixed` is chosen only when named (never through a wildcard) and not ranked below a JSON
-type, like `text/event-stream`. A query that does not turn out incremental, and any error before
+`multipart/mixed` is chosen only when named (never through a wildcard). For an incremental operation
+(`@defer`, `@stream`) it is used whenever it is named with a q above 0, even when a JSON type is listed
+first or ranks higher, because clients that list JSON first, such as GraphiQL, send
+`Accept: application/json, multipart/mixed`. `text/event-stream` is chosen
+only when not ranked below a JSON type. Any other operation keeps the usual negotiation (JSON here). A query that does not turn out incremental, and any error before
 execution (parse, validation), is answered as plain JSON even under a `multipart/mixed` `Accept`,
 which clients such as Apollo Client read. A batch with either `Accept` answers 400.
 

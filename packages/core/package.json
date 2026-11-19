@@ -51,7 +51,8 @@
 	"scripts": {
 		"build": "bun run ../../build.ts",
 		"test": "bun test --pass-with-no-tests src",
-		"typecheck": "bun check"
+		"typecheck": "bun check",
+		"codegen:fixture": "graphql-codegen --config src/schema/codegen-fixture/codegen.ts"
 	},
 	"nxgt": {
 		"entrypoints": [
@@ -60,8 +61,10 @@
 		]
 	},
 	"devDependencies": {
-		"@opentelemetry/api": "1.10.0",
-		"@opentelemetry/sdk-trace": "3.1.1",
+		"@graphql-codegen/cli": "^8.0.0",
+		"@graphql-codegen/typescript": "^7.0.1",
+		"@graphql-codegen/typescript-resolvers": "^7.0.1",
+		"@softistx/telemetry": "0.4.2",
 		"@types/bun": "^1.4.4",
 		"graphql": "17.1.0",
 		"graphql-http": "1.23.1",
@@ -69,7 +72,7 @@
 		"meros": "^1.3.2"
 	},
 	"peerDependencies": {
-		"@opentelemetry/api": "^1",
+		"@softistx/telemetry": "^0.4.1",
 		"graphql": "^17.1.0",
 		"typescript": "^6.0.3 || ^7.0.0"
 	},
@@ -77,7 +80,7 @@
 		"bun": ">=1.4.4"
 	},
 	"peerDependenciesMeta": {
-		"@opentelemetry/api": {
+		"@softistx/telemetry": {
 			"optional": true
 		},
 		"typescript": {
