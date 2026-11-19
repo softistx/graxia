@@ -89,6 +89,16 @@ const fromExtensions = (element: Element): AgentExtensions =>
 
 const unique = (values: readonly string[]): string[] => [...new Set(values)];
 
+/** The permissions of a code-built `{ anyOf }`, or `undefined` when it is not a non-empty list of strings. */
+function codeAnyOf(need: unknown): string[] | undefined {
+	const any = (need as { anyOf?: unknown } | null)?.anyOf;
+	return Array.isArray(any) &&
+		any.length > 0 &&
+		any.every((p) => typeof p === 'string')
+		? (any as string[])
+		: undefined;
+}
+
 /**
  * What `@needs` (or `extensions.graxia.needs`) asks of a caller for a field or
  * type: a list of requirements that are ANDed, each an any-of list of
@@ -114,8 +124,12 @@ export function needsOf(target: NeedsTarget): string[][] {
 				return unique(any.map(String));
 			return [];
 		}),
-		...fromCode.map((need) =>
-			typeof need === 'string' ? [need] : unique([...need.anyOf]),
+		...fromCode.map((need): string[] =>
+			typeof need === 'string'
+				? [need]
+				: codeAnyOf(need) === undefined
+					? []
+					: unique(codeAnyOf(need) ?? []),
 		),
 	];
 	const seen = new Set<string>();
@@ -129,11 +143,23 @@ export function needsOf(target: NeedsTarget): string[][] {
 
 /** Whether some `@needs` use of the target gives both arguments or neither. */
 export function hasInvalidNeeds(target: NeedsTarget): boolean {
-	return uses(target, 'needs').some((use) => {
-		const hasOne = typeof use['permission'] === 'string';
-		const hasAny = Array.isArray(use['anyOf']) && use['anyOf'].length > 0;
-		return hasOne === hasAny;
-	});
+	const declared = fromExtensions(target).needs;
+	const fromCode: unknown[] =
+		declared === undefined
+			? []
+			: Array.isArray(declared)
+				? declared
+				: [declared];
+	return (
+		uses(target, 'needs').some((use) => {
+			const hasOne = typeof use['permission'] === 'string';
+			const hasAny = Array.isArray(use['anyOf']) && use['anyOf'].length > 0;
+			return hasOne === hasAny;
+		}) ||
+		fromCode.some(
+			(need) => typeof need !== 'string' && codeAnyOf(need) === undefined,
+		)
+	);
 }
 
 /** The limits `@constraint` (or `extensions.graxia.constraint`) declares, or `undefined`. */

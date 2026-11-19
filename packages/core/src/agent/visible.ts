@@ -49,7 +49,7 @@ const allowedBy =
 /** The types and fields `@needs` hides straight away. */
 function hidden(
 	composites: Composite[],
-	allowed: (target: any) => boolean,
+	allowed: (target: Parameters<typeof needsOf>[0]) => boolean,
 ): Kept {
 	const removed = new Set<string>();
 	const fields = new Map<string, Set<string>>();

@@ -126,6 +126,33 @@ describe('reading the agent directives', () => {
 		expect(errorsOf(field)).toEqual(['A']);
 	});
 
+	test('a code-built needs with an empty or invalid anyOf is invalid and hides the field', () => {
+		const field = (extensions: unknown) =>
+			(
+				new GraphQLSchema({
+					query: new GraphQLObjectType({
+						name: 'Query',
+						fields: {
+							a: { type: GraphQLString, extensions: extensions as never },
+						},
+					}),
+				}).getQueryType() as GraphQLObjectType
+			).getFields()['a']!;
+		for (const needs of [
+			{ anyOf: [] },
+			{ anyOf: 'x' },
+			{ anyOf: [1] },
+			['z', { anyOf: [] }],
+		]) {
+			const f = field({ graxia: { needs } });
+			expect(hasInvalidNeeds(f)).toBe(true);
+			expect(needsOf(f).some((g) => g.length === 0)).toBe(true);
+		}
+		expect(
+			hasInvalidNeeds(field({ graxia: { needs: { anyOf: ['x'] } } })),
+		).toBe(false);
+	});
+
 	test('the new limits are read', () => {
 		const limits = buildSchema(`${agentTypeDefs}
 			type Query { f(n: Float @constraint(exclusiveMin: 0, exclusiveMax: 10, multipleOf: 0.5), l: [Int] @constraint(minItems: 1, maxItems: 3)): Int }`);
