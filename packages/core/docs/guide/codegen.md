@@ -82,7 +82,7 @@ createGraxia({ schema, context }).serve({ port: 3000 });
 ```
 
 `createSchema` refuses a resolver map generated for another context than `AppContext` (the
-`resolvers` option fails with `Property 'createSchema<Ctx>: these resolvers expect another context (see expected)' is missing`; see [Troubleshooting](../troubleshooting.md)). Resolver
+`resolvers` option fails with `Property ''createSchema<Ctx>: these resolvers expect another context (see expected)'' is missing`; see [Troubleshooting](../troubleshooting.md)). Resolver
 functions annotated with a different context are refused by the generated types themselves.
 
 ## Notes
