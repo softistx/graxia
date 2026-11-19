@@ -80,8 +80,9 @@ createMcp(graxia, {
 import { createGraxia } from '@graxia/core';
 import { createMcp, mcpAuth } from '@graxia/mcp';
 
-// `schema` is the one from the core quick start; `verifyJwt` is your token check
-// (signature and issuer), resolving the claims or undefined.
+// `schema` is the one from the core quick start. `verifyJwt` is your token check (signature and
+// issuer): it resolves the claims, and must resolve undefined for a bad token, not throw
+// (a throw is an outage: a 503 the client retries).
 const graxia = createGraxia({
 	schema,
 	context: () => ({ userId: mcpAuth()?.subject }), // the verified token, in a tool call

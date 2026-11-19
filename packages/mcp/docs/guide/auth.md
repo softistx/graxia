@@ -7,10 +7,9 @@ RFC 8707): it accepts bearer access tokens, it never issues them. Your authoriza
 
 1. The client calls `/mcp` with no token: **401** and
    `WWW-Authenticate: Bearer resource_metadata="https://api.example.com/.well-known/oauth-protected-resource/mcp", scope="mcp:read"`.
-2. It reads that metadata (`mcp.metadata`): the `authorization_servers` and `scopes_supported`.
-3. It signs the user in at the authorization server and gets a token for the resource
-   (`https://api.example.com/mcp`) with the scope `mcp:read`.
-4. It retries with `Authorization: Bearer <token>`.
+2. It reads that metadata (`mcp.metadata`) and signs the user in at the authorization server it
+   names, asking for a token for this resource.
+3. It retries with `Authorization: Bearer <token>`.
 
 ## Mount it
 
@@ -26,7 +25,8 @@ const mcp = createMcp(graxia, {
 		resource: 'https://api.example.com/mcp',
 		authorizationServers: ['https://auth.example.com'],
 		verifyToken: async (token) => {
-			const claims = await verifyJwt(token); // your verifier: signature, issuer
+			// your verifier (signature, issuer): it resolves undefined for a bad token, see below
+			const claims = await verifyJwt(token);
 			if (!claims) return undefined; // a 401
 			return {
 				subject: claims.sub,
@@ -77,6 +77,30 @@ It resolves the token's `McpAuthInfo`, `undefined` for a token it does not accep
 when it builds its own refusals: that response is sent as is (plus the CORS headers of an allowed
 origin). A **throw is an outage, not a bad token**: the client gets a 503 with `Retry-After: 5`
 and the error goes to `onError`.
+
+**Do not let a bad token throw.** Many JWT libraries reject an expired, badly signed or
+wrong-audience token by throwing (jose's `jwtVerify` does). Passed through, every expired token
+becomes a 503 the client retries for ever instead of a 401 it refreshes on, and each one reaches
+`onError`. Catch the library's invalid-token errors and resolve `undefined`; let only real outages
+(a JWKS fetch, an introspection call) throw:
+
+```ts
+verifyToken: async (token) => {
+	let claims;
+	try {
+		claims = await verifyJwt(token); // throws InvalidTokenError, or a network error
+	} catch (error) {
+		if (error instanceof InvalidTokenError) return undefined; // a bad token: 401
+		throw error; // an outage: 503, retried
+	}
+	return { subject: claims.sub, scopes: claims.scope.split(' '), audience: claims.aud };
+},
+```
+
+Tell the two apart by the error's class, as above (with jose: `JWTExpired`,
+`JWTClaimValidationFailed`, `JWSSignatureVerificationFailed`, `JWTInvalid` and `JWSInvalid` are bad
+tokens; `JWKSTimeout` and a failed fetch are outages). A bare `catch { return undefined }` would
+hide an outage as a 401 and make clients sign in again for nothing.
 
 `McpAuthInfo` is `{ subject?, clientId?, scopes, expiresAt?, audience?, extra? }`:
 

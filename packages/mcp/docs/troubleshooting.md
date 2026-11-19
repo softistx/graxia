@@ -85,11 +85,8 @@ slash are ignored). The client must ask for a token for the same URL as `auth.re
 ## 401 `Unauthorized: the access token carries no audience.`
 
 `verifyToken` returned no `audience`, and the audience is checked by default. Return the token's
-`aud`, or, when your verifier already refuses tokens issued for another resource, opt out:
-
-```ts
-auth: { resource, authorizationServers, verifyToken, audience: 'verifier' },
-```
+`aud`, or, when your verifier already refuses tokens issued for another resource, opt out with
+`audience: 'verifier'` ([the auth guide](./guide/auth.md#audience)).
 
 ## 401 `Unauthorized: the verifier returned an unusable expiry (expiresAt is in seconds).`
 
@@ -107,6 +104,12 @@ has no expiry.
 
 With `Retry-After: 5`. `verifyToken` threw (an introspection endpoint or a key store is down); the
 error went to `onError`. A throw is an outage, never a 401: resolve `undefined` for a bad token.
+
+**Every expired token answers 503: your verifier throws on a bad token.** A JWT library that
+rejects an expired, badly signed or wrong-audience token by throwing (jose's `jwtVerify`) turns
+each of them into a 503 the client retries instead of refreshing its token. Catch the library's
+invalid-token errors in `verifyToken` and resolve `undefined`; rethrow the rest (a JWKS fetch, an
+introspection call), as in [the auth guide](./guide/auth.md#verifytoken).
 
 ## A 401 or 503 whose body is not JSON-RPC
 

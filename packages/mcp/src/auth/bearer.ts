@@ -51,7 +51,7 @@ const unavailable = (): Response =>
 	refusal(
 		503,
 		'The access token could not be verified: the token verifier failed.',
-		'Retry in a few seconds with the same token. If it persists, the server owner should read the error onError received.',
+		'Retry in a few seconds with the same token. If it persists, the server owner should read the error onError received. A verifier that throws for an invalid token must resolve undefined instead.',
 		{ 'retry-after': '5' },
 	);
 

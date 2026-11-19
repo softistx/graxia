@@ -151,7 +151,9 @@ describe('the bearer gate', () => {
 		expect(response.headers.has('www-authenticate')).toBe(false);
 		const body = await response.json();
 		expect(body.error.message).toContain('could not be verified');
-		expect(body.error.data.fix).toBeString();
+		expect(body.error.data.fix).toBe(
+			'Retry in a few seconds with the same token. If it persists, the server owner should read the error onError received. A verifier that throws for an invalid token must resolve undefined instead.',
+		);
 		expect(seen.errors.map(String)).toEqual(['Error: introspection down']);
 	});
 	test('the audience matches the resource ignoring a trailing slash', async () => {
