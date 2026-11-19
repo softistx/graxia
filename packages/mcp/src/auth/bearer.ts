@@ -46,10 +46,84 @@ const unauthorized = (
 		'MCP_UNAUTHORIZED',
 	);
 
+/** The 503 of a verifier that threw: an outage is never a 401. */
+const unavailable = (): Response =>
+	refusal(
+		503,
+		'The access token could not be verified: the token verifier failed.',
+		'Retry in a few seconds with the same token. If it persists, the server owner should read the error onError received.',
+		{ 'retry-after': '5' },
+	);
+
+/** Seconds since the epoch stay under this for millennia; above it the value is milliseconds. */
+const MAX_EXPIRES_AT = 1e11;
+
 /**
- * The bearer gate: resolves the verified token's info, or the refusal (400
- * token in the query string, 401 missing or invalid token, 403 missing read
- * scope). Runs before the body is read.
+ * What the verifier's answer is refused for, if anything: a shape the
+ * verifier got wrong (also sent to `onError`), an expired token, an audience
+ * that is not this resource, a missing read scope.
+ */
+function refusalOf(
+	info: McpAuthInfo,
+	auth: ResolvedAuth,
+	onError: (error: unknown) => void,
+): Response | undefined {
+	const { resource } = auth.options;
+	const renew = `Get a new access token from the authorization server (see ${auth.metadataUrl}) and retry.`;
+	const owner = (what: string, fix: string) => {
+		onError(new Error(`createMcp: ${what}. Fix: ${fix}`));
+		return 'Retry later; the server owner has to correct its token verifier (the error went to onError).';
+	};
+	if (!Array.isArray(info.scopes))
+		return unauthorized(
+			auth,
+			'the verifier returned no scopes',
+			owner(
+				'verifyToken must return scopes',
+				'return { scopes: [...] }, the list of scopes the token carries (an empty list for none).',
+			),
+		);
+	const { expiresAt } = info;
+	if (expiresAt !== undefined) {
+		if (!Number.isFinite(expiresAt) || expiresAt > MAX_EXPIRES_AT)
+			return unauthorized(
+				auth,
+				'the verifier returned an unusable expiry (expiresAt is in seconds)',
+				owner(
+					`verifyToken returned expiresAt ${String(expiresAt)}, and expiresAt is in seconds since the epoch`,
+					'return the exp claim as is, or Math.floor(date.getTime() / 1000); leave it out when the token has no expiry.',
+				),
+			);
+		if (expiresAt <= Date.now() / 1000)
+			return unauthorized(auth, 'the access token has expired', renew);
+	}
+	if (auth.options.audience !== 'verifier') {
+		const forResource = `Get an access token issued for ${resource} (the "resource" parameter of the authorization and token requests, RFC 8707) and retry.`;
+		if (info.audience === undefined)
+			return unauthorized(
+				auth,
+				'the access token carries no audience',
+				`${forResource} Server owner: return audience from verifyToken, or set auth.audience to 'verifier' when the verifier checks it itself.`,
+			);
+		const audiences =
+			typeof info.audience === 'string' ? [info.audience] : info.audience;
+		if (!audiences.some((a) => sameResource(a, resource)))
+			return unauthorized(
+				auth,
+				'the access token was issued for another resource',
+				forResource,
+			);
+	}
+	if (!info.scopes.includes(auth.read))
+		return insufficient(auth, [auth.read], `the token lacks ${auth.read}`);
+	return undefined;
+}
+
+/**
+ * The bearer gate: resolves the verified token's info, or the answer to send
+ * instead (400 token in the query string, 401 missing or invalid token, 403
+ * missing read scope, 503 failing verifier, or the verifier's own `Response`).
+ * Runs before the body is read.
  */
 export async function authenticate(
 	request: Request,
@@ -73,30 +147,21 @@ export async function authenticate(
 			{ 'www-authenticate': challenge(auth, { scope: auth.read }) },
 			'MCP_UNAUTHORIZED',
 		);
-	let info: McpAuthInfo | undefined;
+	let verified: McpAuthInfo | Response | undefined;
 	try {
-		info = await auth.options.verifyToken(token, request);
+		verified = await auth.options.verifyToken(token, request);
 	} catch (error) {
 		onError(error);
+		return unavailable();
 	}
-	const invalid = (why: string) =>
-		unauthorized(
+	if (verified instanceof Response) return verified;
+	if (verified === undefined)
+		return unauthorized(
 			auth,
-			why,
+			'the access token is invalid',
 			`Get a new access token from the authorization server (see ${auth.metadataUrl}) and retry.`,
 		);
-	if (info === undefined) return invalid('the access token is invalid');
-	if (info.expiresAt !== undefined && info.expiresAt <= Date.now() / 1000)
-		return invalid('the access token has expired');
-	if (info.audience !== undefined) {
-		const audiences =
-			typeof info.audience === 'string' ? [info.audience] : info.audience;
-		if (!audiences.some((a) => sameResource(a, auth.options.resource)))
-			return invalid('the access token was issued for another resource');
-	}
-	if (!info.scopes.includes(auth.read))
-		return insufficient(auth, [auth.read], `the token lacks ${auth.read}`);
-	return info;
+	return refusalOf(verified, auth, onError) ?? verified;
 }
 
 /** The 403 `insufficient_scope` answer, naming the full scope set the token needs. */

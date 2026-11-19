@@ -4,7 +4,8 @@
 
 Set `auth` and `@graxia/mcp` is an OAuth resource server: bearer tokens, scopes, protected
 resource metadata ([the auth guide](./auth.md)). Every request then needs a token your
-`verifyToken` accepts, and `graphql_mutate` needs the write scope.
+`verifyToken` accepts, issued for this resource (the audience is checked by default), and
+`graphql_mutate` needs the write scope.
 
 Without `auth` nothing authenticates: mount the endpoint behind your own auth (a reverse proxy, a
 check in the `Bun.serve` route before `mcp.fetch`) and treat it as you would `/graphql`. Keep

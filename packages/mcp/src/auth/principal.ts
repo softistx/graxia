@@ -1,11 +1,15 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { McpAuthInfo } from './types';
 
-const storage = new AsyncLocalStorage<McpAuthInfo>();
+const storage = new AsyncLocalStorage<McpAuthInfo | undefined>();
 
-/** Runs `fn` with `info` as the verified principal (`mcpAuth()` reads it). */
+/**
+ * Runs `fn` with `info` as the verified principal (`mcpAuth()` reads it).
+ * `undefined` is stored too, so an instance without `auth` called from inside
+ * another instance's tool call does not see that one's principal.
+ */
 export function runAs<T>(info: McpAuthInfo | undefined, fn: () => T): T {
-	return info === undefined ? fn() : storage.run(info, fn);
+	return storage.run(info, fn);
 }
 
 /**

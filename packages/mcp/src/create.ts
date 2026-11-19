@@ -1,16 +1,17 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { authenticate } from './auth/bearer';
 import { metadataHandler } from './auth/metadata';
-import { mcpAuth, runAs } from './auth/principal';
+import { runAs } from './auth/principal';
 import { resolveAuth } from './auth/resolve';
-import { canWrite, writeStepUp } from './auth/scopes';
+import { writeStepUp } from './auth/scopes';
+import type { McpAuthOptions } from './auth/types';
 import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
 import type { Mcp, McpHost, McpOptions } from './options';
 import { defaultHosts } from './origin';
 import { admit, type PipelineSettings } from './pipeline';
 import { refusal } from './refusal';
-import { buildServer, forwardedHeaders } from './server';
+import { serverFactory } from './server';
 import { createViewSource } from './view-cache';
 
 /** The error sink: the option, `console.error` by default, never throwing. */
@@ -39,12 +40,21 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
  * limits apply; the schema and the body limit come from `graxia`. Without
  * `auth` there is no authentication here: put the endpoint behind your own,
  * and use `can` for permissions. With `auth` it is an OAuth resource server
- * (bearer tokens, scopes, protected resource metadata).
+ * (bearer tokens, scopes, protected resource metadata), and `metadataPath`
+ * is a string.
  *
  * @example
  * const mcp = createMcp(graxia, { name: 'library' });
  * Bun.serve({ routes: { '/mcp': (req, server) => mcp.fetch(req, { server }) }, fetch: graxia.fetch });
  */
+export function createMcp<HostCtx extends object = Record<never, never>>(
+	graxia: McpHost<HostCtx>,
+	options: McpOptions<HostCtx> & { auth: McpAuthOptions },
+): Mcp<HostCtx> & { metadataPath: string };
+export function createMcp<HostCtx extends object = Record<never, never>>(
+	graxia: McpHost<HostCtx>,
+	options: McpOptions<HostCtx>,
+): Mcp<HostCtx>;
 export function createMcp<HostCtx extends object = Record<never, never>>(
 	graxia: McpHost<HostCtx>,
 	options: McpOptions<HostCtx>,
@@ -56,30 +66,11 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 		maxBody: graxia.limits.bodyBytes,
 	};
 	const auth = options.auth ? resolveAuth(options.auth) : undefined;
+	const mutations = options.mutations ?? false;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
 	const handler = createMcpHandler(
-		({ requestInfo }) => {
-			const request = requestInfo as Request;
-			const serverContext = carrier.current();
-			const principal = mcpAuth();
-			const mutations =
-				(options.mutations ?? false) &&
-				(auth === undefined ||
-					(principal !== undefined && canWrite(auth, principal)));
-			return buildServer(
-				options,
-				{
-					graxia,
-					view: views(request, serverContext, principal),
-					serverContext,
-					headers: forwardedHeaders(request),
-					signal: request.signal,
-					onError,
-				},
-				mutations,
-			);
-		},
+		serverFactory({ graxia, options, auth, carrier, views, onError }),
 		{
 			maxRequestBodySize: settings.maxBody,
 			onerror: (error) => onError(error),
@@ -87,7 +78,7 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	);
 	return {
 		metadataPath: auth?.metadataPath,
-		metadata: metadataHandler(auth),
+		metadata: metadataHandler(auth, mutations),
 		async fetch(request, ...rest) {
 			const cors = corsOrigin(request, settings.allowedOrigins);
 			try {
@@ -98,10 +89,12 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 				);
 				if (admitted instanceof Response) return withCors(admitted, cors);
 				const principal = admitted.gated;
-				if (auth && principal) {
+				// With mutations off no scope opens graphql_mutate: the SDK answers tool-not-found.
+				if (auth && principal && mutations) {
 					const stepUp = await writeStepUp(admitted.request, auth, principal);
 					if (stepUp) return withCors(stepUp, cors);
 				}
+				// authInfo is not passed to the SDK (mcpAuth() carries the principal), so its tool scopeChallenge is unused.
 				const response = await carrier.run((rest[0] ?? {}) as object, () =>
 					runAs(principal, () => handler.fetch(admitted.request)),
 				);

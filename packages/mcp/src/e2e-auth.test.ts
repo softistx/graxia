@@ -29,7 +29,11 @@ mcp = createMcp(graxia, {
 		authorizationServers: ['https://auth.example.com'],
 		verifyToken: (token) =>
 			token === 'good'
-				? { scopes: ['mcp:read', 'mcp:write'], subject: 'u1' }
+				? {
+						scopes: ['mcp:read', 'mcp:write'],
+						subject: 'u1',
+						audience: `${base}/mcp`,
+					}
 				: undefined,
 	},
 });

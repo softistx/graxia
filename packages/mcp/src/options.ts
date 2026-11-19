@@ -25,8 +25,9 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	) => Can | Promise<Can>;
 	/**
 	 * Turn the endpoint into an OAuth 2.1 resource server: every request needs
-	 * a bearer token your `verifyToken` accepts, with the read scope
-	 * (`mcp:read`); `graphql_mutate` also needs the write scope (`mcp:write`).
+	 * a bearer token your `verifyToken` accepts, issued for `resource`, with
+	 * the read scope (`mcp:read`); `graphql_mutate` also needs the write scope
+	 * (`mcp:write`).
 	 * Serve `mcp.metadata` at `mcp.metadataPath`. Absent: no authentication
 	 * here, put the endpoint behind your own.
 	 */
@@ -73,7 +74,8 @@ export interface Mcp<HostCtx extends object = Record<never, never>> {
 	): Promise<Response>;
 	/**
 	 * Where to serve {@link Mcp.metadata}: `/.well-known/oauth-protected-resource`
-	 * plus the path of `auth.resource` (RFC 9728). `undefined` without `auth`.
+	 * plus the path of `auth.resource` (RFC 9728). `undefined` without `auth`;
+	 * `createMcp` types it `string` when it is given `auth`.
 	 */
 	metadataPath: string | undefined;
 	/**

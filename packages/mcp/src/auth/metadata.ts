@@ -2,16 +2,21 @@ import type { ResolvedAuth } from './types';
 
 const CORS = { 'access-control-allow-origin': '*' };
 
-/** The RFC 9728 protected resource metadata handler: GET only, CORS `*`, cached an hour. */
+/**
+ * The RFC 9728 protected resource metadata handler: GET only, CORS `*`,
+ * cached an hour. The write scope is published only when `mutations` is on:
+ * without it no tool needs that scope.
+ */
 export function metadataHandler(
 	auth: ResolvedAuth | undefined,
+	mutations: boolean,
 ): (request: Request) => Response {
 	if (auth === undefined) return () => new Response(null, { status: 404 });
 	const { options } = auth;
 	const body = JSON.stringify({
 		resource: options.resource,
 		authorization_servers: options.authorizationServers,
-		scopes_supported: [auth.read, auth.write],
+		scopes_supported: mutations ? [auth.read, auth.write] : [auth.read],
 		bearer_methods_supported: ['header'],
 		...(options.resourceName !== undefined && {
 			resource_name: options.resourceName,

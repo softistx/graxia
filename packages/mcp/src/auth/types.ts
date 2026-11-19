@@ -6,12 +6,16 @@ export interface McpAuthInfo {
 	clientId?: string | undefined;
 	/** The scopes the token carries. */
 	scopes: readonly string[];
-	/** When the token expires, in seconds since the epoch. A past value is refused. */
+	/**
+	 * When the token expires, in seconds since the epoch (the `exp` claim, not
+	 * `Date.now()`). A past value is refused, and so is one that is not a finite
+	 * number or looks like milliseconds.
+	 */
 	expiresAt?: number | undefined;
 	/**
-	 * The resource(s) the token was issued for (`aud`, RFC 8707). When present it
-	 * must contain `auth.resource`; when absent, your verifier has to check the
-	 * audience itself.
+	 * The resource(s) the token was issued for (`aud`, RFC 8707). It must contain
+	 * `auth.resource`; a token without it is refused, unless `auth.audience` is
+	 * `'verifier'`.
 	 */
 	audience?: string | readonly string[] | undefined;
 	/** Anything else your verifier wants to hand to `can` and `mcpAuth()` (roles, a tenant...). */
@@ -34,13 +38,27 @@ export interface McpAuthOptions {
 	authorizationServers: readonly string[];
 	/**
 	 * Verifies a bearer token (a JWT signature, an introspection call, a
-	 * lookup). Resolve the token's {@link McpAuthInfo}; resolve `undefined` or
-	 * throw for an invalid token (a throw also reaches `onError`).
+	 * lookup). Resolve the token's {@link McpAuthInfo}, or `undefined` for an
+	 * invalid token (a 401), or a `Response` to answer as is (a verifier that
+	 * builds its own refusals). A throw is an outage, not a bad token: it is a
+	 * 503 with `Retry-After: 5` and reaches `onError`. Read the headers of
+	 * `request` only, never its body.
 	 */
 	verifyToken: (
 		token: string,
 		request: Request,
-	) => McpAuthInfo | undefined | Promise<McpAuthInfo | undefined>;
+	) =>
+		| McpAuthInfo
+		| Response
+		| undefined
+		| Promise<McpAuthInfo | Response | undefined>;
+	/**
+	 * Who checks the token's audience. Default `'resource'`: `verifyToken` must
+	 * return `audience`, and it must contain `resource`. `'verifier'`: your
+	 * verifier already refused a token issued for another resource, so nothing
+	 * is checked here.
+	 */
+	audience?: 'resource' | 'verifier';
 	/** The scopes to require; default `{ read: 'mcp:read', write: 'mcp:write' }`. */
 	scopes?: McpScopes;
 	/** `resource_name` of the metadata. */

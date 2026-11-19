@@ -23,7 +23,9 @@ function calledTools(body: unknown): string[] {
 /**
  * Step-up: a read-only token that calls `graphql_mutate` (a stale tool list)
  * gets the 403 `insufficient_scope` naming `read write`, so a client can
- * re-authorize. Reads the body copy, so call it on the admitted request.
+ * re-authorize. Only when the server has mutations on: otherwise no scope
+ * would help, and the call gets the SDK's tool-not-found. Reads the body
+ * copy, so call it on the admitted request.
  */
 export async function writeStepUp(
 	request: Request,

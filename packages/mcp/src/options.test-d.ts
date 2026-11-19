@@ -81,10 +81,42 @@ const secured = createMcp(plain, {
 		return () => subject !== undefined;
 	},
 });
-const path: string | undefined = secured.metadataPath;
+// With `auth` the metadata path is a string: a route key, with no cast.
+const path: string = secured.metadataPath;
 const doc: Response = secured.metadata(new Request('http://x'));
+Bun.serve({
+	routes: {
+		[secured.metadataPath]: secured.metadata,
+		'/mcp': (request, server) => secured.fetch(request, { server }),
+	},
+});
 void path;
 void doc;
+// Without `auth` it is undefined.
+// @ts-expect-error no auth, no metadata path
+const none: string = a.metadataPath;
+void none;
+// The verifier may answer with its own Response, and take over the audience check.
+createMcp(plain, {
+	name: 'x',
+	auth: {
+		resource: 'https://api.example.com/mcp',
+		authorizationServers: ['https://auth.example.com'],
+		audience: 'verifier',
+		verifyToken: (token) =>
+			token === 'x' ? new Response(null, { status: 401 }) : { scopes: [] },
+	},
+});
+createMcp(plain, {
+	name: 'x',
+	auth: {
+		resource: 'r',
+		authorizationServers: [],
+		verifyToken: () => undefined,
+		// @ts-expect-error audience is 'resource' or 'verifier'
+		audience: 'none',
+	},
+});
 // @ts-expect-error the verifier and the resource are required
 createMcp(plain, { name: 'x', auth: { authorizationServers: [] } });
 createMcp(plain, {
