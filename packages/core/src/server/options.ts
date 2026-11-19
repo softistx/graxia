@@ -80,8 +80,9 @@ export type ContextFactory<HostCtx = Record<never, never>> = (
 ) => MaybePromise<object>;
 
 /**
- * Options of {@link createGraxia}. Only `HostCtx` is meant to be written; the
- * other parameters are inferred from the call, to check the schema's context.
+ * Options of {@link createGraxia}. Every type parameter is inferred from the
+ * call: type the host on the `context` factory (`ContextInit<{ … }>`), never
+ * with `createGraxia<…>`, which turns the schema's context check off.
  */
 export interface GraxiaOptions<
 	HostCtx extends object = Record<never, never>,

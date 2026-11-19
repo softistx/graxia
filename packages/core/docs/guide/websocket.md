@@ -131,7 +131,7 @@ upgraded, and otherwise the `Response` to send: the refusal (wrong path, a plugi
 missing subprotocol, shutdown), with the request id and the sealed headers. Guard it with
 `isUpgrade`; on a request that is not an upgrade (or with `ws: false`) it answers like
 `graxia.fetch`, so the hooks run once either way. `serverContext` is typed like `fetch`'s
-(required when `HostCtx` has required keys) and merged into every operation's context.
+(required when the `context` factory's `ContextInit<…>` has required keys, see [the host's `serverContext`](./context.md#the-hosts-servercontext)) and merged into every operation's context.
 
 `GraxiaSocketData` is the opaque type of `ws.data`; `serve()` returns `Bun.Server<GraxiaSocketData>`.
 You need it only to annotate your own server or `websocket` handler.

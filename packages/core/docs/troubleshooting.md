@@ -68,6 +68,9 @@ not satisfy `Ctx`. The three forms:
 - No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
   '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
 
+When the factory is a named function passed as a variable, the first line can show a long
+intersection `(…) & (…)`; read the last line of the message, which names the missing or mistyped key.
+
 The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
 plugins, `serverContext` and graxia do not already provide.
 
