@@ -97,9 +97,10 @@ verifyToken: async (token) => {
 },
 ```
 
-Tell the two apart by the error's class, as above (with jose: `JWTExpired`,
-`JWTClaimValidationFailed`, `JWSSignatureVerificationFailed`, `JWTInvalid` and `JWSInvalid` are bad
-tokens; `JWKSTimeout` and a failed fetch are outages). A bare `catch { return undefined }` would
+Tell the two apart by the error's class, as above. With jose (`import { errors } from 'jose'`),
+`errors.JWTExpired`, `JWTClaimValidationFailed`, `JWSSignatureVerificationFailed`, `JWTInvalid`,
+`JWSInvalid`, `JWKSNoMatchingKey` and `JOSEAlgNotAllowed` are bad tokens; `JWKSTimeout` and a failed
+fetch are outages. A bare `catch { return undefined }` would
 hide an outage as a 401 and make clients sign in again for nothing.
 
 `McpAuthInfo` is `{ subject?, clientId?, scopes, expiresAt?, audience?, extra? }`:
