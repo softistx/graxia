@@ -1,4 +1,5 @@
 import type { ExecutionResult, GraphQLSchema } from 'graphql';
+import { resolveLimits } from '../document/parse';
 import { GraxiaConfigError } from '../errors/config-error';
 import { DEFAULT_BODY_BYTES } from '../http/body';
 import { assertCostDirectives } from '../limits/clash';
@@ -105,6 +106,19 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	 * in reverse order. Idempotent: later calls return the same promise.
 	 */
 	dispose(options?: { timeout?: number }): Promise<void>;
+	/** The schema this instance serves, as given to {@link createGraxia}. */
+	readonly schema: GraphQLSchema;
+	/**
+	 * The document limits in force, defaults applied: a layer in front of
+	 * the instance (an MCP server, a proxy) reads them to enforce the same.
+	 * `tokens` is `false` when the limit is off.
+	 */
+	readonly limits: {
+		/** The largest request body in bytes (`limits.bodyBytes`, 1 MiB by default). */
+		readonly bodyBytes: number;
+		/** The most tokens of a document (`limits.tokens`, 15 000 by default). */
+		readonly tokens: number | false;
+	};
 	/** `await using graxia = createGraxia(...)` calls {@link Graxia.dispose}. */
 	[Symbol.asyncDispose](): Promise<void>;
 }
@@ -203,6 +217,11 @@ export function createGraxia<
 		path: resolved.path,
 	});
 	const graxia: Graxia<HostCtx> = {
+		schema: options.schema,
+		limits: {
+			bodyBytes: resolved.bodyBytes,
+			tokens: resolveLimits(options.limits).tokens,
+		},
 		ready,
 		execute,
 		fetch: entry.fetch,

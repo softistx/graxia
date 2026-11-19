@@ -10,6 +10,13 @@ const assertType = <_T extends true>() => {};
 export async function types() {
 	const graxia = createGraxia({ schema });
 	await graxia.execute({ document: '{ hello }' });
+	assertType<Equal<typeof graxia.schema, import('graphql').GraphQLSchema>>();
+	assertType<
+		Equal<
+			typeof graxia.limits,
+			{ readonly bodyBytes: number; readonly tokens: number | false }
+		>
+	>();
 	await graxia.execute({ documentId: 'abc', variables: { a: 1 } });
 
 	// @ts-expect-error a document and a documentId are exclusive

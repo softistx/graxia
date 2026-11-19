@@ -11,7 +11,7 @@ describe('graphql_schema', () => {
 		expect(out).toContain('Query:');
 		expect(out).toContain('book(id: ID!): Book — Find a book by id.');
 		expect(out).not.toContain('Mutation:');
-		expect(out).toContain('Types: Book, Query, Mutation, Subscription');
+		expect(out).toContain('Types: Book, Query, Subscription');
 		expect(out).toContain('Next: call graphql_schema');
 	});
 
@@ -20,6 +20,28 @@ describe('graphql_schema', () => {
 		expect(text(await call(mcp, 'graphql_schema', {}))).toContain(
 			'Mutation:\n  rename(id: ID!, title: String!): Book — Rename a book.',
 		);
+	});
+
+	test('the Mutation root is not offered unless mutations are enabled', async () => {
+		const { mcp } = mcpFor();
+		const asked = await call(mcp, 'graphql_schema', { types: ['Mutation'] });
+		expect(asked.result.isError).toBe(true);
+		expect(text(asked)).toContain('# Unknown type Mutation. Fix:');
+		expect(text(asked)).not.toContain('rename');
+		const found = await call(mcp, 'graphql_schema', { search: 'rename' });
+		expect(found.result.isError).toBe(true);
+		const { mcp: on } = mcpFor({ mutations: true });
+		expect(
+			text(await call(on, 'graphql_schema', { types: ['Mutation'] })),
+		).toContain('rename');
+	});
+
+	test('types: more names than the search limit is refused by the input schema', async () => {
+		const { mcp } = mcpFor();
+		const r = await call(mcp, 'graphql_schema', {
+			types: Array.from({ length: 51 }, (_, i) => `T${i}`),
+		});
+		expect(r.result?.isError ?? r.body.error).toBeTruthy();
 	});
 
 	test('types: SDL with descriptions and applied @needs, directive declared', async () => {

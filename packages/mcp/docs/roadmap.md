@@ -4,8 +4,9 @@ Where `@graxia/mcp` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Streamable HTTP and the generic tools** — `createMcp(graxia, { schema, name })` with
-  `graphql_schema`, `graphql_query` and, on request, `graphql_mutate`. Ships as 0.1.0.
+- **Streamable HTTP and the generic tools** — `createMcp(graxia, { name })` with
+  `graphql_schema`, `graphql_query` and, on request, `graphql_mutate`, with an origin and host
+  check, CORS for allowed origins and graxia's limits and codes on every refusal.
 
 ## Next
 

@@ -3,7 +3,13 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import { validate } from 'graphql';
 import type { McpHost } from '../options';
 import type { View } from '../view';
-import { type Allowed, checkOperations, parseOperation } from './operation';
+import {
+	type Allowed,
+	checkOperations,
+	INTROSPECTION_FIX,
+	parseOperation,
+	VIEW_RULES,
+} from './operation';
 import { type JsonResult, refused, resultOf } from './result';
 
 /** The input of `graphql_query` and `graphql_mutate`. */
@@ -16,10 +22,13 @@ export interface OperationInput {
 /** What one call runs against. */
 export interface ExecuteContext {
 	graxia: McpHost<any>;
-	view: View;
+	/** The caller's view, built on first use. */
+	view: () => Promise<View>;
 	serverContext: object;
 	headers: Headers;
 	signal?: AbortSignal | undefined;
+	/** Receives an unexpected failure with its cause. */
+	onError: (error: unknown) => void;
 }
 
 const SCHEMA_FIX =
@@ -28,25 +37,48 @@ const SCHEMA_FIX =
 const plain = (value: unknown): JsonResult =>
 	JSON.parse(JSON.stringify(value)) as JsonResult;
 
+/** The errors graxia's own response carries (a plugin's `respond`, a refusal), so the agent keeps their code and fix. */
+async function errorsOf(error: GraxiaExecuteError): Promise<CallToolResult> {
+	try {
+		const body = (await error.response.clone().json()) as JsonResult;
+		if (Array.isArray(body?.errors) && body.errors.length > 0)
+			return resultOf({ errors: body.errors });
+	} catch {}
+	return refused(
+		error.message,
+		'MCP_EXECUTION_REFUSED',
+		'Retry later; if it persists, the server is shutting down or a plugin refused the request.',
+	);
+}
+
 /** Runs one operation of the tool's `kind` through `graxia.execute`, after checking it against the caller's view. */
 export async function runOperation(
 	kind: Allowed,
 	input: OperationInput,
 	context: ExecuteContext,
 ): Promise<CallToolResult> {
-	const document = parseOperation(input.query);
-	if ('message' in document)
-		return refused(document.message, document.code, document.fix);
-	const refusal = checkOperations(document, kind);
-	if (refusal) return refused(refusal.message, refusal.code, refusal.fix);
-	const problems = validate(context.view.schema, document);
-	if (problems.length > 0)
-		return resultOf({
-			errors: problems.map((error) => ({
-				...plain(error),
-				extensions: { code: 'GRAPHQL_VALIDATION_FAILED', fix: SCHEMA_FIX },
-			})),
-		});
+	const document = parseOperation(input.query, context.graxia.limits.tokens);
+	if (document) {
+		const refusal = checkOperations(document, kind, input.operationName);
+		if (refusal) return refused(refusal.message, refusal.code, refusal.fix);
+		const problems = validate(
+			(await context.view()).schema,
+			document,
+			VIEW_RULES,
+		);
+		if (problems.length > 0)
+			return resultOf({
+				errors: problems.map((error) => ({
+					...plain(error),
+					extensions: {
+						code: 'GRAPHQL_VALIDATION_FAILED',
+						fix: /introspection/i.test(error.message)
+							? INTROSPECTION_FIX
+							: SCHEMA_FIX,
+					},
+				})),
+			});
+	}
 	try {
 		const result = await context.graxia.execute({
 			document: input.query,
@@ -55,15 +87,10 @@ export async function runOperation(
 			headers: context.headers,
 			...(context.signal ? { signal: context.signal } : {}),
 			serverContext: context.serverContext,
-		} as never);
+		});
 		return resultOf(plain(result));
 	} catch (error) {
-		if (error instanceof GraxiaExecuteError)
-			return refused(
-				error.message,
-				'MCP_EXECUTION_REFUSED',
-				'Retry later; if it persists, the server is shutting down or a plugin refused the request.',
-			);
+		if (error instanceof GraxiaExecuteError) return errorsOf(error);
 		throw error;
 	}
 }

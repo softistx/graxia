@@ -1,16 +1,10 @@
 import type { Graxia, ServerContextArg } from '@graxia/core';
-import type { GraphQLSchema } from 'graphql';
 
 /** Whether the caller holds a permission named by `@needs` (what `printSchemaFor`'s `can` takes). */
 export type Can = (permission: string) => boolean;
 
 /** Options of {@link createMcp}. */
 export interface McpOptions<HostCtx extends object = Record<never, never>> {
-	/**
-	 * The schema the graxia instance serves. The tools describe and validate
-	 * against what the caller may see of it (`@needs` hides the rest).
-	 */
-	schema: GraphQLSchema;
 	/** The MCP server name, sent to clients as `serverInfo.name`. */
 	name: string;
 	/** The MCP server version, sent as `serverInfo.version`. Default `'0.0.0'`. */
@@ -30,17 +24,25 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	 */
 	mutations?: boolean;
 	/**
-	 * Origins allowed besides the endpoint's own (a browser client on another
-	 * origin). A request with no `Origin` header (a server, a CLI) is always
-	 * allowed; a request with another origin is refused with a 403.
+	 * Browser origins (`https://app.example`) allowed to call the endpoint:
+	 * their preflight is answered and their responses carry
+	 * `Access-Control-Allow-Origin`. A request with no `Origin` header (a
+	 * server, a CLI) is always allowed; a request with another origin is
+	 * refused with a 403.
 	 */
 	allowedOrigins?: readonly string[];
 	/**
-	 * Largest POST body in bytes; a larger one is refused with a 413. Default
-	 * `1048576`, graxia's own default `limits.bodyBytes`: set it to the same
-	 * value as the instance's.
+	 * Hostnames (no port) a same-origin browser request may name in its `Host`
+	 * header: the DNS-rebinding guard. Default `['localhost', '127.0.0.1',
+	 * '[::1]']`. Set the public hostname(s) when the endpoint is not local.
 	 */
-	maxBodyBytes?: number;
+	allowedHosts?: readonly string[];
+	/**
+	 * Receives an unexpected failure (a throwing `can`, a failing transport)
+	 * with its cause; the agent only sees a generic message. Default
+	 * `console.error`; `false` silences it.
+	 */
+	onError?: ((error: unknown) => void) | false;
 }
 
 /** What {@link createMcp} returns. */
@@ -60,5 +62,11 @@ export interface Mcp<HostCtx extends object = Record<never, never>> {
 	close(): Promise<void>;
 }
 
-/** The graxia instance a server is built over; only `execute` is used. */
-export type McpHost<HostCtx extends object> = Pick<Graxia<HostCtx>, 'execute'>;
+/**
+ * The graxia instance a server is built over: it runs the operations
+ * (`execute`), and gives the schema it serves and the limits it enforces.
+ */
+export type McpHost<HostCtx extends object> = Pick<
+	Graxia<HostCtx>,
+	'execute' | 'schema' | 'limits'
+>;

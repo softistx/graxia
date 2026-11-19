@@ -29,6 +29,12 @@ function rootBlock(
 	return lines.length > 0 ? [`${label}:`, ...lines, ''] : [];
 }
 
+/** The type names the tools hand out: without `mutations`, the Mutation root is not among them. */
+function listed(view: View, mutations: boolean): string[] {
+	const root = mutations ? undefined : view.schema.getMutationType()?.name;
+	return [...view.types.keys()].filter((name) => name !== root);
+}
+
 /** No input: what the caller can do, and the type names to ask about. */
 export function overview(view: View, mutations: boolean) {
 	const { schema } = view;
@@ -37,7 +43,7 @@ export function overview(view: View, mutations: boolean) {
 		...(mutations
 			? rootBlock('Mutation', schema.getMutationType() ?? undefined)
 			: []),
-		`Types: ${[...view.types.keys()].join(', ')}`,
+		`Types: ${listed(view, mutations).join(', ')}`,
 		'',
 		'Next: call graphql_schema with { types: ["Name"] } for the SDL of a type, or { search: "word" } to find types by name or description.',
 	];
@@ -50,9 +56,14 @@ function sdlOf(view: View, names: readonly string[]): string {
 }
 
 /** `types`: the SDL of the named types; unknown names are listed with a fix. */
-export function typesSdl(view: View, names: readonly string[]) {
-	const known = names.filter((name) => view.types.has(name));
-	const unknown = names.filter((name) => !view.types.has(name));
+export function typesSdl(
+	view: View,
+	names: readonly string[],
+	mutations: boolean,
+) {
+	const offered = new Set(listed(view, mutations));
+	const known = names.filter((name) => offered.has(name));
+	const unknown = names.filter((name) => !offered.has(name));
 	const notes = unknown.map(
 		(name) =>
 			`# Unknown type ${name}. Fix: call graphql_schema with no input to list the type names you can use.`,
@@ -83,14 +94,14 @@ function haystack(type: GraphQLNamedType): string {
 }
 
 /** `search`: the SDL of the types whose name, description, field or value names and descriptions hold every word. */
-export function searchSdl(view: View, search: string) {
+export function searchSdl(view: View, search: string, mutations: boolean) {
 	const wanted = words(search);
 	if (wanted.length === 0)
 		return textResult(
 			'Empty search. Fix: pass a word of a type or field name or description, or call graphql_schema with no input for the overview.',
 			true,
 		);
-	const matches = [...view.types.keys()].filter((name) => {
+	const matches = listed(view, mutations).filter((name) => {
 		const type = view.schema.getType(name);
 		if (!type) return false;
 		const text = haystack(type);

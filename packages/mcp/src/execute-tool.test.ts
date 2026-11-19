@@ -43,8 +43,50 @@ describe('graphql_query', () => {
 			query: 'mutation { rename(id: "1", title: "x") { id } }',
 		});
 		expect(r.result.isError).toBe(true);
-		expect(r.result.structuredContent.errors[0].extensions.fix).toContain(
-			'graphql_mutate',
+		const [error] = r.result.structuredContent.errors;
+		expect(error.extensions.fix).toContain('graphql_mutate');
+		expect(error.extensions.code).toBe('MCP_OPERATION_NOT_ALLOWED');
+	});
+
+	test('introspection is refused: it would show what @needs hides', async () => {
+		const { mcp } = mcpFor({ can: () => () => false });
+		for (const query of [
+			'{ __schema { types { name } } }',
+			'{ __type(name: "Book") { fields { name } } }',
+			'{ ...F } fragment F on Query { __schema { queryType { name } } }',
+		]) {
+			const r = await call(mcp, 'graphql_query', { query });
+			expect(r.result.isError).toBe(true);
+			const [error] = r.result.structuredContent.errors;
+			expect(error.extensions.fix).toBe(
+				'Use graphql_schema to read the schema.',
+			);
+		}
+		const typename = await call(mcp, 'graphql_query', {
+			query: '{ __typename }',
+		});
+		expect(typename.result.structuredContent).toEqual({
+			data: { __typename: 'Query' },
+		});
+	});
+
+	test('operationName picks the operation: a mixed document runs the selected one', async () => {
+		const { mcp } = mcpFor();
+		const query =
+			'query Read { books { title } } mutation Write { rename(id: "1", title: "x") { id } }';
+		const ok = await call(mcp, 'graphql_query', {
+			query,
+			operationName: 'Read',
+		});
+		expect(ok.result.structuredContent).toEqual({
+			data: { books: [{ title: 'Dune' }] },
+		});
+		const bad = await call(mcp, 'graphql_query', {
+			query,
+			operationName: 'Write',
+		});
+		expect(bad.result.structuredContent.errors[0].extensions.code).toBe(
+			'MCP_OPERATION_NOT_ALLOWED',
 		);
 	});
 
@@ -53,9 +95,9 @@ describe('graphql_query', () => {
 		const r = await call(mcp, 'graphql_query', {
 			query: 'subscription { ticks }',
 		});
-		expect(r.result.structuredContent.errors[0].message).toBe(
-			'Subscriptions are not available over MCP.',
-		);
+		const [error] = r.result.structuredContent.errors;
+		expect(error.message).toBe('Subscriptions are not available over MCP.');
+		expect(error.extensions.code).toBe('SUBSCRIPTION_NOT_SUPPORTED');
 	});
 
 	test('@defer and @stream are refused with a fix to remove them', async () => {
@@ -66,6 +108,7 @@ describe('graphql_query', () => {
 		const [error] = r.result.structuredContent.errors;
 		expect(error.message).toBe('@defer is not available over MCP.');
 		expect(error.extensions.fix).toContain('Remove @defer');
+		expect(error.extensions.code).toBe('INCREMENTAL_NOT_SUPPORTED');
 		const s = await call(mcp, 'graphql_query', {
 			query: '{ books @stream { id } }',
 		});

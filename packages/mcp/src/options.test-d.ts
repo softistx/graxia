@@ -8,7 +8,7 @@ const schema = createSchema()({
 
 // No host context: `serverContext` is optional.
 const plain = createGraxia({ schema });
-const a = createMcp(plain, { schema, name: 'x' });
+const a = createMcp(plain, { name: 'x' });
 a.fetch(new Request('http://x'));
 a.fetch(new Request('http://x'), {});
 
@@ -18,13 +18,13 @@ const hosted = createGraxia<{ tenant: string }>({
 	context: () => ({}),
 });
 const b: Mcp<{ tenant: string }> = createMcp(hosted, {
-	schema,
 	name: 'x',
 	version: '1',
 	instructions: 'i',
 	mutations: true,
 	allowedOrigins: ['https://a'],
-	maxBodyBytes: 10,
+	allowedHosts: ['mcp.example'],
+	onError: false,
 	can: async (request, serverContext) => {
 		const tenant: string = serverContext.tenant;
 		const method: string = request.method;
@@ -38,11 +38,14 @@ b.fetch(new Request('http://x'));
 b.fetch(new Request('http://x'), { tenant: 1 });
 
 // @ts-expect-error name is required
-createMcp(plain, { schema });
-// @ts-expect-error schema is required
-createMcp(plain, { name: 'x' });
+createMcp(plain, {});
+// @ts-expect-error the schema comes from graxia
+createMcp(plain, { name: 'x', schema });
+// @ts-expect-error the body limit comes from graxia
+createMcp(plain, { name: 'x', maxBodyBytes: 10 });
 // @ts-expect-error mutations is a boolean
-createMcp(plain, { schema, name: 'x', mutations: 'yes' });
+createMcp(plain, { name: 'x', mutations: 'yes' });
+createMcp(plain, { name: 'x', onError: (error: unknown) => void error });
 
 // The documented mount: `{ server }` is accepted as the server context.
 Bun.serve({

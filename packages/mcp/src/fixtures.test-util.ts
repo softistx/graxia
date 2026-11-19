@@ -67,7 +67,7 @@ export function mcpFor(
 	graxiaOptions: Record<string, unknown> = {},
 ) {
 	const { schema, graxia } = app(graxiaOptions);
-	const mcp = createMcp(graxia, { schema, name: 'library', ...extra });
+	const mcp = createMcp(graxia, { name: 'library', ...extra });
 	return { mcp, graxia, schema };
 }
 

@@ -1,4 +1,15 @@
-import { type DocumentNode, GraphQLError, Kind, parse, visit } from 'graphql';
+import {
+	type DocumentNode,
+	FieldsOnCorrectTypeRule,
+	Kind,
+	KnownArgumentNamesRule,
+	KnownTypeNamesRule,
+	NoSchemaIntrospectionCustomRule,
+	type OperationDefinitionNode,
+	PossibleFragmentSpreadsRule,
+	parse,
+	visit,
+} from 'graphql';
 
 export type Allowed = 'query' | 'mutation';
 
@@ -9,17 +20,34 @@ export interface Refusal {
 	fix: string;
 }
 
-/** Parses `query`; a syntax error is a refusal that quotes the position. */
-export function parseOperation(query: string): DocumentNode | Refusal {
+/**
+ * The validation rules MCP applies to the caller's view: only the ones that
+ * decide what the caller may see. Limits, cost and the rest of validation are
+ * graxia's, when the operation runs.
+ */
+export const VIEW_RULES = [
+	FieldsOnCorrectTypeRule,
+	KnownTypeNamesRule,
+	KnownArgumentNamesRule,
+	PossibleFragmentSpreadsRule,
+	NoSchemaIntrospectionCustomRule,
+] as const;
+
+/** The fix of an introspection refusal: the view is read through `graphql_schema`. */
+export const INTROSPECTION_FIX = 'Use graphql_schema to read the schema.';
+
+/**
+ * Parses `query` under graxia's token limit. A document that does not parse
+ * is `undefined`: `graxia.execute` refuses it with its own error, code and fix.
+ */
+export function parseOperation(
+	query: string,
+	tokens: number | false,
+): DocumentNode | undefined {
 	try {
-		return parse(query);
-	} catch (error) {
-		if (!(error instanceof GraphQLError)) throw error;
-		return {
-			message: error.message,
-			code: 'GRAPHQL_PARSE_FAILED',
-			fix: 'Correct the syntax of the document at the position the error points to.',
-		};
+		return parse(query, tokens === false ? {} : { maxTokens: tokens });
+	} catch {
+		return undefined;
 	}
 }
 
@@ -27,7 +55,7 @@ const wrongKind = (allowed: Allowed, found: string): Refusal => {
 	if (found === 'subscription')
 		return {
 			message: 'Subscriptions are not available over MCP.',
-			code: 'MCP_OPERATION_NOT_ALLOWED',
+			code: 'SUBSCRIPTION_NOT_SUPPORTED',
 			fix: 'Send a query (graphql_query), or poll the same query again.',
 		};
 	return {
@@ -40,20 +68,32 @@ const wrongKind = (allowed: Allowed, found: string): Refusal => {
 	};
 };
 
+/** The operation `operationName` picks, or the only one; `undefined` when the choice is ambiguous (graxia then refuses). */
+function selected(
+	document: DocumentNode,
+	operationName: string | undefined,
+): OperationDefinitionNode | undefined {
+	const operations = document.definitions.filter(
+		(definition): definition is OperationDefinitionNode =>
+			definition.kind === Kind.OPERATION_DEFINITION,
+	);
+	if (operationName)
+		return operations.find((o) => o.name?.value === operationName);
+	return operations.length === 1 ? operations[0] : undefined;
+}
+
 /**
- * Refuses what MCP does not run: another kind of operation than the tool's,
- * and `@defer` / `@stream` (the result is one JSON value).
+ * Refuses what MCP does not run: the selected operation when it is another
+ * kind than the tool's, and `@defer` / `@stream` (the result is one JSON value).
  */
 export function checkOperations(
 	document: DocumentNode,
 	allowed: Allowed,
+	operationName?: string,
 ): Refusal | undefined {
-	for (const definition of document.definitions)
-		if (
-			definition.kind === Kind.OPERATION_DEFINITION &&
-			definition.operation !== allowed
-		)
-			return wrongKind(allowed, definition.operation);
+	const operation = selected(document, operationName);
+	if (operation && operation.operation !== allowed)
+		return wrongKind(allowed, operation.operation);
 	let incremental: string | undefined;
 	visit(document, {
 		Directive(node) {
@@ -64,7 +104,7 @@ export function checkOperations(
 	if (incremental)
 		return {
 			message: `@${incremental} is not available over MCP.`,
-			code: 'MCP_OPERATION_NOT_ALLOWED',
+			code: 'INCREMENTAL_NOT_SUPPORTED',
 			fix: `Remove @${incremental}: the tool returns one complete JSON result.`,
 		};
 	return undefined;

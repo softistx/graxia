@@ -76,18 +76,18 @@
       "name": "@graxia/mcp",
       "version": "0.0.0",
       "dependencies": {
-        "@modelcontextprotocol/server": "2.4.0",
+        "@modelcontextprotocol/server": "~2.4.0",
         "zod": "^4.2.0",
       },
       "devDependencies": {
         "@graxia/core": "workspace:^",
-        "@modelcontextprotocol/client": "2.4.0",
+        "@modelcontextprotocol/client": "~2.4.0",
         "@types/bun": "^1.4.4",
-        "graphql": "^17",
+        "graphql": "^17.1.0",
       },
       "peerDependencies": {
         "@graxia/core": "workspace:^",
-        "graphql": "^17",
+        "graphql": "^17.1.0",
         "typescript": "^6.0.3 || ^7.0.0",
       },
       "optionalPeers": [

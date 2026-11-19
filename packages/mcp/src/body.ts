@@ -4,7 +4,7 @@ const TOO_LARGE = (max: number) =>
 	refusal(
 		413,
 		`The request body is larger than ${max} bytes.`,
-		'Send a smaller request, or raise createMcp maxBodyBytes (keep it equal to graxia limits.bodyBytes).',
+		'Send a smaller request, or raise limits.bodyBytes of the graxia instance (this endpoint enforces the same).',
 	);
 
 /**

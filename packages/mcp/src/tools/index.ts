@@ -1,12 +1,8 @@
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import {
-	type ExecuteContext,
-	type OperationInput,
-	runOperation,
-} from './execute';
+import { type ExecuteContext, runOperation } from './execute';
 import { textResult } from './result';
-import { overview, searchSdl, typesSdl } from './schema';
+import { overview, SEARCH_LIMIT, searchSdl, typesSdl } from './schema';
 
 const operationInput = z.object({
 	query: z.string().describe('The GraphQL document (one operation).'),
@@ -27,6 +23,7 @@ const schemaInput = z.object({
 		.describe('Words to find in type and field names and descriptions.'),
 	types: z
 		.array(z.string())
+		.max(SEARCH_LIMIT)
 		.optional()
 		.describe('Names of the types whose SDL to return.'),
 });
@@ -49,25 +46,26 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 			inputSchema: schemaInput,
 			annotations: { readOnlyHint: true },
 		},
-		async (args) => {
-			if (args.types && args.types.length > 0)
-				return typesSdl(context.view, args.types);
-			if (args.search !== undefined)
-				return searchSdl(context.view, args.search);
-			return overview(context.view, mutations);
-		},
+		(args) =>
+			guarded(context, async () => {
+				const view = await context.view();
+				if (args.types && args.types.length > 0)
+					return typesSdl(view, args.types, mutations);
+				if (args.search !== undefined)
+					return searchSdl(view, args.search, mutations);
+				return overview(view, mutations);
+			}),
 	);
 	server.registerTool(
 		'graphql_query',
 		{
 			title: 'GraphQL query',
 			description:
-				'Run a GraphQL query (read only). Call graphql_schema first to learn the fields. Returns { data, errors }; every error has extensions.code and extensions.fix: read the fix. Mutations and subscriptions are refused; @defer and @stream are not available.',
+				'Run a GraphQL query (read only). Call graphql_schema first to learn the fields. Returns { data, errors }; every error has extensions.code and extensions.fix: read the fix. Mutations, subscriptions and introspection (__schema, __type) are refused: use graphql_schema to read the schema. @defer and @stream are not available.',
 			inputSchema: operationInput,
 			annotations: { readOnlyHint: true },
 		},
-		async (args) =>
-			runOperation('query', args as OperationInput, context).catch(unexpected),
+		(args) => guarded(context, () => runOperation('query', args, context)),
 	);
 	if (!mutations) return;
 	server.registerTool(
@@ -79,17 +77,22 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 			inputSchema: operationInput,
 			annotations: { readOnlyHint: false, destructiveHint: true },
 		},
-		async (args) =>
-			runOperation('mutation', args as OperationInput, context).catch(
-				unexpected,
-			),
+		(args) => guarded(context, () => runOperation('mutation', args, context)),
 	);
 }
 
-/** An unexpected failure is reported without its cause: nothing about the server leaks. */
-function unexpected() {
-	return textResult(
-		'The server failed to run the operation. Fix: retry later.',
-		true,
-	);
+/** An unexpected failure goes to `onError` with its cause; the agent gets a generic message, nothing about the server leaks. */
+async function guarded(
+	context: ExecuteContext,
+	run: () => Promise<CallToolResult>,
+): Promise<CallToolResult> {
+	try {
+		return await run();
+	} catch (error) {
+		context.onError(error);
+		return textResult(
+			'The server failed to run the operation. Fix: retry later.',
+			true,
+		);
+	}
 }
