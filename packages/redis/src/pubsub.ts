@@ -21,7 +21,10 @@ type ChannelTopics = Record<string, [unknown]>;
 
 /** Options of {@link redisPubSub}. */
 export type RedisPubSubOptions = RedisConnection & {
-	/** Prepended to every Redis channel. Default `graxia:`. */
+	/**
+	 * Prepended to every Redis channel, used as given and never normalised, so the wire format stays
+	 * the same: pass `'app:'`, not `'app'` (which gives `apptick`). Default `graxia:`.
+	 */
 	prefix?: string;
 	/** Events buffered per subscriber before the oldest is dropped. Default 1000. */
 	bufferSize?: number;

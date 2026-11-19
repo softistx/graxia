@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeAssets, host } from './fixtures.test-util';
-import { createGraphiQL } from './index';
+import { createGraphiQL } from './graphiql';
 
 const app = host(createGraphiQL({ enabled: true }, fakeAssets));
 const asset = (name: string, headers: HeadersInit = {}) =>

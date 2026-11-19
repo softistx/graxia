@@ -13,6 +13,12 @@ Only the names in `dist/assets/manifest.json` are served. A page cached from an 
 hashed files that no longer exist: reload without the cache. A 404 on every asset after a deploy means
 the package was installed without its `dist/assets/` (check `files` in a custom bundle step).
 
+## GraphiQL assets not found at …
+
+The plugin throws this on the first page request when `dist/assets/manifest.json` is missing: the
+installed `@graxia/graphiql` has no `dist/assets`. Reinstall the package; in the graxia repository,
+run `bun run build`.
+
 ## 403 `CSRF_HEADER_REQUIRED` when opening the page
 
 The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4

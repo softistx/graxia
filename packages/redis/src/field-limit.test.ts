@@ -17,6 +17,16 @@ describe('redisFieldLimit (config)', () => {
 			);
 	});
 
+	test('a prefix with no character before its colon is a config error', () => {
+		const client = {} as RedisClient;
+		for (const bad of ['', ':'])
+			expect(() =>
+				redisFieldLimit({ client, limit: 1, windowMs: 1000, prefix: bad }),
+			).toThrow(
+				'@graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"',
+			);
+	});
+
 	test('url and client together is a config error', () => {
 		expect(() =>
 			redisFieldLimit({

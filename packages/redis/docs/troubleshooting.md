@@ -35,7 +35,7 @@ Another process published in the short window before Redis registered `SUBSCRIBE
 
 ## @graxia/redis: <uri> is already connected by another module with other options; pass that client as { client }
 
-A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `connectRedis: this URI is already connected with other
+A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `RedisError` with code `URI_CONFLICT`: `connectRedis: this URI is already connected with other
 options`). `@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process)
 must use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
 options (`maxRetries`, `tls`), open the client there and pass it as `client`. The error depends on the order of the
@@ -64,6 +64,11 @@ const next = redisPubSub({ url: process.env.REDIS_URL }); // a new adapter, a ne
 
 `redisCache({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): the prefix names the cache, and `@softistx/redis`
 builds keys as `<name>:<key>`. Give it a name, `app` or `app:`, or leave it out for `graxia:cache:`.
+
+## @graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"
+
+`redisFieldLimit({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): every key would start with a bare `:`, and
+limits of unrelated features could collide. Give it a name, `app` or `app:`, or leave it out for `graxia:limit:`.
 
 ## redisFieldLimit: limit must be an integer of 1 or more
 

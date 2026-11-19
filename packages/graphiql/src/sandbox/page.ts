@@ -13,8 +13,10 @@ export const ASSET_PARAM = 'apollo-sandbox-asset';
  * external. `script-src` holds the embed script's host, `frame-src` the host
  * of the Sandbox iframe, `connect-src 'self'` the requests the page makes to
  * your endpoint on behalf of the iframe, plus `wsOrigin` (the same-host
- * `ws(s)://` origin) when subscriptions run over WebSocket. Styles need no
- * `'unsafe-inline'`.
+ * `ws(s)://` origin) when subscriptions run over WebSocket. `style-src` holds
+ * `'unsafe-inline'`, as the GraphiQL page does: WebKit refuses a stylesheet
+ * Apollo's embed applies at run time under `style-src 'self'`; scripts stay
+ * `'self'` plus Apollo's host.
  */
 export function sandboxContentSecurityPolicy(
 	wsOrigin?: string | undefined,
@@ -22,7 +24,7 @@ export function sandboxContentSecurityPolicy(
 	return [
 		"default-src 'none'",
 		`script-src 'self' ${EMBED_HOST}`,
-		"style-src 'self'",
+		"style-src 'self' 'unsafe-inline'",
 		'img-src data:',
 		`connect-src 'self'${wsOrigin ? ` ${wsOrigin}` : ''}`,
 		`frame-src ${SANDBOX_HOST}`,

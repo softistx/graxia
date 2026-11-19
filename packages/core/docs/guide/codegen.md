@@ -23,7 +23,7 @@ context is never declared twice:
 // src/context.ts
 import { type ContextInit, type InferContext } from '@graxia/core';
 
-const plugins = [
+export const plugins = [
 	/* your plugins */
 ] as const;
 
@@ -62,7 +62,7 @@ export default config;
 
 ```ts
 import { createGraxia, createSchema } from '@graxia/core';
-import { context, type AppContext } from './context';
+import { context, plugins, type AppContext } from './context';
 import type { Resolvers } from './generated';
 
 const resolvers: Resolvers = {
@@ -78,7 +78,7 @@ const resolvers: Resolvers = {
 };
 
 const schema = createSchema<AppContext, Resolvers>()({ typeDefs, resolvers });
-createGraxia({ schema, context }).serve({ port: 3000 });
+createGraxia({ schema, context, plugins }).serve({ port: 3000 });
 ```
 
 `createSchema` refuses a resolver map generated for another context than `AppContext` (the

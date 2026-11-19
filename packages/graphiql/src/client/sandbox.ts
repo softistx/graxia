@@ -2,7 +2,8 @@
  * The Apollo Sandbox bootstrap: reads `data-config` and starts Apollo's
  * `EmbeddedSandbox` (loaded by the page from Apollo's CDN) on this endpoint.
  * No inline script or style: the page's own styles go through a constructed
- * stylesheet, which a `style-src 'self'` policy allows.
+ * stylesheet, which a `style-src 'self'` policy allows (the policy also holds `'unsafe-inline'`
+ * for the styles Apollo's embed applies, which WebKit refuses otherwise).
  */
 export {};
 

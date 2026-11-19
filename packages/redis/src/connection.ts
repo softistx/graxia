@@ -1,5 +1,9 @@
 import { GraxiaConfigError } from '@graxia/core';
-import { connectRedis, type RedisConnection as Holder } from '@softistx/redis';
+import {
+	connectRedis,
+	type RedisConnection as Holder,
+	RedisError,
+} from '@softistx/redis';
 import type { RedisClient } from 'bun';
 
 /**
@@ -74,10 +78,7 @@ export function resolveLink(options: RedisConnection): RedisLink {
 
 /** `connectRedis` refuses a URI another module connected with other options. */
 function shared(error: unknown, uri: string): unknown {
-	if (
-		error instanceof TypeError &&
-		error.message.startsWith('connectRedis: this URI is already connected')
-	)
+	if (error instanceof RedisError && error.code === 'URI_CONFLICT')
 		return new GraxiaConfigError(
 			`@graxia/redis: ${redactUri(uri)} is already connected by another module with other options; pass that client as { client }`,
 			{ cause: error },

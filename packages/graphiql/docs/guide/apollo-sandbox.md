@@ -60,7 +60,7 @@ Same as `graphiql()`: the plugin answers in `onRequest` on whatever path graxia 
 
 ```
 default-src 'none'; script-src 'self' https://embeddable-sandbox.cdn.apollographql.com;
-style-src 'self'; img-src data:; connect-src 'self';
+style-src 'self' 'unsafe-inline'; img-src data:; connect-src 'self';
 frame-src https://sandbox.embed.apollographql.com;
 frame-ancestors 'none'; base-uri 'none'; form-action 'none'
 ```
@@ -76,8 +76,9 @@ The same headers as the GraphiQL page: `X-Frame-Options: DENY`, `Referrer-Policy
 
 No wildcard. `connect-src 'self'` is the page itself running the Sandbox's requests against your
 endpoint (the iframe asks the page through `postMessage`), so `'self'` is enough unless subscriptions run over WebSocket. Styles
-need no `'unsafe-inline'`: the script is told not to set inline styles (`allowDynamicStyles: false`)
-and the bootstrap styles the page with a constructed stylesheet. `img-src data:` is for an empty
+hold `'unsafe-inline'`, as on the GraphiQL page: WebKit refuses a stylesheet Apollo's embed applies at run
+time under `style-src 'self'`. Scripts stay `'self'` plus Apollo's host, and the bootstrap still styles the
+page with a constructed stylesheet. `img-src data:` is for an empty
 favicon, so the embed script does not fetch one from Apollo.
 
 ## Subscriptions
