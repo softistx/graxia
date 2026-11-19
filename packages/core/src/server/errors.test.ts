@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GraphQLError } from 'graphql';
 import { exposedError, isGraxiaError } from '../errors/exposed';
+import { INTERNAL_FIX, NON_NULL_FIX } from '../errors/fixes';
 import { defaultMask, maskResult } from '../errors/mask';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
@@ -94,7 +95,7 @@ describe('masking', () => {
 				locations: [{ line: 1, column: 3 }],
 				extensions: {
 					code: 'INTERNAL_SERVER_ERROR',
-					fix: expect.any(String),
+					fix: INTERNAL_FIX,
 					correlationId: id,
 				},
 			},
@@ -205,7 +206,7 @@ describe('the generic 500', () => {
 			message: 'Unexpected error.',
 			extensions: {
 				code: 'INTERNAL_SERVER_ERROR',
-				fix: expect.any(String),
+				fix: INTERNAL_FIX,
 				correlationId: id,
 			},
 		});
@@ -243,9 +244,7 @@ describe('forged and inherited', () => {
 			schema,
 		);
 		expect(out.unexpected).toHaveLength(0);
-		expect(out.result.errors?.[0]?.extensions).toEqual({
-			fix: expect.any(String),
-		});
+		expect(out.result.errors?.[0]?.extensions).toEqual({ fix: NON_NULL_FIX });
 	});
 });
 

@@ -23,7 +23,7 @@ import { streamResponse } from './stream-response';
 const PARAMS_FIX =
 	'Send a JSON object with "query" (a string) and, optionally, "variables" (an object) and "operationName" (a string).';
 const BATCH_FIX =
-	'Send an array of operations within the batching limit, and enable the batching option if it is off.';
+	'Send one operation per request, or fewer operations in the batch.';
 
 type Read =
 	| { response: Response }
@@ -127,7 +127,7 @@ async function readPost(rt: Runtime, request: Request): Promise<Read> {
 			response: refusal(
 				413,
 				'The request body is too large.',
-				'Send a smaller body, or raise the bodyBytes option.',
+				'Send a smaller body.',
 			),
 		};
 	if (body.kind === 'invalid')

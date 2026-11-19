@@ -1,15 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	buildSchema,
+	GraphQLEnumType,
 	GraphQLID,
+	GraphQLInputObjectType,
+	GraphQLInt,
+	GraphQLList,
 	GraphQLObjectType,
 	GraphQLSchema,
 	GraphQLString,
 	specifiedDirectives,
+	validateSchema,
 } from 'graphql';
 import { agentDirectives, agentTypeDefs } from './directives';
 import { library } from './fixtures.test-util';
-import { printSchemaFor } from './print';
+import { printSchemaFor, visibleSchema } from './print';
 import { agentExtensions } from './read';
 
 const as = (...granted: string[]) => ({
@@ -73,22 +78,62 @@ describe('printSchemaFor', () => {
 		expect(printSchemaFor(schema)).not.toContain('Orphan');
 	});
 
-	test('a Query that is left empty is dropped and the other roots stay', () => {
+	test('a Query left empty keeps one placeholder field, the other roots stay, and the schema is valid', () => {
 		const schema = buildSchema(`${agentTypeDefs}
 			type Query { a: String @needs(permission: "x") }
 			type Mutation { b: String }`);
 		const sdl = printSchemaFor(schema, as());
-		expect(sdl).toContain('schema {\n  mutation: Mutation\n}');
-		expect(sdl).not.toContain('type Query');
-		expect(() => buildSchema(sdl)).not.toThrow();
-		expect(
-			printSchemaFor(
-				buildSchema(
-					`${agentTypeDefs} type Query { a: String @needs(permission: "x") }`,
-				),
-				as(),
+		expect(sdl).toContain(
+			'"Placeholder: no query field is visible to this caller."\n  _empty: Boolean',
+		);
+		expect(sdl).toContain('type Mutation');
+		expect(validateSchema(buildSchema(sdl))).toEqual([]);
+		const nothing = printSchemaFor(
+			buildSchema(
+				`${agentTypeDefs} type Query { a: String @needs(permission: "x") }`,
 			),
-		).toBe('');
+			as(),
+		);
+		expect(nothing).toContain('type Query');
+		expect(nothing).toContain('_empty: Boolean');
+		expect(validateSchema(buildSchema(nothing))).toEqual([]);
+	});
+
+	test('visibleSchema is the valid schema the print describes', () => {
+		const visible = visibleSchema(library, as());
+		expect(validateSchema(visible)).toEqual([]);
+		expect(visible.getType('Member')).toBeUndefined();
+		expect(visible.getType('Book')).toBeDefined();
+		expect(printSchemaFor(visible)).toBe(printSchemaFor(library, as()));
+	});
+
+	test('anyOf is met by one permission, repeated @needs all, and both print back', () => {
+		const schema = buildSchema(`${agentTypeDefs}
+			type Query {
+				a: String @needs(anyOf: ["x", "y"])
+				b: String @needs(anyOf: ["x", "y"]) @needs(permission: "z")
+				c: String
+			}`);
+		const names = (...g: string[]) =>
+			[...printSchemaFor(schema, as(...g)).matchAll(/^ {2}(\w+):/gm)].map(
+				(m) => m[1],
+			);
+		expect(names('y')).toEqual(['a', 'c']);
+		expect(names('y', 'z')).toEqual(['a', 'b', 'c']);
+		expect(names()).toEqual(['c']);
+		expect(printSchemaFor(schema)).toContain(
+			'a: String @needs(anyOf: ["x", "y"])',
+		);
+		expect(printSchemaFor(schema)).toContain(
+			'@needs(anyOf: ["x", "y"]) @needs(permission: "z")',
+		);
+	});
+
+	test('an invalid @needs (both arguments, or neither) hides the field', () => {
+		const schema = buildSchema(`${agentTypeDefs}
+			type Query { a: String @needs(permission: "x", anyOf: ["x"]) c: String }`);
+		expect(printSchemaFor(schema, as('x'))).not.toContain('a: String');
+		expect(printSchemaFor(schema, as('x'))).toContain('c: String');
 	});
 
 	test('applied directives, descriptions, deprecations and specifiedBy are kept', () => {
@@ -129,14 +174,84 @@ describe('printSchemaFor', () => {
 		expect(sdl).not.toContain('directive @needs');
 	});
 
-	test('an object drops an interface whose fields it no longer has', () => {
+	test('an implementer reachable only through its interface keeps implements and its fields', () => {
 		const schema = buildSchema(`${agentTypeDefs}
-			type Query { n: Node a: A }
-			interface Node { id: ID! }
-			type A implements Node { id: ID! @needs(permission: "x") name: String }`);
+			type Query { node: Node }
+			interface Node { id: ID! secret: String }
+			type User implements Node { id: ID! secret: String @needs(permission: "x") name: String }`);
 		const sdl = printSchemaFor(schema, as());
-		expect(sdl).toContain('type A {');
-		expect(() => buildSchema(sdl)).not.toThrow();
+		expect(sdl).toContain('type User implements Node {');
+		expect(sdl).toContain('name: String');
+		expect(sdl).not.toContain('secret');
+		expect(validateSchema(buildSchema(sdl))).toEqual([]);
+	});
+
+	test('an interface left with no field is removed like any empty type', () => {
+		const schema = buildSchema(`${agentTypeDefs}
+			type Query { u: User }
+			interface Node { id: ID! }
+			type User implements Node { id: ID! @needs(permission: "x") name: String }`);
+		const sdl = printSchemaFor(schema, as());
+		expect(sdl).toContain('type User {');
+		expect(sdl).not.toContain('interface Node');
+		expect(validateSchema(buildSchema(sdl))).toEqual([]);
+	});
+
+	test('code-built default values print through their GraphQL type', () => {
+		const Color = new GraphQLEnumType({
+			name: 'Color',
+			description: 'A colour of the shelf.',
+			values: { RED: { value: 1, description: 'Red covers.' } },
+		});
+		const Box = new GraphQLInputObjectType({
+			name: 'Box',
+			description: 'A box to search in.',
+			fields: {
+				size: { type: GraphQLInt, description: 'Its size in cm.' },
+			},
+		});
+		const built = new GraphQLSchema({
+			query: new GraphQLObjectType({
+				name: 'Query',
+				description: 'The root of the API.',
+				fields: {
+					f: {
+						type: GraphQLString,
+						description: 'A field with defaults.',
+						args: {
+							c: { type: Color, defaultValue: 1, description: 'A colour.' },
+							l: {
+								type: new GraphQLList(GraphQLInt),
+								defaultValue: [1, 2],
+								description: 'Some numbers.',
+							},
+							b: {
+								type: Box,
+								defaultValue: { size: 3 },
+								description: 'A box.',
+							},
+							s: {
+								type: GraphQLString,
+								defaultValue: 'a"b',
+								description: 'A text.',
+							},
+							n: {
+								type: GraphQLString,
+								defaultValue: null,
+								description: 'Nothing.',
+							},
+						},
+					},
+				},
+			}),
+		});
+		const sdl = printSchemaFor(built);
+		expect(sdl).toContain('c: Color = RED');
+		expect(sdl).toContain('l: [Int] = [1, 2]');
+		expect(sdl).toContain('b: Box = { size: 3 }');
+		expect(sdl).toContain('s: String = "a\\"b"');
+		expect(sdl).toContain('n: String = null');
+		expect(validateSchema(buildSchema(sdl))).toEqual([]);
 	});
 
 	test('a schema built in code carries its agent metadata through extensions', () => {

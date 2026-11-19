@@ -11,10 +11,10 @@ import {
 
 /** The SDL of each agent directive, by name. */
 export const directiveSDL = {
-	needs: `"The permission a caller needs to see and use this field or type. Repeat it to require several."
-directive @needs(permission: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE`,
+	needs: `"The permission a caller needs to see and use this field or type: one permission, or any of a list. Give exactly one of the two arguments; repeat the directive to require several (AND)."
+directive @needs(permission: String, anyOf: [String!]) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE`,
 	constraint: `"Limits of an input value, for clients and agents. Not enforced by graxia."
-directive @constraint(minLength: Int, maxLength: Int, min: Float, max: Float, pattern: String, format: String) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION`,
+directive @constraint(minLength: Int, maxLength: Int, min: Float, max: Float, exclusiveMin: Float, exclusiveMax: Float, multipleOf: Float, minItems: Int, maxItems: Int, pattern: String, format: String) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION`,
 	errors: `"The error codes (extensions.code) this field may return."
 directive @errors(codes: [String!]!) on FIELD_DEFINITION`,
 } as const;
@@ -38,14 +38,17 @@ export const agentDirectives: readonly GraphQLDirective[] = [
 	new GraphQLDirective({
 		name: 'needs',
 		description:
-			'The permission a caller needs to see and use this field or type. Repeat it to require several.',
+			'The permission a caller needs to see and use this field or type: one permission, or any of a list. Give exactly one of the two arguments; repeat the directive to require several (AND).',
 		locations: [
 			DirectiveLocation.FIELD_DEFINITION,
 			DirectiveLocation.OBJECT,
 			DirectiveLocation.INTERFACE,
 		],
 		isRepeatable: true,
-		args: { permission: { type: new GraphQLNonNull(GraphQLString) } },
+		args: {
+			permission: optional(GraphQLString),
+			anyOf: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+		},
 	}),
 	new GraphQLDirective({
 		name: 'constraint',
@@ -60,6 +63,11 @@ export const agentDirectives: readonly GraphQLDirective[] = [
 			maxLength: optional(GraphQLInt),
 			min: optional(GraphQLFloat),
 			max: optional(GraphQLFloat),
+			exclusiveMin: optional(GraphQLFloat),
+			exclusiveMax: optional(GraphQLFloat),
+			multipleOf: optional(GraphQLFloat),
+			minItems: optional(GraphQLInt),
+			maxItems: optional(GraphQLInt),
 			pattern: optional(GraphQLString),
 			format: optional(GraphQLString),
 		},

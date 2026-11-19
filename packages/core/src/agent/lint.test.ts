@@ -124,4 +124,40 @@ describe('lintDescriptions', () => {
 		const issues = lint('type Query { a: Int }');
 		expect(issues.map((i) => i.coordinate)).toEqual(['Query', 'Query.a']);
 	});
+
+	test('a field implementing a described interface field inherits its description', () => {
+		const issues = lint(`
+			"The root of the API."
+			type Query { "The node to read." n: Node }
+			"Something with an identifier."
+			interface Node { "The unique identifier." id: ID! }
+			"A user of the API."
+			type User implements Node { id: ID! }`);
+		expect(issues).toEqual([]);
+	});
+
+	test('a possessive does not leave a lone s that hides a restated name', () => {
+		const issues = lint(`
+			"The root of the API."
+			type Query { "The name's value." name: String }`);
+		expect(rules(issues)).toEqual(['name-only-description']);
+	});
+
+	test('invalid-needs: both arguments, neither, or an empty anyOf', () => {
+		const issues = lint(`
+			"The root of the API."
+			type Query {
+				"Both given at once."
+				a: String @needs(permission: "x", anyOf: ["y"])
+				"Neither given at all."
+				b: String @needs
+				"Well formed any-of use."
+				c: String @needs(anyOf: ["x", "y"])
+			}`);
+		expect(issues.map((i) => [i.coordinate, i.rule])).toEqual([
+			['Query.a', 'invalid-needs'],
+			['Query.b', 'invalid-needs'],
+		]);
+		expect(issues[0]?.fix).toContain('exactly one');
+	});
 });

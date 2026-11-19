@@ -21,7 +21,10 @@ limits (depth, aliases, directives, root fields, `@cost` / `@listSize` cost),
 introspection and suggestions off under `NODE_ENV=production`, trusted
 documents (manifests, `documentId`, APQ, strict mode), `fieldRateLimit`, and
 spans on `@softistx/telemetry` (optional peer; `createTelemetry(...).install()`
-with an exporter such as `@softistx/telemetry-otlp`). `@graxia/redis`
+with an exporter such as `@softistx/telemetry-otlp`). `@graxia/core/agent` adds descriptive `@needs` / `@constraint` / `@errors`
+directives, `printSchemaFor` and `visibleSchema` (the schema one caller may see),
+`lintDescriptions` and readers, and every graxia error carries `extensions.fix`
+(`docs/guide/errors.md#the-fix-contract`). `@graxia/redis`
 puts the PubSub, the cache and a field rate limit on Redis (`redisPubSub`, `redisCache`,
 `redisFieldLimit`), on `@softistx/redis` (peer, with `@graxia/core`); breaking in 0.2: see
 `node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`.
@@ -31,7 +34,7 @@ and `node_modules/@graxia/core/docs/` (guides: `security.md`,
 `limits-and-caches.md`, `trusted-documents.md`, `rate-limiting.md`,
 `telemetry.md`, `production.md`, `subscriptions.md` for SSE, `websocket.md` for
 `graphql-transport-ws`, `incremental.md` for `@defer` and `@stream`,
-`pubsub.md`, `codegen.md` for graphql-codegen), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
+`pubsub.md`, `codegen.md` for graphql-codegen, `agent.md` for `@graxia/core/agent`), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
 points at them and never copies them. Read `security.md` and `production.md`
 before shipping.
 

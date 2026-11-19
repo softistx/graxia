@@ -8,7 +8,13 @@ import {
 	parse,
 } from 'graphql';
 import { agentTypeDefs } from './directives';
-import { agentExtensions, constraintOf, errorsOf, needsOf } from './read';
+import {
+	agentExtensions,
+	constraintOf,
+	errorsOf,
+	hasInvalidNeeds,
+	needsOf,
+} from './read';
 
 describe('reading the agent directives', () => {
 	const schema = buildSchema(`${agentTypeDefs}
@@ -22,10 +28,10 @@ describe('reading the agent directives', () => {
 	const query = schema.getQueryType() as GraphQLObjectType;
 
 	test('needsOf lists every @needs of a field, a type, and none otherwise', () => {
-		expect(needsOf(query.getFields()['a']!)).toEqual(['x', 'y']);
+		expect(needsOf(query.getFields()['a']!)).toEqual([['x'], ['y']]);
 		expect(needsOf(query.getFields()['b']!)).toEqual([]);
 		expect(needsOf(schema.getType('Thing') as GraphQLObjectType)).toEqual([
-			't',
+			['t'],
 		]);
 	});
 
@@ -54,8 +60,8 @@ describe('reading the agent directives', () => {
 			parse('extend type Thing @needs(permission: "more")'),
 		);
 		expect(needsOf(extended.getType('Thing') as GraphQLObjectType)).toEqual([
-			't',
-			'more',
+			['t'],
+			['more'],
 		]);
 	});
 
@@ -82,9 +88,55 @@ describe('reading the agent directives', () => {
 			}),
 		});
 		const fields = (built.getQueryType() as GraphQLObjectType).getFields();
-		expect(needsOf(fields['a']!)).toEqual(['x']);
-		expect(needsOf(fields['b']!)).toEqual(['x', 'y']);
+		expect(needsOf(fields['a']!)).toEqual([['x']]);
+		expect(needsOf(fields['b']!)).toEqual([['x'], ['y']]);
 		expect(errorsOf(fields['a']!)).toEqual(['A']);
 		expect(constraintOf(fields['a']!.args[0]!)).toEqual({ maxLength: 3 });
+	});
+
+	test('anyOf is an OR group, repeated @needs are ANDed, and a code-built anyOf reads the same', () => {
+		const sdl = buildSchema(`${agentTypeDefs}
+			type Query {
+				a: String @needs(anyOf: ["x", "y"]) @needs(permission: "z")
+				both: String @needs(permission: "x", anyOf: ["y"])
+				neither: String @needs
+			}`);
+		const fields = (sdl.getQueryType() as GraphQLObjectType).getFields();
+		expect(needsOf(fields['a']!)).toEqual([['x', 'y'], ['z']]);
+		expect(hasInvalidNeeds(fields['a']!)).toBe(false);
+		expect(needsOf(fields['both']!)).toEqual([[]]);
+		expect(hasInvalidNeeds(fields['both']!)).toBe(true);
+		expect(hasInvalidNeeds(fields['neither']!)).toBe(true);
+		const built = new GraphQLSchema({
+			query: new GraphQLObjectType({
+				name: 'Query',
+				fields: {
+					a: {
+						type: GraphQLString,
+						extensions: agentExtensions({
+							needs: [{ anyOf: ['x', 'y'] }, 'z'],
+							errors: 'A',
+						}),
+					},
+				},
+			}),
+		});
+		const field = (built.getQueryType() as GraphQLObjectType).getFields()['a']!;
+		expect(needsOf(field)).toEqual([['x', 'y'], ['z']]);
+		expect(errorsOf(field)).toEqual(['A']);
+	});
+
+	test('the new limits are read', () => {
+		const limits = buildSchema(`${agentTypeDefs}
+			type Query { f(n: Float @constraint(exclusiveMin: 0, exclusiveMax: 10, multipleOf: 0.5), l: [Int] @constraint(minItems: 1, maxItems: 3)): Int }`);
+		const field = (limits.getQueryType() as GraphQLObjectType).getFields()[
+			'f'
+		]!;
+		expect(constraintOf(field.args[0]!)).toEqual({
+			exclusiveMin: 0,
+			exclusiveMax: 10,
+			multipleOf: 0.5,
+		});
+		expect(constraintOf(field.args[1]!)).toEqual({ minItems: 1, maxItems: 3 });
 	});
 });

@@ -21,6 +21,7 @@ export function wordsOf(text: string): string[] {
 	return text
 		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 		.toLowerCase()
+		.replace(/['\u2019]s\b/g, '')
 		.split(/[^a-z0-9]+/)
 		.filter((word) => word !== '');
 }

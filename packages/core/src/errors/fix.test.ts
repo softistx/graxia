@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { fieldRateLimit } from '../rate-limit/plugin';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
+import { INTERNAL_FIX, NON_NULL_FIX } from './fixes';
 
 /**
  * Every error graxia emits carries `extensions.fix`, in development and in
@@ -55,6 +56,8 @@ interface Row {
 	name: string;
 	/** `extensions.code` expected, when the error has one. */
 	code?: string;
+	/** The exact `fix`, for the errors whose text graxia owns. */
+	fix?: string;
 	options?: Parameters<typeof createGraxia>[0] extends infer O
 		? Partial<O>
 		: never;
@@ -121,10 +124,12 @@ const rows: Row[] = [
 	{
 		name: 'a resolver that throws (masked)',
 		code: 'INTERNAL_SERVER_ERROR',
+		fix: INTERNAL_FIX,
 		request: () => post({ query: '{ boom }' }),
 	},
 	{
 		name: 'a non-null field that returns null',
+		fix: NON_NULL_FIX,
 		request: () => post({ query: '{ must }' }),
 	},
 	{
@@ -282,6 +287,7 @@ describe.each(['development', 'production'])(
 				const fix = error?.extensions?.['fix'];
 				expect(typeof fix).toBe('string');
 				expect((fix as string).length).toBeGreaterThan(10);
+				if (row.fix) expect(fix).toBe(row.fix);
 				if (row.code) expect(error?.extensions?.['code']).toBe(row.code);
 			});
 		}

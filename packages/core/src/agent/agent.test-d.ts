@@ -13,6 +13,7 @@ import {
 	lintDescriptions,
 	needsOf,
 	printSchemaFor,
+	visibleSchema,
 } from './index';
 
 declare const schema: GraphQLSchema;
@@ -36,7 +37,7 @@ lintDescriptions(schema, {
 lintDescriptions(schema, { require: { directives: true } });
 
 declare const field: Parameters<typeof errorsOf>[0];
-expectTypeOf(needsOf(field)).toEqualTypeOf<string[]>();
+expectTypeOf(needsOf(field)).toEqualTypeOf<string[][]>();
 expectTypeOf(errorsOf(field)).toEqualTypeOf<string[]>();
 expectTypeOf(constraintOf({} as never)).toEqualTypeOf<Constraint | undefined>();
 expectTypeOf(agentExtensions({ needs: 'a' })).toEqualTypeOf<{
@@ -44,3 +45,12 @@ expectTypeOf(agentExtensions({ needs: 'a' })).toEqualTypeOf<{
 }>();
 // @ts-expect-error the limits are named
 agentExtensions({ constraint: { maximum: 3 } });
+expectTypeOf(
+	visibleSchema(schema, { can: () => true }),
+).toEqualTypeOf<GraphQLSchema>();
+agentExtensions({ needs: { anyOf: ['a', 'b'] }, errors: 'BAD_USER_INPUT' });
+agentExtensions({ needs: ['a', { anyOf: ['b', 'c'] }], errors: ['MY_CODE'] });
+// @ts-expect-error a field has no input constraint
+constraintOf({} as Parameters<typeof errorsOf>[0]);
+// @ts-expect-error an input field has no @needs
+needsOf({} as Parameters<typeof constraintOf>[0]);

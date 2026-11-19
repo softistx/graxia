@@ -52,8 +52,10 @@ export function applied(
 	used: Set<AgentDirectiveName>,
 	withErrors: boolean,
 ): string {
-	const needs = needsOf(target).map(
-		(p) => ` @needs(permission: ${literal(p)})`,
+	const needs = needsOf(target).map((anyOf) =>
+		anyOf.length === 1
+			? ` @needs(permission: ${literal(anyOf[0] as string)})`
+			: ` @needs(anyOf: [${anyOf.map(literal).join(', ')}])`,
 	);
 	if (needs.length > 0) used.add('needs');
 	const codes = withErrors && 'args' in target ? errorsOf(target) : [];
@@ -74,18 +76,31 @@ const constraintArgs = (c: Constraint): string =>
 		)
 		.join(', ');
 
+/**
+ * The default of an argument or input field as an AST: graphql 17's
+ * `default` (`{ literal }` or `{ value }`), or the `defaultValue` a schema
+ * built in code may still carry (a coerced value, written with `astFromValue`).
+ */
+function defaultAST(value: GraphQLArgument | GraphQLInputField) {
+	const dflt = value.default;
+	if (dflt && 'literal' in dflt && dflt.literal) return dflt.literal;
+	const coerced: { value: unknown } | undefined = dflt
+		? { value: (dflt as { value: unknown }).value }
+		: (value as { defaultValue?: unknown }).defaultValue !== undefined
+			? { value: (value as { defaultValue?: unknown }).defaultValue }
+			: undefined;
+	return coerced
+		? astFromValue(coerced.value, value.type as GraphQLInputType)
+		: undefined;
+}
+
 /** `name: Type = default @constraint(...) @deprecated`, for an argument or an input field. */
 export function inputValue(
 	value: GraphQLArgument | GraphQLInputField,
 	used: Set<AgentDirectiveName>,
 ): string {
 	let out = `${value.name}: ${String(value.type)}`;
-	const dflt = value.default;
-	const ast = dflt
-		? 'literal' in dflt && dflt.literal
-			? dflt.literal
-			: astFromValue(dflt.value, value.type as GraphQLInputType)
-		: undefined;
+	const ast = defaultAST(value);
 	if (ast) out += ` = ${print(ast)}`;
 	const constraint = constraintOf(value);
 	if (constraint) {

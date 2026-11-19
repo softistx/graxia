@@ -7,7 +7,7 @@ import {
 	isObjectType,
 } from 'graphql';
 import { GraxiaError } from './exposed';
-import { GRAPHQL_FIX, INTERNAL_FIX, withFix } from './fixes';
+import { INTERNAL_FIX, NON_NULL_FIX, withFix } from './fixes';
 
 /** The message a masked error carries. */
 export const UNEXPECTED_MESSAGE = 'Unexpected error.';
@@ -123,18 +123,15 @@ export function maskResult(
 	const unexpected: unknown[] = [];
 	if (!result.errors) return { result, unexpected };
 	let changed = false;
-	// No `data` key: execution never started (variables, operation selection), so graphql wrote the errors.
-	const beforeExecution = !('data' in result);
 	const errors = result.errors.map((error) => {
 		if (isExposed(error, schema)) {
-			// An error graphql raised itself (variables, operation selection, non-null) has no fix yet.
 			const cause = error.originalError;
-			const own =
-				beforeExecution ||
-				cause === undefined ||
-				!(cause instanceof GraphQLError);
 			const exposed = expose(error);
-			const out = own ? withFix(exposed, GRAPHQL_FIX) : exposed;
+			// Graphql wraps a null in a non-null field in a plain Error: a server bug, with its own fix.
+			const out =
+				cause !== undefined && !(cause instanceof GraphQLError)
+					? withFix(exposed, NON_NULL_FIX)
+					: exposed;
 			changed ||= out !== error;
 			return out;
 		}

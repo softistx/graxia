@@ -10,14 +10,20 @@ export {
 	lintDescriptions,
 	type RequiredDescriptions,
 } from './lint';
-export { type PrintSchemaForOptions, printSchemaFor } from './print';
+export {
+	type PrintSchemaForOptions,
+	printSchemaFor,
+	visibleSchema,
+} from './print';
 export {
 	type AgentExtensions,
 	agentExtensions,
 	type Constraint,
 	type ConstraintTarget,
 	constraintOf,
+	type ErrorCodeName,
 	errorsOf,
+	type Need,
 	type NeedsTarget,
 	needsOf,
 } from './read';

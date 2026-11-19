@@ -37,7 +37,7 @@ export async function subscription(
 		'Incremental delivery (@defer, @stream) is not supported over this transport yet.',
 		{
 			code: 'INCREMENTAL_NOT_SUPPORTED',
-			fix: 'Send the operation over a transport that streams: Accept "text/event-stream" or a WebSocket.',
+			fix: 'Remove @defer and @stream from the subscription.',
 		},
 	);
 }

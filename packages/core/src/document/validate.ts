@@ -6,7 +6,7 @@ import {
 	type ValidationRule,
 	validate,
 } from 'graphql';
-import { VALIDATION_FIX, withFix } from '../errors/fixes';
+import { VALIDATION_FIX } from '../errors/fixes';
 import type { ValidationFn } from '../plugins/types';
 import type { ValidationCache } from './caches';
 import { VALIDATION_FAILED } from './types';
@@ -60,21 +60,33 @@ export function checkDocument(
 	return coded;
 }
 
-/** Stamps `extensions.code: GRAPHQL_VALIDATION_FAILED` on the errors that carry no code. */
+/**
+ * Stamps `extensions.code: GRAPHQL_VALIDATION_FAILED` on the errors that carry
+ * no code, and a `fix` on those that carry none. An error a custom rule gave
+ * its own code (and extensions) stays the same instance, its code and
+ * extensions kept: only a missing `fix` is added to its extensions.
+ */
 function withCode(errors: readonly GraphQLError[]): readonly GraphQLError[] {
-	return errors.map((error) =>
-		withFix(
-			error.extensions['code'] !== undefined
-				? error
-				: new GraphQLError(error.message, {
-						nodes: error.nodes,
-						source: error.source,
-						positions: error.positions,
-						path: error.path,
-						originalError: error.originalError ?? error,
-						extensions: { ...error.extensions, code: VALIDATION_FAILED },
-					}),
-			VALIDATION_FIX,
-		),
-	);
+	return errors.map((error) => {
+		if (error.extensions['code'] !== undefined) {
+			if (typeof error.extensions['fix'] === 'string') return error;
+			(error as { extensions: Record<string, unknown> }).extensions = {
+				...error.extensions,
+				fix: VALIDATION_FIX,
+			};
+			return error;
+		}
+		return new GraphQLError(error.message, {
+			nodes: error.nodes,
+			source: error.source,
+			positions: error.positions,
+			path: error.path,
+			originalError: error.originalError ?? error,
+			extensions: {
+				fix: VALIDATION_FIX,
+				...error.extensions,
+				code: VALIDATION_FAILED,
+			},
+		});
+	});
 }

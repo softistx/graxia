@@ -1,4 +1,5 @@
 import { type ExecutionArgs, type ExecutionResult, execute } from 'graphql';
+import { stampRaisedByGraphql } from '../errors/fixes';
 import type { RequestState } from '../plugins/state';
 import type { ExecuteFn, ExecutionOutput } from '../plugins/types';
 import { failure, type Outcome, settle, unexpected } from './outcome';
@@ -61,7 +62,10 @@ export async function runExecutionStage(
 	if (stage.error === undefined) {
 		try {
 			result =
-				stage.out.result ?? (await (stage.out.executeFn ?? fallback)(args));
+				stage.out.result ??
+				(stage.out.executeFn
+					? await stage.out.executeFn(args)
+					: stampRaisedByGraphql(await fallback(args)));
 		} catch (error) {
 			if (args.abortSignal?.aborted) aborted = true;
 			else thrown = error;

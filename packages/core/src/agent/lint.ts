@@ -11,7 +11,7 @@ import {
 	isScalarType,
 	isSpecifiedScalarType,
 } from 'graphql';
-import { errorsOf } from './read';
+import { type ErrorCodeName, errorsOf, hasInvalidNeeds } from './read';
 import { restatesName } from './words';
 
 /** The name of a rule of {@link lintDescriptions}. */
@@ -20,7 +20,8 @@ export type LintRule =
 	| 'short-description'
 	| 'name-only-description'
 	| 'unknown-error-code'
-	| 'mutation-without-errors';
+	| 'mutation-without-errors'
+	| 'invalid-needs';
 
 /** One finding: where, which rule, what is wrong and how to fix it. */
 export interface LintIssue {
@@ -51,7 +52,7 @@ export interface LintDescriptionsOptions {
 	 * it is an `unknown-error-code`, and a mutation without `@errors` is a
 	 * `mutation-without-errors`.
 	 */
-	knownErrorCodes?: readonly string[];
+	knownErrorCodes?: readonly ErrorCodeName[];
 }
 
 const DEFAULT_MIN_LENGTH = 12;
@@ -102,6 +103,26 @@ function checkDescription(
 	return [];
 }
 
+/** The description a field takes from the interface field it implements, when it has none. */
+function inherited(
+	type: GraphQLNamedType,
+	field: GraphQLField<any, any>,
+): string | undefined {
+	if (!isObjectType(type) && !isInterfaceType(type)) return undefined;
+	for (const iface of type.getInterfaces()) {
+		const text = iface.getFields()[field.name]?.description;
+		if (text) return text;
+	}
+	return undefined;
+}
+
+const invalidNeeds = (coordinate: string): LintIssue => ({
+	coordinate,
+	rule: 'invalid-needs',
+	message: `@needs on ${coordinate} gives both permission and anyOf, or neither (or an empty anyOf).`,
+	fix: 'Give @needs exactly one of permission: "x" or anyOf: ["x", "y"]; repeat @needs to require several.',
+});
+
 function lintField(
 	type: GraphQLNamedType,
 	field: GraphQLField<any, any>,
@@ -113,11 +134,14 @@ function lintField(
 	const coordinate = `${type.name}.${field.name}`;
 	const known = options.knownErrorCodes;
 	const codes = errorsOf(field);
-	const issues = [
+	const issues: LintIssue[] = [
 		...checkDescription(
 			coordinate,
 			'field',
-			field,
+			{
+				name: field.name,
+				description: field.description ?? inherited(type, field),
+			},
 			options.minLength,
 			required.fields,
 		),
@@ -131,6 +155,7 @@ function lintField(
 			),
 		),
 	];
+	if (hasInvalidNeeds(field)) issues.push(invalidNeeds(coordinate));
 	if (!known) return issues;
 	for (const code of codes.filter((c) => !known.includes(c)))
 		issues.push({
@@ -163,6 +188,8 @@ function lintType(
 		options.minLength,
 		required.types,
 	);
+	if ((isObjectType(type) || isInterfaceType(type)) && hasInvalidNeeds(type))
+		issues.push(invalidNeeds(type.name));
 	if (isObjectType(type) || isInterfaceType(type))
 		for (const field of Object.values(type.getFields()))
 			issues.push(

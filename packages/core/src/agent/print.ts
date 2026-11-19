@@ -1,4 +1,5 @@
 import {
+	buildSchema,
 	type GraphQLEnumType,
 	type GraphQLInputObjectType,
 	type GraphQLInterfaceType,
@@ -31,7 +32,8 @@ import { type View, visibleView } from './visible';
 export interface PrintSchemaForOptions {
 	/**
 	 * Whether the caller holds a permission named by `@needs`. Absent: every
-	 * field and type is visible.
+	 * field and type is visible. A `@needs` with `anyOf` is met by one of its
+	 * permissions; repeated `@needs` must all be met.
 	 */
 	can?: (permission: string) => boolean;
 }
@@ -107,7 +109,15 @@ function printUnion(type: GraphQLUnionType, view: View): string {
 	return `${describe(type.description)}union ${type.name} = ${(view.members.get(type.name) ?? []).join(' | ')}`;
 }
 
+const PLACEHOLDER_DESCRIPTION =
+	'Placeholder: no query field is visible to this caller.';
+
+/** The Query a caller with no visible query field gets: one placeholder field, so the schema stays valid. */
+const printPlaceholder = (name: string): string =>
+	`type ${name} {\n${describe(PLACEHOLDER_DESCRIPTION, '  ')}  _empty: Boolean\n}`;
+
 function printType(type: GraphQLNamedType, view: View, used: Used): string {
+	if (view.placeholder === type.name) return printPlaceholder(type.name);
 	if (isObjectType(type)) return printComposite('type', type, view, used);
 	if (isInterfaceType(type))
 		return printComposite('interface', type, view, used);
@@ -124,7 +134,7 @@ function printSchemaBlock(view: View): string {
 		query === 'Query' &&
 		(mutation === undefined || mutation === 'Mutation') &&
 		(subscription === undefined || subscription === 'Subscription');
-	if (conventional || (!query && !mutation && !subscription)) return '';
+	if (conventional) return '';
 	return `schema {\n${(['query', 'mutation', 'subscription'] as const)
 		.filter((key) => view.roots[key])
 		.map((key) => `  ${key}: ${view.roots[key]}`)
@@ -138,7 +148,8 @@ function printSchemaBlock(view: View): string {
  * `@needs`, `@constraint` and `@errors`, and it declares the agent directives
  * it uses, so `buildSchema(output)` works. Introspection types, built-in
  * scalars, `@defer` and `@stream` are not printed; types come in the
- * schema's own order. A schema whose `Query` is hidden prints without one.
+ * schema's own order. When no Query field is visible, the Query type keeps one placeholder field
+ * (`_empty: Boolean`), so the output is always a valid schema.
  *
  * It walks the whole schema: call it once per kind of principal and keep the
  * text, not once per request.
@@ -159,10 +170,29 @@ export function printSchemaFor(
 				!(isScalarType(type) && isSpecifiedScalarType(type)),
 		)
 		.map((type) => printType(type, view, used));
+	if (view.placeholder && !schema.getType(view.placeholder))
+		blocks.unshift(printPlaceholder(view.placeholder));
 	const all = [
 		printSchemaBlock(view),
 		...directiveDefinitions(used),
 		...blocks,
 	].filter((block) => block !== '');
-	return all.length > 0 ? `${all.join('\n\n')}\n` : '';
+	return `${all.join('\n\n')}\n`;
+}
+
+/**
+ * The schema a caller may see, as a valid `GraphQLSchema` (the same view
+ * {@link printSchemaFor} prints; the schema is built from that text, so it
+ * carries the directives but no resolvers). Validate and describe operations
+ * against it: a field the caller cannot see is unknown to it.
+ *
+ * @example
+ * const visible = visibleSchema(schema, { can: (p) => permissions.has(p) });
+ * const errors = validate(visible, parse(query));
+ */
+export function visibleSchema(
+	schema: GraphQLSchema,
+	options: PrintSchemaForOptions = {},
+): GraphQLSchema {
+	return buildSchema(printSchemaFor(schema, options));
 }
