@@ -25,6 +25,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Telemetry](./guide/telemetry.md): spans for requests, parse, validate and operations, resolver spans, propagation, the optional peer.
 - [Production](./guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, health checks and a checklist.
 - [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@graxia/core/testing`.
+- [Ready for agents](./guide/agent.md): `@graxia/core/agent`, `@needs` / `@constraint` / `@errors`, `printSchemaFor`, `lintDescriptions`, the `fix` contract.
 - [Errors: exposed, masked, correlation ids](./guide/errors.md): `exposedError`, `onUnexpected`, `maskError`.
 
 ## Help

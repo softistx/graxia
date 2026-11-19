@@ -2,6 +2,16 @@
 
 The errors a consumer can hit, headed by the message as it appears.
 
+## Unknown directive "@needs" (or "@constraint", "@errors")
+
+`createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
+`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
+built in code.
+
+```ts
+createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers });
+```
+
 ## Unexpected error.
 
 A response carries `Unexpected error.` with `extensions.code: "INTERNAL_SERVER_ERROR"` and a

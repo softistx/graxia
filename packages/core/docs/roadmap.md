@@ -2,7 +2,16 @@
 
 Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
+## Now
+
+- **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
+  `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
+  error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)).
+
 ## Later
+
+- **Enforcing `@constraint` and `@needs`** — today they describe; a plugin could refuse an input
+  outside its limits and a field the caller lacks the permission for.
 
 - **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted
   operations as tools.

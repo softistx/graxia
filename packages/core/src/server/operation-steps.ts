@@ -35,7 +35,7 @@ export async function settleParams(
 		return failure(trusted.message, {
 			code: trusted.code,
 			...(trusted.status !== undefined ? { status: trusted.status } : {}),
-			...(trusted.fix ? { fix: trusted.fix } : {}),
+			fix: trusted.fix,
 		});
 	const stage = await rt.engine.runners.onParams({
 		request,
@@ -48,7 +48,10 @@ export async function settleParams(
 		return { kind: 'response', response: stage.out.response };
 	const final = stage.out.params;
 	if (typeof final.query !== 'string' || final.query === '')
-		return failure('Must provide a query string.', { status: 400 });
+		return failure('Must provide a query string.', {
+			status: 400,
+			fix: 'Send a "query" string, or a "documentId" when trusted documents are on.',
+		});
 	return { params: final, query: final.query, register: trusted?.register };
 }
 
@@ -75,7 +78,11 @@ export async function parseStep(
 		if (early.operation === 'mutation' && method === 'GET')
 			return failure(
 				'Can only perform a mutation operation from a POST request.',
-				{ status: 405, headers: { allow: 'POST' } },
+				{
+					status: 405,
+					headers: { allow: 'POST' },
+					fix: 'Send the mutation with POST.',
+				},
 			);
 	}
 	return { document: parsed.document, cacheKey: parsed.cacheKey };

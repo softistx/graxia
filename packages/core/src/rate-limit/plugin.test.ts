@@ -34,6 +34,7 @@ describe('refusal', () => {
 		expect(body.errors[0].extensions).toEqual({
 			code: 'RATE_LIMITED',
 			retryAfter: 3,
+			fix: expect.any(String),
 		});
 	});
 	test('a custom code', async () => {

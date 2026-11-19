@@ -82,6 +82,7 @@ export async function runExecutionStage(
 		return {
 			outcome: failure('The operation was aborted.', {
 				code: 'OPERATION_ABORTED',
+				fix: 'Send the request again, and keep the connection open until the answer arrives.',
 				// 499 (client closed request) when the client left, 503 otherwise (shutdown).
 				status: request.signal.aborted ? 499 : 503,
 			}),

@@ -18,28 +18,33 @@ export function jsonResponse(
 	return new Response(text, { status, headers: out });
 }
 
-/** An error body: `{ errors: [{ message }] }`. */
+/** An error body: `{ errors: [{ message, extensions: { code?, fix } }] }`. */
 export function errorBody(
 	message: string,
+	fix: string,
 	code?: string,
 ): { errors: GraphQLFormattedError[] } {
 	return {
-		errors: [{ message, ...(code ? { extensions: { code } } : {}) }],
+		errors: [{ message, extensions: { ...(code ? { code } : {}), fix } }],
 	};
 }
 
-/** A request-level refusal (400, 404, 405, 406, 413, 415…) as `application/json`. */
+/**
+ * A request-level refusal (400, 404, 405, 406, 413, 415…) as
+ * `application/json`. `fix` is required: every refusal tells the client what
+ * to change.
+ */
 export function refusal(
 	status: number,
 	message: string,
-	headers?: HeadersInit,
-	code?: string,
+	fix: string,
+	options: { headers?: HeadersInit; code?: string } = {},
 ): Response {
 	return jsonResponse(
-		errorBody(message, code),
+		errorBody(message, fix, options.code),
 		status,
 		'application/json',
-		headers,
+		options.headers,
 	);
 }
 

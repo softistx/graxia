@@ -59,6 +59,7 @@ async function byId(
 		return refuse(
 			'Send either documentId or query, not both.',
 			'BAD_USER_INPUT',
+			'Remove "query" to run the persisted document, or remove "documentId" to send the query.',
 			400,
 		);
 	const source = await lookup(env, id);
@@ -66,6 +67,7 @@ async function byId(
 		? refuse(
 				`Persisted document ${id.slice(0, 100)} not found.`,
 				'PERSISTED_QUERY_NOT_FOUND',
+				"Use a documentId from the server's trusted manifest (or register the document first).",
 				400,
 			)
 		: { ok: true, params: { ...params, query: source } };
@@ -82,6 +84,7 @@ async function byHash(
 		return refuse(
 			'provided sha does not match query',
 			'PROVIDED_SHA_DOESNT_MATCH',
+			'Send the sha256 hex hash of the exact query text in extensions.persistedQuery.sha256Hash.',
 		);
 	const source = await lookup(env, hash);
 	if (source !== undefined)
@@ -91,9 +94,14 @@ async function byHash(
 		return refuse(
 			'PersistedQueryNotSupported',
 			'PERSISTED_QUERY_NOT_SUPPORTED',
+			'Send the query by documentId from the trusted manifest, or ask the server owner to enable apq.',
 		);
 	if (sent === undefined)
-		return refuse('PersistedQueryNotFound', 'PERSISTED_QUERY_NOT_FOUND');
+		return refuse(
+			'PersistedQueryNotFound',
+			'PERSISTED_QUERY_NOT_FOUND',
+			'Send the request again with the query text next to the hash so the server can store it.',
+		);
 	return {
 		ok: true,
 		params,
@@ -126,8 +134,8 @@ export function createTrustedDocuments(
 					? refuse(
 							'Only persisted documents are allowed.',
 							'PERSISTED_QUERY_ONLY',
-							400,
 							STRICT_FIX,
+							400,
 						)
 					: { ok: true, params };
 			if ('ok' in key) return key;

@@ -62,7 +62,12 @@ describe('documentId', () => {
 		);
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
-			errors: [{ message: 'The "documentId" parameter must be a string.' }],
+			errors: [
+				{
+					message: 'The "documentId" parameter must be a string.',
+					extensions: { fix: expect.any(String) },
+				},
+			],
 		});
 	});
 

@@ -26,7 +26,7 @@ const resolvers = {
 ```
 
 The response error is `{ message: "Book not found.", path, locations, extensions: { id, code: "NOT_FOUND", fix: "Check the id." } }`.
-`fix` is one short sentence telling the client how to recover; `extensions` carries anything else
+Every error graxia itself emits carries one too (see [Ready for agents](./agent.md#the-fix-contract)). `fix` is one short sentence telling the client how to recover; `extensions` carries anything else
 (`code` and `fix` win over the same names). `isGraxiaError(value)` tells an error made by
 `exposedError` from any other value.
 

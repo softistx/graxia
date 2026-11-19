@@ -19,6 +19,7 @@ const generic = (res: Response) => ({
 			message: 'Unexpected error.',
 			extensions: {
 				code: 'INTERNAL_SERVER_ERROR',
+				fix: expect.any(String),
 				correlationId: res.headers.get('x-request-id'),
 			},
 		},

@@ -74,7 +74,10 @@ async function prepare(
 	const refused = await validateStep(rt, input, parsed);
 	if (refused) return refused;
 	const operation = selectOperation(parsed.document, final.operationName);
-	if (typeof operation === 'string') return failure(operation);
+	if (typeof operation === 'string')
+		return failure(operation, {
+			fix: 'Send operationName when the document holds several operations, and name one of them.',
+		});
 	const { cost } = rt.options.operationLimits;
 	if (cost) {
 		const over = costRefusal(
@@ -89,7 +92,10 @@ async function prepare(
 	if (operation.operation === 'subscription' && !input.sse)
 		return failure(
 			subscriptionRefusal(rt.options.sse, rt.options.ws !== false),
-			{ code: 'SUBSCRIPTION_NOT_SUPPORTED' },
+			{
+				code: 'SUBSCRIPTION_NOT_SUPPORTED',
+				fix: 'Send the subscription over Server-Sent Events (Accept: text/event-stream) or a WebSocket.',
+			},
 		);
 	// Only a document that passed every check is stored, and only the query the
 	// client sent, never one a plugin rewrote.
