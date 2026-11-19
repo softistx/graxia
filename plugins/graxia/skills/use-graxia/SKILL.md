@@ -29,7 +29,7 @@ and `node_modules/@graxia/core/docs/` (guides: `security.md`,
 `limits-and-caches.md`, `trusted-documents.md`, `rate-limiting.md`,
 `telemetry.md`, `production.md`, `subscriptions.md` for SSE, `websocket.md` for
 `graphql-transport-ws`, `incremental.md` for `@defer` and `@stream`,
-`pubsub.md`), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
+`pubsub.md`, `codegen.md` for graphql-codegen), and `node_modules/@graxia/redis/docs/guide/redis.md`. This skill
 points at them and never copies them. Read `security.md` and `production.md`
 before shipping.
 
@@ -48,6 +48,9 @@ each off):
 Write the resolver context once: `type Ctx = InferContext<typeof context, typeof plugins>`, then
 `createSchema<Ctx>()`; `createGraxia` checks at compile time that the factory, plugins and
 `signal` provide it. Type the host as `ContextInit<{ … }>` on the factory, never `createGraxia<…>`.
+
+With graphql-codegen, point `contextType` at the `InferContext` type and pass the generated `Resolvers` as
+`createSchema<Ctx, Resolvers>()`'s second generic; a map generated for another context is a type error.
 
 `node_modules/@graxia/core/docs/roadmap.md` says what is next.
 `references/packages.md` is the package index.

@@ -127,9 +127,10 @@ export type ResolversContext<R> = [
 
 /** Reported on `resolvers` when the map expects a context the schema's `Ctx` does not satisfy. */
 export type ResolversContextMismatch<Expected, Ctx> = {
-	readonly '~error': 'the resolvers expect another context than createSchema<Ctx>';
-	readonly expected: Expected;
-	readonly actual: Ctx;
+	readonly 'createSchema<Ctx>: these resolvers expect another context (see expected)': {
+		expected: Expected;
+		actual: Ctx;
+	};
 };
 
 /** Intersected into the options: refuses a map (or array of maps) built for a context `Ctx` does not satisfy. */

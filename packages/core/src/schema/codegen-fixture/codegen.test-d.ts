@@ -49,3 +49,25 @@ createSchema<FixtureContext, Resolvers>()({
 	typeDefs: 'type Query { me: String }',
 	resolvers,
 });
+
+// a map for a supertype of the context is accepted
+createSchema<FixtureContext, Resolvers<{ user: { id: string } }>>()({
+	typeDefs,
+	resolvers: {},
+});
+// a map needing more than the context provides is refused
+createSchema<FixtureContext, Resolvers<FixtureContext & { db: string }>>()({
+	typeDefs,
+	// @ts-expect-error db is not in FixtureContext
+	resolvers: {},
+});
+// an any context is accepted
+createSchema<FixtureContext, Resolvers<any>>()({ typeDefs, resolvers: {} });
+// no declared context: not checked
+createSchema<unknown, Resolvers<{ other: 1 }>>()({ typeDefs, resolvers: {} });
+// an optional key does not satisfy a required one
+createSchema<{ user?: { id: string } }, Resolvers<{ user: { id: string } }>>()({
+	typeDefs,
+	// @ts-expect-error user may be missing
+	resolvers: {},
+});

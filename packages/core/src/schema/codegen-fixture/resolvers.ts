@@ -1,13 +1,16 @@
 import { GraphQLScalarType } from 'graphql';
-import { type Post, type Resolvers, Role } from './generated';
+import { type Resolvers, type ResolversTypes, Role } from './generated';
 import type { UserRow } from './models';
 
 export const rows: Record<string, UserRow> = {
 	'1': { id: '1', name: 'Ada', role: Role.Admin, at: 0 },
 };
 
-const post = (title: string): Post & { author: UserRow } =>
-	({ id: 'p1', title, author: rows['1'] }) as never;
+const post = (title: string): ResolversTypes['Post'] => ({
+	id: 'p1',
+	title,
+	author: rows['1'] as UserRow,
+});
 
 /** A complete resolver map typed by the generated `Resolvers`. */
 export const resolvers: Resolvers = {

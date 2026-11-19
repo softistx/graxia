@@ -97,6 +97,13 @@ with an explicit type argument (do not write `createGraxia<…>`; type the host 
 is not `false`. Call it from a resolver, leave `asyncContext` on, or read the resolver's context
 argument. See [Context](./guide/context.md).
 
+## Property 'createSchema<Ctx>: these resolvers expect another context (see expected)' is missing
+
+A type error on `resolvers`: the resolver map (typically graphql-codegen's `Resolvers<X>`) was built
+for a context `X` that `createSchema<Ctx, …>()`'s `Ctx` does not provide. The message shows
+`expected` (what the resolvers need) and `actual` (your `Ctx`). Point codegen's `contextType` at
+the same `InferContext` type you pass to `createSchema`, regenerate, and see [Codegen](./guide/codegen.md).
+
 ## Invalid type definitions: …
 
 The SDL passed to `createSchema` does not parse or build; graphql's message follows. Fix the SDL.
