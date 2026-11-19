@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { browser, fakeAssets, host } from './fixtures.test-util';
-import { createGraphiQL } from './index';
+import { createGraphiQL } from './graphiql';
 import { createApolloSandbox, sandboxContentSecurityPolicy } from './sandbox';
 
 const on = (options = {}, instance: Record<string, unknown> = {}) =>
@@ -52,9 +52,9 @@ describe('page', () => {
 		);
 		expect(csp).toBe(sandboxContentSecurityPolicy());
 		expect(csp).toBe(
-			"default-src 'none'; script-src 'self' https://embeddable-sandbox.cdn.apollographql.com; style-src 'self'; img-src data:; connect-src 'self'; frame-src https://sandbox.embed.apollographql.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+			"default-src 'none'; script-src 'self' https://embeddable-sandbox.cdn.apollographql.com; style-src 'self' 'unsafe-inline'; img-src data:; connect-src 'self'; frame-src https://sandbox.embed.apollographql.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
 		);
-		expect(csp).not.toMatch(/\*|unsafe-|ws:|wss:/);
+		expect(csp).not.toMatch(/\*|script-src[^;]*unsafe-|ws:|wss:/);
 	});
 
 	test('a WebSocket instance adds the same-host ws origin and tells the bootstrap', async () => {

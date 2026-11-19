@@ -72,6 +72,7 @@ export function resolveLink(options: RedisConnection): RedisLink {
 	};
 }
 
+// Temporary, until softistx/nxgt-data#436 (tracked in #81): switch to the typed RedisError code
 /** `connectRedis` refuses a URI another module connected with other options. */
 function shared(error: unknown, uri: string): unknown {
 	if (

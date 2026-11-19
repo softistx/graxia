@@ -65,6 +65,11 @@ const next = redisPubSub({ url: process.env.REDIS_URL }); // a new adapter, a ne
 `redisCache({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): the prefix names the cache, and `@softistx/redis`
 builds keys as `<name>:<key>`. Give it a name, `app` or `app:`, or leave it out for `graxia:cache:`.
 
+## @graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"
+
+`redisFieldLimit({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): every key would start with a bare `:`, and
+limits of unrelated features could collide. Give it a name, `app` or `app:`, or leave it out for `graxia:limit:`.
+
 ## redisFieldLimit: limit must be an integer of 1 or more
 
 Also `windowMs` and `burst` (a `GraxiaConfigError`, thrown when the limit is created). They are whole numbers of 1 or

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readdirSync } from 'node:fs';
 import { bundledAssets } from './assets';
 import { browser, host } from './fixtures.test-util';
-import { createGraphiQL } from './index';
+import { createGraphiQL } from './graphiql';
 import { createApolloSandbox } from './sandbox';
 
 const dir = new URL('../dist/assets/', import.meta.url);

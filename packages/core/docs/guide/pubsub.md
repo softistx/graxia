@@ -139,7 +139,7 @@ The same shape, not the same package. The real differences from Yoga:
 
 The memory PubSub only reaches subscribers in the same process. For several instances, swap it
 for `redisPubSub` from [`@graxia/redis`](https://www.npmjs.com/package/@graxia/redis): it implements the same `PubSub`
-interface on Bun's Redis client (a topic with an id is the channel `topic:id`), so resolvers do not change.
+interface on `@softistx/redis` (a topic with an id is the channel `topic:id`), so resolvers do not change.
 
 ```ts
 import { redisPubSub } from '@graxia/redis';

@@ -127,6 +127,26 @@ describe('formats and options', () => {
 		expect(body).toContain('multipart/mixed');
 	});
 
+	test('JSON listed before multipart/mixed (GraphiQL, Apollo) still streams @defer', async () => {
+		const response = await make().fetch(
+			post(DEFER, 'application/json, multipart/mixed'),
+		);
+		expect(response.headers.get('content-type')).toBe(
+			'multipart/mixed; boundary="-"',
+		);
+		const payloads = await parts(response);
+		expect(payloads).toHaveLength(2);
+		expect(payloads[1]).toMatchObject({ hasNext: false });
+	});
+
+	test('a query that is not incremental keeps JSON under that Accept', async () => {
+		const response = await make().fetch(
+			post('{ hello }', 'application/json, multipart/mixed'),
+		);
+		expect(response.headers.get('content-type')).toContain('application/json');
+		expect(await response.json()).toEqual({ data: { hello: 'world' } });
+	});
+
 	test('incremental: false keeps the refusal, even over multipart', async () => {
 		const response = await make({ incremental: false }).fetch(
 			post(DEFER, 'text/event-stream'),

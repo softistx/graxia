@@ -97,7 +97,12 @@ export function redisFieldLimit(
 			'redisFieldLimit: timeoutMs must be an integer of 1 or more',
 		);
 	const link = resolveLink(options);
-	const prefix = (options.prefix ?? 'graxia:limit:').replace(/:?$/, ':');
+	const name = (options.prefix ?? 'graxia:limit:').replace(/:$/, '');
+	if (name.length === 0)
+		throw new GraxiaConfigError(
+			'@graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"',
+		);
+	const prefix = `${name}:`;
 	return {
 		async consume(key, cost) {
 			if (!Number.isFinite(cost) || cost > burst)

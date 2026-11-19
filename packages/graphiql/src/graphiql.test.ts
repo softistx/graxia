@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { definePlugin } from '@graxia/core';
 import { browser, fakeAssets, host } from './fixtures.test-util';
-import { createGraphiQL } from './index';
+import { createGraphiQL } from './graphiql';
 
 const on = (options = {}) =>
 	host(createGraphiQL({ enabled: true, ...options }, fakeAssets));

@@ -25,7 +25,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
 publish 0.1.0, released with core 0.2.0); the other packages stay `"private": true` until their own slice, and removing it is
-a deliberate commit of its own.
+a deliberate change, named in its PR.
 
 ## Scripts
 
@@ -41,6 +41,13 @@ a deliberate commit of its own.
 - Siblings depend on each other by `workspace:^`, never `workspace:*`.
 - No private application names anywhere in code, docs or issues (`@alxia/graphql` is public).
 - Every package has a README, `docs/`, and a changeset per change.
+
+## Deliberate duplication
+
+- `packages/redis/src/channel.ts` copies core's `channelOf` and `splitPublishArgs` instead of importing them:
+  core keeps them internal (not in its public surface), and the `topic:id` channel is a wire format that two
+  processes on different versions must agree on, so Redis owns it. `channel.test.ts` pins both copies to the
+  same output; change one, change the other.
 
 ## Divergences from nxgt-data
 

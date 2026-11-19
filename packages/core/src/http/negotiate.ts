@@ -111,3 +111,18 @@ export function prefersEventStream(accept: string | null): boolean {
 export function prefersMultipart(accept: string | null): boolean {
 	return prefers(accept, 'multipart/mixed');
 }
+
+/**
+ * Whether an `Accept` header names `multipart/mixed` with a q above 0, wherever
+ * it ranks against JSON (never through a wildcard). Clients such as GraphiQL
+ * and Apollo list JSON first as a fallback; an incremental operation (`@defer`,
+ * `@stream`) streams for them, while any other operation keeps
+ * {@link negotiate}'s answer.
+ */
+export function acceptsMultipart(accept: string | null): boolean {
+	if (accept === null) return false;
+	return accept
+		.split(',')
+		.map(parseRange)
+		.some((r) => r !== undefined && r.type === 'multipart/mixed' && r.q > 0);
+}

@@ -76,6 +76,14 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 `Content-Encoding: gzip` and `Vary: Accept-Encoding` when the client accepts it. The bundle is two files: the script is 1.37 MB raw (446 KB gzip) and the stylesheet 413 KB raw
 (273 KB gzip).
 
+## `@defer` and `@stream`
+
+GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
+payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
+`INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
+[incremental delivery](../../../core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
+`createGraxia` turns it off.
+
 ## Subscriptions
 
 The plugin reads the instance's `subscriptions.ws` and `subscriptions.sse` in `setup` (core's

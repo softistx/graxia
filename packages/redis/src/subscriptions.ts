@@ -104,13 +104,21 @@ export function createTopicSubscriptions(
 			closed = true;
 			refs.clear();
 			// Bounded: a SUBSCRIBE stuck while the connection is down must not hang dispose.
-			const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
-			await Promise.race([queue, wait(CLOSE_WAIT_MS)]);
-			const raw = await Promise.race([
-				subscriber?.catch(() => undefined),
-				wait(CLOSE_WAIT_MS),
-			]);
-			await (raw as RawSubscriber | undefined)?.close();
+			const timers: ReturnType<typeof setTimeout>[] = [];
+			const wait = <T>(value: T) =>
+				new Promise<T>((done) => {
+					timers.push(setTimeout(done, CLOSE_WAIT_MS, value));
+				});
+			try {
+				await Promise.race([queue, wait(undefined)]);
+				const raw = await Promise.race([
+					subscriber?.catch(() => undefined),
+					wait<RawSubscriber | undefined>(undefined),
+				]);
+				await raw?.close();
+			} finally {
+				for (const timer of timers) clearTimeout(timer);
+			}
 		},
 	};
 }

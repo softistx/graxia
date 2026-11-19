@@ -13,7 +13,7 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
   closes it. `redisPubSub` also opens one extra connection for subscriptions (`createRawSubscriber` duplicates
   the client), because a subscribed connection cannot run other commands; that one it closes.
 
-`@softistx/redis` is a peer dependency (range `>=0.22.0 <1`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
+`@softistx/redis` is a peer dependency (range `^0.23.0`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
 
 ## PubSub
 
@@ -40,6 +40,8 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 });
 const graxia = createGraxia({ schema });
 ```
+
+The pub/sub `prefix` is used as given (default `graxia:`): pass `'app:'`, not `'app'`, which would name the channel `apptick`.
 
 Any process using the same Redis and `prefix` can call `pubsub.publish('tick', 1)`; every
 subscription on every instance receives it.
@@ -107,7 +109,7 @@ cost `n` spends `n` units at once; a cost over `burst` is refused immediately wi
 `graxia:limit:<key>` by default; `app` and `app:` both give `app:<key>`. `await limit.dispose()` lets go of the shared client it opened (it closes with its last holder); the
 limit then rejects with `used after dispose()`.
 
-Options: `limit`, `windowMs`, `burst` (default `limit`), `prefix` (default `graxia:limit:`), `timeoutMs` (default 1000,
+Options: `limit`, `windowMs`, `burst` (default `limit`), `prefix` (default `graxia:limit:`, never empty), `timeoutMs` (default 1000,
 how long one check waits for Redis, connecting included), `onError`, `url` / `client`. `limit`, `windowMs`, `burst` and `timeoutMs` are
 integers of 1 or more; `burst × windowMs` must be at most 9 007 199 254 740 and an empty bucket must refill in under ten
 years (`burst × windowMs ÷ limit`), else a `GraxiaConfigError`.
@@ -137,7 +139,7 @@ options) is not an outage and still rejects.
    iterator when the operation stops), and the topic type ``{ [k: `post:${string}`]: Post }`` becomes
    `{ post: [id: string, payload: Post] }`; this follows core's Yoga-shaped PubSub. Channel names on Redis are unchanged,
    so old and new processes still talk during a rolling deploy.
-2. **Peer.** Install `@softistx/redis` (range `>=0.22.0 <1`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
+2. **Peer.** Install `@softistx/redis` (range `^0.23.0`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
 3. **Cache prefix.** A prefix is used with exactly one trailing `:`. A prefix that does not end in `:` writes new keys
    (`app:<key>` instead of `app<key>`); entries written by 0.1 are no longer read and expire or can be deleted. A prefix
    that already ends in `:` (the default `graxia:cache:`) keeps its keys. A prefix with no character before its `:`
