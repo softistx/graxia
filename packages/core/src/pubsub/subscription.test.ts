@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { parse, subscribe } from 'graphql';
 import { createSchema } from '../schema/create-schema';
-import { filter, pipe } from './iterables';
+import { filter } from './iterables';
 import { createPubSub } from './memory';
+import { pipe } from './pipe';
 
 type Post = { id: string; published: boolean };
 type Topics = { post: [id: string, payload: Post] };

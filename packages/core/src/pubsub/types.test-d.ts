@@ -1,5 +1,6 @@
-import { filter, map, pipe } from './iterables';
+import { filter, map } from './iterables';
 import { createPubSub } from './memory';
+import { pipe } from './pipe';
 import type { PubSub, PubSubIterator } from './types';
 
 type Equal<A, B> =
@@ -80,9 +81,48 @@ assertType<Equal<typeof chained, PubSubIterator<string>>>();
 void posts.return();
 void posts.throw(new Error('x'));
 
-// a long chain still compiles (the 10th operator falls back to the variadic overload)
-const id = <T>(v: T) => v;
-const long = pipe(ticks, id, id, id, id, id, id, id, id, id, id);
-void long;
+// a 19-operator chain is typed end to end
+const inc = (n: number) => n + 1;
+const long = pipe(
+	1,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+	inc,
+);
+assertType<Equal<typeof long, number>>();
+
+// a mistyped operator in a short chain is an error at the call (no variadic
+// fallback swallows it); TypeScript reports it on the argument it infers last
+pipe(
+	// @ts-expect-error a number source cannot feed a string mapper
+	ticks,
+	map((s: string) => s.length),
+);
+
+// an undefined payload is delivered as null
+type OptTopics = { maybe: [payload: number | undefined] };
+declare const optional: PubSub<OptTopics>;
+assertType<
+	Equal<
+		ReturnType<typeof optional.subscribe<'maybe'>>,
+		PubSubIterator<number | null>
+	>
+>();
 // @ts-expect-error the id is a string
 memory.subscriberCount('post', 42);

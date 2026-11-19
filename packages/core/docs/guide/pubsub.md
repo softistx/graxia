@@ -77,7 +77,7 @@ and whatever the resolver does with the iterator: an `async function*` that rela
 next publish. An already aborted signal gives a finished iterator and registers nothing. The
 engine also returns the iterator your resolver gave; `return()`, `throw()` and a `break` in
 `for await` remove the subscriber too. Events still buffered are discarded, so a later `next()`
-returns `{ done: true }`. Outside an operation (a unit test), end it with `return()`.
+returns `{ done: true }`. With `asyncContext: false`, `subscribe()` cannot see the signal: return the iterator directly or through `pipe`, since an `async function*` relay keeps its subscriber until the next event. Outside an operation (a unit test), end it with `return()`.
 
 `pubsub.subscriberCount(topic, id?)` (memory implementation only) reports open subscriptions,
 which is handy in tests.

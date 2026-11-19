@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { filter, map, pipe } from './iterables';
+import { filter, map } from './iterables';
 import { createPubSub } from './memory';
+import { pipe } from './pipe';
 
 async function* numbers(...values: number[]) {
 	yield* values;

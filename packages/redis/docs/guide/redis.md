@@ -87,7 +87,7 @@ Typed topics are Yoga's: `[payload]` or `[id, payload]`. A topic with an id is t
 `<prefix>topic:id` (`publish('post', '42', p)` goes to `graxia:post:42`), with one `SUBSCRIBE` per
 channel. **Migrating from 0.1:** `subscribe('post:42', { signal })` becomes `subscribe('post', '42')`
 (no signal: the engine returns the iterator when the operation stops), and the topic type
-`{ [k: `post:${string}`]: Post }` becomes `{ post: [id: string, payload: Post] }`. Channel names on
+``{ [k: `post:${string}`]: Post }`` becomes `{ post: [id: string, payload: Post] }`. Channel names on
 Redis are unchanged, so old and new processes still talk during a rolling deploy.
 
 ## Cache

@@ -100,25 +100,20 @@ export function redisPubSub<Topics extends PubSubTopics>(
 	});
 	let disposed = false;
 
+	const ctx: SubscribeContext = {
+		local,
+		subscriptions,
+		isDisposed: () => disposed,
+	};
+
 	function subscribe<K extends keyof Topics & string>(
 		...args: PubSubSubscribeArgs<Topics, K>
 	): PubSubIterator<PubSubPayload<Topics[K]>> {
-		const signal = tryGetContext<{ signal?: AbortSignal }>()?.signal;
 		const channel = channelOf(args[0], args[1] as string | number | undefined);
-		const inner = local.subscribe(channel) as PubSubIterator<
+		const signal = tryGetContext<{ signal?: AbortSignal }>()?.signal;
+		return subscribeChannel(ctx, channel, signal) as PubSubIterator<
 			PubSubPayload<Topics[K]>
 		>;
-		if (disposed || signal?.aborted) return inner;
-		subscriptions.acquire(channel);
-		let released = false;
-		const leave = (): void => {
-			if (released) return;
-			released = true;
-			signal?.removeEventListener('abort', leave);
-			if (!disposed) subscriptions.release(channel);
-		};
-		signal?.addEventListener('abort', leave, { once: true });
-		return releasing(inner, leave);
 	}
 
 	return {
@@ -150,6 +145,38 @@ export function redisPubSub<Topics extends PubSubTopics>(
 			if (owned) closeQuietly(client);
 		},
 	};
+}
+
+/** What {@link subscribeChannel} needs from a `redisPubSub` instance. */
+type SubscribeContext = {
+	local: PubSub<ChannelTopics>;
+	subscriptions: ReturnType<typeof createTopicSubscriptions>;
+	isDisposed: () => boolean;
+};
+
+/**
+ * Subscribes locally to `channel` and takes one Redis SUBSCRIBE for it, given
+ * back when the iterator finishes, is returned, or `signal` aborts. A disposed
+ * instance or an already aborted signal gives a finished iterator and sends
+ * nothing.
+ */
+function subscribeChannel(
+	ctx: SubscribeContext,
+	channel: string,
+	signal: AbortSignal | undefined,
+): PubSubIterator<unknown> {
+	const inner = ctx.local.subscribe(channel) as PubSubIterator<unknown>;
+	if (ctx.isDisposed() || signal?.aborted) return inner;
+	ctx.subscriptions.acquire(channel);
+	let released = false;
+	const leave = (): void => {
+		if (released) return;
+		released = true;
+		signal?.removeEventListener('abort', leave);
+		if (!ctx.isDisposed()) ctx.subscriptions.release(channel);
+	};
+	signal?.addEventListener('abort', leave, { once: true });
+	return releasing(inner, leave);
 }
 
 /** Wraps `inner` so that finishing, `return()` or `throw()` calls `leave` once. */

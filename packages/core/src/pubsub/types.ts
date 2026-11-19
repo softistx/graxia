@@ -8,14 +8,19 @@ export type PubSubTopics = Record<
 	[] | [unknown] | [string | number, unknown]
 >;
 
-/** The payload type of a topic's publish arguments; a topic without payload delivers `null`, as Yoga's. */
+type MapToNull<T> = T extends undefined ? null : T;
+
+/**
+ * The payload type of a topic's publish arguments; a topic without payload
+ * delivers `null`, as Yoga's, and so does an `undefined` payload.
+ */
 export type PubSubPayload<Args extends unknown[]> = Args extends [
 	unknown,
 	infer P,
 ]
-	? P
+	? MapToNull<P>
 	: Args extends [infer P]
-		? P
+		? MapToNull<P>
 		: null;
 
 /** The arguments of `subscribe()` for one topic: `[topic]`, or `[topic, id]` when the topic has an id. */
