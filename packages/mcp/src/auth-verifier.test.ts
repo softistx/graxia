@@ -70,6 +70,13 @@ describe('what the verifier returns is checked', () => {
 		expect(challenge).toContain('error="invalid_token"');
 		expect(String(errors[0])).toContain('verifyToken must return scopes');
 	});
+	test('null (a JavaScript verifier): 401, not a 500', async () => {
+		const { status, message } = await refused(
+			await verifying(null).fetch(list()),
+		);
+		expect(status).toBe(401);
+		expect(message).toBe('Unauthorized: the access token is invalid.');
+	});
 	test.each([
 		['milliseconds', Date.now() + 3_600_000],
 		['NaN', Number.NaN],

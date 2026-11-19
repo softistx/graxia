@@ -155,7 +155,7 @@ export async function authenticate(
 		return unavailable();
 	}
 	if (verified instanceof Response) return verified;
-	if (verified === undefined)
+	if (verified === undefined || verified === null)
 		return unauthorized(
 			auth,
 			'the access token is invalid',
