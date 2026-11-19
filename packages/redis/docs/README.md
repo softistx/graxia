@@ -1,11 +1,11 @@
 # @graxia/redis documentation
 
-`@graxia/redis` puts graxia's PubSub and key-value cache on Redis, using Bun's built-in client. The
+`@graxia/redis` puts graxia's PubSub and key-value cache on Redis, on `@softistx/redis` and Bun's built-in client. The
 [npm page](../README.md) has the quick start; these pages go deeper.
 
 ## Guides
 
-- [Redis PubSub and cache](./guide/redis.md): options, connections, delivery, reconnect, testing.
+- [Redis PubSub, cache and field rate limit](./guide/redis.md): options, connections, delivery, reconnect, testing, migrating from 0.1.
 
 ## Help
 

@@ -241,7 +241,7 @@ createGraxia({
 
 `single: true` also refuses the field selected twice in one operation (`400`,
 `FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
-proxy or with `fetch()`. Use `limitFromStore` or your own `{ consume }` for Redis. See
+proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the limit across processes. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
 ## Telemetry

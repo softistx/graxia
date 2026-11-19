@@ -18,7 +18,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | package            | what it is                                                                                                 |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `@graxia/core`     | the engine (`createGraxia`, plugins, transports, limits, trusted documents, telemetry). Peer `graphql ^17` |
-| `@graxia/redis`    | `redisPubSub()` and `redisCache()` on Bun.redis                                                            |
+| `@graxia/redis`    | `redisPubSub()`, `redisCache()`, `redisFieldLimit()` on `@softistx/redis`                                  |
 | `@graxia/graphiql` | GraphiQL 4 bundled, Apollo Sandbox option                                                                  |
 | `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                            |
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
@@ -35,7 +35,7 @@ a deliberate commit of its own.
 
 ## Invariants
 
-- Bun only: `Bun.serve`, native WebSocket, `Bun.redis`. No Node or Deno adapter.
+- Bun only: `Bun.serve`, native WebSocket, Bun's Redis client (through `@softistx/redis`). No Node or Deno adapter.
 - graphql 17 only. Incremental delivery (`@defer`/`@stream`) tracks each 17.x release.
 - Imports carry no extension; consumers use `"moduleResolution": "bundler"`.
 - Siblings depend on each other by `workspace:^`, never `workspace:*`.

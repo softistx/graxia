@@ -7,11 +7,12 @@ import {
 	type PubSubTopics,
 	tryGetContext,
 } from '@graxia/core';
+import { publishRaw } from '@softistx/redis';
 import { channelOf, splitPublishArgs } from './channel';
 import {
-	closeQuietly,
 	type RedisConnection,
-	resolveClient,
+	type RedisLink,
+	resolveLink,
 } from './connection';
 import { createTopicSubscriptions } from './subscriptions';
 
@@ -68,7 +69,7 @@ export interface RedisPubSub<Topics extends PubSubTopics>
 export function redisPubSub<Topics extends PubSubTopics>(
 	options: RedisPubSubOptions = {},
 ): RedisPubSub<Topics> {
-	const { client, owned } = resolveClient(options);
+	const link = resolveLink(options);
 	const prefix = options.prefix ?? 'graxia:';
 	const serialize = options.serialize ?? JSON.stringify;
 	const deserialize = options.deserialize ?? JSON.parse;
@@ -84,7 +85,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 		...(options.onOverflow && { onOverflow: options.onOverflow }),
 	});
 	const subscriptions = createTopicSubscriptions({
-		client,
+		client: link.client,
 		prefix,
 		report,
 		onMessage(topic, message) {
@@ -103,6 +104,10 @@ export function redisPubSub<Topics extends PubSubTopics>(
 	const ctx: SubscribeContext = {
 		local,
 		subscriptions,
+		link,
+		prefix,
+		serialize,
+		report,
 		isDisposed: () => disposed,
 	};
 
@@ -120,16 +125,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 		async publish(topic, ...args) {
 			if (disposed) return;
 			const { id, payload } = splitPublishArgs(args);
-			try {
-				await subscriptions.ready();
-				await client.publish(
-					prefix + channelOf(topic, id),
-					serialize(payload ?? null),
-				);
-			} catch (error) {
-				// never rejects, so an un-awaited publish (as in Yoga) is safe
-				report(error);
-			}
+			await publishTo(ctx, channelOf(topic, id), payload);
 		},
 		subscribe,
 		ready: () => subscriptions.ready(),
@@ -142,7 +138,7 @@ export function redisPubSub<Topics extends PubSubTopics>(
 			disposed = true;
 			await local.dispose();
 			await subscriptions.close();
-			if (owned) closeQuietly(client);
+			await link.release();
 		},
 	};
 }
@@ -150,9 +146,36 @@ export function redisPubSub<Topics extends PubSubTopics>(
 /** What {@link subscribeChannel} needs from a `redisPubSub` instance. */
 type SubscribeContext = {
 	local: PubSub<ChannelTopics>;
+	link: RedisLink;
+	prefix: string;
+	serialize: (payload: unknown) => string;
+	report: (error: unknown) => void;
 	subscriptions: ReturnType<typeof createTopicSubscriptions>;
 	isDisposed: () => boolean;
 };
+
+/**
+ * Publishes `payload` on `channel` once this instance's own subscriptions are
+ * acknowledged. Never rejects: a failure goes to `report`, so an un-awaited
+ * publish (as in Yoga) is safe.
+ */
+async function publishTo(
+	ctx: SubscribeContext,
+	channel: string,
+	payload: unknown,
+): Promise<void> {
+	try {
+		await ctx.subscriptions.ready();
+		await publishRaw(
+			await ctx.link.client(),
+			ctx.prefix + channel,
+			ctx.serialize(payload ?? null),
+		);
+	} catch (error) {
+		if (ctx.isDisposed()) return;
+		ctx.report(error);
+	}
+}
 
 /**
  * Subscribes locally to `channel` and takes one Redis SUBSCRIBE for it, given
