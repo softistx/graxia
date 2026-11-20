@@ -190,7 +190,7 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
   `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`. Cost follows `@cost` / `@listSize`, which
   `createSchema` adds to your SDL (`costDirectives` does for a schema you build yourself);
   `computeOperationCost` returns an operation's cost for plugins and tests.
-- Batching is off unless you set `batching: { limit }`.
+- Batching is off unless you set `batching: true` (10 operations at most) or `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
   path; turn either off with `false`.
@@ -934,6 +934,10 @@ An aborted operation answers `{"errors":[{"message":"The operation was aborted."
 with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
+The same holds for `graxia.execute({ signal })`: an aborted signal, before the call or while a
+resolver runs, resolves to that error result (no rejection, no `data`), and `context.signal` aborts
+([Testing](./testing.md#aborting-with-signal)).
+
 ## `getContext()` for code far below a resolver
 
 The resolver's third argument is the way to reach the context. When a helper or a logger is called
@@ -1254,7 +1258,7 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 | `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                  |
 | `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md) |
 | `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                      |
-| `batching`         | `false`                                           | `false`, or `{ limit: n }`                                                                                                                                                   |
+| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                               |
 | `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                          |
 | `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                              |
 | `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                  |
@@ -1266,7 +1270,7 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
 hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
-`batching.limit` not a positive integer, a `path` not starting with `/`) throw a `GraxiaConfigError`
+`batching` not `true`, `false` or `{ limit: <positive integer> }`, a `path` not starting with `/`) throw a `GraxiaConfigError`
 naming the option when `createGraxia` is called.
 
 ## `serve` or your own `Bun.serve`
@@ -1380,7 +1384,7 @@ Path and method refusals (404, 405) happen before any plugin runs. Every other r
 
 ## Batching
 
-Off by default: a JSON array body answers 400. With `batching: { limit: 10 }` an array runs its
+Off by default: a JSON array body answers 400. With `batching: true` (up to 10 entries, Yoga's default) or `batching: { limit: 25 }` an array runs its
 entries **one after the other, in order** (a later entry may rely on an earlier mutation, and one
 request cannot multiply its own concurrency) and answers 200 with an array of results. More than
 `limit` entries, an empty array or a malformed entry answers 400. A hook that throws, or an
@@ -1852,7 +1856,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
 | `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
-| Yoga `batching`                        | `batching: true \| { limit }`                                                                                                                            |
+| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                             |
 | `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
 | `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
 | `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |
@@ -1954,6 +1958,13 @@ process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
 `dispose()` stops only the servers `graxia.serve()` started; a host that owns `Bun.serve` stops it
 itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
 503 first.
+
+## Aborting an in-process execute
+
+Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` resolves instead, to
+`{ errors: [{ extensions: { code: 'OPERATION_ABORTED' } }] }`, like the HTTP answer. A test that
+expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
+([Testing](./testing.md#aborting-with-signal)).
 
 ## graphql 17
 
@@ -3478,6 +3489,24 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 refusal (`PERSISTED_QUERY_ONLY`): a document you pass in process is yours. The operation limits
 still apply. To test the refusal itself, go through `fetch` or the test client.
 
+### Aborting with `signal`
+
+An aborted `signal` never makes `execute` reject: it resolves to a result with one error,
+`extensions.code` `OPERATION_ABORTED` (the same answer HTTP gives, status 499), and no `data`. This
+holds when the signal is already aborted before the call (no resolver runs) and when it aborts while
+a resolver runs. The resolver's `context.signal` aborts too, and `execute` does not wait for a
+resolver that ignores it. `onUnexpected` is not called.
+
+```ts
+const result = await graxia.execute({
+	document: '{ report }',
+	signal: AbortSignal.timeout(1_000),
+});
+if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
+	// timed out or cancelled
+}
+```
+
 ### What it does not do
 
 - Subscriptions (served over SSE by `fetch`, not by `execute`) and `@defer` / `@stream` return their usual refusal error in the result
@@ -3566,7 +3595,7 @@ await client.query(null, { documentId: 'a3f1…', method: 'GET' });
 
 ### Batching
 
-With `batching: { limit }` on the instance, `client.batch` sends a JSON array and returns
+With `batching` on the instance (`true` or `{ limit }`), `client.batch` sends a JSON array and returns
 `{ status, headers, body, results, response }`, one `{ data, errors, extensions }` per entry:
 
 ```ts
@@ -4339,9 +4368,13 @@ The document parsed but does not validate against the schema. Every such error c
 
 `limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
 
-## batching.limit must be a positive integer
+## batching must be true, false or { limit: <positive integer> }
 
-`batching: { limit }` needs an integer of at least 1.
+`batching` takes `true` (up to 10 operations per batch), `false` (off, the default) or `{ limit }` with an integer of at least 1. Anything else, such as `0`, `1.5`, `'yes'` or `{ limit: 0 }`, throws when `createGraxia` is called.
+
+```ts
+createGraxia({ schema, batching: true }); // or { limit: 25 }
+```
 
 # @graxia/core — Troubleshooting: plugins and context
 

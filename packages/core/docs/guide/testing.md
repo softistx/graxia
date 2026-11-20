@@ -88,6 +88,24 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 refusal (`PERSISTED_QUERY_ONLY`): a document you pass in process is yours. The operation limits
 still apply. To test the refusal itself, go through `fetch` or the test client.
 
+### Aborting with `signal`
+
+An aborted `signal` never makes `execute` reject: it resolves to a result with one error,
+`extensions.code` `OPERATION_ABORTED` (the same answer HTTP gives, status 499), and no `data`. This
+holds when the signal is already aborted before the call (no resolver runs) and when it aborts while
+a resolver runs. The resolver's `context.signal` aborts too, and `execute` does not wait for a
+resolver that ignores it. `onUnexpected` is not called.
+
+```ts
+const result = await graxia.execute({
+	document: '{ report }',
+	signal: AbortSignal.timeout(1_000),
+});
+if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
+	// timed out or cancelled
+}
+```
+
 ### What it does not do
 
 - Subscriptions (served over SSE by `fetch`, not by `execute`) and `@defer` / `@stream` return their usual refusal error in the result
@@ -176,7 +194,7 @@ await client.query(null, { documentId: 'a3f1…', method: 'GET' });
 
 ### Batching
 
-With `batching: { limit }` on the instance, `client.batch` sends a JSON array and returns
+With `batching` on the instance (`true` or `{ limit }`), `client.batch` sends a JSON array and returns
 `{ status, headers, body, results, response }`, one `{ data, errors, extensions }` per entry:
 
 ```ts

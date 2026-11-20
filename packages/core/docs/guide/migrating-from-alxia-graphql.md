@@ -62,7 +62,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
 | `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
-| Yoga `batching`                        | `batching: true \| { limit }`                                                                                                                            |
+| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                             |
 | `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
 | `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
 | `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |
@@ -164,6 +164,13 @@ process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
 `dispose()` stops only the servers `graxia.serve()` started; a host that owns `Bun.serve` stops it
 itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
 503 first.
+
+## Aborting an in-process execute
+
+Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` resolves instead, to
+`{ errors: [{ extensions: { code: 'OPERATION_ABORTED' } }] }`, like the HTTP answer. A test that
+expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
+([Testing](./testing.md#aborting-with-signal)).
 
 ## graphql 17
 

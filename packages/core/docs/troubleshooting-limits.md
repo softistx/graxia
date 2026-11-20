@@ -117,6 +117,10 @@ The document parsed but does not validate against the schema. Every such error c
 
 `limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
 
-## batching.limit must be a positive integer
+## batching must be true, false or { limit: <positive integer> }
 
-`batching: { limit }` needs an integer of at least 1.
+`batching` takes `true` (up to 10 operations per batch), `false` (off, the default) or `{ limit }` with an integer of at least 1. Anything else, such as `0`, `1.5`, `'yes'` or `{ limit: 0 }`, throws when `createGraxia` is called.
+
+```ts
+createGraxia({ schema, batching: true }); // or { limit: 25 }
+```
