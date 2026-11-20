@@ -2,6 +2,7 @@ import type { GraphQLSchema, OperationDefinitionNode } from 'graphql';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
 import type { Outcome } from '../server/outcome';
+import { hostSpan } from './host-span';
 import { settleOutcome } from './operation';
 import { bindResolvers } from './resolvers';
 import {
@@ -32,9 +33,9 @@ export async function traceOperation(
 	run: () => Promise<Outcome>,
 ): Promise<Outcome> {
 	if (state.get(quietKey)) return run();
-	const live = start(env, SPAN.operation, parentOf(state), {
-		kind: 'internal',
-	});
+	const live = env.operationSpans
+		? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
+		: hostSpan(env);
 	const op: Operation = { live, errors: 0, events: 0, ended: false };
 	state.set(operationKey, op);
 	const inContext = <T>(work: () => T) => live.run(work);
@@ -62,6 +63,10 @@ export function describeOperation(
 	const op = state.get(operationKey);
 	if (!op) return;
 	const { operation, source, params } = info;
+	if (!env.operationSpans) {
+		if (env.document) op.document = source;
+		return;
+	}
 	const name = operation.name?.value;
 	const span = op.live;
 	span.name = name ? `${operation.operation} ${name}` : operation.operation;
@@ -88,6 +93,8 @@ export async function traceStep<R extends StepLike>(
 	);
 	try {
 		const result = await run();
+		const document = state.get(operationKey)?.document;
+		if (document !== undefined) live.attribute(ATTR.document, document);
 		if (result.cacheHit !== undefined)
 			live.attribute(ATTR.cacheHit, result.cacheHit);
 		if (result.errors?.length)

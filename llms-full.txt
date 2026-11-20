@@ -3473,9 +3473,33 @@ field. Sharing the
 schema with another graxia instance, or with `telemetry: false`, is safe: a wrapped resolver
 traces only the operations of an instance that asked for it, and otherwise calls your resolver.
 
+## The host already spans the operation
+
+When your host (an instrumented server, a GraphQL layer such as `@alxia/graphql`) already makes a
+span for the request and one for the operation, graxia's `graphql.request` and operation spans
+are duplicates. Drop them and keep the rest:
+
+```ts
+createGraxia({ schema, telemetry: { operationSpans: false } });
+```
+
+With `operationSpans: false`, over HTTP and WebSocket alike:
+
+- there is no `graphql.request` span and no operation span;
+- `graphql.parse`, `graphql.validate` and, with `resolverSpans`, `graphql.resolve x` are still made,
+  children of the host's active span (a WebSocket message has none unless your handler opens one);
+- `document: true` puts `graphql.document` on the validate span;
+- the original exception behind each masked error is a failed `graphql.error` span, a child of the
+  host's active span, so it is not lost;
+- the operation attributes (`graphql.operation.*`, `graphql.error.count`, `graxia.events`) and the
+  request's (`http.*`, `graxia.refusal.code`) are not recorded, and `propagate` has no effect: the
+  host owns the trace.
+
+This replaces `telemetry: false` for such a host, which also loses every step span.
+
 ## Active span
 
-Execution runs inside the operation span, so `currentSpan()` from `@softistx/telemetry` in a
+Execution runs inside the operation span (the host's active span with `operationSpans: false`), so `currentSpan()` from `@softistx/telemetry` in a
 resolver is the operation span (or its resolver span with `resolverSpans`), and a `span()` you start
 there nests under it, and logs written there carry its `traceId`.
 
@@ -3497,18 +3521,20 @@ package installed does the same.
 telemetry?: false | {
 	instance?: TelemetryInstance; // a Telemetry from createTelemetry (@softistx/telemetry)
 	resolverSpans?: boolean | { trivial?: boolean };
+	operationSpans?: boolean;
 	document?: boolean;
 	propagate?: boolean;
 };
 ```
 
-| option          | default                                        | meaning                                                                  |
-| --------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| `telemetry`     | on when `@softistx/telemetry` is installed     | `false` turns every span off                                             |
-| `instance`      | the telemetry in scope, else the installed one | the `Telemetry` the spans are emitted to                                 |
-| `resolverSpans` | `false`                                        | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
-| `document`      | `false`                                        | the document source on `graphql.document` (may hold literals)            |
-| `propagate`     | `true`                                         | read the `traceparent` header of a request with no active span           |
+| option           | default                                        | meaning                                                                  |
+| ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `telemetry`      | on when `@softistx/telemetry` is installed     | `false` turns every span off                                             |
+| `instance`       | the telemetry in scope, else the installed one | the `Telemetry` the spans are emitted to                                 |
+| `resolverSpans`  | `false`                                        | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
+| `operationSpans` | `true`                                         | `false`: no request or operation span, for a host that makes its own     |
+| `document`       | `false`                                        | the document source on `graphql.document` (may hold literals)            |
+| `propagate`      | `true`                                         | read the `traceparent` header of a request with no active span           |
 
 ## Migrating from `@opentelemetry/api`
 

@@ -13,6 +13,7 @@ export const SPAN = {
 	parse: 'graphql.parse',
 	validate: 'graphql.validate',
 	resolve: 'graphql.resolve',
+	error: 'graphql.error',
 } as const;
 
 /** The attribute and event names of the spans. */
@@ -42,6 +43,7 @@ export const EVENT_NAME = 'graphql.event';
 export interface Env {
 	api: TelemetryApi;
 	instance: TelemetryInstance | undefined;
+	operationSpans: boolean;
 	document: boolean;
 	propagate: boolean;
 }
@@ -70,6 +72,8 @@ export interface Operation {
 	errors: number;
 	events: number;
 	ended: boolean;
+	/** The document source, held for the validate span when there is no operation span. */
+	document?: string;
 }
 
 /** Starts a span under `parent` (else under the active one, else a new trace). */

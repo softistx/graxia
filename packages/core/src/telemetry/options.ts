@@ -14,7 +14,15 @@ export interface TelemetryOptions {
 	 * resolver (graphql's default one). Resolvers are wrapped once, in place, on the schema.
 	 */
 	resolverSpans?: boolean | { trivial?: boolean };
-	/** Puts the document source in `graphql.document` on the operation span. `false` by default: it may hold literals. */
+	/**
+	 * `graxia.request` and operation spans. `true` by default. `false` for a host that already spans
+	 * the request and the operation: graxia drops both and keeps its parse, validate and resolver
+	 * spans, parented under the host's active span (HTTP and WebSocket alike). The document
+	 * attribute then goes on the validate span, and the cause of each masked error becomes a failed
+	 * `graphql.error` span.
+	 */
+	operationSpans?: boolean;
+	/** Puts the document source in `graphql.document` on the operation span (on the validate span when `operationSpans` is `false`). `false` by default: it may hold literals. */
 	document?: boolean;
 	/** Reads W3C trace context (`traceparent`) from the request headers when no span is active. `true` by default. */
 	propagate?: boolean;
@@ -24,6 +32,7 @@ export interface TelemetryOptions {
 export interface ResolvedTelemetry {
 	instance: TelemetryInstance | undefined;
 	resolvers: false | { trivial: boolean };
+	operationSpans: boolean;
 	document: boolean;
 	propagate: boolean;
 }
@@ -42,7 +51,8 @@ export function resolveTelemetry(
 		throw bad(
 			'telemetry.tracer was replaced by telemetry.instance (a Telemetry from createTelemetry in @softistx/telemetry); see the telemetry migration guide',
 		);
-	const { instance, resolverSpans, document, propagate } = option;
+	const { instance, resolverSpans, operationSpans, document, propagate } =
+		option;
 	if (
 		instance !== undefined &&
 		(typeof instance !== 'object' ||
@@ -51,6 +61,7 @@ export function resolveTelemetry(
 	)
 		throw bad('telemetry.instance must be a @softistx/telemetry Telemetry');
 	for (const [name, value] of [
+		['operationSpans', operationSpans],
 		['document', document],
 		['propagate', propagate],
 	] as const)
@@ -76,6 +87,7 @@ export function resolveTelemetry(
 			resolverSpans === undefined || resolverSpans === false
 				? false
 				: { trivial: trivial === true },
+		operationSpans: operationSpans !== false,
 		document: document === true,
 		propagate: propagate !== false,
 	};

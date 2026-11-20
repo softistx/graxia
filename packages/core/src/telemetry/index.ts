@@ -88,6 +88,7 @@ export function createTelemetry(
 	const env: Env = {
 		api,
 		instance: resolved.instance,
+		operationSpans: resolved.operationSpans,
 		document: resolved.document,
 		propagate: resolved.propagate,
 	};

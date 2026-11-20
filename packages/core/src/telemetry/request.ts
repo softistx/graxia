@@ -74,6 +74,7 @@ export async function traceRequest<R extends Response | undefined>(
 	run: () => Promise<R>,
 	upgrade: boolean,
 ): Promise<R> {
+	if (!env.operationSpans) return run();
 	// A span already active (a host's) is the parent; otherwise a `traceparent` header is.
 	const nested = !env.propagate || env.api.currentSpan() !== undefined;
 	const id = state.get(requestIdKey);
