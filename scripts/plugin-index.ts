@@ -11,7 +11,8 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import ts from 'typescript';
+// TypeScript 7 ships no stable compiler API yet; drop this alias once it does (#119).
+import ts from 'typescript-6';
 import {
 	byCodePoint,
 	type Manifest,

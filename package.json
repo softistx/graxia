@@ -29,10 +29,11 @@
 		"@changesets/cli": "^3.0.1",
 		"@types/bun": "^1.4.5",
 		"graphql-sse": "^2.6.4",
-		"typescript": "~6.0.3"
+		"typescript-6": "npm:typescript@~6.0.3",
+		"typescript": "~7.0.2"
 	},
 	"overrides": {
-		"typescript": "~6.0.3"
+		"typescript": "~7.0.2"
 	},
 	"packageManager": "bun@1.4.5"
 }
