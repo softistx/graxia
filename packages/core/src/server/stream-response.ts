@@ -147,8 +147,6 @@ export function streamResponse(
 		/** The status and headers the errors of an already prepared payload ask for. */
 		status?: number;
 		headers?: Record<string, string>;
-		/** Headers a plugin refusal asks for, under the errors'. */
-		refusalHeaders?: Record<string, string>;
 	},
 ): Response {
 	const { request } = call;
@@ -173,8 +171,6 @@ export function streamResponse(
 			headers: format.headers(),
 		}),
 	);
-	for (const [name, value] of Object.entries(answer?.refusalHeaders ?? {}))
-		response.headers.set(name, value);
 	return answer?.headers
 		? bindErrorHeaders(response, answer.headers)
 		: response;

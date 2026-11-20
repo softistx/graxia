@@ -243,7 +243,7 @@ throw new GraphQLError('Email taken.', {
 - Precedence of the status: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
 - `http` is removed from the serialized extensions of every transport. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
 - Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on WebSocket and `multipart/mixed`, which only get `http` stripped, and on an SSE query or a subscription failing after its first event, which stay streams. A batch is always 200 here as in Yoga; its entries only lose `http`.
-- A subscription that fails before its source stream opens (its `subscribe` throws a `GraphQLError` with `extensions.http`) keeps its event stream and, as in Yoga, the response carries the status and headers of `extensions.http` (`spec: true` does not drop the status over SSE), so a 400 or 403 promised before the stream still holds. Without `extensions.http` it is a 200 stream.
+- A subscription that fails before its source stream opens (its `subscribe` throws a `GraphQLError` with `extensions.http`) keeps its event stream and, as in Yoga, the response carries the status and headers of `extensions.http` (`spec: true` drops the status over SSE, its headers still apply), so a 400 or 403 promised before the stream still holds. Without `extensions.http` it is a 200 stream.
 - Turn it off with `createGraxia({ errorHttp: false })`.
 
 ## graphql 17

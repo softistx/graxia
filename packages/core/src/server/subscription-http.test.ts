@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { GraphQLError } from 'graphql';
 import { definePlugin } from '../plugins/define';
+import { fieldRateLimit } from '../rate-limit/plugin';
+import { memoryFieldLimit } from '../rate-limit/store';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
 
@@ -32,7 +34,9 @@ const schema = createSchema()({
 			spec: {
 				subscribe: () => {
 					throw new GraphQLError('Spec.', {
-						extensions: { http: { status: 400, spec: true } },
+						extensions: {
+							http: { status: 400, spec: true, headers: { 'x-spec': '1' } },
+						},
 					});
 				},
 				resolve: (n: number) => n,
@@ -108,10 +112,52 @@ describe('a subscription refused before its stream opens', () => {
 		expect(await bodyOf(res)).toContain('Refused.');
 	});
 
-	test('spec: true does not drop the status over SSE, as in Yoga', async () => {
+	test('spec: true drops the status over SSE, as in Yoga, its headers still apply', async () => {
 		const res = await send(app, 'subscription { spec }');
-		expect(res.status).toBe(400);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('x-spec')).toBe('1');
 		await bodyOf(res);
+	});
+
+	test('a rate-limited SSE subscription stays a 200 stream with no retry-after', async () => {
+		const limited = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [
+				fieldRateLimit({
+					fields: {
+						ok: memoryFieldLimit({ limit: 1, windowMs: 60_000 }),
+					},
+					key: () => 'k',
+				}),
+			],
+		});
+		await (await send(limited, 'subscription { ok }')).text();
+		const res = await send(limited, 'subscription { ok }');
+		expect(res.status).toBe(200);
+		expect(res.headers.get('retry-after')).toBeNull();
+		expect(res.headers.get('content-type')).toContain('text/event-stream');
+		expect(await res.text()).toContain('RATE_LIMITED');
+	});
+
+	test('a throwing onResultChunk gives a 200 stream with Unexpected error., reported once', async () => {
+		const seen: unknown[] = [];
+		const throwing = createGraxia({
+			schema,
+			onUnexpected: (error) => seen.push(error),
+			plugins: [
+				definePlugin({
+					name: 'boom',
+					onResultChunk() {
+						throw new Error('hook failed');
+					},
+				}),
+			],
+		});
+		const res = await send(throwing, 'subscription { bad }');
+		expect(res.status).toBe(200);
+		expect(await bodyOf(res)).toContain('Unexpected error.');
+		expect(seen).toHaveLength(1);
 	});
 
 	test('the status does not depend on Accept', async () => {

@@ -162,8 +162,10 @@ function encodeStreamed(
  * answers it: still an event stream (`next`, `complete`), but with the status
  * and headers the errors' `extensions.http` ask for, read from the payload
  * once the `onResultChunk` hooks and masking have run (once: the stream sends
- * it as is). `spec` never drops the status here. A plugin refusal's status
- * wins over the errors'.
+ * it as is). Like Yoga's SSE processor, which reads the errors as under
+ * `application/json`, `spec: true` drops the status (the headers still apply).
+ * A plugin's `HttpRefusal` is not applied: a refused SSE subscription stays a
+ * 200 stream, as `docs/guide/rate-limiting.md` documents.
  */
 async function streamBeforeOpen(
 	rt: Runtime,
@@ -183,13 +185,9 @@ async function streamBeforeOpen(
 	}
 	const asked =
 		typeof payload === 'object' && payload !== null && !Array.isArray(payload)
-			? readErrorHttp(
-					payload as ExecutionResult,
-					'application/graphql-response+json',
-				)
+			? readErrorHttp(payload as ExecutionResult, 'application/json')
 			: undefined;
-	const refusal = outcome.refusal;
-	const status = refusal?.status ?? asked?.status;
+	const status = asked?.status;
 	return streamResponse(
 		rt,
 		call,
@@ -198,7 +196,6 @@ async function streamBeforeOpen(
 		{
 			...(status !== undefined && status !== 200 ? { status } : {}),
 			...(asked?.headers ? { headers: asked.headers } : {}),
-			...(refusal?.headers ? { refusalHeaders: refusal.headers } : {}),
 		},
 	);
 }
