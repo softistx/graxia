@@ -76,6 +76,48 @@ export async function run(
 	return outcomes;
 }
 
+export interface Wait {
+	/** Pause between two checks of a new name. */
+	intervalMs: number;
+	/** Total time spent waiting, shared by every pair. 0 checks once. */
+	budgetMs: number;
+	sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * Wraps `latestVersion` so an absent name is checked again until it shows up or
+ * the shared budget is spent (npm lags a minute or so after a publish). The
+ * decision in `plan` is untouched, and a name that never shows up still reads
+ * as not published, hence skipped.
+ */
+export function waitForPublished(npm: Npm, wait: Wait): Npm {
+	const sleep = wait.sleep ?? ((ms: number) => Bun.sleep(ms));
+	let waited = 0;
+	return {
+		...npm,
+		async latestVersion(name) {
+			let version = await npm.latestVersion(name);
+			while (
+				version === null &&
+				wait.intervalMs > 0 &&
+				waited + wait.intervalMs <= wait.budgetMs
+			) {
+				await sleep(wait.intervalMs);
+				waited += wait.intervalMs;
+				version = await npm.latestVersion(name);
+			}
+			return version;
+		},
+	};
+}
+
+/** Budget from `DEPRECATE_WAIT_SECONDS` (default 300, 0 disables waiting). */
+export function waitFromEnv(env: Record<string, string | undefined>): Wait {
+	const raw = Number(env.DEPRECATE_WAIT_SECONDS ?? 300);
+	const seconds = Number.isFinite(raw) && raw > 0 ? raw : 0;
+	return { intervalMs: 15_000, budgetMs: seconds * 1000 };
+}
+
 const registry = (name: string) =>
 	`https://registry.npmjs.org/${name.replace('/', '%2F')}`;
 
@@ -101,7 +143,10 @@ export const realNpm: Npm = {
 
 if (import.meta.main) {
 	try {
-		await run(realNpm, process.argv.includes('--dry-run'));
+		await run(
+			waitForPublished(realNpm, waitFromEnv(process.env)),
+			process.argv.includes('--dry-run'),
+		);
 	} catch (error) {
 		console.error(`deprecate-moved failed: ${error}`);
 		process.exit(1);

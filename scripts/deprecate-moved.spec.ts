@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test';
-import { MOVED, type Npm, plan, run } from './deprecate-moved';
+import {
+	MOVED,
+	type Npm,
+	plan,
+	run,
+	waitForPublished,
+	waitFromEnv,
+} from './deprecate-moved';
 
 function fake(
 	published: Record<string, string>,
@@ -95,5 +102,56 @@ describe('deprecate-moved', () => {
 		};
 		await expect(run(npm, false, () => {})).rejects.toThrow('npm answered 500');
 		expect(npm.calls).toEqual([]);
+	});
+
+	test('waits for a new name that shows up late, then deprecates', async () => {
+		const base = fake({}, { '@graxia/core': [undefined] });
+		let checks = 0;
+		const npm: Npm = {
+			...base,
+			latestVersion: async (n) =>
+				n === '@softistx/graxia' && ++checks > 2 ? '0.15.0' : null,
+		};
+		const slept: number[] = [];
+		const waiting = waitForPublished(npm, {
+			intervalMs: 15_000,
+			budgetMs: 300_000,
+			sleep: async (ms) => {
+				slept.push(ms);
+			},
+		});
+		const out = await run(waiting, false, () => {});
+		expect(out.find((o) => o.old === '@graxia/core')?.action).toBe('deprecate');
+		expect(base.calls).toEqual(['@graxia/core moved to @softistx/graxia']);
+		expect(slept.slice(0, 2)).toEqual([15_000, 15_000]);
+	});
+
+	test('skips every pair when the new names never show up, within one shared budget', async () => {
+		const base = fake({}, { '@graxia/core': [undefined] });
+		let slept = 0;
+		const waiting = waitForPublished(base, {
+			intervalMs: 15_000,
+			budgetMs: 60_000,
+			sleep: async (ms) => {
+				slept += ms;
+			},
+		});
+		const out = await run(waiting, false, () => {});
+		expect(out.every((o) => o.action === 'skip-new-not-published')).toBe(true);
+		expect(base.calls).toEqual([]);
+		expect(slept).toBe(60_000);
+	});
+
+	test('a zero budget checks once without sleeping', async () => {
+		const wait = waitFromEnv({ DEPRECATE_WAIT_SECONDS: '0' });
+		expect(wait.budgetMs).toBe(0);
+		const npm = waitForPublished(fake({}, {}), {
+			...wait,
+			sleep: async () => {
+				throw new Error('must not sleep');
+			},
+		});
+		expect(await npm.latestVersion('@softistx/graxia')).toBeNull();
+		expect(waitFromEnv({}).budgetMs).toBe(300_000);
 	});
 });
