@@ -85,6 +85,8 @@ export type {
 export type {
 	CrossOrigin,
 	CsrfOptions,
+	OriginRefusal,
+	OriginRefusalReason,
 	SameOriginOptions,
 } from './security/options';
 export { DEFAULT_CSRF_HEADERS } from './security/options';

@@ -211,6 +211,12 @@ createGraxia({
 });
 ```
 
+`csrf.sameOrigin.onRefused(request, { reason, websocket })` answers a refused origin with your own `Response` instead of the 403 (return `undefined` to keep the 403):
+
+```ts
+csrf: { sameOrigin: { onRefused: () => new Response('Not found', { status: 404 }) } },
+```
+
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
 A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
@@ -1894,26 +1900,26 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 
 ## Options
 
-| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                           |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`                                 | `path` (the full path, or `false` for any path)                                                                                                          |
-| `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                      |
-| Yoga `context`                         | `context: ({ request, serverContext, signal }: ContextInit<Host>) => …`; the host passes `fetch(request, host)`                                          |
-| `maxTokens`, `maxNesting`              | `limits: { tokens, nesting }` ([Limits and caches](./limits-and-caches.md))                                                                              |
-| `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                      |
-| `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                  |
-| `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0` |
-| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
-| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
-| Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
-| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                             |
-| `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
-| `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
-| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |
-| `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin } }` ([Security](./security.md))                                                              |
-| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                           |
-| `cors`                                 | none, see [CORS](#cors)                                                                                                                                  |
-| `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                    |
+| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                                 | `path` (the full path, or `false` for any path)                                                                                                                                                                  |
+| `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                                                                              |
+| Yoga `context`                         | `context: ({ request, serverContext, signal }: ContextInit<Host>) => …`; the host passes `fetch(request, host)`                                                                                                  |
+| `maxTokens`, `maxNesting`              | `limits: { tokens, nesting }` ([Limits and caches](./limits-and-caches.md))                                                                                                                                      |
+| `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                                                                              |
+| `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                                                                          |
+| `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0`                                                         |
+| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                             |
+| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                                                                         |
+| Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                                                                                |
+| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                                                                                     |
+| `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                                                                                       |
+| `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                                                                                      |
+| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                                                                         |
+| `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin, onRefused } }`; alxia's `refuse` becomes `onRefused(request, { reason, websocket })` ([Security](./security.md#answering-a-refused-origin-yourself)) |
+| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                                                                                   |
+| `cors`                                 | none, see [CORS](#cors)                                                                                                                                                                                          |
+| `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                                                                            |
 
 ## A host's own body limit
 
@@ -3143,7 +3149,7 @@ definePlugin({
 browser's and passes. A request is same-origin when `Origin` equals the origin of the request URL
 (behind a proxy, graxia must see the public URL, or list that origin) or is in `allowedOrigins`.
 `Origin: null` is always refused. `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin` counts as a
-cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`.
+cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`, unless `onRefused` answers it.
 
 | `crossOrigin`      | A request from another origin                                               |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -3164,6 +3170,38 @@ createGraxia({
 ```
 
 Each entry of `allowedOrigins` is an origin: scheme, host and optional port, no path.
+
+### Answering a refused origin yourself
+
+`onRefused(request, { reason, websocket })` lets you answer a refused origin with your own
+`Response` (it may be async) in place of the 403 `FORBIDDEN_ORIGIN`. It runs for every refusal,
+never for an allowed request.
+
+- `reason` is `'cross-origin'` (an `Origin` that is not the server's own or allowed),
+  `'null-origin'` (`Origin: null`) or `'no-origin'` (there is no `Origin` header and
+  `Sec-Fetch-Site` is `cross-site` or `same-site`).
+- `websocket` is `true` for a WebSocket upgrade, `false` for an HTTP request. The upgrade's origin
+  check is always on; `onRefused` is read only from a `sameOrigin` object, so with `sameOrigin`
+  off it does not apply to it.
+- Return `undefined` (or anything that is not a `Response`) to keep the default 403: it fails closed.
+- A `Response` with no `cache-control` header gets `cache-control: no-store`; one that sets it keeps it.
+- A throw or a rejection is an unexpected failure: a 500, reported once to `onUnexpected`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: {
+		sameOrigin: {
+			allowedOrigins: ['https://app.example.com'],
+			// hide the endpoint from other sites; defer to the 403 for the rest
+			onRefused: (request, { reason, websocket }) =>
+				reason === 'cross-origin' && !websocket
+					? new Response('Not found', { status: 404 })
+					: undefined,
+		},
+	},
+});
+```
 
 ## WebSocket origin
 
@@ -5119,13 +5157,18 @@ needs it); `__typename` is always allowed.
 
 `requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
 
-## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
+## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin, onRefused })
 
-Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
+Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin, onRefused }`.
 
 ## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
 
 Pick one of the three modes (see [Security](./guide/security.md)).
+
+## csrf.sameOrigin.onRefused must be a function ((request, { reason, websocket }) => Response | undefined)
+
+`onRefused` is a function returning a `Response` (or `undefined`, or a promise of either), for example
+`onRefused: () => new Response('Not found', { status: 404 })`. See [Security](./guide/security.md).
 
 ## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
 

@@ -205,6 +205,12 @@ createGraxia({
 });
 ```
 
+`csrf.sameOrigin.onRefused(request, { reason, websocket })` answers a refused origin with your own `Response` instead of the 403 (return `undefined` to keep the 403):
+
+```ts
+csrf: { sameOrigin: { onRefused: () => new Response('Not found', { status: 404 }) } },
+```
+
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
 A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
