@@ -74,9 +74,13 @@ export interface BasePayload {
 }
 
 /**
- * The host context of a request: what the host passed to `fetch` (or to
- * `serve({ serverContext })`), and over a WebSocket the context its upgrade
- * was given, the same object for every operation of the socket. Read-only.
+ * The host context of a request: a copy graxia made of what the host passed
+ * to `fetch`, `upgrade` or `serve({ serverContext })`, with `server` added and,
+ * over a WebSocket, `connectionParams`. Untyped (`unknown` values). Read-only:
+ * do not mutate it. A copy is made per HTTP request; over a socket `onRequest`
+ * sees the copy stored at the upgrade (a change there reaches every later
+ * operation of that socket), while `onParse` and `onValidate` get a fresh
+ * copy per operation.
  */
 export interface WithServerContext {
 	readonly serverContext: Readonly<Record<string, unknown>>;

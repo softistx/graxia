@@ -86,8 +86,14 @@ describe('over a WebSocket, each hook sees the upgrade serverContext', () => {
 			await s.next();
 			const contexts = seen[hook] ?? [];
 			expect(contexts.length).toBeGreaterThan(0);
-			for (const context of contexts)
-				expect(context).toMatchObject({ tenant: 'acme' });
+			const keys =
+				hook === 'onRequest'
+					? ['server', 'tenant']
+					: ['connectionParams', 'server', 'tenant'];
+			for (const context of contexts) {
+				expect(Object.keys(context as object).sort()).toEqual(keys);
+				expect((context as { tenant: string }).tenant).toBe('acme');
+			}
 		});
 	}
 
@@ -105,7 +111,7 @@ describe('over a WebSocket, each hook sees the upgrade serverContext', () => {
 						});
 				},
 		});
-		const s = raw(socketHost(plugin as ReturnType<typeof spy>));
+		const s = raw(socketHost(plugin));
 		await s.init();
 		await s.send({
 			id: '1',

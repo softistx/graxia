@@ -129,30 +129,33 @@ stream is created). The full start/end snippet is in
 
 ## Reading the host context before `onExecute`
 
-`onRequest`, `onParse` and `onValidate` payloads carry a read-only `serverContext`: what the host passed to
-`fetch`, or over a WebSocket the context its `graxia.upgrade` call gave (the same object for every
-operation of that socket). Before this, only `onExecute` saw it, through `args.contextValue`, so a
+`onRequest`, `onParse` and `onValidate` payloads carry a read-only `serverContext`: a copy graxia made of
+what the host passed to `fetch`, `graxia.upgrade` or `serve({ serverContext })`, with `server` added and,
+over a WebSocket, `connectionParams`. Before this, only `onExecute` saw it, through `args.contextValue`, so a
 document that failed validation never reached a hook that could tie it to its socket.
 
 ```ts
 import { definePlugin } from '@graxia/core';
 
-type Host = { socketId: string };
-
 // graxia.upgrade(request, server, { socketId: crypto.randomUUID() })
-export const invalidDocuments = definePlugin<Host>()({
+export const invalidDocuments = definePlugin()({
 	name: 'invalid-documents',
 	onValidate:
 		({ serverContext }) =>
 		({ errors }) => {
 			if (errors?.length)
-				console.warn(`socket ${serverContext.socketId}: ${errors[0]?.message}`);
+				console.warn(
+					`socket ${serverContext['socketId']}: ${errors[0]?.message}`,
+				);
 		},
 });
 ```
 
-`serverContext` is the host's own object: do not mutate it. The other stages keep reading it from
-`args.contextValue` (`onExecute`, `onSubscribe`) or `context` (`onContext`).
+`serverContext` is untyped here: its values are `unknown`, so read a key with brackets and narrow it. Do not
+mutate it: over a socket, `onRequest` sees the copy stored at the upgrade, so a change there reaches every
+later operation of that socket, while `onParse` and `onValidate` get a fresh copy per operation. The other
+stages keep reading the context from `args.contextValue` (`onExecute`, `onSubscribe`) or `context`
+(`onContext`).
 
 ## Exempting a GET from the CSRF header
 
