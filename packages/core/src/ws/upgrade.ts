@@ -46,13 +46,14 @@ export async function upgradeRequest(
 			404,
 			'Not found.',
 			`Open the WebSocket on the GraphQL path, ${path}.`,
+			{ code: 'PATH_NOT_FOUND' },
 		);
 	if (request.method !== 'GET')
 		return refusal(
 			405,
 			'A WebSocket upgrade must be a GET request.',
 			'Open the connection with a GET request carrying the Upgrade: websocket header.',
-			{ headers: { allow: 'GET' } },
+			{ headers: { allow: 'GET' }, code: 'METHOD_NOT_ALLOWED' },
 		);
 	const forbidden = checkUpgrade(rt, request);
 	if (forbidden) return forbidden;
@@ -72,6 +73,7 @@ export async function upgradeRequest(
 				400,
 				`The Sec-WebSocket-Protocol header must offer "${SUBPROTOCOL}".`,
 				`Open the socket with the "${SUBPROTOCOL}" subprotocol.`,
+				{ code: 'SUBPROTOCOL_REQUIRED' },
 			);
 		const headers = new Headers(state.responseHeaders);
 		headers.set('sec-websocket-protocol', SUBPROTOCOL);
@@ -82,6 +84,7 @@ export async function upgradeRequest(
 				400,
 				'The WebSocket upgrade failed.',
 				'Send a valid WebSocket upgrade request (Upgrade, Connection and Sec-WebSocket-Key headers).',
+				{ code: 'UPGRADE_FAILED' },
 			);
 		// The socket is open: a failing after-hook is reported, never an answer.
 		await entered

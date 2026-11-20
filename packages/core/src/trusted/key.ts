@@ -1,3 +1,4 @@
+import type { GraxiaErrorCode } from '../errors/codes';
 import { isRecord } from '../http/record';
 import type { GraphQLParams } from '../plugins/types';
 import type { ResolvedTrusted } from './options';
@@ -6,7 +7,7 @@ import type { ResolvedTrusted } from './options';
 export interface TrustedRefusal {
 	ok: false;
 	message: string;
-	code: string;
+	code: GraxiaErrorCode;
 	/** An HTTP status; absent means the media type's rule for a pre-execution error. */
 	status?: number;
 	fix: string;
@@ -17,7 +18,7 @@ export type Key = { id: string } | { hash: string } | TrustedRefusal;
 
 export const refuse = (
 	message: string,
-	code: string,
+	code: GraxiaErrorCode,
 	fix: string,
 	status?: number,
 ): TrustedRefusal => ({

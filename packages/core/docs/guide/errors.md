@@ -74,7 +74,8 @@ answered as written, with that code; other parse errors get `GRAPHQL_PARSE_FAILE
 `code` is typed as a key of `GraxiaErrorCodes`: `BAD_USER_INPUT`, `UNAUTHENTICATED`, `FORBIDDEN`,
 `NOT_FOUND`, `CONFLICT`, `INTERNAL_SERVER_ERROR`, and the codes core itself emits
 (`GRAPHQL_PARSE_FAILED`, `GRAPHQL_VALIDATION_FAILED`, `OPERATION_ABORTED`, `SHUTTING_DOWN`,
-`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`). A code that is not in the list fails to
+`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`, and the request refusals of
+[GraphQL over HTTP](./http.md#refusal-codes)). A code that is not in the list fails to
 compile. Add your own by augmenting the interface:
 
 ```ts

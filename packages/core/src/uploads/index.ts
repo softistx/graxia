@@ -39,10 +39,18 @@ export async function readMultipart(
 		const batch = parseBatch(operations.value, rt.options.batching);
 		return batch.ok
 			? { batch: batch.entries }
-			: { response: refusal(400, batch.message, BATCH_FIX) };
+			: {
+					response: refusal(400, batch.message, BATCH_FIX, {
+						code: batch.code,
+					}),
+				};
 	}
 	const params = paramsFromJson(operations.value);
 	return params.ok
 		? { single: params.params }
-		: { response: refusal(400, params.message, PARAMS_FIX) };
+		: {
+				response: refusal(400, params.message, PARAMS_FIX, {
+					code: 'PARAMS_INVALID',
+				}),
+			};
 }

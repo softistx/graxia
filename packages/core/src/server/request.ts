@@ -48,13 +48,14 @@ export async function handle(
 			404,
 			'Not found.',
 			`Send the request to the GraphQL path, ${path}.`,
+			{ code: 'PATH_NOT_FOUND' },
 		);
 	if (request.method !== 'GET' && request.method !== 'POST')
 		return refusal(
 			405,
 			'Only GET and POST are allowed.',
 			'Use GET for queries or POST for any operation.',
-			{ headers: { allow: 'GET, POST' } },
+			{ headers: { allow: 'GET, POST' }, code: 'METHOD_NOT_ALLOWED' },
 		);
 	return rt.telemetry.request(request, state, () =>
 		respond(rt, request, serverContext, state),

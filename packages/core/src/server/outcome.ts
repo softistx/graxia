@@ -1,4 +1,5 @@
 import { type ExecutionResult, GraphQLError } from 'graphql';
+import type { GraxiaErrorCode } from '../errors/codes';
 import { NO_AFTER, type StageOutcome } from '../plugins/stage';
 import type { HttpRefusal } from './http-refusal';
 
@@ -35,7 +36,7 @@ export function failure(
 	options: {
 		status?: number;
 		headers?: HeadersInit;
-		code?: string;
+		code?: GraxiaErrorCode;
 		/** What the client changes to fix the error; always set. */
 		fix: string;
 	},

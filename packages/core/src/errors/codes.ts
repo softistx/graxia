@@ -54,6 +54,36 @@ export interface GraxiaErrorCodes {
 	RATE_LIMITED: true;
 	/** Emitted by `fieldRateLimit`: a `single` field is selected more than once in the operation (400). */
 	FIELD_SELECTED_ONCE: true;
+	/** Emitted by core: the request body is over `limits.bodyBytes` (413). */
+	BODY_TOO_LARGE: true;
+	/** Emitted by core: a POST whose `Content-Type` is not `application/json` (415). */
+	UNSUPPORTED_MEDIA_TYPE: true;
+	/** Emitted by core: the body could not be read or is not UTF-8 (400). */
+	BODY_UNREADABLE: true;
+	/** Emitted by core: the body is not valid JSON (400). */
+	BODY_NOT_JSON: true;
+	/** Emitted by core: the request is not `{ query, variables?, operationName? }` shaped (400). */
+	PARAMS_INVALID: true;
+	/** Emitted by core: the request carries no `query` (and no resolvable `documentId`) (400). */
+	QUERY_REQUIRED: true;
+	/** Emitted by core: a JSON array body while `batching` is off (400). */
+	BATCHING_DISABLED: true;
+	/** Emitted by core: a batch over its `limit` (400). */
+	BATCH_TOO_LARGE: true;
+	/** Emitted by core: an empty batch, or one with a bad entry (400). */
+	BATCH_INVALID: true;
+	/** Emitted by core: a batch asked over `text/event-stream` or `multipart/mixed` (400). */
+	BATCH_NOT_STREAMABLE: true;
+	/** Emitted by core: the request is not on the GraphQL `path` (404). */
+	PATH_NOT_FOUND: true;
+	/** Emitted by core: a method other than GET or POST, or a mutation over GET (405, `Allow`). */
+	METHOD_NOT_ALLOWED: true;
+	/** Emitted by core: the `Accept` header allows no response type graxia sends (406). */
+	NOT_ACCEPTABLE: true;
+	/** Emitted by core: a WebSocket upgrade without the `graphql-transport-ws` subprotocol (400). */
+	SUBPROTOCOL_REQUIRED: true;
+	/** Emitted by core: the runtime refused the WebSocket upgrade (400). */
+	UPGRADE_FAILED: true;
 	/** Emitted by core: `dispose()` started. */
 	SHUTTING_DOWN: true;
 	/** Emitted by core: subscriptions over plain HTTP. */

@@ -50,6 +50,7 @@ export async function settleParams(
 	if (typeof final.query !== 'string' || final.query === '')
 		return failure('Must provide a query string.', {
 			status: 400,
+			code: 'QUERY_REQUIRED',
 			fix: 'Send a "query" string, or a "documentId" when trusted documents are on.',
 		});
 	return { params: final, query: final.query, register: trusted?.register };
@@ -80,6 +81,7 @@ export async function parseStep(
 				'Can only perform a mutation operation from a POST request.',
 				{
 					status: 405,
+					code: 'METHOD_NOT_ALLOWED',
 					headers: { allow: 'POST' },
 					fix: 'Send the mutation with POST.',
 				},

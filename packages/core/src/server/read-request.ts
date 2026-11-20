@@ -13,6 +13,8 @@ const PARAMS_FIX =
 const BATCH_FIX =
 	'Send one operation per request, or fewer operations in the batch.';
 
+const PARAMS = { code: 'PARAMS_INVALID' } as const;
+
 /** What a request carries: its operation(s), or the refusal to send. */
 export type Read =
 	| { response: Response }
@@ -23,7 +25,7 @@ export function readGet(request: Request): Read {
 	const parsed = paramsFromUrl(new URL(request.url));
 	return parsed.ok
 		? { single: parsed.params }
-		: { response: refusal(400, parsed.message, PARAMS_FIX) };
+		: { response: refusal(400, parsed.message, PARAMS_FIX, PARAMS) };
 }
 
 export async function readPost(rt: Runtime, request: Request): Promise<Read> {
@@ -37,6 +39,7 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 				415,
 				'The Content-Type must be application/json (UTF-8).',
 				'Send the body as JSON with "Content-Type: application/json".',
+				{ code: 'UNSUPPORTED_MEDIA_TYPE' },
 			),
 		};
 	const body: BodyResult = await readBody(request, rt.options.bodyBytes);
@@ -46,10 +49,15 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 				413,
 				'The request body is too large.',
 				'Send a smaller body.',
+				{ code: 'BODY_TOO_LARGE' },
 			),
 		};
 	if (body.kind === 'invalid')
-		return { response: refusal(400, body.message, PARAMS_FIX) };
+		return {
+			response: refusal(400, body.message, PARAMS_FIX, {
+				code: 'BODY_UNREADABLE',
+			}),
+		};
 	let json: unknown;
 	try {
 		json = JSON.parse(body.text);
@@ -59,6 +67,7 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 				400,
 				'The request body is not valid JSON.',
 				'Send a valid JSON object { "query": "..." } as the body.',
+				{ code: 'BODY_NOT_JSON' },
 			),
 		};
 	}
@@ -66,10 +75,14 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 		const batch = parseBatch(json, rt.options.batching);
 		return batch.ok
 			? { batch: batch.entries }
-			: { response: refusal(400, batch.message, BATCH_FIX) };
+			: {
+					response: refusal(400, batch.message, BATCH_FIX, {
+						code: batch.code,
+					}),
+				};
 	}
 	const parsed = paramsFromJson(json);
 	return parsed.ok
 		? { single: parsed.params }
-		: { response: refusal(400, parsed.message, PARAMS_FIX) };
+		: { response: refusal(400, parsed.message, PARAMS_FIX, PARAMS) };
 }

@@ -182,6 +182,25 @@ Nothing to install beyond `graphql`: the WebSocket protocol is implemented in th
 `graphql-ws` and `graphql-yoga`), and `@softistx/telemetry` is an optional peer, a no-op without it.
 `@graxia/graphiql` and `@graxia/envelop` are their own packages, installed when used.
 
+## Refusal codes
+
+graxia gives every request-level refusal a stable `extensions.code`, which Yoga does not: match on it
+instead of the message. The messages differ from Yoga's; the statuses mostly do not.
+
+| Situation (Yoga answers)                           | graxia status | graxia code                                             |
+| -------------------------------------------------- | ------------- | ------------------------------------------------------- |
+| body over the limit (413)                          | 413           | `BODY_TOO_LARGE`                                        |
+| not a JSON content type (415)                      | 415           | `UNSUPPORTED_MEDIA_TYPE`                                |
+| unreadable body, invalid UTF-8                     | 400           | `BODY_UNREADABLE`                                       |
+| invalid JSON (400)                                 | 400           | `BODY_NOT_JSON`                                         |
+| wrong parameter types (400)                        | 400           | `PARAMS_INVALID`                                        |
+| no `query` (400)                                   | 400           | `QUERY_REQUIRED`                                        |
+| batching off, over its limit, or a bad entry (400) | 400           | `BATCHING_DISABLED`, `BATCH_TOO_LARGE`, `BATCH_INVALID` |
+| wrong method, a mutation over GET (405)            | 405           | `METHOD_NOT_ALLOWED`                                    |
+| unacceptable `Accept` (406)                        | 406           | `NOT_ACCEPTABLE`                                        |
+
+The full list, with each message, is in [GraphQL over HTTP](./http.md#refusal-codes).
+
 ## Shutdown
 
 There is no `shutdownSignal` option. Call `graxia.dispose()`: in-flight operations are answered, new

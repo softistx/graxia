@@ -3,6 +3,7 @@ import type {
 	ExecutionArgs,
 	OperationDefinitionNode,
 } from 'graphql';
+import type { GraxiaErrorCode } from '../errors/codes';
 import { GRAPHQL_CODE } from '../errors/fixes';
 import { costRefusal } from '../limits/operation-cost';
 import type { RequestState } from '../plugins/state';
@@ -165,7 +166,7 @@ async function executeOperation(
 function subscriptionRefusal(
 	sse: boolean,
 	ws: boolean,
-): [message: string, options: { code: string; fix: string }] {
+): [message: string, options: { code: GraxiaErrorCode; fix: string }] {
 	const code = 'SUBSCRIPTION_NOT_SUPPORTED';
 	if (sse && ws)
 		return [

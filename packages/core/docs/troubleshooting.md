@@ -6,7 +6,8 @@ The errors a consumer can hit, headed by the message as it appears. Find the top
 - [Plugins and context](./troubleshooting-plugins.md): masked `Unexpected error.`, plugin setup and hooks, typed context.
 - [Request limits](./troubleshooting-limits.md): token, depth, alias, directive, cost and body limits, and their config errors.
 - [Subscriptions and incremental delivery](./troubleshooting-subscriptions.md): subscriptions over SSE and WebSocket, incremental delivery.
-- [HTTP, execute and testing](./troubleshooting-http.md): `path`, shutdown, responses, `graxia.execute`, the testing client.
+- [HTTP, execute and testing](./troubleshooting-http.md): `path`, body, media-type, method and batch refusals, shutdown, responses, `graxia.execute`, the testing client.
 - [Security](./troubleshooting-security.md): the CSRF check, introspection, persisted queries and trusted documents.
 - [Rate limits and telemetry](./troubleshooting-rate-limits.md): field rate limits, `limitFromStore`, telemetry.
+- [Telling refusals apart](./troubleshooting-http.md#telling-refusals-apart): every request-level refusal (413, 415, 400, 404, 405, 406) carries a stable `extensions.code`.
 - [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.

@@ -65,7 +65,7 @@ describe('documentId', () => {
 			errors: [
 				{
 					message: 'The "documentId" parameter must be a string.',
-					extensions: { fix: expect.any(String) },
+					extensions: { code: 'PARAMS_INVALID', fix: expect.any(String) },
 				},
 			],
 		});
