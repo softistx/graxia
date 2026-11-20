@@ -6,7 +6,7 @@ One entry per published package: what it is, how to install it, its peers, the p
 
 ## @softistx/graxia
 
-The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client (0.14.0)
+The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client (0.15.0)
 
 - Install: `bun add @softistx/graxia graphql`
 - Peers: `@softistx/telemetry` `^0.5.0` (optional), `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
@@ -49,10 +49,10 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
 
 ## @softistx/graxia-envelop
 
-Run Envelop plugins inside graxia with one adapter (0.1.8)
+Run Envelop plugins inside graxia with one adapter (0.2.0)
 
 - Install: `bun add @softistx/graxia-envelop @envelop/core @softistx/graxia graphql`
-- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@softistx/graxia` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@softistx/graxia` `^0.15.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@softistx/graxia-envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
 - Docs, in the installed package:
@@ -62,10 +62,10 @@ Run Envelop plugins inside graxia with one adapter (0.1.8)
 
 ## @softistx/graxia-graphiql
 
-GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.8)
+GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.3.0)
 
 - Install: `bun add @softistx/graxia-graphiql @softistx/graxia`
-- Peers: `@softistx/graxia` `^0.14.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@softistx/graxia` `^0.15.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@softistx/graxia-graphiql`: `ApolloSandboxOptions`, `GraphiQLOptions`, `SandboxInitialState`, `apolloSandbox`, `graphiql`, `sandboxContentSecurityPolicy`
 - Docs, in the installed package:
@@ -76,10 +76,10 @@ GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.8
 
 ## @softistx/graxia-mcp
 
-Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.1.10)
+Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.2.0)
 
 - Install: `bun add @softistx/graxia-mcp @softistx/graxia graphql`
-- Peers: `@softistx/graxia` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@softistx/graxia` `^0.15.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@softistx/graxia-mcp`: `Can`, `Mcp`, `McpAuthInfo`, `McpAuthOptions`, `McpErrorCode`, `McpHost`, `McpOperationInfo`, `McpOperationsOptions`, `McpOptions`, `McpScopes`, `createMcp`, `mcpAuth`
 - Docs, in the installed package:
@@ -94,10 +94,10 @@ Model Context Protocol server over graxia: stateless Streamable HTTP with graphq
 
 ## @softistx/graxia-redis
 
-Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.2.11)
+Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.3.0)
 
 - Install: `bun add @softistx/graxia-redis @softistx/graxia @softistx/redis`
-- Peers: `@softistx/graxia` `^0.14.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@softistx/graxia` `^0.15.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@softistx/graxia-redis`: `RedisCacheOptions`, `RedisConnection`, `RedisFieldLimit`, `RedisFieldLimitOptions`, `RedisPubSub`, `RedisPubSubOptions`, `redisCache`, `redisFieldLimit`, `redisPubSub`
 - Docs, in the installed package:

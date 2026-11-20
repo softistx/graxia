@@ -2,6 +2,26 @@
 
 > Released as `@graxia/core` up to the last version below; the package moved to `@softistx/graxia` in the next minor.
 
+## 0.15.0
+
+### Minor Changes
+
+- [#170](https://github.com/softistx/graxia/pull/170) [`801a435`](https://github.com/softistx/graxia/commit/801a43525d1dc5165fe6d34ba51b676918cf10e9) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The packages move to the `@softistx` scope. Nothing else changes: same code, same API, same versions line.
+
+  | Was                | Is                          |
+  | ------------------ | --------------------------- |
+  | `@graxia/core`     | `@softistx/graxia`          |
+  | `@graxia/envelop`  | `@softistx/graxia-envelop`  |
+  | `@graxia/graphiql` | `@softistx/graxia-graphiql` |
+  | `@graxia/mcp`      | `@softistx/graxia-mcp`      |
+  | `@graxia/redis`    | `@softistx/graxia-redis`    |
+
+  To migrate, replace the dependencies in `package.json` and the imports in your code (`@graxia/core/agent` becomes `@softistx/graxia/agent`). The one-liner codemod is in `packages/core/docs/guide/migrating-from-graxia-scope.md`. The old `@graxia/*` names are deprecated and receive no further releases.
+
+### Patch Changes
+
+- [#167](https://github.com/softistx/graxia/pull/167) [`983095f`](https://github.com/softistx/graxia/commit/983095f56f93bc1811ee4330704deb509fe8b01e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Export the `OnParamsInput` type: the `params` and `connectionParams` an `onParams` hook reads, shared by `OnParamsPayload` and the engine.
+
 ## 0.14.0
 
 ### Minor Changes

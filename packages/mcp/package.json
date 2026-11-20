@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/graxia-mcp",
-	"version": "0.1.10",
+	"version": "0.2.0",
 	"description": "Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools",
 	"license": "MIT",
 	"type": "module",

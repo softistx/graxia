@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/graxia-graphiql",
-	"version": "0.2.8",
+	"version": "0.3.0",
 	"description": "GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL)",
 	"license": "MIT",
 	"type": "module",
