@@ -17,6 +17,7 @@ export { exposedError, GraxiaError, isGraxiaError } from './errors/exposed';
 export type { MaskError, MaskInfo } from './errors/mask';
 export { GraxiaPluginError } from './errors/plugin-error';
 export type { BatchingOption } from './http/batch';
+export type { ErrorHttp } from './http/error-http';
 export { getRequestId } from './http/request-id';
 export { costDirectives } from './limits/directives';
 export type { ComputeCostArgs } from './limits/operation-cost';

@@ -2,6 +2,7 @@ import type { GraphQLSchema } from 'graphql';
 import type { DocumentCaches, DocumentLimits } from '../document/types';
 import type { MaskError } from '../errors/mask';
 import type { BatchingOption, ResolvedBatching } from '../http/batch';
+import type { ErrorHttp } from '../http/error-http';
 import type {
 	OperationLimits,
 	ResolvedOperationLimits,
@@ -185,6 +186,17 @@ export interface GraxiaOptions<
 	 * its message. Unsafe, for tests only. `true` by default, in every environment.
 	 */
 	maskErrors?: boolean;
+	/**
+	 * Honours `extensions.http` of a GraphQL error (an {@link ErrorHttp}), as GraphQL
+	 * Yoga does. The plain JSON response (one operation, `application/json` or
+	 * `application/graphql-response+json`) takes the highest `http.status` and the
+	 * errors' `http.headers` (added when the plugins and the response do not set
+	 * them). `http` is removed from the serialized extensions of every transport
+	 * (batch, SSE, multipart, WebSocket included, which keep their status).
+	 * `true` by default; `false` keeps the status of the media type and leaves
+	 * `extensions` as the resolver made them.
+	 */
+	errorHttp?: boolean;
 }
 
 /** @internal Options with defaults applied. */
@@ -198,6 +210,8 @@ export interface ResolvedOptions {
 	uploads: ResolvedUploads | false;
 	asyncContext: boolean;
 	shutdownTimeout: number;
+	/** Whether `extensions.http` of an error sets the plain JSON status and headers, and is stripped from every output. */
+	errorHttp: boolean;
 	sse: boolean;
 	keepAliveMs: number;
 	/** The WebSocket settings, or `false` when it is off. */

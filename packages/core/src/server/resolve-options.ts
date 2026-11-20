@@ -45,6 +45,9 @@ export function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		throw new GraxiaConfigError(
 			'shutdownTimeout must be a non-negative integer (milliseconds)',
 		);
+	const errorHttp = options.errorHttp ?? true;
+	if (typeof errorHttp !== 'boolean')
+		throw new GraxiaConfigError('errorHttp must be true or false');
 	const security = resolveSecurity(options);
 	return {
 		path,
@@ -53,6 +56,7 @@ export function resolve(options: GraxiaOptions<any>): ResolvedOptions {
 		batching,
 		asyncContext,
 		shutdownTimeout,
+		errorHttp,
 		...security,
 		...resolveUploads(options.uploads, security.csrf),
 		...resolveStreaming(options),

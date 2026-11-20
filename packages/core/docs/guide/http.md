@@ -22,23 +22,24 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 
 ## Options
 
-| option             | default                                           | what it does                                                                                                                                                                 |
-| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`           | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                                                                         |
-| `path`             | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                                                                          |
-| `context`          | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run                                                          |
-| `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                  |
-| `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md) |
-| `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                      |
-| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                               |
-| `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                          |
-| `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                              |
-| `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                  |
-| `introspection`    | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                                              |
-| `suggestions`      | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                                                   |
-| `asyncContext`     | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                                      |
-| `shutdownTimeout`  | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                                                                      |
-| `onUnexpected`     | `console.error` outside production                | `(error, { requestId, correlationId, phase }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed                      |
+| option             | default                                           | what it does                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`           | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                                                                                     |
+| `path`             | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                                                                                      |
+| `context`          | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run                                                                      |
+| `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                              |
+| `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md)             |
+| `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                                  |
+| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                                           |
+| `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                                      |
+| `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                                          |
+| `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                              |
+| `introspection`    | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                                                          |
+| `suggestions`      | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                                                               |
+| `asyncContext`     | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                                                  |
+| `shutdownTimeout`  | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                                                                                  |
+| `errorHttp`        | `true`                                            | honours `extensions.http` (`status`, `headers`, `spec`) of errors on the plain JSON answer and strips `http` from every output, see [Errors](./errors.md#status-and-headers-from-errors) |
+| `onUnexpected`     | `console.error` outside production                | `(error, { requestId, correlationId, phase }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed                                  |
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
 hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
@@ -128,7 +129,11 @@ server) to it. The compiler checks that the context matches your schema's `creat
 | APQ hash: `PERSISTED_QUERY_NOT_FOUND`, `_NOT_SUPPORTED`, `_VERSION_NOT_SUPPORTED`, `PROVIDED_SHA_DOESNT_MATCH` | 400                                                                                       | 200 (the retry protocol) |
 | client left, or shutdown past its timeout (`OPERATION_ABORTED`)                                                | 499 / 503                                                                                 | same                     |
 | `dispose()` started (`SHUTTING_DOWN`)                                                                          | 503 (`connection: close`)                                                                 | same                     |
+| a field error with `extensions.http.status` (the highest), `application/json` or `+json` alike                 | that status                                                                               | same                     |
 | plugin hook threw, `context` threw, `execute` threw                                                            | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same                     |
+
+An error's `extensions.http` sets the status and headers of a single-operation JSON answer (see
+[Status and headers from errors](./errors.md#status-and-headers-from-errors)); `errorHttp: false` turns it off.
 
 Unexpected failures never leak their message. The body is generic whatever the cause
 (`INTERNAL_SERVER_ERROR` and a `correlationId` equal to the `x-request-id` header); the original
@@ -207,7 +212,7 @@ request cannot multiply its own concurrency) and answers 200 with an array of re
 executor that throws, in entry _n_ becomes that entry's generic `Unexpected error.` body (with the request's `correlationId`)
 in the array and the batch carries on (earlier mutations already ran, later entries still run). A
 plugin that short-circuits with `respond` (in `onRequest`, or in an entry's `onParams`) is a decision
-about the request and answers the whole request.
+about the request and answers the whole request. A batch ignores `extensions.http` of its entries' errors: it is always 200.
 
 Each entry runs on its own forked [state](./plugins.md#per-request-state): writes in one entry are
 not seen by the next, reads fall through to what `onRequest` set.

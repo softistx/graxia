@@ -10,7 +10,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Guides
 
 - [GraphQL over HTTP](./guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
-- [Migrating from `@alxia/graphql`](./guide/migrating-from-alxia-graphql.md): option mapping, the deliberate differences and the 33-item parity table, with a runnable host.
+- [Migrating from `@alxia/graphql`](./guide/migrating-from-alxia-graphql.md): option mapping, the deliberate differences and the 34-item parity table, with a runnable host.
 - [Plugins](./guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Schema](./guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
