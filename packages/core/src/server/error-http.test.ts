@@ -412,4 +412,41 @@ describe('extensions.http on GraphQL errors', () => {
 		expect(text).toContain('Taken.');
 		expect(text).not.toContain('"http"');
 	});
+
+	test('a response replaced in onResponse carries no error header', async () => {
+		const replacing = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [
+				definePlugin({
+					name: 'replace',
+					onResponse({ setResponse }) {
+						setResponse(new Response('replaced', { status: 202 }));
+					},
+				}),
+			],
+		});
+		const res = await send(replacing, q('{ conflict }'));
+		expect(res.status).toBe(202);
+		expect(await res.text()).toBe('replaced');
+		expect(res.headers.get('x-conflict')).toBeNull();
+	});
+
+	test('the 500 of a throwing onResponse carries no error header', async () => {
+		const throwing = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [
+				definePlugin({
+					name: 'throws',
+					onResponse() {
+						throw new Error('hook failed');
+					},
+				}),
+			],
+		});
+		const res = await send(throwing, q('{ conflict }'));
+		expect(res.status).toBe(500);
+		expect(res.headers.get('x-conflict')).toBeNull();
+	});
 });

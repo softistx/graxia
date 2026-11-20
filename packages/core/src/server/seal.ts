@@ -1,4 +1,4 @@
-import { errorHeadersKey } from '../http/error-http';
+import { errorHeadersOf } from '../http/error-http';
 import { takeOwn } from '../http/own-response';
 import {
 	createRequestId,
@@ -22,13 +22,15 @@ export function seal(response: Response, state: RequestState): Response {
 	if (response.status < 200 || response.status > 599)
 		throw new RangeError(`A response cannot have status ${response.status}`);
 	const id = state.get(requestIdKey) ?? createRequestId();
+	// Looked up for this very object, before any rebuild gives another one.
+	const fromErrors = errorHeadersOf(response);
 	// Only a response graxia built for this request is changed in place: any
 	// other may be shared across requests (a cache, a constant) and keep its headers.
 	if (takeOwn(response)) {
 		try {
 			response.headers.set(REQUEST_ID_HEADER, id); // probe: throws on immutable headers
 			merge(response.headers, state);
-			addErrorHeaders(response.headers, state);
+			addErrorHeaders(response.headers, fromErrors);
 			response.headers.set(REQUEST_ID_HEADER, id); // a plugin's x-request-id never wins
 			return response;
 		} catch {
@@ -38,7 +40,7 @@ export function seal(response: Response, state: RequestState): Response {
 	// Rebuilt rather than mutated: a Response from `fetch` or `Response.redirect` is immutable.
 	const headers = new Headers(response.headers);
 	merge(headers, state);
-	addErrorHeaders(headers, state);
+	addErrorHeaders(headers, fromErrors);
 	headers.set(REQUEST_ID_HEADER, id);
 	return new Response(response.body, {
 		status: response.status,
@@ -58,7 +60,10 @@ function merge(headers: Headers, state: RequestState): void {
 }
 
 /** The headers the result's errors ask for, last, for the names nothing else set. */
-function addErrorHeaders(headers: Headers, state: RequestState): void {
-	for (const [name, value] of Object.entries(state.get(errorHeadersKey) ?? {}))
+function addErrorHeaders(
+	headers: Headers,
+	asked: Record<string, string> | undefined,
+): void {
+	for (const [name, value] of Object.entries(asked ?? {}))
 		if (!headers.has(name)) headers.set(name, value);
 }

@@ -1,10 +1,23 @@
 import type { ExecutionResult, FormattedExecutionResult } from 'graphql';
-import { createStateKey } from '../plugins/state';
 import type { MediaType } from './negotiate';
 
-/** @internal The headers the errors of the result ask for; `seal` adds them last, for the names still absent. */
-export const errorHeadersKey =
-	createStateKey<Record<string, string>>('errorHeaders');
+const asked = new WeakMap<Response, Record<string, string>>();
+
+/** @internal Binds the headers the errors ask for to the exact Response they belong to. */
+export function bindErrorHeaders(
+	response: Response,
+	headers: Record<string, string>,
+): Response {
+	asked.set(response, headers);
+	return response;
+}
+
+/** @internal The headers bound to this Response object, if any (a replaced or rebuilt one has none). */
+export function errorHeadersOf(
+	response: Response,
+): Record<string, string> | undefined {
+	return asked.get(response);
+}
 
 /** What a GraphQL error's `extensions.http` may ask of the plain JSON response. */
 export interface ErrorHttp {

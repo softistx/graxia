@@ -1,5 +1,5 @@
 import {
-	errorHeadersKey,
+	bindErrorHeaders,
 	readErrorHttp,
 	stripErrorHttp,
 } from '../http/error-http';
@@ -174,9 +174,7 @@ function encode(
 	// Read from the masked result: a masked error carries nothing but what the masker kept.
 	const asked = rt.options.errorHttp ? readErrorHttp(result, media) : undefined;
 	const headers = outcome.headers ?? refusal?.headers;
-	// Added by `seal`, after the plugins' headers (an `onResponse` one included).
-	if (asked?.headers) state.set(errorHeadersKey, asked.headers);
-	return jsonResponse(
+	const response = jsonResponse(
 		asked?.result ?? result,
 		outcome.status ??
 			refusal?.status ??
@@ -185,4 +183,6 @@ function encode(
 		media,
 		headers,
 	);
+	// Added by `seal`, after the plugins' headers (an `onResponse` one included), to this Response only.
+	return asked?.headers ? bindErrorHeaders(response, asked.headers) : response;
 }

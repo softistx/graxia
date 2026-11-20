@@ -482,6 +482,8 @@ export const PARITY: readonly ParityItem[] = [
 			'an error cannot set framing headers, content-encoding included',
 			'plain-object errors from a plugin setResult answer 409 and lose http',
 			"an onResponse plugin's header wins over the errors' headers",
+			'a response replaced in onResponse carries no error header',
+			'the 500 of a throwing onResponse carries no error header',
 			'a deferred payload has no http in its extensions',
 			'a batch entry has no http in its extensions',
 			'an SSE next event has no http in its extensions',
