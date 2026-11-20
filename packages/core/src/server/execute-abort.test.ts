@@ -18,7 +18,7 @@ const schema = createSchema<Record<string, any>>()({
 				ctx['started']?.();
 				// Ignores the signal: execute must still answer.
 				return new Promise<string>((resolve) =>
-					setTimeout(resolve, 200, 'late'),
+					setTimeout(resolve, 2000, 'late'),
 				);
 			},
 		},
@@ -61,7 +61,7 @@ describe('graxia.execute with an aborted signal', () => {
 		expect(result.errors?.[0]?.extensions?.['code']).toBe('OPERATION_ABORTED');
 		expect((seen.signal as AbortSignal | undefined)?.aborted).toBe(true);
 		// Does not wait for a resolver that ignores the signal.
-		expect(Date.now() - started).toBeLessThan(150);
+		expect(Date.now() - started).toBeLessThan(1000);
 	});
 
 	test('a signal that never aborts changes nothing', async () => {
