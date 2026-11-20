@@ -70,9 +70,9 @@ For a browser explorer in development, `@graxia/graphiql` (from 0.1.0) adds `gra
 `plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
 read `node_modules/@graxia/graphiql/docs/`.
 
-To run Envelop plugins (depth-limit, generic-auth, response-cache, ...), `@graxia/envelop` (from 0.1.0) is
+To run Envelop plugins (depth-limit, generic-auth, response-cache, ...), `@graxia/envelop` (not published yet) is
 `plugins: [fromEnvelop([useDepthLimit({ maxDepth: 10 })])]`; see
-`node_modules/@graxia/envelop/docs/guide/envelop.md`. To let an agent use the API over MCP, `@graxia/mcp` (from 0.1.0) is
+`packages/envelop/docs/guide/envelop.md`. To let an agent use the API over MCP, `@graxia/mcp` (from 0.1.0) is
 `createMcp(graxia, { name })`, mounted on `/mcp` as `'/mcp': (req, server) => mcp.fetch(req, { server })`, with an
 optional OAuth resource server (`auth`) and persisted operations as typed tools (`operations`). Read
 `node_modules/@graxia/mcp/docs/guide/getting-started.md`, `node_modules/@graxia/mcp/docs/guide/auth.md` and

@@ -5,7 +5,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 ## Now
 
 - **Parity and migration** — multipart uploads and a parity suite so an application on another
-  GraphQL server can move over. Envelop plugins run through `@graxia/envelop`.
+  GraphQL server can move over. Envelop plugins run through `@graxia/envelop` (not published yet).
 
 ## Later
 

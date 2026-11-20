@@ -6,7 +6,8 @@ subscriptions over server-sent events and WebSocket, `@defer` and `@stream`, a t
 key-value cache contract, in-process `execute` and a test client. `@graxia/redis` swaps the PubSub
 and the cache for Redis and adds a shared field rate limit. Trusted documents (manifests, `documentId`, automatic persisted queries, strict mode) are built; telemetry runs on `@softistx/telemetry` (optional peer), and `@graxia/mcp` serves it to agents over MCP.
 
-> Status: `@graxia/core`, `@graxia/redis`, `@graxia/graphiql`, `@graxia/mcp` and `@graxia/envelop` are public on npm. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
+> Status: `@graxia/core`, `@graxia/redis`, `@graxia/graphiql` and `@graxia/mcp` are public on npm;
+> `@graxia/envelop` is not published yet. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
 
 | package                                 | what it is                                                     |
 | --------------------------------------- | -------------------------------------------------------------- |

@@ -42,5 +42,5 @@ Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces 
 
 ## Must provide a query string
 
-A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
+This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
 `query` with the id, or use core's `trustedDocuments` with `documentId`.

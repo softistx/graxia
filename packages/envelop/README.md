@@ -1,5 +1,7 @@
 # @graxia/envelop
 
+> Not published yet: the first release is 0.1.0.
+
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts
@@ -23,7 +25,7 @@ bun add @envelop/depth-limit # the Envelop plugins you want
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field) and `graphql@^17.1`.
-- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is only needed for types.
+- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your `tsconfig.json`; `nodenext` is not supported.
 
 ## What it runs
@@ -41,12 +43,12 @@ declaration, not a check.
 
 These run in this package's specs on graphql 17.1, over a real `Bun.serve`.
 
-| Plugin                          | Version | Notes                                                                                           |
-| ------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                            |
-| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` policies lose context identity. |
-| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                    |
-| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                  |
+| Plugin                          | Version | Notes                                                                                                                    |
+| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                                                     |
+| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` / `extractPolicies` is not supported (context identity). |
+| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                                             |
+| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                                           |
 
 ## Documentation
 

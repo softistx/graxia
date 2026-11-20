@@ -1051,6 +1051,11 @@ already has a code (an `exposedError` thrown by a custom scalar) keeps it. An op
 document does not have, or a missing one when the document holds several operations, is refused by
 graxia with the same code and a `fix` that says to send `operationName`.
 
+## Parse errors with their own code
+
+A parse function (a plugin's `setParseFn`) that throws a `GraphQLError` with its own string `extensions.code` is
+answered as written, with that code; other parse errors get `GRAPHQL_PARSE_FAILED`.
+
 ## Typed codes
 
 `code` is typed as a key of `GraxiaErrorCodes`: `BAD_USER_INPUT`, `UNAUTHENTICATED`, `FORBIDDEN`,
@@ -4589,6 +4594,8 @@ Source: packages/envelop/README.md
 
 # @graxia/envelop
 
+> Not published yet: the first release is 0.1.0.
+
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts
@@ -4612,7 +4619,7 @@ bun add @envelop/depth-limit # the Envelop plugins you want
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field) and `graphql@^17.1`.
-- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is only needed for types.
+- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your `tsconfig.json`; `nodenext` is not supported.
 
 ## What it runs
@@ -4630,12 +4637,12 @@ declaration, not a check.
 
 These run in this package's specs on graphql 17.1, over a real `Bun.serve`.
 
-| Plugin                          | Version | Notes                                                                                           |
-| ------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                            |
-| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` policies lose context identity. |
-| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                    |
-| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                  |
+| Plugin                          | Version | Notes                                                                                                                    |
+| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                                                     |
+| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` / `extractPolicies` is not supported (context identity). |
+| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                                             |
+| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                                           |
 
 ## Documentation
 
@@ -4689,15 +4696,27 @@ The context the Envelop hooks build on is `{ request, params, ...your host conte
 
 graxia builds one context object per operation, so a plugin that keeps a reference to the context object across
 hooks sees the one it was given at each hook, not an identical object. Known limit: `@envelop/generic-auth`'s
-`extractPolicies` / `@policy` relies on that identity and is not supported. `serverContext` is not part of the early
+`extractPolicies` / `@policy` is not supported (it relies on that identity). `serverContext` is not part of the early
 context.
+
+### What the resolver context holds
+
+Resolvers receive your own context (the `context` option, plus what other graxia plugins add), then `request` and `params`
+from the adapter, then the keys the Envelop hooks added with `extendContext`. Your own keys win over `request` and
+`params`; keys a hook extended win over your own. `@envelop/core` is a runtime peer of the package.
+
+## What stays in force
+
+- A plugin's `setParsedDocument` skips parsing, so it also skips core's token limit; core's validation rules still run,
+  because the adapter hands core's `rules` to a custom validate function.
+- A plugin whose `setValidationFn` drops `rules` skips them: that is the plugin's own choice.
 
 ## Errors
 
 - A `GraphQLError` thrown in a hook is the client's answer and keeps its message and `extensions.code`.
 - A plain `Error` is unexpected: masked, and reported through `onUnexpected`.
-- A `GraphQLError` with its own `extensions.code` thrown in `onParse` keeps it (core no longer relabels it
-  `GRAPHQL_PARSE_FAILED`); syntax errors still do.
+- A `GraphQLError` with its own `extensions.code` thrown in `onParse` keeps it; syntax errors get
+  `GRAPHQL_PARSE_FAILED`.
 - `@envelop/generic-auth` errors keep their code and `extensions.http` but the HTTP status of an execution error stays
   200 under `application/graphql-response+json`.
 
@@ -4705,7 +4724,8 @@ context.
 
 Envelop done-hooks receive an async iterable for incremental results, as in Envelop on graphql 17. `onNext` runs per
 payload (each `@defer` payload over `multipart/mixed` and SSE), `onEnd` once when the stream ends, including when the client
-leaves. Subscriptions use `onSubscribeResult` the same way, and `onSubscribeError` can `setError`.
+leaves. Subscriptions use `onSubscribeResult` the same way, and `onSubscribeError` can `setError`. It wraps only errors thrown while iterating the stream; errors of the initial
+subscribe go through core's error handling.
 
 ## Migrating from graphql-yoga
 
@@ -4773,7 +4793,7 @@ Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces 
 
 ## Must provide a query string
 
-A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
+This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
 `query` with the id, or use core's `trustedDocuments` with `documentId`.
 
 # @graxia/graphiql — @graxia/graphiql

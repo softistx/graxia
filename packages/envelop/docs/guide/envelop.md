@@ -41,15 +41,27 @@ The context the Envelop hooks build on is `{ request, params, ...your host conte
 
 graxia builds one context object per operation, so a plugin that keeps a reference to the context object across
 hooks sees the one it was given at each hook, not an identical object. Known limit: `@envelop/generic-auth`'s
-`extractPolicies` / `@policy` relies on that identity and is not supported. `serverContext` is not part of the early
+`extractPolicies` / `@policy` is not supported (it relies on that identity). `serverContext` is not part of the early
 context.
+
+### What the resolver context holds
+
+Resolvers receive your own context (the `context` option, plus what other graxia plugins add), then `request` and `params`
+from the adapter, then the keys the Envelop hooks added with `extendContext`. Your own keys win over `request` and
+`params`; keys a hook extended win over your own. `@envelop/core` is a runtime peer of the package.
+
+## What stays in force
+
+- A plugin's `setParsedDocument` skips parsing, so it also skips core's token limit; core's validation rules still run,
+  because the adapter hands core's `rules` to a custom validate function.
+- A plugin whose `setValidationFn` drops `rules` skips them: that is the plugin's own choice.
 
 ## Errors
 
 - A `GraphQLError` thrown in a hook is the client's answer and keeps its message and `extensions.code`.
 - A plain `Error` is unexpected: masked, and reported through `onUnexpected`.
-- A `GraphQLError` with its own `extensions.code` thrown in `onParse` keeps it (core no longer relabels it
-  `GRAPHQL_PARSE_FAILED`); syntax errors still do.
+- A `GraphQLError` with its own `extensions.code` thrown in `onParse` keeps it; syntax errors get
+  `GRAPHQL_PARSE_FAILED`.
 - `@envelop/generic-auth` errors keep their code and `extensions.http` but the HTTP status of an execution error stays
   200 under `application/graphql-response+json`.
 
@@ -57,7 +69,8 @@ context.
 
 Envelop done-hooks receive an async iterable for incremental results, as in Envelop on graphql 17. `onNext` runs per
 payload (each `@defer` payload over `multipart/mixed` and SSE), `onEnd` once when the stream ends, including when the client
-leaves. Subscriptions use `onSubscribeResult` the same way, and `onSubscribeError` can `setError`.
+leaves. Subscriptions use `onSubscribeResult` the same way, and `onSubscribeError` can `setError`. It wraps only errors thrown while iterating the stream; errors of the initial
+subscribe go through core's error handling.
 
 ## Migrating from graphql-yoga
 

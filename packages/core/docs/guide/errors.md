@@ -59,6 +59,11 @@ already has a code (an `exposedError` thrown by a custom scalar) keeps it. An op
 document does not have, or a missing one when the document holds several operations, is refused by
 graxia with the same code and a `fix` that says to send `operationName`.
 
+## Parse errors with their own code
+
+A parse function (a plugin's `setParseFn`) that throws a `GraphQLError` with its own string `extensions.code` is
+answered as written, with that code; other parse errors get `GRAPHQL_PARSE_FAILED`.
+
 ## Typed codes
 
 `code` is typed as a key of `GraxiaErrorCodes`: `BAD_USER_INPUT`, `UNAUTHENTICATED`, `FORBIDDEN`,
