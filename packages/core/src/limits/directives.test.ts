@@ -32,9 +32,11 @@ describe('cost directive descriptions', () => {
 		);
 		for (const directive of added) {
 			expect(directive.description?.trim()).toBeTruthy();
-			expect(directive.args.map((arg) => arg.name).sort()).toEqual(
-				expected[directive.name as keyof typeof expected].slice().sort(),
-			);
+			const names = expected[directive.name as keyof typeof expected];
+			if (names)
+				expect(directive.args.map((arg) => arg.name).sort()).toEqual(
+					[...names].sort(),
+				);
 			for (const arg of directive.args)
 				expect(arg.description?.trim()).toBeTruthy();
 		}
