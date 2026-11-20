@@ -29,9 +29,9 @@ export interface Toolset {
 }
 
 /** The typed tools of `operations`, built once; `genericTools: false` needs at least one. */
-function typedTools(
-	graxia: McpHost<any>,
-	options: McpOptions<any>,
+function typedTools<HostCtx extends object>(
+	graxia: McpHost<HostCtx>,
+	options: McpOptions<HostCtx>,
 	mutations: boolean,
 ): OperationTool[] {
 	const generic = options.genericTools ?? true;
@@ -56,9 +56,9 @@ function typedTools(
  * generic ones stand.
  * @throws {GraxiaConfigError} for a problem in `operations`, or `genericTools: false` with no typed tool.
  */
-export function createToolset(
-	graxia: McpHost<any>,
-	options: McpOptions<any>,
+export function createToolset<HostCtx extends object>(
+	graxia: McpHost<HostCtx>,
+	options: McpOptions<HostCtx>,
 	mutations: boolean,
 	onError: (error: unknown) => void,
 ): Toolset {
