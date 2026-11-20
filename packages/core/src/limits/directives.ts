@@ -15,20 +15,20 @@ const COST = {
 	directive:
 		'The cost of a field, type, enum, scalar, argument or input field in the query cost limit, following the IBM GraphQL cost specification.',
 	weight:
-		'The cost it adds; it replaces the default object or scalar cost for what it marks.',
+		'The cost it adds; it replaces the default object or scalar cost for what it marks, and on a field it is added once, not per list item.',
 } as const;
 
 const LIST_SIZE = {
 	directive:
 		'How many items a list field returns, used to multiply its cost in the query cost limit, following the IBM GraphQL cost specification.',
 	assumedSize:
-		'The list size to assume when no slicing argument gives one; it defaults to the server default list size.',
+		'The list size to assume when no slicing argument gives one; it defaults to the server limits.cost.defaultListSize (10 unless configured) and it also sizes the inner levels of a nested list.',
 	slicingArguments:
-		'The names of the arguments (a dotted path reaches into an input) whose integer value is the list size; the largest given one is used.',
+		'The names of the arguments (a dotted path reaches into an input) whose non-negative integer value is the list size; the largest given one is used.',
 	sizedFields:
 		'The fields of the returned object that hold the list (for example the edges of a connection), each sized like this field instead of once.',
 	requireOneSlicingArgument:
-		'Whether a request must give at least one slicing argument, otherwise it is rejected; true by default.',
+		'Whether a request must give a non-negative integer for at least one slicing argument, otherwise it is rejected; true by default.',
 } as const;
 
 /** `@cost(weight: Int!)`: what a field, type, enum, scalar, argument or input field costs. */
