@@ -14,7 +14,7 @@ Pass a boolean: `createGraxia({ schema, errorHttp: false })`.
 ## A GraphQL error has `extensions.http` but the response is 200
 
 The status is read only when `errorHttp` is not `false`, from a single operation answered as plain JSON, from an integer between 200 and 599, and under
-`application/json` not when the error's `extensions.http.spec` is `true`. A batch, a WebSocket and a multipart answer ignore it, and so does an SSE query or a subscription that fails after its first event (a subscription refused before its stream opens does honour it, on its event-stream response); and so does a
+`application/json` not when the error's `extensions.http.spec` is `true`. A batch, a WebSocket and a multipart answer ignore it, and so does an SSE query or a subscription that fails after its first event (a subscription refused before its stream opens does honour it, on its event-stream response; there `spec: true` drops the status whatever `Accept` says); and so does a
 plugin refusal's status (it wins). A masked unexpected error (a plain `Error`) carries no `http`: throw an `exposedError`
 or a `GraphQLError`, or have `maskError` keep it. See [Errors](./guide/errors.md#status-and-headers-from-errors).
 
