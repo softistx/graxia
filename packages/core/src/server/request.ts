@@ -1,3 +1,4 @@
+import { own } from '../http/own-response';
 import { refusal } from '../http/respond';
 import type { StateBag } from '../plugins/state';
 import { checkRequest, exemptRefusal } from '../security/check';
@@ -19,7 +20,7 @@ export function lastResort(
 	try {
 		return seal(rt.unexpected.respond(error, state), state);
 	} catch {
-		return new Response(null, { status: 500 });
+		return own(new Response(null, { status: 500 }));
 	}
 }
 

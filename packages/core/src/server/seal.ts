@@ -3,6 +3,7 @@ import {
 	REQUEST_ID_HEADER,
 	requestIdKey,
 } from '../http/request-id';
+import { takeOwn } from '../http/own-response';
 import type { RequestState } from '../plugins/state';
 
 /** Headers a plugin adds that stack instead of replacing. */
@@ -19,7 +20,31 @@ export function seal(response: Response, state: RequestState): Response {
 	// Bun refuses `Response.error()` (status 0) and other non-HTTP statuses.
 	if (response.status < 200 || response.status > 599)
 		throw new RangeError(`A response cannot have status ${response.status}`);
+	const id = state.get(requestIdKey) ?? createRequestId();
+	// Only a response graxia built for this request is changed in place: any
+	// other may be shared across requests (a cache, a constant) and keep its headers.
+	if (takeOwn(response)) {
+		try {
+			response.headers.set(REQUEST_ID_HEADER, id); // probe: throws on immutable headers
+			merge(response.headers, state);
+			response.headers.set(REQUEST_ID_HEADER, id); // a plugin's x-request-id never wins
+			return response;
+		} catch {
+			// Immutable after all: rebuilt below.
+		}
+	}
+	// Rebuilt rather than mutated: a Response from `fetch` or `Response.redirect` is immutable.
 	const headers = new Headers(response.headers);
+	merge(headers, state);
+	headers.set(REQUEST_ID_HEADER, id);
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
+function merge(headers: Headers, state: RequestState): void {
 	for (const [name, value] of state.responseHeaders) {
 		if (name === 'set-cookie') continue;
 		if (APPENDED.has(name)) headers.append(name, value);
@@ -27,11 +52,4 @@ export function seal(response: Response, state: RequestState): Response {
 	}
 	for (const cookie of state.responseHeaders.getSetCookie())
 		headers.append('set-cookie', cookie);
-	headers.set(REQUEST_ID_HEADER, state.get(requestIdKey) ?? createRequestId());
-	// Rebuilt rather than mutated: a Response from `fetch` or `Response.redirect` is immutable.
-	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers,
-	});
 }
