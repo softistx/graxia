@@ -117,7 +117,10 @@ the description of the argument or input field it feeds.
 When `include` (or the manifest) leaves no operation, and the generic tools are on, `createMcp`
 does not fail or warn: the server runs with `graphql_schema`, `graphql_query` and
 `graphql_mutate` only, as if `operations` were not set. With `genericTools: false` the same case
-throws. Check what an agent gets with a `tools/list` request: the typed tools are the ones after
+throws. When graxia runs trusted documents in strict mode the generic tools are refused, so the
+agent gets `graphql_schema` alone, and `onError` receives the `GraxiaConfigError`
+``createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …`` (see
+[troubleshooting](../troubleshooting.md)). Check what an agent gets with a `tools/list` request: the typed tools are the ones after
 `graphql_schema`.
 
 ## The input schema
@@ -229,5 +232,5 @@ Parsing, validation and both schemas are computed once, in `createMcp`. Per requ
 filter by the caller's view runs: once for all callers without `can`; with `can`, once per
 `tools/list` and `tools/call` request (the view is built, so `can` runs, for those two only:
 `initialize`, `ping` and notifications never call it). When `can` throws, the typed tools are left
-out of `tools/list` (fail closed: the list shrinks to the generic tools, it is not an error), the
+out of `tools/list` (fail closed: the list keeps only the generic tools that are on, `graphql_schema` alone with `genericTools: false`; it is not an error), the
 error goes to `onError`, and a call answers `The server failed to run the operation. Fix: retry later.`
