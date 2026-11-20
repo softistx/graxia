@@ -1,6 +1,6 @@
 {
 	"name": "@graxia/envelop",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "Run Envelop plugins inside graxia with one adapter",
 	"license": "MIT",
 	"type": "module",

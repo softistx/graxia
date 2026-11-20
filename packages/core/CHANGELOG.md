@@ -1,5 +1,13 @@
 # @graxia/core
 
+## 0.10.0
+
+### Minor Changes
+
+- [#148](https://github.com/softistx/graxia/pull/148) [`8efc081`](https://github.com/softistx/graxia/commit/8efc081372345df50387894f77f2b36a97194f6d) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A GraphQL error's `extensions.http` now sets the status and headers of a plain JSON response, as in GraphQL Yoga: the highest `http.status` wins and `http.headers` are added when the plugins and the response do not set them (framing headers are dropped). `http` is removed from the serialized extensions of every transport (batch, SSE, multipart, WebSocket). A plugin refusal still wins, a masked error carries nothing, and a batch, SSE and WebSocket keep their own status. Turn it off with `errorHttp: false`; the `ErrorHttp` type is exported.
+
+- [#146](https://github.com/softistx/graxia/pull/146) [`1b7629d`](https://github.com/softistx/graxia/commit/1b7629d1445ce83ca201ae375967cb899b845ed2) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `csrf.sameOrigin.onRefused(request, { reason, websocket })` answers a refused origin with your own `Response` (it may be async) in place of the 403 `FORBIDDEN_ORIGIN`, a refused WebSocket upgrade's included. `reason` is `'cross-origin'`, `'null-origin'` or `'no-origin'` (no `Origin` header, `Sec-Fetch-Site` cross-site or same-site); the new types are `OriginRefusal` and `OriginRefusalReason`. Returning `undefined` keeps the default 403, the answer gets `cache-control: no-store` unless it sets one, and a throw is a 500 reported to `onUnexpected`. Without it nothing changes.
+
 ## 0.9.0
 
 ### Minor Changes
