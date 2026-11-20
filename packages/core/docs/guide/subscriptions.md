@@ -105,7 +105,13 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   `correlationId`); the stream goes on. An error thrown by the source iterator while it iterates (after
   it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
   `GraphQLError` (`exposedError` included) is exposed as is, its message and extensions (and path, when it sets one), and a plain
-  `Error` is masked and reported through `onUnexpected`, like an execution error.
+  `Error` is masked and reported through `onUnexpected`, like an execution error. That last payload goes through
+  `onResultChunk` first (its `errors` hold the error: a non-`GraphQLError` arrives wrapped in a `GraphQLError` with `originalError`), so a plugin sees the failure: a chunk
+  with `errors` and no `data` key is the source's failure, always the last payload. A thrown non-`Error`
+  (a string, say) is reported as an `Error` of its string form. The operation's signal aborts when the
+  stream ends, whatever the cause, with no reason. If a hook throws on this chunk, `onUnexpected` receives
+  the source's error first, then the hook's, but only when the source's error is not a `GraphQLError`:
+  a `GraphQLError` source with a throwing hook reports only the hook's error.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown

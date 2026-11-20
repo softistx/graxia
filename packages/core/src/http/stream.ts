@@ -22,8 +22,8 @@ export interface PayloadStreamInit {
 	format: StreamFormat;
 	/** Turns a source value into the data of one payload; a throw ends the stream through `fail`. */
 	prepare(value: unknown): Promise<unknown>;
-	/** The data of the last payload after the source or `prepare` threw. */
-	fail(error: unknown): unknown;
+	/** The data of the last payload after the source or `prepare` threw. A rejection or `undefined` ends the stream with no last payload. */
+	fail(error: unknown): unknown | Promise<unknown>;
 	/** Milliseconds between keep-alive chunks; 0 sends none (also ignored when the format has none). */
 	keepAliveMs: number;
 	/** Aborts when the stream must end now: the client left, or the server is closing. */
@@ -109,7 +109,14 @@ export function payloadStream(init: PayloadStreamInit): {
 					if (!finished) controller.enqueue(init.format.chunk(data));
 				} catch (error) {
 					if (finished) return;
-					controller.enqueue(init.format.chunk(init.fail(error)));
+					let last: unknown;
+					try {
+						last = await init.scope(() => init.fail(error));
+					} catch {
+						last = undefined;
+					}
+					if (finished) return;
+					if (last !== undefined) controller.enqueue(init.format.chunk(last));
 					finish(true);
 				}
 			},

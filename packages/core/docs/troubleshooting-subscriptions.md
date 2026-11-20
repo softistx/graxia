@@ -97,6 +97,7 @@ The subscription's source iterator threw a plain `Error` (a database or library 
 yielded. The client gets the masked message and a correlation id, the original goes to `onUnexpected`.
 To tell the client why, throw a `GraphQLError` from the iterator: it is exposed
 as is, its message and extensions (and path, when it sets one), then the stream completes.
+`onResultChunk` sees this failure as a chunk with `errors` and no `data` key.
 
 ```ts
 import { GraphQLError } from 'graphql';

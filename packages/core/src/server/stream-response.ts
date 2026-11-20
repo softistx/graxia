@@ -26,6 +26,13 @@ export async function preparePayload(
 		: chunk;
 }
 
+/** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped in one (a thrown non-Error becomes an `Error` of its string form), so masking reports the original. */
+function asGraphQLError(error: unknown): GraphQLError {
+	if (error instanceof GraphQLError) return error;
+	const original = error instanceof Error ? error : new Error(String(error));
+	return new GraphQLError(original.message, { originalError: original });
+}
+
 /** What ends or silences a stream: the operation's own signals. */
 export interface StreamSignals {
 	/** Aborts when the stream must end now (the client left, the server is closing). */
@@ -66,11 +73,28 @@ export function streamOutcome(
 				throw error;
 			}
 		},
-		fail: (error) => {
+		fail: async (error) => {
 			// An error thrown while iterating a subscription takes the decision of an
-			// execution error: a GraphQLError is exposed, anything else is masked and reported.
-			if (!fromPrepare && error instanceof GraphQLError)
-				return rt.maskResult({ errors: [error] }, state);
+			// execution error, and reaches `onResultChunk` like any payload: what the
+			// source threw is the chunk's `errors`, then masking exposes a GraphQLError
+			// and masks (and reports) anything else.
+			if (!fromPrepare) {
+				const wrapped = asGraphQLError(error);
+				try {
+					return await preparePayload(rt, request, state, {
+						errors: [wrapped],
+					});
+				} catch (hookError) {
+					// The hook threw: report the source's error too (as masking would), then the hook's.
+					if (!(error instanceof GraphQLError))
+						rt.unexpected.report(
+							wrapped.originalError ?? wrapped,
+							state,
+							'execution',
+						);
+					error = hookError;
+				}
+			}
 			rt.unexpected.report(error, state, 'execution');
 			return rt.unexpected.body(state);
 		},
