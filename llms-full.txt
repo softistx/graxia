@@ -1125,7 +1125,7 @@ header is never trusted). A masked error and the generic 500 both carry it:
 ```
 
 A user who reports the id lets you find the original error in your logs (see
-[troubleshooting](../troubleshooting.md#unexpected-error)).
+[troubleshooting](../troubleshooting-plugins.md#unexpected-error)).
 
 ## `onUnexpected`
 
@@ -3371,7 +3371,7 @@ unchanged. Differences:
 - The operation span records the first unexpected error only; `graphql.error.count` still counts
   all of them.
 - The `tracer` option is not ignored: it throws, see
-  [Troubleshooting](../troubleshooting.md#telemetrytracer-was-replaced-by-telemetryinstance).
+  [Troubleshooting](../troubleshooting-rate-limits.md#telemetrytracer-was-replaced-by-telemetryinstance).
 
 An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).
@@ -4113,289 +4113,106 @@ Parse and validation errors are an `error` message and end the operation. Execut
 `next` with `errors`. Unexpected errors are masked with the correlation id (the connection's
 request id) and reported once through `onUnexpected`, like over HTTP.
 
-# @graxia/core — Troubleshooting: file uploads
+# @graxia/core — Troubleshooting: HTTP, execute and testing
 
-Source: packages/core/docs/troubleshooting-uploads.md
+Source: packages/core/docs/troubleshooting-http.md
 
-# Troubleshooting: file uploads
+# Troubleshooting: HTTP, execute and testing
 
-Every message of [File uploads](./guide/uploads.md), headed by the text the server sends. The rest is in
-[Troubleshooting](./troubleshooting.md).
+Server, `graxia.execute`, testing client and shutdown errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
 
-## uploads.bodyBytes must be a positive integer
+## path must start with "/" (or be false)
 
-`uploads.bodyBytes` is not an integer of at least 1 (`GraxiaConfigError` at boot).
-Pass a size such as `uploads: { bodyBytes: 16 << 20 }`.
+`path` is a URL path such as `/graphql`, or `false` to serve any path.
 
-## uploads.files must be a positive integer
+## shutdownTimeout must be a non-negative integer (milliseconds)
 
-`uploads.files` is not an integer of at least 1 (`GraxiaConfigError` at boot). Pass a count such as
-`uploads: { files: 10 }`.
+Pass a count of milliseconds (`0` aborts at once), such as `10_000`.
 
-## uploads must be a boolean or an object ({ bodyBytes, fileBytes, files })
+## A response cannot have status N
 
-`uploads` was given something else, such as a string or a number (`GraxiaConfigError` at boot). Use `true`, `false`,
-or an object of limits: `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 }`.
+A plugin answered with a response whose status is outside 200 to 599 (`Response.error()` has status 0).
+The client gets the generic 500 instead. Answer with a real HTTP status.
 
-## uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes
+## A custom scalar's message reaches the client
 
-The per-file limit is not an integer of at least 1, or it is above `uploads.bodyBytes`.
+graphql reports a `parseValue` that throws a plain `Error` as a coercion error, unmasked. Throw
+`exposedError('BAD_USER_INPUT', …)` or a `GraphQLError` with a safe message. See
+[Errors](./guide/errors.md#known-behaviour-scalar-coercion).
 
-```ts
-createGraxia({ schema, uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 } });
-```
+## graxia.execute: the request ended with an HTTP N response instead of a result; see error.response.
 
-## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight. Keep csrf.requireHeader on (the default), or turn uploads off.
-
-`createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
-can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
-or turn uploads off.
+`graxia.execute` rejects with a `GraxiaExecuteError` when the pipeline answered with something other
+than an execution result: a plugin returned `respond(...)` (for example a 401 from an auth plugin),
+a hook failed unexpectedly (500), or the instance was disposed (503). The HTTP answer is on
+`error.response` (and `error.status`):
 
 ```ts
-createGraxia({ schema, uploads: true }); // the CSRF header is required (default)
+try {
+	await graxia.execute({ document: '{ me { id } }' });
+} catch (error) {
+	if (error instanceof GraxiaExecuteError)
+		console.log(error.status, await error.response.text());
+}
 ```
 
-## File uploads (multipart/form-data) are not enabled on this server. (`UPLOADS_NOT_ENABLED`)
+Pass the headers the plugin expects (`headers: { authorization: … }`). See
+[Testing](./guide/testing.md).
 
-**Status 415.** A multipart body reached a server without `uploads`. Send JSON, or enable it:
-`createGraxia({ uploads: true })`.
+## Server is shutting down.
 
-## The request body is larger than uploads.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+`graxia.execute` rejects with this `GraxiaExecuteError` (status 503, `SHUTTING_DOWN`) once `dispose()`
+has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
+[Context, cancellation and shutdown](./guide/context.md).
 
-**Status 413.** The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or raise the limit.
+## Variable "$id" has invalid value: … (`BAD_USER_INPUT`)
 
-## File "0" is larger than uploads.fileBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+Also `Unknown operation named "X".` and
+`Must provide operation name if query contains multiple operations.`: the request was refused
+before any field ran. Send the variables the operation declares, with their types, and an
+`operationName` the document holds. `extensions.fix` says the same.
 
-**Status 413.** One file is over `uploads.fileBytes` (8 MiB by default). `"0"` is the file's field name in `map`.
-Send a smaller file, or raise `uploads.fileBytes` (never above `uploads.bodyBytes`).
+## graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)
 
-## The "operations" field is larger than limits.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+`execute` throws this `TypeError` because `variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
+to a string) before calling `execute`.
 
-**Status 413.** The JSON `operations` part is over `limits.bodyBytes` (1 MiB by default), however small the files are.
-Send a shorter document (a persisted `documentId` helps), or raise `limits.bodyBytes`.
+## persisted: true needs a document; pass { sha256Hash } to send a hash alone
 
-## The request holds N files; uploads.files allows M. (`UPLOAD_TOO_MANY_FILES`)
-
-**Status 413.** The `fix` says: send fewer files per request, or raise `uploads.files` on the server.
-
-## The multipart body could not be parsed. (`UPLOAD_INVALID`)
-
-**Status 400.** The body is not valid `multipart/form-data`: a missing or wrong boundary in the `Content-Type`, a
-truncated body, or a body that could not be read. Let the HTTP client set the `Content-Type` (with its
-boundary) itself.
-
-## The multipart request has two file parts named "0". (`UPLOAD_INVALID`)
-
-**Status 400.** Two file parts share one field name (`0` here), so the server cannot tell which file a `map` path
-means. Give each file part its own name, as in `map`: `{ "0": ["variables.a"], "1": ["variables.b"] }`, and send the
-parts as `-F 0=@a.txt -F 1=@b.txt`. One file for several paths is one part with several paths in its `map` entry.
-
-## The multipart request has no "operations" field. (`UPLOAD_INVALID`)
-
-**Status 400.** Send `operations` first: a JSON text field holding the GraphQL request (`{ "query", "variables" }`), with
-`null` where each file goes. The same code answers `The multipart request has no "map" field.`.
-
-## The "operations" field is not valid JSON. (`UPLOAD_INVALID`)
-
-**Status 400.** `operations` must be JSON text, not a file part.
-
-## The "map" field must be a JSON object of file field names to arrays of paths. (`UPLOAD_INVALID`)
-
-**Status 400.** `map` is `{ "0": ["variables.file"] }`: each file part's field name and the non-empty list of paths
-that receive it.
-
-## Map entry "0" points at "query"; a file may only go under "variables". (`UPLOAD_INVALID`)
-
-**Status 400.** A path must start with `variables` (`1.variables.file` in a batch, with the entry index). `query`,
-`operationName` and `extensions` are refused.
-
-## Map entry "0" points at "variables.f", which is not null in "operations". (`UPLOAD_INVALID`)
-
-**Status 400.** The slot a path names must exist and be `null` in `operations`: write `"variables": { "f": null }`.
-A path may not go through a value that is not an object or an array.
-
-## Map entry "0" path "variables.`__proto__`" is not allowed. (`UPLOAD_INVALID`)
-
-**Status 400.** `__proto__`, `constructor` and `prototype` are never followed in a path.
-
-## Map entry "0" has no file part. (`UPLOAD_INVALID`)
-
-**Status 400.** `map` names a field that is not a file part of the request (it is missing, or a text field).
-The reverse, `File part "1" is not in "map".`, is the same mistake: every file part needs a `map` entry.
-
-## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
-
-`GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or a
-literal was written in the document. Send the file as a multipart part.
-
-# @graxia/core — Troubleshooting
-
-Source: packages/core/docs/troubleshooting.md
-
-# Troubleshooting
-
-The errors a consumer can hit, headed by the message as it appears.
-
-File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
-
-## Unknown directive "@needs" (or "@constraint", "@errors")
-
-`createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
-`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
-built in code.
+Thrown by the `@graxia/core/testing` client: `persisted: true` computes the hash from the document,
+so the document cannot be `null`.
 
 ```ts
-createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers });
+await client.query('{ hello }', { persisted: true }); // sends the hash and the text
+await client.query(null, { persisted: { sha256Hash: 'ecf4…' } }); // sends the hash alone
 ```
 
-## Duplicate `@constraint` directive, or "There can be only one directive named "@constraint""
+## A null document needs persisted: { sha256Hash } or documentId
 
-`agentTypeDefs` defines `@constraint`, and so does `graphql-constraint-directive` (or another library) if
-you also use it: the schema then has two definitions of the same directive. graxia's `@constraint` only
-describes limits for agents (it enforces nothing) and its arguments are a superset of the common ones
-(`minLength`, `maxLength`, `min`, `max`, `exclusiveMin`, `exclusiveMax`, `multipleOf`, `minItems`, `maxItems`,
-`pattern`, `format`). Keep one definition: leave `agentTypeDefs` out and declare the directive yourself with
-the arguments you use, or remove the other library's definition. `printSchemaFor` declares only the agent
-directives it prints, so it adds a second definition to a schema that already has one: print from a schema
-that has the library's directive removed.
+The test client was given `null` as the document without a hash or an id to send. Pass
+`{ persisted: { sha256Hash } }`, `{ documentId }`, or a document.
 
-## `printSchemaFor` output does not build: "Unknown directive" or "Type X not found"
+## Expected no GraphQL errors, got N:
 
-`buildSchema(printSchemaFor(schema))` fails when the schema uses a directive or type that the printer does not
-write: only the agent directives (`@needs`, `@constraint`, `@errors`), `@deprecated`, `@specifiedBy` and `@oneOf`
-are printed. Other applied directives (your own, `@cost`, `@listSize`) are left out, and a type reachable only
-through them is dropped. Build the visible schema with `visibleSchema(schema, { can })`, which is always
-valid, and validate against it. Pass a permission check that names every permission your `@needs` use: a
-typo in a permission hides the field for every caller.
+`expectNoErrors(result)` found errors in the result. Each following line is
+`- message [CODE] at path`; fix the cause (a masked error shows `Unexpected error.` and its
+correlation id, which `onUnexpected` matches to the original). To assert an error on purpose, check
+`result.errors` yourself.
 
-## `@needs` gives both `permission` and `anyOf`, or neither
+## dispose: N operation(s) did not settle after abort
 
-`lintDescriptions` reports `invalid-needs`, and the field stays hidden from every caller (it fails closed).
-Give exactly one: `@needs(permission: "books:write")` or `@needs(anyOf: ["books:write", "books:admin"])`.
-Repeat `@needs` to require several (AND).
+Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted the in-flight
+operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
+context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
+cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
 
-## Unexpected error.
+# @graxia/core — Troubleshooting: request limits
 
-A response carries `Unexpected error.` with `extensions.code: "INTERNAL_SERVER_ERROR"` and a
-`correlationId`. A resolver threw something that is not an `exposedError` or a `GraphQLError`, or a
-plugin hook, `context` or `execute` failed. The message is masked on purpose.
+Source: packages/core/docs/troubleshooting-limits.md
 
-Find the cause: the `correlationId` equals the `x-request-id` response header, and `onUnexpected`
-received the original error with the same id.
+# Troubleshooting: request limits
 
-```ts
-createGraxia({
-	schema,
-	onUnexpected: (error, { correlationId }) =>
-		logger.error({ err: error, correlationId }),
-});
-```
-
-In development the default logs it with `console.error`; in production nothing is logged until you
-set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
-
-## Duplicate plugin name "x" at indexes 0 and 2
-
-Two plugins in `plugins` share a `name`. Names are unique; rename one, or remove the duplicate.
-
-## Request state key "x" is required but was not set
-
-`state.require(key)` ran before any hook set the key. Set it in an earlier hook (an `onRequest` of a
-plugin ordered first with `enforce: 'pre'`), or use `state.get(key)` when it is optional.
-
-## Plugin "x" onContext must return an object or nothing, got null
-
-An `onContext` hook returned `null`, an array or a primitive. Return an object to add to the context,
-or return nothing.
-
-```ts
-onContext: () => ({ user: null }); // not `null`
-```
-
-## Plugin "x" failed during setup: …
-
-The plugin's `setup` threw; the original error is the `cause` and its message follows. The first
-failing `setup` stops the sequence (later plugins never ran theirs). Nothing is thrown at creation:
-`graxia.ready` rejects, the failure is reported once through `onUnexpected` with `phase: "setup"`,
-and every request answers the generic 500 until the process is fixed. Fail fast at startup by
-awaiting it:
-
-```ts
-const graxia = createGraxia({ schema, plugins: [db] });
-await graxia.ready; // rejects with the GraxiaPluginError
-```
-
-Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
-runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
-
-## Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'
-
-A type error on the `context` option of `createGraxia`. The schema was built with
-`createSchema<Ctx>()`, and the context that the `context` factory, the plugins and graxia build does
-not satisfy `Ctx`. The three forms:
-
-- A key is missing: `Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'`,
-  then `Property 'n' is missing in type '{ user: string; }' but required in type '{ user: string; n: number; }'`.
-- A key has another type: `Type 'number' is not assignable to type 'string'`, on the key of the returned object.
-- No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
-  '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
-
-When the factory is a named function passed as a variable, the first line can show a long
-intersection `(…) & (…)`; read the last line of the message, which names the missing or mistyped key.
-
-The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
-plugins, `serverContext` and graxia do not already provide.
-
-Return the missing keys from the factory, or add the plugin that provides them. Writing the
-context once avoids the drift:
-
-```ts
-const context = async ({ request }: ContextInit) => ({
-	user: await authenticate(request),
-});
-type Ctx = InferContext<typeof context, typeof plugins>;
-const schema = createSchema<Ctx>()({ typeDefs, resolvers });
-createGraxia({ schema, context, plugins });
-```
-
-The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
-with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
-`ContextInit<{ db: Db }>`). See
-[Context](./guide/context.md#write-the-context-once).
-
-## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
-
-`getContext()` only works inside an operation (a resolver, or code one calls) and when `asyncContext`
-is not `false`. Call it from a resolver, leave `asyncContext` on, or read the resolver's context
-argument. See [Context](./guide/context.md).
-
-## Property ''createSchema<Ctx>: these resolvers expect another context (see expected)'' is missing
-
-A type error on `resolvers`: the resolver map (typically graphql-codegen's `Resolvers<X>`) was built
-for a context `X` that `createSchema<Ctx, …>()`'s `Ctx` does not provide. The message shows
-`expected` (what the resolvers need) and `actual` (your `Ctx`). Point codegen's `contextType` at
-the same `InferContext` type you pass to `createSchema`, regenerate, and see [Codegen](./guide/codegen.md).
-
-## Invalid type definitions: …
-
-The SDL passed to `createSchema` does not parse or build; graphql's message follows. Fix the SDL.
-
-## Invalid schema: …
-
-The SDL builds but the schema is not valid (for example a type with no fields); graphql's message
-follows.
-
-## Resolver Query.foo is defined more than once
-
-Two resolver maps given to `createSchema` define the same field. Keep it in one map, or remove the
-duplicate. (`Resolvers for X are defined more than once` is the same mistake for a non-object type.)
-
-## Resolvers for X are defined but the schema has no type X
-
-## Resolver Query.foo is defined but Query has no field foo
-
-A resolver names a type or a field that the SDL does not declare, often a typo or a renamed field.
-Add it to the SDL or remove the resolver. See [Schema](./guide/schema.md).
+Parser, depth, alias, cost, body and batching limit errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
 
 ## Document contains more than N tokens. Parsing aborted.
 
@@ -4515,6 +4332,535 @@ The document parsed but does not validate against the schema. Every such error c
 ## batching.limit must be a positive integer
 
 `batching: { limit }` needs an integer of at least 1.
+
+# @graxia/core — Troubleshooting: plugins and context
+
+Source: packages/core/docs/troubleshooting-plugins.md
+
+# Troubleshooting: plugins and context
+
+Plugin, request-state and context errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
+
+## Unexpected error.
+
+A response carries `Unexpected error.` with `extensions.code: "INTERNAL_SERVER_ERROR"` and a
+`correlationId`. A resolver threw something that is not an `exposedError` or a `GraphQLError`, or a
+plugin hook, `context` or `execute` failed. The message is masked on purpose.
+
+Find the cause: the `correlationId` equals the `x-request-id` response header, and `onUnexpected`
+received the original error with the same id.
+
+```ts
+createGraxia({
+	schema,
+	onUnexpected: (error, { correlationId }) =>
+		logger.error({ err: error, correlationId }),
+});
+```
+
+In development the default logs it with `console.error`; in production nothing is logged until you
+set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
+
+## Duplicate plugin name "x" at indexes 0 and 2
+
+Two plugins in `plugins` share a `name`. Names are unique; rename one, or remove the duplicate.
+
+## Request state key "x" is required but was not set
+
+`state.require(key)` ran before any hook set the key. Set it in an earlier hook (an `onRequest` of a
+plugin ordered first with `enforce: 'pre'`), or use `state.get(key)` when it is optional.
+
+## Plugin "x" onContext must return an object or nothing, got null
+
+An `onContext` hook returned `null`, an array or a primitive. Return an object to add to the context,
+or return nothing.
+
+```ts
+onContext: () => ({ user: null }); // not `null`
+```
+
+## Plugin "x" failed during setup: …
+
+The plugin's `setup` threw; the original error is the `cause` and its message follows. The first
+failing `setup` stops the sequence (later plugins never ran theirs). Nothing is thrown at creation:
+`graxia.ready` rejects, the failure is reported once through `onUnexpected` with `phase: "setup"`,
+and every request answers the generic 500 until the process is fixed. Fail fast at startup by
+awaiting it:
+
+```ts
+const graxia = createGraxia({ schema, plugins: [db] });
+await graxia.ready; // rejects with the GraxiaPluginError
+```
+
+Fix the cause (a missing peer, a bad option, an unreachable service). On `dispose()`, `onDispose`
+runs only for the plugins whose `setup` succeeded. See [Plugins](./guide/plugins.md#setup-and-dispose).
+
+## Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'
+
+A type error on the `context` option of `createGraxia`. The schema was built with
+`createSchema<Ctx>()`, and the context that the `context` factory, the plugins and graxia build does
+not satisfy `Ctx`. The three forms:
+
+- A key is missing: `Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'`,
+  then `Property 'n' is missing in type '{ user: string; }' but required in type '{ user: string; n: number; }'`.
+- A key has another type: `Type 'number' is not assignable to type 'string'`, on the key of the returned object.
+- No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
+  '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
+
+When the factory is a named function passed as a variable, the first line can show a long
+intersection `(…) & (…)`; read the last line of the message, which names the missing or mistyped key.
+
+The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
+plugins, `serverContext` and graxia do not already provide.
+
+Return the missing keys from the factory, or add the plugin that provides them. Writing the
+context once avoids the drift:
+
+```ts
+const context = async ({ request }: ContextInit) => ({
+	user: await authenticate(request),
+});
+type Ctx = InferContext<typeof context, typeof plugins>;
+const schema = createSchema<Ctx>()({ typeDefs, resolvers });
+createGraxia({ schema, context, plugins });
+```
+
+The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
+with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
+`ContextInit<{ db: Db }>`). See
+[Context](./guide/context.md#write-the-context-once).
+
+## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
+
+`getContext()` only works inside an operation (a resolver, or code one calls) and when `asyncContext`
+is not `false`. Call it from a resolver, leave `asyncContext` on, or read the resolver's context
+argument. See [Context](./guide/context.md).
+
+# @graxia/core — Troubleshooting: rate limits and telemetry
+
+Source: packages/core/docs/troubleshooting-rate-limits.md
+
+# Troubleshooting: rate limits and telemetry
+
+Field rate limit and telemetry errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
+
+## Too many requests, try again later.
+
+A client spent a `fieldRateLimit` limit. HTTP `429`, code `RATE_LIMITED` (or your `code`),
+`extensions.retryAfter` and a `Retry-After` header in seconds. Wait that long. If real users hit
+it, raise the limit's `limit`, or check that `key` is not the proxy's address for everyone (see
+[Rate limiting fields](./guide/rate-limiting.md)). Nothing counts when the key is `undefined`.
+
+## <field> may be selected once per operation.
+
+A field configured with `single: true` appears at two different places of one operation, for
+example `{ a: signIn b: signIn }`. HTTP `400`, code `FIELD_SELECTED_ONCE`. Send one operation per
+call, or drop `single`.
+
+## fieldRateLimit: fields must be an object with at least one field name
+
+`fields` is missing, empty or not an object. Pass `{ signIn: limit }`.
+
+## fieldRateLimit: fields.<name> must be a limit ({ consume }) or { limit, single? }
+
+The rule of `<name>` has no `consume` function, or `single` is not a boolean. Use
+`memoryFieldLimit(...)`, `limitFromStore(...)`, your own `{ consume }`, or `{ limit, single: true }`.
+
+## fieldRateLimit: ipv6Prefix must be an integer from 0 to 128
+
+```ts
+fieldRateLimit({ fields, ipv6Prefix: 64 });
+```
+
+## fieldRateLimit: ipv6Prefix only applies to the default key; reduce the address inside key() instead
+
+`ipv6Prefix` reduces the address the default key reads. With your own `key`, drop `ipv6Prefix` and
+reduce the address in `key`.
+
+## fieldRateLimit: code must be a non-empty string
+
+`code` is the `extensions.code` of a refusal: give a string, or leave it out for `RATE_LIMITED`.
+
+## memoryFieldLimit: limit must be an integer of 1 or more
+
+Also `windowMs` and `maxKeys`: `memoryFieldLimit: windowMs must be an integer of 1 or more`,
+`memoryFieldLimit: maxKeys must be an integer of 1 or more`. Pass whole numbers (windows in milliseconds).
+
+## limitFromStore: no policy; pass { limit, windowMs } or give the store a policy
+
+The store has no `policy`: `limitFromStore(store, { limit: 10, windowMs: 60_000 })`.
+
+## limitFromStore: limit <n> differs from the store policy's limit <m>
+
+The same for `windowMs`. The store counts with its own policy; pass the same numbers or none.
+
+## limitFromStore: limit must be an integer of 1 or more
+
+Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, `windowMs` in milliseconds.
+
+## telemetry must be false or an object
+
+`telemetry` was `true`, a string or an array. Omit it (on when `@softistx/telemetry` is installed),
+pass `false`, or pass an options object.
+
+## telemetry.instance must be a @softistx/telemetry Telemetry
+
+`instance` is not the object `createTelemetry(...)` returns. Pass it, or leave the option out to use
+the installed one. A `tracer` option from before 0.4 throws its own error: see
+[telemetry.tracer was replaced by telemetry.instance](#telemetrytracer-was-replaced-by-telemetryinstance).
+
+## telemetry.tracer was replaced by telemetry.instance
+
+The `telemetry` option still has `tracer`, the OpenTelemetry option of graxia before 0.4. Replace it
+with `instance`, a `Telemetry` from `createTelemetry` in `@softistx/telemetry`, or leave it out to use
+the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
+
+## telemetry.document must be a boolean
+
+Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
+
+## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
+
+Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fields with no resolver.
+
+## No spans appear
+
+The server answers but your backend shows nothing. In order:
+
+1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
+   traces nothing without it. `bun add @softistx/telemetry`.
+2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
+   call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such
+   as `@softistx/telemetry-otlp`'s `otlpExporter`.
+3. Two copies of `@softistx/telemetry`: you installed the telemetry on one and graxia reads the
+   other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
+4. `telemetry: false` is set.
+5. A request outside the GraphQL path (`path`) is not traced.
+
+## A resolver span has no child spans of mine
+
+A span you start inside a resolver nests under the active span. It is the resolver span (or the
+operation span) when the telemetry is the one graxia emits to: with `telemetry: { instance }`, start
+your span inside that same telemetry (`withTelemetry(instance, ...)` is already in scope in a
+resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
+appear".
+
+# @graxia/core — Troubleshooting: schema and resolvers
+
+Source: packages/core/docs/troubleshooting-schema.md
+
+# Troubleshooting: schema and resolvers
+
+Schema directives, `createSchema` and resolver-map errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
+
+## Unknown directive "@needs" (or "@constraint", "@errors")
+
+`createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
+`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
+built in code.
+
+```ts
+createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers });
+```
+
+## Duplicate `@constraint` directive, or "There can be only one directive named "@constraint""
+
+`agentTypeDefs` defines `@constraint`, and so does `graphql-constraint-directive` (or another library) if
+you also use it: the schema then has two definitions of the same directive. graxia's `@constraint` only
+describes limits for agents (it enforces nothing) and its arguments are a superset of the common ones
+(`minLength`, `maxLength`, `min`, `max`, `exclusiveMin`, `exclusiveMax`, `multipleOf`, `minItems`, `maxItems`,
+`pattern`, `format`). Keep one definition: leave `agentTypeDefs` out and declare the directive yourself with
+the arguments you use, or remove the other library's definition. `printSchemaFor` declares only the agent
+directives it prints, so it adds a second definition to a schema that already has one: print from a schema
+that has the library's directive removed.
+
+## `printSchemaFor` output does not build: "Unknown directive" or "Type X not found"
+
+`buildSchema(printSchemaFor(schema))` fails when the schema uses a directive or type that the printer does not
+write: only the agent directives (`@needs`, `@constraint`, `@errors`), `@deprecated`, `@specifiedBy` and `@oneOf`
+are printed. Other applied directives (your own, `@cost`, `@listSize`) are left out, and a type reachable only
+through them is dropped. Build the visible schema with `visibleSchema(schema, { can })`, which is always
+valid, and validate against it. Pass a permission check that names every permission your `@needs` use: a
+typo in a permission hides the field for every caller.
+
+## `@needs` gives both `permission` and `anyOf`, or neither
+
+`lintDescriptions` reports `invalid-needs`, and the field stays hidden from every caller (it fails closed).
+Give exactly one: `@needs(permission: "books:write")` or `@needs(anyOf: ["books:write", "books:admin"])`.
+Repeat `@needs` to require several (AND).
+
+## Property ''createSchema<Ctx>: these resolvers expect another context (see expected)'' is missing
+
+A type error on `resolvers`: the resolver map (typically graphql-codegen's `Resolvers<X>`) was built
+for a context `X` that `createSchema<Ctx, …>()`'s `Ctx` does not provide. The message shows
+`expected` (what the resolvers need) and `actual` (your `Ctx`). Point codegen's `contextType` at
+the same `InferContext` type you pass to `createSchema`, regenerate, and see [Codegen](./guide/codegen.md).
+
+## Invalid type definitions: …
+
+The SDL passed to `createSchema` does not parse or build; graphql's message follows. Fix the SDL.
+
+## Invalid schema: …
+
+The SDL builds but the schema is not valid (for example a type with no fields); graphql's message
+follows.
+
+## Resolver Query.foo is defined more than once
+
+Two resolver maps given to `createSchema` define the same field. Keep it in one map, or remove the
+duplicate. (`Resolvers for X are defined more than once` is the same mistake for a non-object type.)
+
+## Resolvers for X are defined but the schema has no type X
+
+## Resolver Query.foo is defined but Query has no field foo
+
+A resolver names a type or a field that the SDL does not declare, often a typo or a renamed field.
+Add it to the SDL or remove the resolver. See [Schema](./guide/schema.md).
+
+## Resolver Color.PURPLE is defined but enum Color has no value PURPLE
+
+An enum resolver map names a value the SDL does not declare. Fix the name or add the value to the SDL.
+
+## Resolver Pet.name is defined but a union has no fields; only __resolveType is allowed
+
+A union has no fields: give it only `__resolveType`, and put field resolvers on its member types.
+
+## Resolvers for X are defined more than once
+
+Two resolver maps given to `createSchema` define a non-object type (a scalar or an enum, say) under
+the same name. Keep one definition. For object types the message names the field instead
+(`Resolver Query.foo is defined more than once`).
+
+## Resolvers for X must be an object
+
+The resolvers of an object, interface, union or enum type must be a plain object of fields (or
+values). A function, string or array was given:
+
+```ts
+resolvers: {
+	Query: {
+		hello: () => 'hi';
+	}
+} // not `Query: () => 'hi'`
+```
+
+## Resolvers for X are defined but X is an input type
+
+Input types have no resolvers. Remove the entry; defaults and validation belong in the SDL.
+
+## Resolvers for X is a GraphQLScalarType but X is not a scalar
+
+A `GraphQLScalarType` was given under the name of a type that the SDL declares as something else.
+Declare `scalar X` in the SDL, or move the entry to the right name.
+
+## Resolvers for scalar X must be a GraphQLScalarType
+
+A scalar's entry is a graphql `GraphQLScalarType` (`new GraphQLScalarType({ name, parseValue, ... })`),
+not a plain object or function.
+
+## Resolvers for scalar X is a GraphQLScalarType named Y; the names must match
+
+The `name` of the `GraphQLScalarType` differs from the key it sits under. Make them equal.
+
+## Resolver X.y is not valid on an object type
+
+## Resolver X.y is not valid on an interface type
+
+A key starting with `__` that this kind of type does not take: `__isTypeOf` is for object types and
+`__resolveType` for interfaces and unions. Move it to the right type, or rename the field (names
+starting with `__` are reserved by GraphQL).
+
+## Resolver X.y must be a function or { resolve, subscribe }
+
+A field's resolver is a function, or an object with `resolve` and/or `subscribe` functions. Anything
+else (a value, `null`) is refused. For a constant, write `() => value`.
+
+# @graxia/core — Troubleshooting: security
+
+Source: packages/core/docs/troubleshooting-security.md
+
+# Troubleshooting: security
+
+CSRF, introspection, persisted and trusted document errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
+
+## This request requires one of the headers x-graphql-csrf, graphql-require-preflight, apollo-require-preflight, x-apollo-operation-name (CSRF prevention).
+
+The server answered 403 `CSRF_HEADER_REQUIRED`. The request is one a browser can send cross-site
+without a CORS preflight (a `GET`, or a `POST` with no `Content-Type` or a `text/plain`,
+`application/x-www-form-urlencoded` or `multipart/form-data` one) and carries none of the listed
+headers. Send a JSON `POST`, or add a header with any non-empty value; a client library has a
+setting for it (see [Security](./guide/security.md)).
+
+```ts
+await fetch(url, {
+	method: 'POST',
+	headers: { 'content-type': 'application/json', 'x-graphql-csrf': '1' },
+	body: JSON.stringify({ query: '{ hello }' }),
+});
+```
+
+A plugin's `csrfExempt` that matches a `GET` no plugin answers gets this same 403 on purpose (an
+exempt request never executes an operation): make the plugin's `onRequest` answer it with `respond`,
+or narrow the predicate. See [Security](./guide/security.md).
+
+A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
+custom `requireHeader` list the message names your headers instead.
+
+## Cross-origin request refused from <origin>.
+
+403 `FORBIDDEN_ORIGIN`. Either `csrf.sameOrigin` is on and the request's `Origin` is not the
+server's own origin or in `allowedOrigins`, or a WebSocket upgrade came from such an origin (this
+check is on even with `sameOrigin` off). The origin is compared with the request URL graxia sees,
+so behind a proxy pass the public URL, or list the public origin. The message ends with
+`from a null origin.` for `Origin: null` (a sandboxed frame, a `file:` page; always refused) and
+`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } },
+});
+```
+
+## GraphQL introspection is not allowed, but the query contained __schema or __type.
+
+`GRAPHQL_VALIDATION_FAILED` with a `fix`: `introspection` is `false`, or `NODE_ENV` is `production`
+and you did not set it. Set `introspection: true` to allow it (a code generator or an explorer
+needs it); `__typename` is always allowed.
+
+## csrf must be false or an object ({ requireHeader, sameOrigin })
+
+`createGraxia` throws a `GraxiaConfigError`. Pass `csrf: false` or an object, not `true`.
+
+## csrf.requireHeader must be a boolean or a non-empty list of header names
+
+`requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
+
+## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
+
+Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
+
+## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
+
+Pick one of the three modes (see [Security](./guide/security.md)).
+
+## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
+
+`allowedOrigins` is an array of strings.
+
+## csrf.sameOrigin.allowedOrigins entry "x" is not an origin (use scheme, host and optional port, no path: "https://app.example.com")
+
+An entry must be exactly `scheme://host[:port]`: no path, no trailing slash, not `null`.
+
+## introspection must be a boolean
+
+## suggestions must be a boolean
+
+Both options take `true` or `false`; leave them out to follow `NODE_ENV`.
+
+## Only persisted documents are allowed.
+
+`trustedDocuments` is in `strict` mode (the default when `NODE_ENV=production`) and the request sent
+a query in full with no id that resolves. The response is 400 with code `PERSISTED_QUERY_ONLY` and
+a `fix`. Send the `documentId` (or APQ hash) from your manifest, or run `mode: 'mixed'` where
+arbitrary queries are fine.
+
+## Persisted document <id> not found.
+
+A `documentId` (or an `extractKey` id) is in neither the manifest nor the `store`. Regenerate the
+manifest and redeploy the server before the clients that use it. 400, code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotFound
+
+An APQ client sent a hash alone that the server never saw. It is the first step of the protocol:
+the client sends the query and the hash again and the server registers it. If it loops, the `store`
+loses entries (a short TTL, an eviction) or differs between processes: use `redisCache()`. Code
+`PERSISTED_QUERY_NOT_FOUND`.
+
+## PersistedQueryNotSupported
+
+A client sent `extensions.persistedQuery` and the server cannot serve or register it: `apq` is
+`false`, or the mode is `strict` and the hash is not in the manifest. Apollo Client then drops the
+extension and sends the query, which `strict` refuses with `Only persisted documents are allowed.`
+Code `PERSISTED_QUERY_NOT_SUPPORTED`.
+
+## provided sha does not match query
+
+The `sha256Hash` is not the lower-case hex SHA-256 of the `query` sent with it (UTF-8, as sent).
+The client hashes a different text from the one it sends (a transform after hashing). Code
+`PROVIDED_SHA_DOESNT_MATCH`.
+
+## Unsupported persisted query version
+
+`extensions.persistedQuery.version` is not `1`. Code `PERSISTED_QUERY_VERSION_NOT_SUPPORTED`.
+
+## Send either documentId or query, not both.
+
+A request has a `documentId` (or an id from `extractKey`) and a `query`. Send one. 400.
+
+## The "persistedQuery" extension must be { version: 1, sha256Hash: string }.
+
+`extensions.persistedQuery` is not an object with a string `sha256Hash`. 400.
+
+## The "documentId" parameter must be a string.
+
+The `documentId` of a body or a WebSocket payload is not a string. 400.
+
+## trustedDocuments must be an object ({ manifest, store, apq, mode, extractKey })
+
+The option is not an object. Leave it out to turn trusted documents off.
+
+## trustedDocuments.mode must be "strict" or "mixed"
+
+`mode` is something else (a typo, a boolean). Use `'strict'` or `'mixed'`, or leave it out to follow `NODE_ENV`.
+
+## trustedDocuments.apq must be a boolean
+
+`apq` is not `true` or `false`. Pass a boolean, or leave it out (on in `mixed`, off in `strict`).
+
+## trustedDocuments.store must be a KeyValueCache (get, set and delete)
+
+`store` lacks `get`, `set` or `delete`. Pass `createMemoryCache()` or `redisCache()`, or any object with the three methods.
+
+## trustedDocuments.extractKey must be a function (params, request) => string | undefined
+
+`extractKey` is not a function. Pass `(params, request) => string | undefined`, returning `undefined` when the request names no document.
+
+## trustedDocuments.mode "strict" needs a manifest, or extractKey with a store: no document could ever run
+
+`strict` runs only persisted documents, and none can exist. In production the mode is `strict` by
+default, so `trustedDocuments: {}` fails there. Add a `manifest`, or `extractKey` with a `store`, or
+set `mode: 'mixed'`.
+
+## trustedDocuments.manifest must be a Map, an object of id to source, or an Apollo persisted query manifest
+
+The manifest is none of the three formats. Pass the parsed JSON of `persisted-queries.json`,
+`persisted-documents.json` or the Apollo manifest, not its text.
+
+## trustedDocuments.manifest: the entry "<id>" must map to a GraphQL source string
+
+An entry's source is not a non-blank string. Regenerate the manifest.
+
+## trustedDocuments.manifest: every id must be a non-empty string
+
+An Apollo operation without an `id`, or a `Map` key that is not a string.
+
+## trustedDocuments.manifest: the Apollo manifest "version" must be 1
+
+Only version 1 of `apollo-persisted-query-manifest` is read.
+
+## trustedDocuments.manifest: the Apollo manifest "operations" must be a list of { id, body }
+
+The Apollo manifest has no `operations` list, or an entry is not an object.
+
+# @graxia/core — Troubleshooting: subscriptions and incremental delivery
+
+Source: packages/core/docs/troubleshooting-subscriptions.md
+
+# Troubleshooting: subscriptions and incremental delivery
+
+Subscription, WebSocket, server-sent events and `@defer`/`@stream` errors, headed by the message as it appears. The rest is in [Troubleshooting](./troubleshooting.md).
 
 ## Subscriptions are served over server-sent events (send "Accept: text/event-stream") or WebSocket (graphql-transport-ws).
 
@@ -4699,420 +5045,137 @@ Bun.serve({ fetch: (request, server) => graxia.fetch(request, { server }) });
 
 Keep `subscriptions.sse.keepAliveMs` below the idle timeout of any proxy in front of the server.
 
-## path must start with "/" (or be false)
+# @graxia/core — Troubleshooting: file uploads
 
-`path` is a URL path such as `/graphql`, or `false` to serve any path.
+Source: packages/core/docs/troubleshooting-uploads.md
 
-## shutdownTimeout must be a non-negative integer (milliseconds)
+# Troubleshooting: file uploads
 
-Pass a count of milliseconds (`0` aborts at once), such as `10_000`.
+Every message of [File uploads](./guide/uploads.md), headed by the text the server sends. The rest is in
+[Troubleshooting](./troubleshooting.md).
 
-## Resolver Color.PURPLE is defined but enum Color has no value PURPLE
+## uploads.bodyBytes must be a positive integer
 
-An enum resolver map names a value the SDL does not declare. Fix the name or add the value to the SDL.
+`uploads.bodyBytes` is not an integer of at least 1 (`GraxiaConfigError` at boot).
+Pass a size such as `uploads: { bodyBytes: 16 << 20 }`.
 
-## Resolver Pet.name is defined but a union has no fields; only __resolveType is allowed
+## uploads.files must be a positive integer
 
-A union has no fields: give it only `__resolveType`, and put field resolvers on its member types.
+`uploads.files` is not an integer of at least 1 (`GraxiaConfigError` at boot). Pass a count such as
+`uploads: { files: 10 }`.
 
-## A response cannot have status N
+## uploads must be a boolean or an object ({ bodyBytes, fileBytes, files })
 
-A plugin answered with a response whose status is outside 200 to 599 (`Response.error()` has status 0).
-The client gets the generic 500 instead. Answer with a real HTTP status.
+`uploads` was given something else, such as a string or a number (`GraxiaConfigError` at boot). Use `true`, `false`,
+or an object of limits: `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 }`.
 
-## A custom scalar's message reaches the client
+## uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes
 
-graphql reports a `parseValue` that throws a plain `Error` as a coercion error, unmasked. Throw
-`exposedError('BAD_USER_INPUT', …)` or a `GraphQLError` with a safe message. See
-[Errors](./guide/errors.md#known-behaviour-scalar-coercion).
-
-## graxia.execute: the request ended with an HTTP N response instead of a result; see error.response.
-
-`graxia.execute` rejects with a `GraxiaExecuteError` when the pipeline answered with something other
-than an execution result: a plugin returned `respond(...)` (for example a 401 from an auth plugin),
-a hook failed unexpectedly (500), or the instance was disposed (503). The HTTP answer is on
-`error.response` (and `error.status`):
+The per-file limit is not an integer of at least 1, or it is above `uploads.bodyBytes`.
 
 ```ts
-try {
-	await graxia.execute({ document: '{ me { id } }' });
-} catch (error) {
-	if (error instanceof GraxiaExecuteError)
-		console.log(error.status, await error.response.text());
-}
+createGraxia({ schema, uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 } });
 ```
 
-Pass the headers the plugin expects (`headers: { authorization: … }`). See
-[Testing](./guide/testing.md).
+## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight. Keep csrf.requireHeader on (the default), or turn uploads off.
 
-## Server is shutting down.
-
-`graxia.execute` rejects with this `GraxiaExecuteError` (status 503, `SHUTTING_DOWN`) once `dispose()`
-has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
-[Context, cancellation and shutdown](./guide/context.md).
-
-## Variable "$id" has invalid value: … (`BAD_USER_INPUT`)
-
-Also `Unknown operation named "X".` and
-`Must provide operation name if query contains multiple operations.`: the request was refused
-before any field ran. Send the variables the operation declares, with their types, and an
-`operationName` the document holds. `extensions.fix` says the same.
-
-## graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)
-
-`execute` throws this `TypeError` because `variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
-to a string) before calling `execute`.
-
-## Resolvers for X are defined more than once
-
-Two resolver maps given to `createSchema` define a non-object type (a scalar or an enum, say) under
-the same name. Keep one definition. For object types the message names the field instead
-(`Resolver Query.foo is defined more than once`).
-
-## Resolvers for X must be an object
-
-The resolvers of an object, interface, union or enum type must be a plain object of fields (or
-values). A function, string or array was given:
+`createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
+can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
+or turn uploads off.
 
 ```ts
-resolvers: {
-	Query: {
-		hello: () => 'hi';
-	}
-} // not `Query: () => 'hi'`
+createGraxia({ schema, uploads: true }); // the CSRF header is required (default)
 ```
 
-## Resolvers for X are defined but X is an input type
+## File uploads (multipart/form-data) are not enabled on this server. (`UPLOADS_NOT_ENABLED`)
 
-Input types have no resolvers. Remove the entry; defaults and validation belong in the SDL.
+**Status 415.** A multipart body reached a server without `uploads`. Send JSON, or enable it:
+`createGraxia({ uploads: true })`.
 
-## Resolvers for X is a GraphQLScalarType but X is not a scalar
+## The request body is larger than uploads.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-A `GraphQLScalarType` was given under the name of a type that the SDL declares as something else.
-Declare `scalar X` in the SDL, or move the entry to the right name.
+**Status 413.** The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or raise the limit.
 
-## Resolvers for scalar X must be a GraphQLScalarType
+## File "0" is larger than uploads.fileBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-A scalar's entry is a graphql `GraphQLScalarType` (`new GraphQLScalarType({ name, parseValue, ... })`),
-not a plain object or function.
+**Status 413.** One file is over `uploads.fileBytes` (8 MiB by default). `"0"` is the file's field name in `map`.
+Send a smaller file, or raise `uploads.fileBytes` (never above `uploads.bodyBytes`).
 
-## Resolvers for scalar X is a GraphQLScalarType named Y; the names must match
+## The "operations" field is larger than limits.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-The `name` of the `GraphQLScalarType` differs from the key it sits under. Make them equal.
+**Status 413.** The JSON `operations` part is over `limits.bodyBytes` (1 MiB by default), however small the files are.
+Send a shorter document (a persisted `documentId` helps), or raise `limits.bodyBytes`.
 
-## Resolver X.y is not valid on an object type
+## The request holds N files; uploads.files allows M. (`UPLOAD_TOO_MANY_FILES`)
 
-## Resolver X.y is not valid on an interface type
+**Status 413.** The `fix` says: send fewer files per request, or raise `uploads.files` on the server.
 
-A key starting with `__` that this kind of type does not take: `__isTypeOf` is for object types and
-`__resolveType` for interfaces and unions. Move it to the right type, or rename the field (names
-starting with `__` are reserved by GraphQL).
+## The multipart body could not be parsed. (`UPLOAD_INVALID`)
 
-## Resolver X.y must be a function or { resolve, subscribe }
+**Status 400.** The body is not valid `multipart/form-data`: a missing or wrong boundary in the `Content-Type`, a
+truncated body, or a body that could not be read. Let the HTTP client set the `Content-Type` (with its
+boundary) itself.
 
-A field's resolver is a function, or an object with `resolve` and/or `subscribe` functions. Anything
-else (a value, `null`) is refused. For a constant, write `() => value`.
+## The multipart request has two file parts named "0". (`UPLOAD_INVALID`)
 
-## persisted: true needs a document; pass { sha256Hash } to send a hash alone
+**Status 400.** Two file parts share one field name (`0` here), so the server cannot tell which file a `map` path
+means. Give each file part its own name, as in `map`: `{ "0": ["variables.a"], "1": ["variables.b"] }`, and send the
+parts as `-F 0=@a.txt -F 1=@b.txt`. One file for several paths is one part with several paths in its `map` entry.
 
-Thrown by the `@graxia/core/testing` client: `persisted: true` computes the hash from the document,
-so the document cannot be `null`.
+## The multipart request has no "operations" field. (`UPLOAD_INVALID`)
 
-```ts
-await client.query('{ hello }', { persisted: true }); // sends the hash and the text
-await client.query(null, { persisted: { sha256Hash: 'ecf4…' } }); // sends the hash alone
-```
+**Status 400.** Send `operations` first: a JSON text field holding the GraphQL request (`{ "query", "variables" }`), with
+`null` where each file goes. The same code answers `The multipart request has no "map" field.`.
 
-## A null document needs persisted: { sha256Hash } or documentId
+## The "operations" field is not valid JSON. (`UPLOAD_INVALID`)
 
-The test client was given `null` as the document without a hash or an id to send. Pass
-`{ persisted: { sha256Hash } }`, `{ documentId }`, or a document.
+**Status 400.** `operations` must be JSON text, not a file part.
 
-## Expected no GraphQL errors, got N:
+## The "map" field must be a JSON object of file field names to arrays of paths. (`UPLOAD_INVALID`)
 
-`expectNoErrors(result)` found errors in the result. Each following line is
-`- message [CODE] at path`; fix the cause (a masked error shows `Unexpected error.` and its
-correlation id, which `onUnexpected` matches to the original). To assert an error on purpose, check
-`result.errors` yourself.
+**Status 400.** `map` is `{ "0": ["variables.file"] }`: each file part's field name and the non-empty list of paths
+that receive it.
 
-## dispose: N operation(s) did not settle after abort
+## Map entry "0" points at "query"; a file may only go under "variables". (`UPLOAD_INVALID`)
 
-Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted the in-flight
-operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
-context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
-cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
+**Status 400.** A path must start with `variables` (`1.variables.file` in a batch, with the entry index). `query`,
+`operationName` and `extensions` are refused.
 
-## This request requires one of the headers x-graphql-csrf, graphql-require-preflight, apollo-require-preflight, x-apollo-operation-name (CSRF prevention).
+## Map entry "0" points at "variables.f", which is not null in "operations". (`UPLOAD_INVALID`)
 
-The server answered 403 `CSRF_HEADER_REQUIRED`. The request is one a browser can send cross-site
-without a CORS preflight (a `GET`, or a `POST` with no `Content-Type` or a `text/plain`,
-`application/x-www-form-urlencoded` or `multipart/form-data` one) and carries none of the listed
-headers. Send a JSON `POST`, or add a header with any non-empty value; a client library has a
-setting for it (see [Security](./guide/security.md)).
+**Status 400.** The slot a path names must exist and be `null` in `operations`: write `"variables": { "f": null }`.
+A path may not go through a value that is not an object or an array.
 
-```ts
-await fetch(url, {
-	method: 'POST',
-	headers: { 'content-type': 'application/json', 'x-graphql-csrf': '1' },
-	body: JSON.stringify({ query: '{ hello }' }),
-});
-```
+## Map entry "0" path "variables.`__proto__`" is not allowed. (`UPLOAD_INVALID`)
 
-A plugin's `csrfExempt` that matches a `GET` no plugin answers gets this same 403 on purpose (an
-exempt request never executes an operation): make the plugin's `onRequest` answer it with `respond`,
-or narrow the predicate. See [Security](./guide/security.md).
+**Status 400.** `__proto__`, `constructor` and `prototype` are never followed in a path.
 
-A server no browser can reach may turn the check off with `csrf: { requireHeader: false }`. With a
-custom `requireHeader` list the message names your headers instead.
+## Map entry "0" has no file part. (`UPLOAD_INVALID`)
 
-## Cross-origin request refused from <origin>.
+**Status 400.** `map` names a field that is not a file part of the request (it is missing, or a text field).
+The reverse, `File part "1" is not in "map".`, is the same mistake: every file part needs a `map` entry.
 
-403 `FORBIDDEN_ORIGIN`. Either `csrf.sameOrigin` is on and the request's `Origin` is not the
-server's own origin or in `allowedOrigins`, or a WebSocket upgrade came from such an origin (this
-check is on even with `sameOrigin` off). The origin is compared with the request URL graxia sees,
-so behind a proxy pass the public URL, or list the public origin. The message ends with
-`from a null origin.` for `Origin: null` (a sandboxed frame, a `file:` page; always refused) and
-`from an unknown origin.` for a browser request marked `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin`.
+## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
 
-```ts
-createGraxia({
-	schema,
-	csrf: { sameOrigin: { allowedOrigins: ['https://app.example.com'] } },
-});
-```
+`GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or a
+literal was written in the document. Send the file as a multipart part.
 
-## GraphQL introspection is not allowed, but the query contained __schema or __type.
+# @graxia/core — Troubleshooting
 
-`GRAPHQL_VALIDATION_FAILED` with a `fix`: `introspection` is `false`, or `NODE_ENV` is `production`
-and you did not set it. Set `introspection: true` to allow it (a code generator or an explorer
-needs it); `__typename` is always allowed.
+Source: packages/core/docs/troubleshooting.md
 
-## csrf must be false or an object ({ requireHeader, sameOrigin })
+# Troubleshooting
 
-`createGraxia` throws a `GraxiaConfigError`. Pass `csrf: false` or an object, not `true`.
+The errors a consumer can hit, headed by the message as it appears. Find the topic, then search the page for the message.
 
-## csrf.requireHeader must be a boolean or a non-empty list of header names
-
-`requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
-
-## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
-
-Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
-
-## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
-
-Pick one of the three modes (see [Security](./guide/security.md)).
-
-## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
-
-`allowedOrigins` is an array of strings.
-
-## csrf.sameOrigin.allowedOrigins entry "x" is not an origin (use scheme, host and optional port, no path: "https://app.example.com")
-
-An entry must be exactly `scheme://host[:port]`: no path, no trailing slash, not `null`.
-
-## introspection must be a boolean
-
-## suggestions must be a boolean
-
-Both options take `true` or `false`; leave them out to follow `NODE_ENV`.
-
-## Only persisted documents are allowed.
-
-`trustedDocuments` is in `strict` mode (the default when `NODE_ENV=production`) and the request sent
-a query in full with no id that resolves. The response is 400 with code `PERSISTED_QUERY_ONLY` and
-a `fix`. Send the `documentId` (or APQ hash) from your manifest, or run `mode: 'mixed'` where
-arbitrary queries are fine.
-
-## Persisted document <id> not found.
-
-A `documentId` (or an `extractKey` id) is in neither the manifest nor the `store`. Regenerate the
-manifest and redeploy the server before the clients that use it. 400, code
-`PERSISTED_QUERY_NOT_FOUND`.
-
-## PersistedQueryNotFound
-
-An APQ client sent a hash alone that the server never saw. It is the first step of the protocol:
-the client sends the query and the hash again and the server registers it. If it loops, the `store`
-loses entries (a short TTL, an eviction) or differs between processes: use `redisCache()`. Code
-`PERSISTED_QUERY_NOT_FOUND`.
-
-## PersistedQueryNotSupported
-
-A client sent `extensions.persistedQuery` and the server cannot serve or register it: `apq` is
-`false`, or the mode is `strict` and the hash is not in the manifest. Apollo Client then drops the
-extension and sends the query, which `strict` refuses with `Only persisted documents are allowed.`
-Code `PERSISTED_QUERY_NOT_SUPPORTED`.
-
-## provided sha does not match query
-
-The `sha256Hash` is not the lower-case hex SHA-256 of the `query` sent with it (UTF-8, as sent).
-The client hashes a different text from the one it sends (a transform after hashing). Code
-`PROVIDED_SHA_DOESNT_MATCH`.
-
-## Unsupported persisted query version
-
-`extensions.persistedQuery.version` is not `1`. Code `PERSISTED_QUERY_VERSION_NOT_SUPPORTED`.
-
-## Send either documentId or query, not both.
-
-A request has a `documentId` (or an id from `extractKey`) and a `query`. Send one. 400.
-
-## The "persistedQuery" extension must be { version: 1, sha256Hash: string }.
-
-`extensions.persistedQuery` is not an object with a string `sha256Hash`. 400.
-
-## The "documentId" parameter must be a string.
-
-The `documentId` of a body or a WebSocket payload is not a string. 400.
-
-## trustedDocuments must be an object ({ manifest, store, apq, mode, extractKey })
-
-The option is not an object. Leave it out to turn trusted documents off.
-
-## trustedDocuments.mode must be "strict" or "mixed"
-
-`mode` is something else (a typo, a boolean). Use `'strict'` or `'mixed'`, or leave it out to follow `NODE_ENV`.
-
-## trustedDocuments.apq must be a boolean
-
-`apq` is not `true` or `false`. Pass a boolean, or leave it out (on in `mixed`, off in `strict`).
-
-## trustedDocuments.store must be a KeyValueCache (get, set and delete)
-
-`store` lacks `get`, `set` or `delete`. Pass `createMemoryCache()` or `redisCache()`, or any object with the three methods.
-
-## trustedDocuments.extractKey must be a function (params, request) => string | undefined
-
-`extractKey` is not a function. Pass `(params, request) => string | undefined`, returning `undefined` when the request names no document.
-
-## trustedDocuments.mode "strict" needs a manifest, or extractKey with a store: no document could ever run
-
-`strict` runs only persisted documents, and none can exist. In production the mode is `strict` by
-default, so `trustedDocuments: {}` fails there. Add a `manifest`, or `extractKey` with a `store`, or
-set `mode: 'mixed'`.
-
-## trustedDocuments.manifest must be a Map, an object of id to source, or an Apollo persisted query manifest
-
-The manifest is none of the three formats. Pass the parsed JSON of `persisted-queries.json`,
-`persisted-documents.json` or the Apollo manifest, not its text.
-
-## trustedDocuments.manifest: the entry "<id>" must map to a GraphQL source string
-
-An entry's source is not a non-blank string. Regenerate the manifest.
-
-## trustedDocuments.manifest: every id must be a non-empty string
-
-An Apollo operation without an `id`, or a `Map` key that is not a string.
-
-## trustedDocuments.manifest: the Apollo manifest "version" must be 1
-
-Only version 1 of `apollo-persisted-query-manifest` is read.
-
-## trustedDocuments.manifest: the Apollo manifest "operations" must be a list of { id, body }
-
-The Apollo manifest has no `operations` list, or an entry is not an object.
-
-## Too many requests, try again later.
-
-A client spent a `fieldRateLimit` limit. HTTP `429`, code `RATE_LIMITED` (or your `code`),
-`extensions.retryAfter` and a `Retry-After` header in seconds. Wait that long. If real users hit
-it, raise the limit's `limit`, or check that `key` is not the proxy's address for everyone (see
-[Rate limiting fields](./guide/rate-limiting.md)). Nothing counts when the key is `undefined`.
-
-## <field> may be selected once per operation.
-
-A field configured with `single: true` appears at two different places of one operation, for
-example `{ a: signIn b: signIn }`. HTTP `400`, code `FIELD_SELECTED_ONCE`. Send one operation per
-call, or drop `single`.
-
-## fieldRateLimit: fields must be an object with at least one field name
-
-`fields` is missing, empty or not an object. Pass `{ signIn: limit }`.
-
-## fieldRateLimit: fields.<name> must be a limit ({ consume }) or { limit, single? }
-
-The rule of `<name>` has no `consume` function, or `single` is not a boolean. Use
-`memoryFieldLimit(...)`, `limitFromStore(...)`, your own `{ consume }`, or `{ limit, single: true }`.
-
-## fieldRateLimit: ipv6Prefix must be an integer from 0 to 128
-
-```ts
-fieldRateLimit({ fields, ipv6Prefix: 64 });
-```
-
-## fieldRateLimit: ipv6Prefix only applies to the default key; reduce the address inside key() instead
-
-`ipv6Prefix` reduces the address the default key reads. With your own `key`, drop `ipv6Prefix` and
-reduce the address in `key`.
-
-## fieldRateLimit: code must be a non-empty string
-
-`code` is the `extensions.code` of a refusal: give a string, or leave it out for `RATE_LIMITED`.
-
-## memoryFieldLimit: limit must be an integer of 1 or more
-
-Also `windowMs` and `maxKeys`: `memoryFieldLimit: windowMs must be an integer of 1 or more`,
-`memoryFieldLimit: maxKeys must be an integer of 1 or more`. Pass whole numbers (windows in milliseconds).
-
-## limitFromStore: no policy; pass { limit, windowMs } or give the store a policy
-
-The store has no `policy`: `limitFromStore(store, { limit: 10, windowMs: 60_000 })`.
-
-## limitFromStore: limit <n> differs from the store policy's limit <m>
-
-The same for `windowMs`. The store counts with its own policy; pass the same numbers or none.
-
-## limitFromStore: limit must be an integer of 1 or more
-
-Also `limitFromStore: windowMs must be an integer of 1 or more`: whole numbers, `windowMs` in milliseconds.
-
-## telemetry must be false or an object
-
-`telemetry` was `true`, a string or an array. Omit it (on when `@softistx/telemetry` is installed),
-pass `false`, or pass an options object.
-
-## telemetry.instance must be a @softistx/telemetry Telemetry
-
-`instance` is not the object `createTelemetry(...)` returns. Pass it, or leave the option out to use
-the installed one. A `tracer` option from before 0.4 throws its own error: see
-[telemetry.tracer was replaced by telemetry.instance](#telemetrytracer-was-replaced-by-telemetryinstance).
-
-## telemetry.tracer was replaced by telemetry.instance
-
-The `telemetry` option still has `tracer`, the OpenTelemetry option of graxia before 0.4. Replace it
-with `instance`, a `Telemetry` from `createTelemetry` in `@softistx/telemetry`, or leave it out to use
-the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelemetryapi).
-
-## telemetry.document must be a boolean
-
-Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
-
-## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
-
-Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fields with no resolver.
-
-## No spans appear
-
-The server answers but your backend shows nothing. In order:
-
-1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
-   traces nothing without it. `bun add @softistx/telemetry`.
-2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
-   call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such
-   as `@softistx/telemetry-otlp`'s `otlpExporter`.
-3. Two copies of `@softistx/telemetry`: you installed the telemetry on one and graxia reads the
-   other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
-4. `telemetry: false` is set.
-5. A request outside the GraphQL path (`path`) is not traced.
-
-## A resolver span has no child spans of mine
-
-A span you start inside a resolver nests under the active span. It is the resolver span (or the
-operation span) when the telemetry is the one graxia emits to: with `telemetry: { instance }`, start
-your span inside that same telemetry (`withTelemetry(instance, ...)` is already in scope in a
-resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
-appear".
+- [Schema and resolvers](./troubleshooting-schema.md): schema directives, `createSchema`, and resolver-map mistakes.
+- [Plugins and context](./troubleshooting-plugins.md): masked `Unexpected error.`, plugin setup and hooks, typed context.
+- [Request limits](./troubleshooting-limits.md): token, depth, alias, directive, cost and body limits, and their config errors.
+- [Subscriptions and incremental delivery](./troubleshooting-subscriptions.md): subscriptions over SSE and WebSocket, incremental delivery.
+- [HTTP, execute and testing](./troubleshooting-http.md): `path`, shutdown, responses, `graxia.execute`, the testing client.
+- [Security](./troubleshooting-security.md): the CSRF check, introspection, persisted queries and trusted documents.
+- [Rate limits and telemetry](./troubleshooting-rate-limits.md): field rate limits, `limitFromStore`, telemetry.
+- [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.
 
 # @graxia/envelop — @graxia/envelop
 

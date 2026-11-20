@@ -106,7 +106,7 @@ header is never trusted). A masked error and the generic 500 both carry it:
 ```
 
 A user who reports the id lets you find the original error in your logs (see
-[troubleshooting](../troubleshooting.md#unexpected-error)).
+[troubleshooting](../troubleshooting-plugins.md#unexpected-error)).
 
 ## `onUnexpected`
 
