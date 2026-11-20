@@ -71,6 +71,25 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `cors`                                 | none, see [CORS](#cors)                                                                                                                                  |
 | `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                    |
 
+## A host's own body limit
+
+Drop any body limiter the host wraps around the request and set `limits.bodyBytes` instead. graxia
+counts the stream itself: a `Content-Length` over the limit and a chunked body that grows past it
+both answer 413 ("The request body is too large."). A host limiter that errors the stream mid-read
+instead surfaces as 400 ("The request body could not be read."), because graxia cannot tell that
+error from a dropped connection.
+
+```ts
+// Before: the host errors the stream past its limit
+Bun.serve({
+	fetch: (request) => graxia.fetch(limitBody(request, 1_000_000), server),
+});
+
+// After: graxia answers 413 itself
+const graxia = createGraxia({ schema, limits: { bodyBytes: 1_000_000 } });
+Bun.serve({ fetch: (request, server) => graxia.fetch(request, server) });
+```
+
 ## What stays in `@alxia/graphql`
 
 `oncePerRequest`, `freshPerMutation`, `clearRequestCache` and `boundedStream` are conventions of an

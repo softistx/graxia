@@ -98,7 +98,8 @@ server) to it. The compiler checks that the context matches your schema's `creat
   to 0..1; an explicit `q=0` excludes a type even when a wildcard would match). Responses carry
   `Vary: Accept`.
 - The body is read as a stream and counted: past `limits.bodyBytes` reading stops and the answer is
-  413. `Content-Length` is checked first but never trusted alone.
+  413. `Content-Length` is checked first but never trusted alone. A stream that errors mid-read (a host's
+  own body limiter) answers 400; use `limits.bodyBytes` instead of a host limiter.
 - Other methods answer 405 with `Allow: GET, POST`.
 - **Event streams**: an `Accept` that prefers `text/event-stream` (named, never through a wildcard,
   with a q at least that of the JSON types) answers an event stream for any operation; see
