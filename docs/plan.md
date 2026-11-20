@@ -93,15 +93,15 @@ Errors: `exposedError(code, message, { extensions?, fix? })` with typed code map
 - **S4** GraphQL over HTTP (GET/POST, negotiation, status codes, 405, streamed 413, 415, opt-in batching, request id, `serve()`). Accept: graphql-http serverAudits MUST+SHOULD green against real Bun.serve.
 - **S5** context + cancellation (ALS `getContext`, serverContext, one context per operation, abortSignal, `shutdown`, `dispose()` drain; ALS benchmark in PR).
 - **S6** errors (masking + correlation id, `exposedError` typed codes + `fix`, `onUnexpected`).
-- **S7** `graxia.execute` + `@softistx/graxia/testing` client (GET, POST, headers, persisted hash, typed documents, status).
-- **S8** core docs + roadmap; first publish `@softistx/graxia` 0.1.0.
+- **S7** `graxia.execute` + `@graxia/core/testing` client (GET, POST, headers, persisted hash, typed documents, status).
+- **S8** core docs + roadmap; first publish `@graxia/core` 0.1.0.
 ### M2 Subscriptions & incremental
 
 - **S9** PubSub typed interface + memory impl, filter/map, abort-safe.
 - **S10** SSE (graphql-sse distinct connections, GET/POST, 12 s keep-alive, cancel on abort/dispose; graphql-sse client tests). Note (S6): every payload goes through `rt.maskResult`, after `onResultChunk`.
 - **S11** @defer/@stream over multipart/mixed and SSE; onResultChunk. Note (S5): a streamed body must be tracked by the lifecycle (so `dispose()` drains it), aborted by the shutdown signal, and have ALS wrapped around its async iterator. Note (S6): each incremental payload goes through `rt.maskResult`, after `onResultChunk`.
 - **S12** graphql-transport-ws on Bun WebSocket (close codes 4400/4401/4403/4408/4409/4429, onConnect, connectionParams, keep-alive, maxPayloadBytes, 1001 on dispose, `upgrade()`); graphql-ws client interop. Note (S5): sockets and their streams follow the same rule as S11 (lifecycle tracking, shutdown abort, ALS around the iterator). Note (S6): every `next` payload goes through `rt.maskResult`, after `onResultChunk`.
-- **S13** `@softistx/graxia-redis` (pubsub + cache, reconnect/resubscribe); publish 0.2.
+- **S13** `@graxia/redis` (pubsub + cache, reconnect/resubscribe); publish 0.2.
 ### M3 Security, trusted documents, OTel
 
 - **S14** operation limits (depth, aliases, directives, root fields, cost `@cost`/`@listSize`), codes + limit + `fix`.
@@ -112,18 +112,18 @@ Errors: `exposedError(code, message, { extensions?, fix? })` with typed code map
 - **S19** production profile spec + `docs/guide/production.md`; publish 0.3.
 ### M4 Explorer
 
-- **S20** `@softistx/graxia-graphiql` (Bun.build bundle, hashed immutable assets, config in data- attribute, CSP `script-src 'self'`, dev only; no external URLs; asset resolution from packed tarball).
+- **S20** `@graxia/graphiql` (Bun.build bundle, hashed immutable assets, config in data- attribute, CSP `script-src 'self'`, dev only; no external URLs; asset resolution from packed tarball).
 - **S21** Apollo Sandbox option (exact Apollo hosts in CSP, dev-only, documented); publish 0.4.
 ### M5 MCP & AI
 
-- **S22** `@softistx/graxia/agent` (`@needs`, `@constraint`, `@errors` directives; `printSchemaFor(schema, { can })`; `lintDescriptions`; `fix` on errors).
-- **S23** `@softistx/graxia-mcp` Streamable HTTP + generic tools (mutation refused in graphql_query).
+- **S22** `@graxia/core/agent` (`@needs`, `@constraint`, `@errors` directives; `printSchemaFor(schema, { can })`; `lintDescriptions`; `fix` on errors).
+- **S23** `@graxia/mcp` Streamable HTTP + generic tools (mutation refused in graphql_query).
 - **S24** OAuth (RFC 9728 metadata, WWW-Authenticate, verifyToken, scopes mcp:read/mcp:write, principal in context).
 - **S25** persisted operations as typed tools (JSON Schema from variables, output schema, required descriptions).
 - **S26** Claude Code plugin + llms.txt generation (stale-file specs); publish 0.5.
 ### M6 Envelop & alxia parity
 
-- **S27** `@softistx/graxia-envelop` (`fromEnvelop`, setParseFn/setExecuteFn/setSubscribeFn; tested with depth-limit, generic-auth, response-cache, persisted-operations on graphql 17).
+- **S27** `@graxia/envelop` (`fromEnvelop`, setParseFn/setExecuteFn/setSubscribeFn; tested with depth-limit, generic-auth, response-cache, persisted-operations on graphql 17).
 - **S28** multipart uploads (off by default, own byte limit, Bun FormData File, CSRF enforced).
 - **S29** parity suite + `examples/host-embedding` (external router, context, upgrade, shutdown); publish 0.6 → `@alxia/graphql` may start its major.
 

@@ -11,6 +11,9 @@ tools: Read, Grep, Glob, Bash, Write, Edit
 
 Upgrade an application's `@softistx/graxia*` packages from one version to another.
 
+0. If any `@graxia/*` package is installed (`@graxia/core`, `-redis`, `-graphiql`, `-mcp`, `-envelop`), apply the
+   scope migration first, ranges included: https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md.
+   Then continue with the steps below on the new names.
 1. Read the installed versions (`bun pm ls`, `package.json`) and the target
    ones. The packages move together: `@softistx/graxia-redis`, `@softistx/graxia-graphiql` and
    `@softistx/graxia-mcp` peer on `@softistx/graxia`, so bump core first and keep every

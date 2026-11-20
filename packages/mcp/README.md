@@ -1,5 +1,7 @@
 # @softistx/graxia-mcp
 
+> Moved from `@graxia/mcp`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
+
 A Model Context Protocol server for a [graxia](https://github.com/softistx/graxia) API. An agent
 (Claude, an IDE, any MCP client) connects over Streamable HTTP, reads the schema it is allowed to
 see, and runs GraphQL operations through your server, with every graxia protection on: limits,

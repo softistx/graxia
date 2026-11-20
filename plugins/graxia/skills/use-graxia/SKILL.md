@@ -4,10 +4,15 @@ description: >-
   Wire and use graxia, the Bun-native GraphQL server engine, in an application:
   install @softistx/graxia and its graphql 17 peer, and respect the contracts the
   package states. This is the index: the package ships the detail. Use when an
-  app depends on @softistx/graxia or adds a GraphQL server on Bun.
+  app depends on @softistx/graxia or adds a GraphQL server on Bun, or still
+  depends on the old @graxia/core, @graxia/redis, @graxia/graphiql, @graxia/mcp
+  or @graxia/envelop names (they moved to @softistx/graxia*).
 ---
 
 # Use graxia
+
+Coming from `@graxia/*`? The packages moved to `@softistx/graxia*`: follow
+https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md first (names, first versions, codemod).
 
 `@softistx/graxia` ships GraphQL over HTTP (`createGraxia`, `fetch`, `serve`),
 typed plugins, per-operation context and cancellation, error masking

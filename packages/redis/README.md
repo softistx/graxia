@@ -1,5 +1,7 @@
 # @softistx/graxia-redis
 
+> Moved from `@graxia/redis`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
+
 Redis PubSub, cache and field rate limit for graxia, on [`@softistx/redis`](https://www.npmjs.com/package/@softistx/redis)
 (one shared client per URI, one reconnecting subscriber connection, server-timed rate limits) over Bun's built-in
 Redis client. No ioredis or node-redis.

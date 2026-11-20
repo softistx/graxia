@@ -1,5 +1,7 @@
 # @softistx/graxia
 
+> Released as `@graxia/core` up to the last version below; the package moved to `@softistx/graxia` in the next minor.
+
 ## 0.14.0
 
 ### Minor Changes
@@ -108,9 +110,9 @@
 
 ### Minor Changes
 
-- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `@softistx/graxia/agent`: the descriptive directives `@needs`, `@constraint` and `@errors`, `@needs(anyOf:)`, `printSchemaFor(schema, { can })` and `visibleSchema` for the schema one caller may see (always with a valid `Query`), `lintDescriptions`, and readers (`needsOf`, `constraintOf`, `errorsOf`). Every error graxia emits now carries `extensions.fix`, including parse and validation failures, variable errors and HTTP refusals; messages and codes are unchanged. The permission predicate type `Can` (`(permission: string) => boolean`) is exported from `@softistx/graxia/agent`.
+- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `@graxia/core/agent`: the descriptive directives `@needs`, `@constraint` and `@errors`, `@needs(anyOf:)`, `printSchemaFor(schema, { can })` and `visibleSchema` for the schema one caller may see (always with a valid `Query`), `lintDescriptions`, and readers (`needsOf`, `constraintOf`, `errorsOf`). Every error graxia emits now carries `extensions.fix`, including parse and validation failures, variable errors and HTTP refusals; messages and codes are unchanged. The permission predicate type `Can` (`(permission: string) => boolean`) is exported from `@graxia/core/agent`.
 
-- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `Graxia` exposes `schema` (the schema it serves) and `limits` (`{ bodyBytes, tokens }`, defaults applied), so a layer in front of it, such as `@softistx/graxia-mcp`, reads them instead of taking them twice.
+- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `Graxia` exposes `schema` (the schema it serves) and `limits` (`{ bodyBytes, tokens }`, defaults applied), so a layer in front of it, such as `@graxia/mcp`, reads them instead of taking them twice.
 
   `Graxia` also exposes `trustedDocuments` (`{ mode: 'strict' | 'mixed' }` in force, the `NODE_ENV` default applied; `undefined` without the option), so a layer that forwards client documents to `graxia.execute` can refuse them in `strict`. A missing or invalid variable (refused by graphql before any field runs) and an unknown or missing operation name now carry `extensions.code: "BAD_USER_INPUT"` beside their `fix` (they had no code). `ApolloPersistedQueryManifest` types `format` as `string` and `version` as `number`, so a manifest imported from JSON type-checks; the values are still checked at boot.
 
@@ -158,7 +160,7 @@
 
 ### Minor Changes
 
-- [#52](https://github.com/softistx/graxia/pull/52) [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A key-value cache contract with an in-memory implementation: `KeyValueCache` and `createMemoryCache` (LRU, per-entry time to live). Nothing in core consumes it yet; `@softistx/graxia-redis` implements it.
+- [#52](https://github.com/softistx/graxia/pull/52) [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A key-value cache contract with an in-memory implementation: `KeyValueCache` and `createMemoryCache` (LRU, per-entry time to live). Nothing in core consumes it yet; `@graxia/redis` implements it.
 
 - [#52](https://github.com/softistx/graxia/pull/52) [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `@defer` and `@stream` over `multipart/mixed` and server-sent events: an `incremental` option (`IncrementalOptions`: `format: 'graphql17' | 'legacy'`, or `false`), `createSchema` adds the two directives (opt out with `incremental: false`), every initial and subsequent payload goes through `onResultChunk` and masking, and `ExecutionOutput` covers incremental results.
 
@@ -190,7 +192,7 @@
 
 - [#41](https://github.com/softistx/graxia/pull/41) [`f3e7362`](https://github.com/softistx/graxia/commit/f3e73624d076054045fd1102527692e174c40a0e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add error handling: `exposedError(code, message, { extensions?, fix? })` with typed, augmentable `GraxiaErrorCodes`; unexpected resolver errors are masked as `Unexpected error.` with `INTERNAL_SERVER_ERROR` and a correlation id (the request id) in every environment, with `maskError` and `maskErrors` options; `onUnexpected` now receives `{ requestId, correlationId, phase }`; the generic 500 carries the correlation id.
 
-- [#41](https://github.com/softistx/graxia/pull/41) [`f3e7362`](https://github.com/softistx/graxia/commit/f3e73624d076054045fd1102527692e174c40a0e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `graxia.execute({ document, variables, operationName, headers, serverContext, signal })`, the in-process execution through the same pipeline as HTTP (it rejects with `GraxiaExecuteError` when a plugin short-circuits or the instance is disposed), the `TypedDocument` / `TypedString` types, and the `@softistx/graxia/testing` subpath with `createTestClient` (GET, POST, headers, persisted-query hash, batch) and `expectNoErrors`.
+- [#41](https://github.com/softistx/graxia/pull/41) [`f3e7362`](https://github.com/softistx/graxia/commit/f3e73624d076054045fd1102527692e174c40a0e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `graxia.execute({ document, variables, operationName, headers, serverContext, signal })`, the in-process execution through the same pipeline as HTTP (it rejects with `GraxiaExecuteError` when a plugin short-circuits or the instance is disposed), the `TypedDocument` / `TypedString` types, and the `@graxia/core/testing` subpath with `createTestClient` (GET, POST, headers, persisted-query hash, batch) and `expectNoErrors`.
 
 - [#41](https://github.com/softistx/graxia/pull/41) [`f3e7362`](https://github.com/softistx/graxia/commit/f3e73624d076054045fd1102527692e174c40a0e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `createGraxia` with the GraphQL over HTTP transport: `fetch(request, serverContext)` and `serve()`, GET and POST, content negotiation, status codes, streamed body limit (413), 415, opt-in batching, request id, plugin `responseHeaders`. Passes the `graphql-http` server audits.
 

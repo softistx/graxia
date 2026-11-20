@@ -1,5 +1,7 @@
 # @softistx/graxia-graphiql
 
+> Moved from `@graxia/graphiql`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
+
 The [GraphiQL](https://github.com/graphql/graphiql) 4 page for graxia, bundled at build time: it runs
 under a strict content security policy, with no CDN, no external font and no analytics.
 

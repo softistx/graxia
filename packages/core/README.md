@@ -1,5 +1,7 @@
 # @softistx/graxia
 
+> Moved from `@graxia/core`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
+
 The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, with no
 adapter layer. Pass a schema, get a `fetch` handler that follows the
 [GraphQL over HTTP](https://graphql.github.io/graphql-over-http/) spec (it passes every

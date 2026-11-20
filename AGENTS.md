@@ -23,9 +23,9 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@softistx/graxia-mcp`      | MCP over Streamable HTTP, OAuth resource server                                                            |
 | `@softistx/graxia-envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
-`@softistx/graxia` is public since S8 (first publish 0.1.0) and `@softistx/graxia-redis` since S13 (first
-publish 0.1.0, released with core 0.2.0), `@softistx/graxia-graphiql` is public from 0.4 (M4, first publish 0.1.0), `@softistx/graxia-mcp` is public since S23 (first publish 0.1.0, in 0.5), and `@softistx/graxia-envelop` is public since S27 (first publish 0.1.0, in 0.6); the other packages stay `"private": true` until their own slice, and removing it is
-a deliberate change, named in its PR.
+`@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
+publish 0.1.0, released with core 0.2.0), `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0), `@graxia/mcp` is public since S23 (first publish 0.1.0, in 0.5), and `@graxia/envelop` is public since S27 (first publish 0.1.0, in 0.6); the other packages stay `"private": true` until their own slice, and removing it is
+a deliberate change, named in its PR. Up to 0.14 the packages were published as `@graxia/*`; they moved to `@softistx/graxia*` (core without the `-core` suffix) in the next minor, and the history above keeps the names of its day.
 
 ## Scripts
 

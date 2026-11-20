@@ -1,5 +1,7 @@
 # @softistx/graxia-envelop
 
+> Moved from `@graxia/envelop`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
+
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts

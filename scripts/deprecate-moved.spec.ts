@@ -28,7 +28,7 @@ describe('deprecate-moved', () => {
 	});
 
 	test('skips every pair while the new names are not on npm', async () => {
-		const npm = fake({}, { '@graxia/core': ['0.14.0'] as never });
+		const npm = fake({}, { '@graxia/core': [undefined] });
 		const out = await run(npm, false, () => {});
 		expect(out.every((o) => o.action === 'skip-new-not-published')).toBe(true);
 		expect(npm.calls).toEqual([]);
@@ -75,5 +75,25 @@ describe('deprecate-moved', () => {
 		await run(npm, true, (l) => lines.push(l));
 		expect(npm.calls).toEqual([]);
 		expect(lines.join('\n')).toContain('dry-run');
+	});
+
+	test('deprecates a name whose versions carry another message', async () => {
+		const npm = fake(
+			{ '@softistx/graxia-envelop': '0.2.0' },
+			{ '@graxia/envelop': ['other message'] },
+		);
+		await run(npm, false, () => {});
+		expect(npm.calls).toEqual([
+			'@graxia/envelop moved to @softistx/graxia-envelop',
+		]);
+	});
+
+	test('rejects when npm cannot be read, and deprecates nothing', async () => {
+		const npm = fake({ '@softistx/graxia': '0.15.0' }, {});
+		npm.deprecations = async () => {
+			throw new Error('npm answered 500');
+		};
+		await expect(run(npm, false, () => {})).rejects.toThrow('npm answered 500');
+		expect(npm.calls).toEqual([]);
 	});
 });
