@@ -477,3 +477,89 @@ describe('cancellation', () => {
 		expect(pubsub.subscriberCount('tick')).toBe(0);
 	});
 });
+
+describe('a source that throws', () => {
+	const seen = () => {
+		const chunks: { errors?: readonly { message: string }[] }[] = [];
+		const plugin = definePlugin({
+			name: 'watch',
+			onResultChunk: ({ chunk }) => {
+				chunks.push(chunk as (typeof chunks)[number]);
+			},
+		});
+		return { chunks, plugin };
+	};
+	test('onResultChunk sees the GraphQLError the source threw, over SSE', async () => {
+		const { chunks, plugin } = seen();
+		const text = await (
+			await make({ plugins: [plugin] }).fetch(
+				sse({ query: 'subscription { gqlAfter }' }),
+			)
+		).text();
+		expect(text).toContain('plain-gql');
+		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('plain-gql');
+		expect('data' in (chunks.at(-1) ?? {})).toBe(false);
+	});
+	test('onResultChunk sees an Error the source threw, which the client gets masked', async () => {
+		const { chunks, plugin } = seen();
+		const text = await (
+			await make({ plugins: [plugin] }).fetch(
+				sse({ query: 'subscription { plainAfter }' }),
+			)
+		).text();
+		expect(text).toContain('Unexpected error.');
+		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('db down');
+	});
+	test('a hook throwing on that chunk reports the source error, then its own', async () => {
+		const reported: unknown[] = [];
+		const plugin = definePlugin({
+			name: 'boom',
+			onResultChunk: ({ chunk }) => {
+				if (!('data' in (chunk as object))) throw new Error('hook failed');
+			},
+		});
+		const text = await (
+			await make({
+				plugins: [plugin],
+				onUnexpected: (e: unknown) => reported.push(e),
+			}).fetch(sse({ query: 'subscription { plainAfter }' }))
+		).text();
+		expect(text).toContain('Unexpected error.');
+		expect(reported.map((e) => (e as Error).message)).toEqual([
+			'db down',
+			'hook failed',
+		]);
+	});
+	test('a hook throwing on a thrown string reports it as an Error of its string form', async () => {
+		const reported: unknown[] = [];
+		const plugin = definePlugin({
+			name: 'boom',
+			onResultChunk: ({ chunk }) => {
+				if (!('data' in (chunk as object))) throw new Error('hook failed');
+			},
+		});
+		const graxia = make({
+			plugins: [plugin],
+			onUnexpected: (e: unknown) => reported.push(e),
+			schema: createSchema<{ signal: AbortSignal }>()({
+				typeDefs: 'type Query { a: Int } type Subscription { s: Int! }',
+				resolvers: {
+					Subscription: {
+						s: {
+							subscribe: async function* () {
+								yield 1;
+								throw 'just a string';
+							},
+							resolve: (n: number) => n,
+						},
+					},
+				},
+			}),
+		});
+		await (await graxia.fetch(sse({ query: 'subscription { s }' }))).text();
+		expect(reported.map((e) => e instanceof Error && e.message)).toEqual([
+			'just a string',
+			'hook failed',
+		]);
+	});
+});

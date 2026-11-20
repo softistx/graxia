@@ -242,3 +242,4 @@ Parse and validation errors are an `error` message and end the operation. Execut
 request id) and reported once through `onUnexpected`, like over HTTP. An error thrown by a
 subscription's source iterator after it has yielded ends the operation with a last `next` carrying
 `errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported.
+The last `next` (`errors`, no `data`) goes through `onResultChunk` first, like over SSE.

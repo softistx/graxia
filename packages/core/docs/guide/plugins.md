@@ -80,6 +80,15 @@ final response.
   a mutation, a failure before execution (parse, validation) included. Over WebSocket that failure
   reaches `onResultChunk` as the result that becomes the `error` message, so a hook sees it like it
   sees an SSE `next`;
+- when a subscription's source throws after it has yielded: the last payload, `{ errors: [error] }` with
+  the error as thrown (a `GraphQLError`, or an `Error` wrapped in one), reaches the hook before masking,
+  over SSE and WebSocket alike. A chunk with `errors` and **no `data` key** is the source's failure, and
+  always the last payload: a resolver error sends `{ data, errors }` and the stream goes on. The
+  operation's signal aborts when the stream ends, whatever the cause (completion, a source failure, the
+  client leaving, shutdown), with no reason, so it does not tell a failure apart. A hook that drops the
+  errors with `setChunk` means nothing is reported for that failure. If a hook throws on this chunk,
+  `onUnexpected` receives the source's error first, then the hook's, but only when the source's error is
+  not a `GraphQLError`: a `GraphQLError` source with a throwing hook reports only the hook's error;
 - over `multipart/mixed` (see [`@defer` and `@stream`](./incremental.md)): the initial and each
   subsequent payload of an incremental result. A query that is not incremental, over `multipart/mixed`
   or plain JSON, is answered as one plain response and its hooks do not run.
