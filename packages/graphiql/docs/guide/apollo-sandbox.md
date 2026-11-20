@@ -141,6 +141,8 @@ createGraxia({
 // or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
 ```
 
+The function must return `true` to serve: anything else, a `Promise` from an `async` function included, keeps the page closed. A function that throws is an unexpected error: the request answers 403 (no CSRF header) or a masked 500 (with it), and core reports it through `onUnexpected`.
+
 The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
 that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
 enabled for the "two explorers" check, so disable the other one with `false`.

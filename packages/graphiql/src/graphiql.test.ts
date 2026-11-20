@@ -178,7 +178,7 @@ describe('enabled as a function', () => {
 		const response = await host(
 			createGraphiQL({ enabled: () => false }, fakeAssets),
 		).fetch(browser('?graphiql-asset=main-abc.js'));
-		expect(response.status).not.toBe(200);
+		expect(response.status).toBe(403);
 	});
 
 	test('is decided for each request', async () => {
@@ -198,6 +198,34 @@ describe('enabled as a function', () => {
 			new Request('http://localhost/graphql', { method: 'POST', body: '{}' }),
 		);
 		expect(seen).toHaveLength(0);
+	});
+
+	test('an async function never opens it: only `true` serves', async () => {
+		const enabled = (async () => true) as never;
+		const response = await host(createGraphiQL({ enabled }, fakeAssets)).fetch(
+			browser(),
+		);
+		expect(response.status).toBe(403);
+	});
+
+	test('a function that throws: 403 without the CSRF header, masked 500 with it', async () => {
+		const reported: unknown[] = [];
+		const app = host(
+			createGraphiQL(
+				{
+					enabled: () => {
+						throw new Error('flag store down');
+					},
+				},
+				fakeAssets,
+			),
+			{ onUnexpected: (error: unknown) => reported.push(error) },
+		);
+		expect((await app.fetch(browser())).status).toBe(403);
+		expect(reported).toHaveLength(1);
+		const withHeader = await app.fetch(browser('', { 'x-graphql-csrf': '1' }));
+		expect(withHeader.status).toBe(500);
+		expect(await withHeader.text()).not.toContain('flag store down');
 	});
 
 	test('another value is a config error naming the accepted forms', () => {

@@ -28,7 +28,7 @@ export function resolveEnabled(enabled: unknown): Gate {
 			allows(request) {
 				let answer = seen.get(request);
 				if (answer === undefined) {
-					answer = Boolean(decide(request));
+					answer = decide(request) === true;
 					seen.set(request, answer);
 				}
 				return answer;

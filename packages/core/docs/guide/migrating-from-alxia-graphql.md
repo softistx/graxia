@@ -139,6 +139,10 @@ development and off in production, with a CSP that names no external source. Apo
 `apolloSandbox()` plugin, and `sandboxContentSecurityPolicy` is the exact policy it needs. There is
 no `renderSandbox` hook: pass the plugin.
 
+The default is `NODE_ENV !== 'production'`, so an **unset `NODE_ENV` serves the page**. A host that
+follows its own dev flag moves over with a function, decided per request:
+`graphiql({ enabled: () => myDevFlag })`.
+
 ## CORS
 
 graxia has no `cors` option: it never sets an `access-control-*` header and answers `OPTIONS` with

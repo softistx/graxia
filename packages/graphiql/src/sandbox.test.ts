@@ -256,7 +256,7 @@ describe('enabled as a function', () => {
 		expect((await app.fetch(browser())).status).toBe(403);
 		expect(
 			(await app.fetch(browser('?apollo-sandbox-asset=sandbox-abc.js'))).status,
-		).not.toBe(200);
+		).toBe(403);
 	});
 
 	test('another value is a config error', () => {

@@ -41,7 +41,13 @@ other request; a same-origin navigation passes.
 > **`headers` are rendered into the HTML**: put no secret in them.
 
 An unset `NODE_ENV` is not `production`, so the page is served. A host with its own dev flag decides
-per request: `graphiql({ enabled: () => myDevFlag })` (also on `apolloSandbox()`).
+per request (also on `apolloSandbox()`); only `true` serves, and any other value than a boolean or a
+function throws a `GraxiaConfigError` at startup:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+graphiql({ enabled: () => myDevFlag });
+```
 
 ## Options
 
