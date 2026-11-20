@@ -124,4 +124,6 @@ export type {
 	TrustedDocumentsOptions,
 	TrustedManifest,
 } from './trusted/types';
+export type { UploadsOptions } from './uploads/options';
+export { GraphQLFile } from './uploads/scalar';
 export type { WebSocketContext, WebSocketOptions } from './ws/options';

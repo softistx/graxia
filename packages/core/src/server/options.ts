@@ -14,6 +14,7 @@ import type {
 import type { CsrfOptions, ResolvedCsrf } from '../security/options';
 import type { TelemetryOptions } from '../telemetry';
 import type { TrustedDocumentsOptions } from '../trusted/types';
+import type { ResolvedUploads, UploadsOptions } from '../uploads/options';
 import type { ResolvedWebSocket, WebSocketOptions } from '../ws/options';
 import type { OnUnexpected } from './unexpected';
 
@@ -121,6 +122,13 @@ export interface GraxiaOptions<
 	caches?: DocumentCaches;
 	/** Batched operations (a JSON array body): off by default, or `{ limit }`. */
 	batching?: BatchingOption;
+	/**
+	 * File uploads (the GraphQL multipart request spec): off by default, `true` for the
+	 * default limits (16 MiB body, 8 MiB per file, 10 files) or `{ bodyBytes, fileBytes, files }`.
+	 * Needs the CSRF header check (`csrf.requireHeader`, on by default): `createGraxia` refuses the
+	 * combination with it off. Resolvers receive Bun's Web `File`; type the argument with `GraphQLFile`.
+	 */
+	uploads?: boolean | UploadsOptions;
 	/** Subscriptions and streamed results over server-sent events (`sse`) and WebSocket (`ws`), both on by default. */
 	subscriptions?: SubscriptionsOptions;
 	/**
@@ -186,6 +194,8 @@ export interface ResolvedOptions {
 	/** Depth, aliases, directives, root fields and cost limits. */
 	operationLimits: ResolvedOperationLimits;
 	batching: BatchingOption;
+	/** The multipart limits, or `false` when uploads are off. */
+	uploads: ResolvedUploads | false;
 	asyncContext: boolean;
 	shutdownTimeout: number;
 	sse: boolean;

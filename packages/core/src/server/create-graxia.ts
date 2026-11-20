@@ -1,14 +1,9 @@
 import type { ExecutionResult, GraphQLSchema } from 'graphql';
 import { resolveLimits } from '../document/parse';
-import { GraxiaConfigError } from '../errors/config-error';
-import { DEFAULT_BODY_BYTES } from '../http/body';
-import { assertCostDirectives } from '../limits/clash';
-import { resolveOperationLimits } from '../limits/options';
 import { createPluginEngine } from '../plugins/engine';
 import { StateBag } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
 import { exposeCsrfHeader } from '../security/header-key';
-import { resolveSecurity } from '../security/options';
 import { createTelemetry } from '../telemetry';
 import { resolveTrusted } from '../trusted/options';
 import { createDispose } from './dispose';
@@ -17,10 +12,10 @@ import { createExecute, type ExecuteArgs } from './execute';
 import type { OptionsArg, ServerContextArg } from './host-context';
 import type { NeededContext, RequireContext } from './infer-context';
 import { createLifecycle } from './lifecycle';
-import type { GraxiaOptions, NoPlugins, ResolvedOptions } from './options';
+import type { GraxiaOptions, NoPlugins } from './options';
+import { resolve } from './resolve-options';
 import { buildRuntime } from './runtime';
 import type { GraxiaServeOptions, GraxiaSocketData } from './serve-options';
-import { resolveStreaming } from './streaming-options';
 import { createUnexpectedHandler } from './unexpected';
 
 export type { GraxiaServeOptions, GraxiaSocketData };
@@ -129,39 +124,6 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 	readonly trustedDocuments: { readonly mode: 'strict' | 'mixed' } | undefined;
 	/** `await using graxia = createGraxia(...)` calls {@link Graxia.dispose}. */
 	[Symbol.asyncDispose](): Promise<void>;
-}
-
-function resolve(options: GraxiaOptions<any>): ResolvedOptions {
-	const bodyBytes = options.limits?.bodyBytes ?? DEFAULT_BODY_BYTES;
-	if (!Number.isInteger(bodyBytes) || bodyBytes < 1)
-		throw new GraxiaConfigError('limits.bodyBytes must be a positive integer');
-	const operationLimits = resolveOperationLimits(options.limits);
-	if (operationLimits.cost) assertCostDirectives(options.schema);
-	const batching = options.batching ?? false;
-	if (
-		batching !== false &&
-		(!Number.isInteger(batching.limit) || batching.limit < 1)
-	)
-		throw new GraxiaConfigError('batching.limit must be a positive integer');
-	const path = options.path ?? '/graphql';
-	if (path !== false && !path.startsWith('/'))
-		throw new GraxiaConfigError('path must start with "/" (or be false)');
-	const asyncContext = options.asyncContext ?? true;
-	const shutdownTimeout = options.shutdownTimeout ?? 10_000;
-	if (!Number.isInteger(shutdownTimeout) || shutdownTimeout < 0)
-		throw new GraxiaConfigError(
-			'shutdownTimeout must be a non-negative integer (milliseconds)',
-		);
-	return {
-		path,
-		bodyBytes,
-		operationLimits,
-		batching,
-		asyncContext,
-		shutdownTimeout,
-		...resolveSecurity(options),
-		...resolveStreaming(options),
-	};
 }
 
 /**

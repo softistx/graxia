@@ -22,8 +22,10 @@
 - [Telemetry](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/telemetry.md): graxia emits spans for each request, parse, validation and operation, and optionally for each resolver, on `@softistx/telemetry`.
 - [Testing](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/testing.md): Two tools, no socket: `graxia.execute` runs an operation in process, and `@graxia/core/testing` talks to `graxia.fetch` with real HTTP semantics.
 - [Trusted documents and persisted queries](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/trusted-documents.md): In production a GraphQL endpoint should run only the documents your own clients ship.
+- [File uploads](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/uploads.md): `@graxia/core` accepts the GraphQL multipart request spec (`operations`, `map`, one part per file). It is off by default.
 - [Subscriptions over WebSocket](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/websocket.md): `createGraxia` serves GraphQL over WebSocket in the `graphql-transport-ws` protocol (the one the `graphql-ws` client speaks), on Bun's native WebSocket.
-- [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting.md): The errors a consumer can hit, headed by the message as it appears.
+- [Troubleshooting: file uploads](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting-uploads.md): Every message of File uploads, headed by the text the server sends. The rest is in Troubleshooting.
+- [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting.md): File upload messages are in Troubleshooting: file uploads.
 
 ## @graxia/envelop
 

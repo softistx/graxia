@@ -23,7 +23,7 @@ documents (manifests, `documentId`, APQ, strict mode), `fieldRateLimit`, and
 spans on `@softistx/telemetry` (optional peer; `createTelemetry(...).install()`
 with an exporter such as `@softistx/telemetry-otlp`). `@graxia/core/agent` adds descriptive `@needs` / `@constraint` / `@errors`
 directives, `printSchemaFor` and `visibleSchema` (the schema one caller may see),
-`lintDescriptions` and readers, and every graxia error carries `extensions.fix`
+`lintDescriptions` and readers, multipart file uploads behind `uploads` (off by default; the `GraphQLFile` scalar gives resolvers a Web `File`; needs the CSRF header), and every graxia error carries `extensions.fix`
 (`node_modules/@graxia/core/docs/guide/errors.md#the-fix-contract`). `@graxia/redis`
 puts the PubSub, the cache and a field rate limit on Redis (`redisPubSub`, `redisCache`,
 `redisFieldLimit`), on `@softistx/redis` (peer, with `@graxia/core`); breaking in 0.2: see
