@@ -174,9 +174,7 @@ async function main(): Promise<void> {
 			process.stderr.write(result.stderr);
 			if (result.exitCode !== 0) {
 				if (isAlreadyPublishedError(result.stderr.toString())) {
-					console.log(
-						`  skipped   ${pkg.name}@${pkg.version} already published (staged on npm)`,
-					);
+					console.log(`  skipped   ${pkg.name}@${pkg.version} already on npm`);
 					continue;
 				}
 				throw new Error(
