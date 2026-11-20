@@ -1,5 +1,13 @@
 # @graxia/graphiql
 
+## 0.1.2
+
+### Patch Changes
+
+- [#103](https://github.com/softistx/graxia/pull/103) [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The docs link to other packages' pages and to the repository roadmap with absolute GitHub URLs, so the links work on the npm page.
+- Updated dependencies [[`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11)]:
+  - @graxia/core@0.6.0
+
 ## 0.1.1
 
 ### Patch Changes

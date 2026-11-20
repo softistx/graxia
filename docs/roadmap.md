@@ -2,13 +2,6 @@
 
 Where graxia is going, as what you get. A direction, not a commitment.
 
-## Now
-
-- **Envelop and migration** (M6) — run Envelop plugins unchanged (`@graxia/envelop`, built, not
-  published yet), a parity suite and a host-embedding example so applications on `@alxia/graphql` can move to graxia (both ready for the next release, with a migration guide), and
-  multipart file uploads (ready for the next release, see
-  [File uploads](../packages/core/docs/guide/uploads.md); streaming uploads are Later).
-
 ## Not planned
 
 - Node or Deno adapters; graxia is Bun only.
@@ -49,3 +42,7 @@ Where graxia is going, as what you get. A direction, not a commitment.
   with schema, query and mutation tools, an OAuth resource server and persisted operations as
   typed tools (`@graxia/mcp`), and an `llms.txt` and a Claude Code plugin index generated from the
   packages and their docs.
+- **Envelop and migration** (M6, in `@graxia/core` 0.6.0 and `@graxia/envelop` 0.1.0) — run Envelop
+  plugins unchanged (`@graxia/envelop`), a parity suite and a host-embedding example so applications on
+  `@alxia/graphql` can move to graxia, with a migration guide, and multipart file uploads (see
+  [File uploads](../packages/core/docs/guide/uploads.md); streaming uploads are Later).
