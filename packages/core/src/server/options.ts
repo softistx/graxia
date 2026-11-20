@@ -1,7 +1,7 @@
 import type { GraphQLSchema } from 'graphql';
 import type { DocumentCaches, DocumentLimits } from '../document/types';
 import type { MaskError } from '../errors/mask';
-import type { BatchingOption } from '../http/batch';
+import type { BatchingOption, ResolvedBatching } from '../http/batch';
 import type {
 	OperationLimits,
 	ResolvedOperationLimits,
@@ -120,7 +120,7 @@ export interface GraxiaOptions<
 	limits?: GraxiaLimits;
 	/** Parse and validation caches, or `false` to disable both. */
 	caches?: DocumentCaches;
-	/** Batched operations (a JSON array body): off by default, or `{ limit }`. */
+	/** Batched operations (a JSON array body): off by default (`false`), `true` for up to 10, or `{ limit }`. */
 	batching?: BatchingOption;
 	/**
 	 * File uploads (the GraphQL multipart request spec): off by default, `true` for the
@@ -193,7 +193,7 @@ export interface ResolvedOptions {
 	bodyBytes: number;
 	/** Depth, aliases, directives, root fields and cost limits. */
 	operationLimits: ResolvedOperationLimits;
-	batching: BatchingOption;
+	batching: ResolvedBatching;
 	/** The multipart limits, or `false` when uploads are off. */
 	uploads: ResolvedUploads | false;
 	asyncContext: boolean;
