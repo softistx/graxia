@@ -7,6 +7,6 @@ The errors a consumer can hit, headed by the message as it appears. Find the top
 - [Request limits](./troubleshooting-limits.md): token, depth, alias, directive, cost and body limits, and their config errors.
 - [Subscriptions and incremental delivery](./troubleshooting-subscriptions.md): subscriptions over SSE and WebSocket, incremental delivery.
 - [HTTP, execute and testing](./troubleshooting-http.md): `path`, shutdown, responses, `graxia.execute`, the testing client.
-- [Security](./troubleshooting-security.md): cSRF, introspection, persisted queries and trusted documents.
+- [Security](./troubleshooting-security.md): the CSRF check, introspection, persisted queries and trusted documents.
 - [Rate limits and telemetry](./troubleshooting-rate-limits.md): field rate limits, `limitFromStore`, telemetry.
 - [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.
