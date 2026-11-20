@@ -1,9 +1,9 @@
+import { takeOwn } from '../http/own-response';
 import {
 	createRequestId,
 	REQUEST_ID_HEADER,
 	requestIdKey,
 } from '../http/request-id';
-import { takeOwn } from '../http/own-response';
 import type { RequestState } from '../plugins/state';
 
 /** Headers a plugin adds that stack instead of replacing. */

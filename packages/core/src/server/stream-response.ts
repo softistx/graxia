@@ -1,5 +1,5 @@
-import { own } from '../http/own-response';
 import type { ExecutionResult } from 'graphql';
+import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
 import { maskPayload } from './masking';

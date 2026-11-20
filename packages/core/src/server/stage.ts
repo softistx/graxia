@@ -1,7 +1,7 @@
 import { type ExecutionArgs, type ExecutionResult, execute } from 'graphql';
 import { stampRaisedByGraphql } from '../errors/fixes';
-import type { RequestState } from '../plugins/state';
 import { NO_AFTER } from '../plugins/stage';
+import type { RequestState } from '../plugins/state';
 import type { ExecuteFn, ExecutionOutput } from '../plugins/types';
 import { failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
