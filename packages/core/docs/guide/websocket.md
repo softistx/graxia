@@ -152,6 +152,76 @@ You need it only to annotate your own server or `websocket` handler.
 | 4409 | `Subscriber for <id> already exists` | `subscribe` with the id of an active operation                |
 | 4429 | `Too many initialisation requests`   | a second `connection_init`                                    |
 
+## Observe each socket operation
+
+A host that logs or traces every socket operation (start, end, name, type, outcome, duration) uses
+a [plugin](./plugins.md): `serverContext` given to `graxia.upgrade` is merged into every
+operation's context of that socket, so `onExecute` and `onSubscribe` read the host's own
+per-connection state in `args.contextValue`.
+
+```ts
+import { createGraxia, definePlugin } from '@graxia/core';
+
+type Connection = { tenant: string; signal: AbortSignal };
+
+const log = (
+	phase: 'start' | 'end',
+	tenant: string,
+	args: { operationName?: string | null },
+	extra: { outcome?: string; ms?: number } = {},
+) =>
+	console.info(
+		JSON.stringify({ phase, tenant, name: args.operationName, ...extra }),
+	);
+
+const observe = definePlugin<Connection>()({
+	name: 'observe-operations',
+	// query, mutation: the after-hook is the end
+	onExecute: ({ args }) => {
+		const started = performance.now();
+		const { tenant } = args.contextValue; // the host's serverContext
+		log('start', tenant, args);
+		return ({ result }) =>
+			log('end', tenant, args, {
+				outcome: result && 'errors' in result ? 'error' : 'ok',
+				ms: performance.now() - started,
+			});
+	},
+	// subscription: the after-hook only means "subscribed"; the end is the signal
+	onSubscribe: ({ args }) => {
+		const started = performance.now();
+		const { tenant, signal } = args.contextValue;
+		log('start', tenant, args);
+		signal.addEventListener('abort', () =>
+			log('end', tenant, args, {
+				outcome: 'ended',
+				ms: performance.now() - started,
+			}),
+		);
+	},
+});
+
+const graxia = createGraxia({ schema, plugins: [observe] });
+Bun.serve({
+	fetch: (request, server) =>
+		graxia.upgrade(request, server, { tenant: 'acme' }), // per-connection state
+	websocket: graxia.websocket,
+});
+```
+
+What ends an operation, over a socket:
+
+| operation       | start         | end                                                                                            |
+| --------------- | ------------- | ---------------------------------------------------------------------------------------------- |
+| query, mutation | `onExecute`   | its after-hook (`result` carries `errors` when it failed)                                      |
+| subscription    | `onSubscribe` | the operation's `signal` aborts: source finished, client `complete`, socket close, `dispose()` |
+
+A subscription's `onSubscribe` after-hook runs when the stream is created, not when it ends, and
+`signal` aborts on every kind of end, so it does not say which one: the host knows what it did
+(it saw the `complete` or the close). To follow each event or a failing source, add `onResultChunk`.
+With [telemetry](./telemetry.md) on, each socket operation is also a `query`, `mutation` or
+`subscription` span, parented to the upgrade's short `graphql.request` span.
+
 ## Cancellation and shutdown
 
 An operation's `signal` (also in the context) aborts when the client sends `complete` for it, the
