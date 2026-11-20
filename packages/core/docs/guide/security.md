@@ -82,7 +82,7 @@ definePlugin({
 browser's and passes. A request is same-origin when `Origin` equals the origin of the request URL
 (behind a proxy, graxia must see the public URL, or list that origin) or is in `allowedOrigins`.
 `Origin: null` is always refused. `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin` counts as a
-cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`.
+cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`, unless `refuse` answers it.
 
 | `crossOrigin`      | A request from another origin                                               |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -103,6 +103,30 @@ createGraxia({
 ```
 
 Each entry of `allowedOrigins` is an origin: scheme, host and optional port, no path.
+
+### Answering a refused origin yourself
+
+`refuse(request, reason)` replaces the 403 `FORBIDDEN_ORIGIN` with your own `Response` (it may be
+async). It runs for every refusal, a WebSocket upgrade's included, and never for an allowed
+request. `reason` is `'cross-origin'` (another origin), `'null-origin'` (`Origin: null`) or
+`'cross-site'` (no `Origin`, but `Sec-Fetch-Site` says another site). Without it the default
+403 is unchanged. A non-function throws `csrf.sameOrigin.refuse must be a function`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: {
+		sameOrigin: {
+			allowedOrigins: ['https://app.example.com'],
+			// hide the endpoint from other sites
+			refuse: (request, reason) =>
+				reason === 'cross-origin'
+					? new Response('Not found', { status: 404 })
+					: new Response(null, { status: 403 }),
+		},
+	},
+});
+```
 
 ## WebSocket origin
 

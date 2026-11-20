@@ -63,6 +63,11 @@ Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
 
 Pick one of the three modes (see [Security](./guide/security.md)).
 
+## csrf.sameOrigin.refuse must be a function ((request, reason) => Response)
+
+`refuse` is a function returning a `Response` (or a promise of one), for example
+`refuse: () => new Response('Not found', { status: 404 })`. See [Security](./guide/security.md).
+
 ## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
 
 `allowedOrigins` is an array of strings.

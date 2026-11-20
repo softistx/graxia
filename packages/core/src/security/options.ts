@@ -11,6 +11,13 @@ export const DEFAULT_CSRF_HEADERS: readonly string[] = [
 /** How a request from another origin is treated once `sameOrigin` is on. */
 export type CrossOrigin = 'refuse' | 'json' | 'allow';
 
+/**
+ * Why `csrf.sameOrigin` refused a request: `cross-origin` (an `Origin` that is not the server's own
+ * or allowed, or a WebSocket upgrade from one), `null-origin` (`Origin: null`), or `cross-site`
+ * (no `Origin`, but `Sec-Fetch-Site` says another site sent it).
+ */
+export type OriginRefusalReason = 'cross-origin' | 'null-origin' | 'cross-site';
+
 /** The `csrf.sameOrigin` option as an object. */
 export interface SameOriginOptions {
 	/** Origins (`https://app.example.com`: scheme, host, optional port, no path) treated as same-origin. */
@@ -21,6 +28,15 @@ export interface SameOriginOptions {
 	 * everything through. A WebSocket upgrade is always refused unless its origin is allowed.
 	 */
 	crossOrigin?: CrossOrigin;
+	/**
+	 * Answers a refused origin with your own Response in place of the 403 `FORBIDDEN_ORIGIN`
+	 * (a 404 to hide the endpoint, a per-route body). It is called for every refusal, a WebSocket
+	 * upgrade's included, with the request and the {@link OriginRefusalReason}; it may be async.
+	 */
+	refuse?: (
+		request: Request,
+		reason: OriginRefusalReason,
+	) => Response | Promise<Response>;
 }
 
 /** The `csrf` option of `createGraxia`. */
@@ -44,6 +60,7 @@ export interface ResolvedCsrf {
 	sameOrigin: boolean;
 	crossOrigin: CrossOrigin;
 	allowedOrigins: ReadonlySet<string>;
+	refuse?: SameOriginOptions['refuse'];
 }
 
 const TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
@@ -101,7 +118,7 @@ export function resolveCsrf(csrf: unknown): ResolvedCsrf | false {
 		throw new GraxiaConfigError(
 			'csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })',
 		);
-	const { allowedOrigins = [], crossOrigin = 'refuse' } = sameOrigin;
+	const { allowedOrigins = [], crossOrigin = 'refuse', refuse } = sameOrigin;
 	if (
 		crossOrigin !== 'refuse' &&
 		crossOrigin !== 'json' &&
@@ -114,11 +131,16 @@ export function resolveCsrf(csrf: unknown): ResolvedCsrf | false {
 		throw new GraxiaConfigError(
 			'csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")',
 		);
+	if (refuse !== undefined && typeof refuse !== 'function')
+		throw new GraxiaConfigError(
+			'csrf.sameOrigin.refuse must be a function ((request, reason) => Response)',
+		);
 	return {
 		...resolved,
 		sameOrigin: true,
 		crossOrigin,
 		allowedOrigins: new Set(allowedOrigins.map(originOf)),
+		...(refuse === undefined ? {} : { refuse }),
 	};
 }
 

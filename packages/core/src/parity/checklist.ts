@@ -146,6 +146,11 @@ export const PARITY: readonly ParityItem[] = [
 			'a null origin is always refused, even with crossOrigin: allow',
 			'crossOrigin refuse, json and allow',
 			'Sec-Fetch-Site: cross-site without Origin is a cross origin',
+			'a custom status and body replace the default 403',
+			'an async refuse is awaited',
+			'it gets the request and the reason of each refusal',
+			'it is not called for an allowed request, and the default stays without it',
+			'it also answers a refused WebSocket upgrade',
 		),
 	},
 	{

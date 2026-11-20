@@ -40,6 +40,10 @@ describe('security option errors', () => {
 			{ csrf: { sameOrigin: { allowedOrigins: ['https://a.test/path'] } } },
 			'csrf.sameOrigin.allowedOrigins entry "https://a.test/path" is not an origin (use scheme, host and optional port, no path: "https://app.example.com")',
 		],
+		[
+			{ csrf: { sameOrigin: { refuse: 'nope' } } },
+			'csrf.sameOrigin.refuse must be a function ((request, reason) => Response)',
+		],
 		[{ introspection: 'no' }, 'introspection must be a boolean'],
 		[{ suggestions: 1 }, 'suggestions must be a boolean'],
 	])('%j', (options, message) => {

@@ -1,5 +1,5 @@
 import { hasCsrfHeader, isSimpleRequest } from './csrf';
-import type { ResolvedCsrf } from './options';
+import type { OriginRefusalReason, ResolvedCsrf } from './options';
 import { forbidden } from './refuse';
 
 const FIX =
@@ -10,30 +10,34 @@ const FIX =
  * is on; a WebSocket upgrade is always checked (cross-site WebSocket hijacking),
  * and refused unless its origin is the server's own or in `allowedOrigins`.
  * A request with no `Origin` and no cross-site signal is not a browser's and passes.
- * Gives the 403 to send, or `undefined`.
+ * Gives the 403 to send (or what `csrf.sameOrigin.refuse` answers), or `undefined`.
  */
-export function checkOrigin(
+export async function checkOrigin(
 	request: Request,
 	csrf: ResolvedCsrf,
 	websocket: boolean,
-): Response | undefined {
+): Promise<Response | undefined> {
 	if (!websocket && !csrf.sameOrigin) return undefined;
 	const origin = request.headers.get('origin');
-	const refuse = (from: string) =>
-		forbidden(
-			request,
-			`Cross-origin request refused from ${from}.`,
-			'FORBIDDEN_ORIGIN',
-			FIX,
-		);
+	const refuse = (reason: OriginRefusalReason, from: string) =>
+		csrf.refuse
+			? csrf.refuse(request, reason)
+			: forbidden(
+					request,
+					`Cross-origin request refused from ${from}.`,
+					'FORBIDDEN_ORIGIN',
+					FIX,
+				);
 	if (origin === null)
 		return crossSite(request) && !permits(request, csrf, websocket)
-			? refuse('an unknown origin')
+			? refuse('cross-site', 'an unknown origin')
 			: undefined;
-	if (origin === 'null') return refuse('a null origin');
+	if (origin === 'null') return refuse('null-origin', 'a null origin');
 	if (origin === new URL(request.url).origin || csrf.allowedOrigins.has(origin))
 		return undefined;
-	return permits(request, csrf, websocket) ? undefined : refuse(origin);
+	return permits(request, csrf, websocket)
+		? undefined
+		: refuse('cross-origin', origin);
 }
 
 /** `Sec-Fetch-Site` says a browser sent the request from another site (`same-origin` and `none` are fine). */

@@ -6,15 +6,15 @@ import { checkOrigin } from './origin';
  * The built-in refusal of an HTTP request (the `Origin` check, then the CSRF
  * header unless a plugin exempted the request), before any plugin sees it; `undefined` when it may go on.
  */
-export function checkRequest(
+export async function checkRequest(
 	rt: Runtime,
 	request: Request,
 	csrfExempt = false,
-): Response | undefined {
+): Promise<Response | undefined> {
 	const { csrf } = rt.options;
 	if (csrf === false) return undefined;
 	return (
-		checkOrigin(request, csrf, false) ??
+		(await checkOrigin(request, csrf, false)) ??
 		(csrfExempt ? undefined : checkCsrfHeader(request, csrf))
 	);
 }
@@ -32,10 +32,10 @@ export function exemptRefusal(
 }
 
 /** The refusal of a WebSocket upgrade by its `Origin`, or `undefined`. */
-export function checkUpgrade(
+export async function checkUpgrade(
 	rt: Runtime,
 	request: Request,
-): Response | undefined {
+): Promise<Response | undefined> {
 	const { csrf } = rt.options;
 	return csrf === false ? undefined : checkOrigin(request, csrf, true);
 }
