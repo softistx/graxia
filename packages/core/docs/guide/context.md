@@ -129,6 +129,10 @@ An aborted operation answers `{"errors":[{"message":"The operation was aborted."
 with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
+The same holds for `graxia.execute({ signal })`: an aborted signal, before the call or while a
+resolver runs, resolves to that error result (no rejection, no `data`), and `context.signal` aborts
+([Testing](./testing.md#aborting-with-signal)).
+
 ## `getContext()` for code far below a resolver
 
 The resolver's third argument is the way to reach the context. When a helper or a logger is called

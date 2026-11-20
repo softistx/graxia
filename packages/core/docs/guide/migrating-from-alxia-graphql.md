@@ -165,6 +165,13 @@ process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
 itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
 503 first.
 
+## Aborting an in-process execute
+
+Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` resolves instead, to
+`{ errors: [{ extensions: { code: 'OPERATION_ABORTED' } }] }`, like the HTTP answer. A test that
+expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
+([Testing](./testing.md#aborting-with-signal)).
+
 ## graphql 17
 
 graphql 16 is not supported: the peer is `graphql ^17.1.0`, and `@defer` / `@stream` use graphql
