@@ -79,14 +79,19 @@ export function streamOutcome(
 			// source threw is the chunk's `errors`, then masking exposes a GraphQLError
 			// and masks (and reports) anything else.
 			if (!fromPrepare) {
+				const wrapped = asGraphQLError(error);
 				try {
 					return await preparePayload(rt, request, state, {
-						errors: [asGraphQLError(error)],
+						errors: [wrapped],
 					});
 				} catch (hookError) {
-					// The hook threw: report the source's error too, then the hook's.
+					// The hook threw: report the source's error too (as masking would), then the hook's.
 					if (!(error instanceof GraphQLError))
-						rt.unexpected.report(error, state, 'execution');
+						rt.unexpected.report(
+							wrapped.originalError ?? wrapped,
+							state,
+							'execution',
+						);
 					error = hookError;
 				}
 			}

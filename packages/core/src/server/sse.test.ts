@@ -530,4 +530,36 @@ describe('a source that throws', () => {
 			'hook failed',
 		]);
 	});
+	test('a hook throwing on a thrown string reports it as an Error of its string form', async () => {
+		const reported: unknown[] = [];
+		const plugin = definePlugin({
+			name: 'boom',
+			onResultChunk: ({ chunk }) => {
+				if (!('data' in (chunk as object))) throw new Error('hook failed');
+			},
+		});
+		const graxia = make({
+			plugins: [plugin],
+			onUnexpected: (e: unknown) => reported.push(e),
+			schema: createSchema<{ signal: AbortSignal }>()({
+				typeDefs: 'type Query { a: Int } type Subscription { s: Int! }',
+				resolvers: {
+					Subscription: {
+						s: {
+							subscribe: async function* () {
+								yield 1;
+								throw 'just a string';
+							},
+							resolve: (n: number) => n,
+						},
+					},
+				},
+			}),
+		});
+		await (await graxia.fetch(sse({ query: 'subscription { s }' }))).text();
+		expect(reported.map((e) => e instanceof Error && e.message)).toEqual([
+			'just a string',
+			'hook failed',
+		]);
+	});
 });

@@ -22,7 +22,7 @@ export interface PayloadStreamInit {
 	format: StreamFormat;
 	/** Turns a source value into the data of one payload; a throw ends the stream through `fail`. */
 	prepare(value: unknown): Promise<unknown>;
-	/** The data of the last payload after the source or `prepare` threw. */
+	/** The data of the last payload after the source or `prepare` threw. A rejection or `undefined` ends the stream with no last payload. */
 	fail(error: unknown): unknown | Promise<unknown>;
 	/** Milliseconds between keep-alive chunks; 0 sends none (also ignored when the format has none). */
 	keepAliveMs: number;
