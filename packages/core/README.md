@@ -112,6 +112,8 @@ Every context also carries a `signal` that aborts when the client leaves or the 
 `getContext()` reads the context from code far below a resolver. See
 [Context, cancellation and shutdown](./docs/guide/context.md).
 
+To write the host type explicitly, use the curried form `createGraxia<Host>()({ … })` (never `createGraxia<Host>({ … })`, which turns the checks off); see [Context](./docs/guide/context.md#the-hosts-servercontext).
+
 ## Errors
 
 Throw `exposedError` to show an error to the client; anything else is masked as

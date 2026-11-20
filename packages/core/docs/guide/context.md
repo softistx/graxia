@@ -97,7 +97,7 @@ plugins, `serverContext` and graxia provide are taken into account; the rest mus
 `context` factory.
 
 - A `createSchema<Ctx>()` schema whose context needs a key nobody provides, or provides with another
-  type, is a type error on `context` (a missing `context` option is "Property 'context' is missing").
+  type, is a type error on `context` (with `createGraxia<Host>()(…)`, add the key to `Host`, or return it from the factory) (a missing `context` option is "Property 'context' is missing").
 - A plain `GraphQLSchema`, or `createSchema()` without `Ctx`, is not checked.
 - A plugin list that is not a tuple (`GraxiaPlugin[]`) is not checked either.
 - Do not write `createGraxia<…>({ … })`: an explicit type argument stops TypeScript inferring the others

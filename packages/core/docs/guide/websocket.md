@@ -131,7 +131,7 @@ upgraded, and otherwise the `Response` to send: the refusal (wrong path, a plugi
 missing subprotocol, shutdown), with the request id and the sealed headers. Guard it with
 `isUpgrade`; on a request that is not an upgrade (or with `ws: false`) it answers like
 `graxia.fetch`, so the hooks run once either way. `serverContext` is typed like `fetch`'s
-(required when the `context` factory's `ContextInit<…>` has required keys, see [the host's `serverContext`](./context.md#the-hosts-servercontext)) and merged into every operation's context.
+(required when the host type (`ContextInit<…>` on the `context` factory, or `createGraxia<Host>()`) has required keys, see [the host's `serverContext`](./context.md#the-hosts-servercontext)) and merged into every operation's context.
 
 The [host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding) serves WebSocket, SSE and HTTP on one route of its own `Bun.serve`.
 

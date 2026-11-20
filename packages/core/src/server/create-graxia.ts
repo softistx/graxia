@@ -69,6 +69,7 @@ export function createGraxia<HostCtx extends object = Record<never, never>>(): <
 >(
 	options: CheckedOptions<HostCtx, Schema, Plugins, Made>,
 ) => Graxia<HostCtx>;
+// last on purpose: Parameters/ReturnType<typeof createGraxia> read the last overload
 export function createGraxia<
 	HostCtx extends object = Record<never, never>,
 	Schema extends GraphQLSchema = GraphQLSchema,
@@ -84,7 +85,7 @@ export function createGraxia(
 ): unknown {
 	if (options === undefined) {
 		return (curried: GraxiaOptions<any, GraphQLSchema, any, any>) =>
-			createGraxia(curried);
+			build(curried);
 	}
 	return build(options);
 }

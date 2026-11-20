@@ -36,7 +36,7 @@ const { data, errors } = await graxia.execute({
 	variables: { name: 'Ada' },
 	operationName: 'Greet', // when the document has several operations
 	headers: { authorization: 'Bearer test' }, // seen by onRequest and context()
-	serverContext: { tenant: 'acme' }, // merged into the context; required when the `context` factory's `ContextInit<…>` has required keys
+	serverContext: { tenant: 'acme' }, // merged into the context; required when the host type (`ContextInit<…>` on the `context` factory, or `createGraxia<Host>()`) has required keys
 	signal: AbortSignal.timeout(5_000), // aborts like a client leaving
 });
 ```
@@ -129,7 +129,7 @@ try {
 
 ## The test client
 
-`createTestClient(graxia, { path?, headers?, serverContext? })` (`serverContext` is required when the `context` factory's `ContextInit<…>` has required keys ([the host's `serverContext`](./context.md#the-hosts-servercontext)), and then so is the options argument) sends requests through
+`createTestClient(graxia, { path?, headers?, serverContext? })` (`serverContext` is required when the host type (`ContextInit<…>` on the `context` factory, or `createGraxia<Host>()`) has required keys ([the host's `serverContext`](./context.md#the-hosts-servercontext)), and then so is the options argument) sends requests through
 `graxia.fetch`, so status codes, negotiation, GET encoding and batching behave as over HTTP.
 
 ```ts

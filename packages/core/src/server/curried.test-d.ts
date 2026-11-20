@@ -72,3 +72,19 @@ const sameHost = createGraxia({
 	context: (_init: import('./options').ContextInit<Host>) => ({}),
 });
 assertType<Equal<typeof hosted, typeof sameHost>>();
+
+// the factory's result fills a schema need of the curried form
+const extraSchema = createSchema<{ db: string; extra: number }>()({ typeDefs });
+createGraxia<{ db: string }>()({
+	schema: extraSchema,
+	context: () => ({ extra: 1 }),
+});
+createGraxia<{ db: string }>()({
+	schema: extraSchema,
+	// @ts-expect-error `extra` is a string, the schema needs a number
+	context: () => ({ extra: 'no' }),
+});
+
+// a forgotten options argument leaves a function, not a server
+// @ts-expect-error `createGraxia()` returns the curried function
+createGraxia().fetch;
