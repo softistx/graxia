@@ -166,7 +166,7 @@ describe('graphql-ws client', () => {
 				headers: { 'content-type': 'application/json', ...headers },
 				body: JSON.stringify(body),
 			});
-		// HTTP, and a forged Upgrade header changes nothing.
+		// Plain HTTP.
 		expect((await post({ query: '{ hello }' })).status).toBe(200);
 		// SSE subscription.
 		const sse = await post(
@@ -198,19 +198,22 @@ describe('graphql-ws client', () => {
 			],
 		});
 		params.length = 0;
-		const fres = await forged.fetch(
-			new Request('http://x/graphql', {
-				method: 'POST',
-				headers: {
-					'content-type': 'application/json',
-					upgrade: 'websocket',
-				},
-				body: JSON.stringify({ query: '{ hello }' }),
-			}),
-		);
-		expect(fres.status).toBe(200);
-		expect(params).toEqual([undefined]);
-		await forged.dispose();
+		try {
+			const fres = await forged.fetch(
+				new Request('http://x/graphql', {
+					method: 'POST',
+					headers: {
+						'content-type': 'application/json',
+						upgrade: 'websocket',
+					},
+					body: JSON.stringify({ query: '{ hello }' }),
+				}),
+			);
+			expect(fres.status).toBe(200);
+			expect(params).toEqual([undefined]);
+		} finally {
+			await forged.dispose();
+		}
 
 		// The host's own `connectionParams` key is not the init's.
 		factory.length = 0;

@@ -95,8 +95,8 @@ export interface OnRequestDone {
 	response: Response | undefined;
 }
 
-/** `onParams`: replace the params or answer directly. */
-export interface OnParamsPayload extends BasePayload {
+/** What `onParams` reads: the request's params and, over a socket, its init payload. */
+export interface OnParamsInput {
 	params: GraphQLParams;
 	/**
 	 * The client's `connection_init` payload, set only for an operation over a
@@ -105,6 +105,10 @@ export interface OnParamsPayload extends BasePayload {
 	 * opened without a payload".
 	 */
 	connectionParams?: Readonly<Record<string, unknown>>;
+}
+
+/** `onParams`: replace the params or answer directly. */
+export interface OnParamsPayload extends BasePayload, OnParamsInput {
 	setParams(params: GraphQLParams): void;
 	respond(response: Response): void;
 }

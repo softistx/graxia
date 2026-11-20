@@ -13,6 +13,7 @@ import type {
 	GraphQLParams,
 	OnExecuteDone,
 	OnParamsDone,
+	OnParamsInput,
 	OnParseDone,
 	OnRequestDone,
 	OnValidateDone,
@@ -88,14 +89,7 @@ export interface ResponseOut {
  */
 export interface PluginRunners {
 	onRequest: StageRunner<Base & Host, RequestOut, OnRequestDone>;
-	onParams: StageRunner<
-		Base & {
-			params: GraphQLParams;
-			connectionParams?: Readonly<Record<string, unknown>>;
-		},
-		ParamsOut,
-		OnParamsDone
-	>;
+	onParams: StageRunner<Base & OnParamsInput, ParamsOut, OnParamsDone>;
 	onParse: StageRunner<
 		Base & Host & { params: GraphQLParams },
 		ParseOut,
