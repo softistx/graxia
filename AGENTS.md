@@ -99,7 +99,10 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
   must be a member of the `graxia` npm org.
 - **`typecheck` is `bun check`** (package and root), with `typecheck:scripts` kept on
   `tsc` for `scripts/` (its own relaxed tsconfig). Biome's script is `lint`/`fix`,
-  never `check`. `build.ts` still uses `tsc` to emit declarations. `tsc` is TypeScript 7; `scripts/plugin-index.ts` imports the compiler API from the `typescript-6` alias (`npm:typescript@~6.0.3`) until TS 7 ships a stable one (#119). `tsc` is TypeScript 7; `scripts/plugin-index.ts` imports the compiler API from the `typescript-6` alias (`npm:typescript@~6.0.3`) until TS 7 ships a stable one (#119).
+  never `check`. `build.ts` still uses `tsc` to emit declarations. `tsc` is
+  TypeScript 7; `scripts/plugin-index.ts` imports the compiler API from the
+  `typescript-6` alias (`npm:typescript@~6.0.3`) until TS 7 ships a stable one
+  (#119).
 - **`ci.yml`**: one light job on `pull_request` to `develop` and `feat/**`; no
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
