@@ -1,5 +1,12 @@
 # @graxia/redis
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1), [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1)]:
+  - @graxia/core@0.5.0
+
 ## 0.2.0
 
 ### Minor Changes

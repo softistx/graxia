@@ -4,13 +4,6 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Ready for agents** (M5) — a schema printer that shows an agent what it may do
-  (`@graxia/core/agent`, done), an MCP server over Streamable HTTP with schema, query
-  and mutation tools, an OAuth resource server and persisted operations as typed tools
-  (`@graxia/mcp`, in progress), then `llms.txt` and a Claude Code plugin (`llms.txt` and the plugin's package index are generated from the packages and their docs).
-
-## Later
-
 - **Envelop and migration** (M6) — run Envelop plugins unchanged, multipart
   uploads, and a parity suite so applications on `@alxia/graphql` can move to
   graxia.
@@ -50,3 +43,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
   once ([#42](https://github.com/softistx/graxia/issues/42)); a PubSub in Yoga's shape
   ([#69](https://github.com/softistx/graxia/issues/69)); a codegen-proof `createSchema` that refuses
   resolvers generated for another context.
+- **Ready for agents** (M5, in `@graxia/core` 0.5.0 and `@graxia/mcp` 0.1.0) — a schema printer
+  that shows an agent what it may do (`@graxia/core/agent`), an MCP server over Streamable HTTP
+  with schema, query and mutation tools, an OAuth resource server and persisted operations as
+  typed tools (`@graxia/mcp`), and an `llms.txt` and a Claude Code plugin index generated from the
+  packages and their docs.

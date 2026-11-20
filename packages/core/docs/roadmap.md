@@ -4,17 +4,13 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
-  `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
-  error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
-  `@graxia/mcp`, with its own [roadmap](../../mcp/docs/roadmap.md).
+- **Parity and migration** — run Envelop plugins unchanged, multipart uploads, and a parity suite
+  so an application on another GraphQL server can move over.
 
 ## Later
 
 - **Enforcing `@constraint` and `@needs`** — today they describe; a plugin could refuse an input
   outside its limits and a field the caller lacks the permission for.
-- **Parity and migration** — run Envelop plugins unchanged, multipart uploads, and a parity suite
-  so an application on another GraphQL server can move over.
 
 ## Not planned
 
@@ -23,6 +19,16 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - A code-first schema builder in v1: bring any `GraphQLSchema`, or use SDL with typed resolvers.
 
 ## Shipped
+
+### 0.5.0
+
+- **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
+  `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
+  error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
+  `@graxia/mcp`, with its own [roadmap](../../mcp/docs/roadmap.md).
+- **What a host needs to serve agents** — `graxia.schema`, `graxia.limits` and
+  `graxia.trustedDocuments` read the resolved configuration, and the shared `Can` type names the
+  permission check.
 
 ### 0.4.0
 
