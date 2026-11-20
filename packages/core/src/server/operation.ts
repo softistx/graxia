@@ -81,7 +81,7 @@ async function prepare(
 			fix: 'Send operationName when the document holds several operations, and name one of them.',
 		});
 	const { cost } = rt.options.operationLimits;
-	if (cost) {
+	if (cost && !rt.costPassed.has(operation)) {
 		const over = costRefusal(
 			rt.schema,
 			parsed.document,
@@ -90,6 +90,9 @@ async function prepare(
 			cost,
 		);
 		if (over) return failed(over);
+		// Only a pass without variables is remembered: a refusal is rebuilt each
+		// time, and `first: $n` changes the cost with the variables.
+		if (!operation.variableDefinitions?.length) rt.costPassed.add(operation);
 	}
 	if (operation.operation === 'subscription' && !input.sse)
 		return failure(
