@@ -7044,7 +7044,7 @@ bun add @graxia/redis @graxia/core @softistx/redis zod
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`^0.24.0`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
+- `@graxia/core` and `@softistx/redis` (`^0.24.1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
 - With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
   that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
@@ -7195,7 +7195,7 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
   closes it. `redisPubSub` also opens one extra connection for subscriptions (`createRawSubscriber` duplicates
   the client), because a subscribed connection cannot run other commands; that one it closes.
 
-`@softistx/redis` is a peer dependency (range `^0.24.0`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
+`@softistx/redis` is a peer dependency (range `^0.24.1`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
 
 ## PubSub
 
@@ -7321,7 +7321,7 @@ options) is not an outage and still rejects.
    iterator when the operation stops), and the topic type ``{ [k: `post:${string}`]: Post }`` becomes
    `{ post: [id: string, payload: Post] }`; this follows core's Yoga-shaped PubSub. Channel names on Redis are unchanged,
    so old and new processes still talk during a rolling deploy.
-2. **Peer.** Install `@softistx/redis` (range `^0.24.0`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
+2. **Peer.** Install `@softistx/redis` (range `^0.24.1`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
 3. **Cache prefix.** A prefix is used with exactly one trailing `:`. A prefix that does not end in `:` writes new keys
    (`app:<key>` instead of `app<key>`); entries written by 0.1 are no longer read and expire or can be deleted. A prefix
    that already ends in `:` (the default `graxia:cache:`) keeps its keys. A prefix with no character before its `:`

@@ -118,12 +118,12 @@
       "version": "0.2.2",
       "devDependencies": {
         "@graxia/core": "workspace:^",
-        "@softistx/redis": "^0.24.0",
+        "@softistx/redis": "^0.24.1",
         "@types/bun": "^1.4.4",
       },
       "peerDependencies": {
         "@graxia/core": "workspace:^",
-        "@softistx/redis": "^0.24.0",
+        "@softistx/redis": "^0.24.1",
         "typescript": "^6.0.3 || ^7.0.0",
       },
       "optionalPeers": [
@@ -501,7 +501,7 @@
 
     "@repeaterjs/repeater": ["@repeaterjs/repeater@3.1.0", "", {}, "sha512-TaoVksZRSx2KWYYpyLQtMQXXeS98VsgZImzW65xmiVgbYhXLk+aEsmzPLirqVuE4/XuUapH2iMtxUzaBNDzdSQ=="],
 
-    "@softistx/redis": ["@softistx/redis@0.24.0", "", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-47PjZUfHWbiURqWi00V2Hfc0RxLFOJ5FGDnf8cd8+pgSE2CpvDtA7YFtdfPfh75hz1iwanP50POkfG3v3I0mYA=="],
+    "@softistx/redis": ["@softistx/redis@0.24.1", "", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-5fvcyYuiN526rKoRGBZke2lRCc9Tcn68R+Z0WvIx+pbo/E9A9fC+d1r/IaVVjeUBEyvd54KFt8BA40xaROh7Qg=="],
 
     "@softistx/telemetry": ["@softistx/telemetry@0.4.2", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-AuHHBqpYYbjInw9P1KWP37zINPKpkYy62AqutaiFWGC9E5/ScjqJiyqYd5h4m0zcbIyZg+PPklfjpV1L4riRXQ=="],
 
