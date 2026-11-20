@@ -47,10 +47,12 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       # Once the @softistx/graxia* names are on npm, deprecates the old @graxia/*
-      # ones ("moved to <new>"). Skips each pair until its new name is published,
+      # ones ("moved to <new>"). Waits up to 5 minutes (DEPRECATE_WAIT_SECONDS) for npm to list the new names,
+      # skips each pair whose new name never shows up,
       # and is idempotent. A failure is logged and never fails the publish.
       - name: Deprecate the moved @graxia packages
         continue-on-error: true
+        timeout-minutes: 10
         run: bun scripts/deprecate-moved.ts || echo "::warning::deprecate-moved failed"
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
