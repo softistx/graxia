@@ -1,6 +1,6 @@
 # graxia — implementation plan
 
-Bun-only GraphQL server engine. Repo `softistx/graxia` (public, MIT), npm scope `@graxia/*`, graphql-js 17 only (peer `^17`). 0.x until apps run it in production (after `@alxia/graphql` switches to it in a major), then 1.0.
+Bun-only GraphQL server engine. Repo `softistx/graxia` (public, MIT), npm scope `@softistx/graxia*`, graphql-js 17 only (peer `^17`). 0.x until apps run it in production (after `@alxia/graphql` switches to it in a major), then 1.0.
 
 ## Decisions
 
@@ -9,13 +9,13 @@ Bun-only GraphQL server engine. Repo `softistx/graxia` (public, MIT), npm scope 
 - graphql 17 only, @defer/@stream from day one, tracked to each release.
 - Schema: any `GraphQLSchema` + SDL/typed-resolvers helper. No code-first builder in v1.
 - Executor: graphql 17 execute/subscribe + parse/validation caches; swappable via hook; JIT later as a plugin.
-- Plugins: own typed lifecycle hooks, explicit order (pre/post), typed per-request state, context extension with inference. `@graxia/envelop` adapter for Envelop plugins.
+- Plugins: own typed lifecycle hooks, explicit order (pre/post), typed per-request state, context extension with inference. `@softistx/graxia-envelop` adapter for Envelop plugins.
 - Transports v1: GraphQL-over-HTTP (graphql-http audit green), SSE (graphql-sse), graphql-ws on Bun WebSocket, @defer/@stream (multipart/mixed and SSE).
 - Core built-ins: trusted documents (APQ + manifest, strict in prod), OpenTelemetry, typed context via AsyncLocalStorage + AbortSignal, protections on by default.
 - Errors: unexpected masked in prod (generic + correlation id); exposed error with typed `extensions.code` passes through.
-- Adapters: PubSub/cache interfaces + in-memory; `@graxia/redis` on `@softistx/redis` (peer).
-- Explorer: `@graxia/graphiql` (GraphiQL 4 bundled, no CDN) + Apollo Sandbox option; dev on, prod off.
-- AI ready: `@graxia/mcp`, agent-readable schema, Claude Code plugin + llms.txt. (LLM token streaming: not in scope.)
+- Adapters: PubSub/cache interfaces + in-memory; `@softistx/graxia-redis` on `@softistx/redis` (peer).
+- Explorer: `@softistx/graxia-graphiql` (GraphiQL 4 bundled, no CDN) + Apollo Sandbox option; dev on, prod off.
+- AI ready: `@softistx/graxia-mcp`, agent-readable schema, Claude Code plugin + llms.txt. (LLM token streaming: not in scope.)
 - Docs: README per package + docs/ (guides, troubleshooting, roadmap), no private app names.
 
 ## Assumed choices (recommended options taken, reversible)
@@ -29,13 +29,13 @@ Bun-only GraphQL server engine. Repo `softistx/graxia` (public, MIT), npm scope 
 
 ## 1. Packages
 
-| Package            | Responsibility                                                                                                                                                                                                                                                                                                                                                                | Deps                                                           |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `@graxia/core`     | `createGraxia`, plugin engine, GraphQL over HTTP, SSE, multipart incremental, graphql-transport-ws on Bun WebSocket, parse/validation caches, limits, CSRF/sameOrigin, introspection policy, trusted documents, fieldRateLimit, error masking, ALS context, AbortSignal, telemetry, `PubSub`/`KeyValueCache` + memory impls, `createSchema`. Subpaths `./testing`, `./agent`. | peer `graphql ^17`; optional peer `@softistx/telemetry ^0.5.0` |
-| `@graxia/redis`    | `redisPubSub()`, `redisCache()` on `@softistx/redis`                                                                                                                                                                                                                                                                                                                          | peer core                                                      |
-| `@graxia/graphiql` | GraphiQL 4 bundled (hashed assets, strict CSP); `apolloSandbox()` (CDN, dev-only CSP exception)                                                                                                                                                                                                                                                                               | peer core                                                      |
-| `@graxia/mcp`      | MCP over Streamable HTTP; tools `graphql_schema`/`graphql_query`/`graphql_mutate` and/or persisted operations as typed tools; OAuth resource server + scopes; runs through `graxia.execute`                                                                                                                                                                                   | peer core; `@modelcontextprotocol/sdk`                         |
-| `@graxia/envelop`  | `fromEnvelop(plugins)` → one graxia plugin                                                                                                                                                                                                                                                                                                                                    | peer core, `@envelop/core`                                     |
+| Package                     | Responsibility                                                                                                                                                                                                                                                                                                                                                                | Deps                                                           |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `@softistx/graxia`          | `createGraxia`, plugin engine, GraphQL over HTTP, SSE, multipart incremental, graphql-transport-ws on Bun WebSocket, parse/validation caches, limits, CSRF/sameOrigin, introspection policy, trusted documents, fieldRateLimit, error masking, ALS context, AbortSignal, telemetry, `PubSub`/`KeyValueCache` + memory impls, `createSchema`. Subpaths `./testing`, `./agent`. | peer `graphql ^17`; optional peer `@softistx/telemetry ^0.5.0` |
+| `@softistx/graxia-redis`    | `redisPubSub()`, `redisCache()` on `@softistx/redis`                                                                                                                                                                                                                                                                                                                          | peer core                                                      |
+| `@softistx/graxia-graphiql` | GraphiQL 4 bundled (hashed assets, strict CSP); `apolloSandbox()` (CDN, dev-only CSP exception)                                                                                                                                                                                                                                                                               | peer core                                                      |
+| `@softistx/graxia-mcp`      | MCP over Streamable HTTP; tools `graphql_schema`/`graphql_query`/`graphql_mutate` and/or persisted operations as typed tools; OAuth resource server + scopes; runs through `graxia.execute`                                                                                                                                                                                   | peer core; `@modelcontextprotocol/sdk`                         |
+| `@softistx/graxia-envelop`  | `fromEnvelop(plugins)` → one graxia plugin                                                                                                                                                                                                                                                                                                                                    | peer core, `@envelop/core`                                     |
 
 Repo extras: `plugins/graxia/` (plugin.json without version, skill `use-graxia`, generated `references/packages.md`, agent `graxia-upgrade-assistant`); `scripts/plugin-index.ts`, `scripts/llms.ts` generating `llms.txt`/`llms-full.txt` (spec fails when stale).
 

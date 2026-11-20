@@ -1,5 +1,9 @@
-import { createGraxia, createSchema, type TrustedManifest } from '@graxia/core';
-import type { Can as CoreCan } from '@graxia/core/agent';
+import {
+	createGraxia,
+	createSchema,
+	type TrustedManifest,
+} from '@softistx/graxia';
+import type { Can as CoreCan } from '@softistx/graxia/agent';
 import {
 	type Can,
 	createMcp,

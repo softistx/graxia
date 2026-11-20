@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { bundledAssets } from './assets';
 import { browser, fakeAssets, host } from './fixtures.test-util';
 import { createGraphiQL } from './graphiql';
@@ -43,7 +43,7 @@ describe('missing build', () => {
 		const error = await first.catch((e: unknown) => e);
 		expect(error).toBeInstanceOf(GraxiaConfigError);
 		expect((error as Error).message).toBe(
-			'GraphiQL assets not found at file:///graphiql-missing/assets/manifest.json: the installed @graxia/graphiql has no dist/assets: reinstall it; in the graxia repository, run `bun run build`',
+			'GraphiQL assets not found at file:///graphiql-missing/assets/manifest.json: the installed @softistx/graxia-graphiql has no dist/assets: reinstall it; in the graxia repository, run `bun run build`',
 		);
 		const again = source.manifest();
 		expect(again).not.toBe(first);

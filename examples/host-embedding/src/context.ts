@@ -1,4 +1,4 @@
-import type { ContextInit, InferContext } from '@graxia/core';
+import type { ContextInit, InferContext } from '@softistx/graxia';
 
 /** What the host collects while a resolver runs, and merges into the response afterwards. */
 export interface ResponseSet {

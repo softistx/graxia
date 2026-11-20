@@ -1,5 +1,5 @@
 {
-	"name": "@graxia/example-host-embedding",
+	"name": "@softistx/graxia-example-host-embedding",
 	"private": true,
 	"type": "module",
 	"description": "An app that owns Bun.serve and embeds graxia: a prefix, a typed host context, headers and cookies, CORS, WebSocket and SSE on one path, graceful shutdown",
@@ -9,7 +9,7 @@
 		"typecheck": "bun check"
 	},
 	"dependencies": {
-		"@graxia/core": "workspace:^",
+		"@softistx/graxia": "workspace:^",
 		"graphql": "17.1.0"
 	}
 }

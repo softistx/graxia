@@ -1,4 +1,4 @@
-import type { TrustedManifest } from '@graxia/core';
+import type { TrustedManifest } from '@softistx/graxia';
 
 /** A codegen-style manifest (`persisted-documents.json`) over the library fixture. */
 export const manifest = {

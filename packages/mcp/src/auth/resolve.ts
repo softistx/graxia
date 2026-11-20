@@ -1,5 +1,5 @@
-import { GraxiaConfigError } from '@graxia/core';
 import { getOAuthProtectedResourceMetadataUrl } from '@modelcontextprotocol/server';
+import { GraxiaConfigError } from '@softistx/graxia';
 import type { McpAuthOptions, ResolvedAuth } from './types';
 
 /** Validates `auth` once, at `createMcp`, and derives what every request needs. */

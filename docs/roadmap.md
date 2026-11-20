@@ -2,6 +2,10 @@
 
 Where graxia is going, as what you get. A direction, not a commitment.
 
+## Now
+
+- **Moving to the `@softistx` scope** — the five packages are now `@softistx/graxia`, `@softistx/graxia-envelop`, `@softistx/graxia-graphiql`, `@softistx/graxia-mcp` and `@softistx/graxia-redis` (they were `@graxia/*`). Same code and API; replace the dependencies and the imports ([migration guide](packages/core/docs/guide/migrating-from-graxia-scope.md)). The old names are deprecated.
+
 ## Not planned
 
 - Node or Deno adapters; graxia is Bun only.

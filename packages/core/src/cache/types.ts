@@ -7,7 +7,7 @@ export interface CacheSetOptions {
 /**
  * A minimal asynchronous key-value store, strings by default (callers
  * serialise). `createMemoryCache` implements it in process and
- * `redisCache` from `@graxia/redis` across processes. Upcoming graxia
+ * `redisCache` from `@softistx/graxia-redis` across processes. Upcoming graxia
  * features (persisted queries, response caching) take one; your own plugins can
  * use it today.
  *

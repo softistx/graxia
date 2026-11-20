@@ -1,4 +1,8 @@
-import { createGraxia, createSchema, type GraxiaPlugin } from '@graxia/core';
+import {
+	createGraxia,
+	createSchema,
+	type GraxiaPlugin,
+} from '@softistx/graxia';
 import type { AssetSource, Manifest } from './assets';
 
 export const manifest: Manifest = {

@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 
 /** The plugin names the two explorers register under. */
 export const GRAPHIQL = 'graphiql';

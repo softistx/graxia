@@ -1,4 +1,6 @@
-# @graxia/envelop
+# @softistx/graxia-envelop
+
+> Released as `@graxia/envelop` up to the last version below; the package moved to `@softistx/graxia-envelop` in the next minor.
 
 ## 0.1.8
 

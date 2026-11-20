@@ -1,4 +1,4 @@
-import { agentTypeDefs } from '@graxia/core/agent';
+import { agentTypeDefs } from '@softistx/graxia/agent';
 import {
 	buildSchema,
 	type DocumentNode,

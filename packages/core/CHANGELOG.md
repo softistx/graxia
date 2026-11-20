@@ -1,4 +1,6 @@
-# @graxia/core
+# @softistx/graxia
+
+> Released as `@graxia/core` up to the last version below; the package moved to `@softistx/graxia` in the next minor.
 
 ## 0.14.0
 

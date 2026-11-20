@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { authed, bearer, RESOURCE, tokens } from './auth.test-util';
 import { call, rpc } from './fixtures.test-util';
 import { createMcp, mcpAuth } from './index';

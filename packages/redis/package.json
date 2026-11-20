@@ -1,5 +1,5 @@
 {
-	"name": "@graxia/redis",
+	"name": "@softistx/graxia-redis",
 	"version": "0.2.11",
 	"description": "Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis",
 	"license": "MIT",
@@ -46,12 +46,12 @@
 		]
 	},
 	"devDependencies": {
-		"@graxia/core": "workspace:^",
+		"@softistx/graxia": "workspace:^",
 		"@softistx/redis": "^0.24.1",
 		"@types/bun": "^1.4.5"
 	},
 	"peerDependencies": {
-		"@graxia/core": "workspace:^",
+		"@softistx/graxia": "workspace:^",
 		"@softistx/redis": "^0.24.1",
 		"typescript": "^6.0.3 || ^7.0.0"
 	},

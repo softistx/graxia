@@ -1,6 +1,6 @@
 # Migrating from `@alxia/graphql`
 
-`@alxia/graphql` mounts GraphQL Yoga on an alxia app. `@graxia/core` is its replacement for a host
+`@alxia/graphql` mounts GraphQL Yoga on an alxia app. `@softistx/graxia` is its replacement for a host
 that owns `Bun.serve` (or any `fetch` router): the same protections and transports, on graphql 17,
 with no engine underneath that the host does not see. This page maps each option and says where
 graxia does something different on purpose. A runnable host is in
@@ -14,7 +14,7 @@ last section proves each line with a spec.
 
 ```sh
 bun remove @alxia/graphql graphql-yoga graphql-ws
-bun add @graxia/core graphql@^17.1.0
+bun add @softistx/graxia graphql@^17.1.0
 ```
 
 ## Mounting
@@ -30,7 +30,7 @@ const app = alxia().plugin((app) =>
 After, the host builds the instance once and calls it from its own route. One import, one call:
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const graxia = createGraxia({ schema, path: '/api/gql' });
 
@@ -50,7 +50,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 
 ## Options
 
-| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                                                                                   |
+| `@alxia/graphql`                       | `@softistx/graxia`                                                                                                                                                                                               |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `path`                                 | `path` (the full path, or `false` for any path)                                                                                                                                                                  |
 | `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                                                                              |
@@ -59,15 +59,15 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                                                                              |
 | `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                                                                          |
 | `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0`                                                         |
-| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                             |
-| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                                                                         |
+| `ide`, `graphiql`, `sandbox`           | the [`@softistx/graxia-graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                    |
+| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@softistx/graxia-envelop`                                                                                                |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                                                                                |
 | Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                                                                                     |
 | `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                                                                                       |
 | `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                                                                                      |
-| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                                                                         |
+| `fieldRateLimit`, `limitFromStore`     | the same names from `@softistx/graxia` ([Rate limiting](./rate-limiting.md))                                                                                                                                     |
 | `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin, onRefused } }`; alxia's `refuse` becomes `onRefused(request, { reason, websocket })` ([Security](./security.md#answering-a-refused-origin-yourself)) |
-| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                                                                                   |
+| `createTestClient`                     | `createTestClient` from `@softistx/graxia/testing`                                                                                                                                                               |
 | `cors`                                 | none, see [CORS](#cors)                                                                                                                                                                                          |
 | `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                                                                            |
 
@@ -161,7 +161,7 @@ its status. Unexpected failures go to `onUnexpected` (`console.error` by default
 
 ## Explorer
 
-`ide`, `graphiql` and `sandbox` are replaced by the `@graxia/graphiql` plugin: `graphiql()` is on in
+`ide`, `graphiql` and `sandbox` are replaced by the `@softistx/graxia-graphiql` plugin: `graphiql()` is on in
 development and off in production, with a CSP that names no external source. Apollo Sandbox is the
 `apolloSandbox()` plugin, and `sandboxContentSecurityPolicy` is the exact policy it needs. There is
 no `renderSandbox` hook: pass the plugin.
@@ -180,7 +180,7 @@ the headers added to the response). The example's `cors.ts` is a working one.
 
 Nothing to install beyond `graphql`: the WebSocket protocol is implemented in the package (remove
 `graphql-ws` and `graphql-yoga`), and `@softistx/telemetry` is an optional peer, a no-op without it.
-`@graxia/graphiql` and `@graxia/envelop` are their own packages, installed when used.
+`@softistx/graxia-graphiql` and `@softistx/graxia-envelop` are their own packages, installed when used.
 
 ## Refusal codes
 
@@ -227,7 +227,7 @@ expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
 `@alxia/graphql` up to 0.16 (on Yoga) answered this status. Like GraphQL Yoga, graxia reads the `extensions.http` of the GraphQL errors of a single operation answered as plain JSON (`application/json` or `application/graphql-response+json`).
 
 ```ts
-import { type ErrorHttp } from '@graxia/core';
+import { type ErrorHttp } from '@softistx/graxia';
 
 throw new GraphQLError('Email taken.', {
 	extensions: {

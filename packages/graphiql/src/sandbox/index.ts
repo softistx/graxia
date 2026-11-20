@@ -1,4 +1,4 @@
-import { definePlugin, type GraxiaPlugin } from '@graxia/core';
+import { definePlugin, type GraxiaPlugin } from '@softistx/graxia';
 import { type AssetSource, assetResponse, bundledAssets } from '../assets';
 import {
 	assertSingleExplorer,

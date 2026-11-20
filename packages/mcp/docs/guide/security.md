@@ -2,7 +2,7 @@
 
 ## Authentication
 
-Set `auth` and `@graxia/mcp` is an OAuth resource server: bearer tokens, scopes, protected
+Set `auth` and `@softistx/graxia-mcp` is an OAuth resource server: bearer tokens, scopes, protected
 resource metadata ([the auth guide](./auth.md)). Every request then needs a token your
 `verifyToken` accepts, issued for this resource (the audience is checked by default), and
 `graphql_mutate` and the typed tools of mutations need the write scope (a 403 naming the tool
@@ -60,7 +60,7 @@ own code: build it from your repository, never from a request.
 ## Strict trusted documents
 
 `graxia.execute` runs in process and skips the trusted-documents check (it is your own code
-calling). `@graxia/mcp` forwards documents written by an agent, so it applies the mode itself:
+calling). `@softistx/graxia-mcp` forwards documents written by an agent, so it applies the mode itself:
 when `graxia.trustedDocuments.mode` is `strict` (the default under `NODE_ENV=production`),
 `graphql_query` and `graphql_mutate` are not listed and a call answers `PERSISTED_QUERY_ONLY`
 without running anything. Only the typed tools run, each a document you gave at boot. In `mixed`

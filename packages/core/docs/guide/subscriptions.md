@@ -15,7 +15,7 @@ stream, for any operation type:
 | subscription    | one `next` per event, then `complete` at the end |
 
 ```ts
-import { createGraxia, createPubSub, createSchema } from '@graxia/core';
+import { createGraxia, createPubSub, createSchema } from '@softistx/graxia';
 
 const pubsub = createPubSub<{ tick: [payload: number] }>();
 const schema = createSchema<{ signal: AbortSignal }>()({

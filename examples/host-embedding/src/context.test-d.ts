@@ -1,4 +1,4 @@
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { type Ctx, context, newResponseSet } from './context';
 import { schema } from './schema';
 

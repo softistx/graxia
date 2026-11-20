@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { type Booted, boot } from './fixtures.test-util';
 import { fromEnvelop } from './from-envelop';
 

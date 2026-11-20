@@ -36,7 +36,7 @@ export interface TrustedDocumentsOptions {
 	manifest?: TrustedManifest;
 	/**
 	 * Where automatic persisted queries are registered and read: any
-	 * `KeyValueCache<string>` (`redisCache()` from `@graxia/redis` shares them across
+	 * `KeyValueCache<string>` (`redisCache()` from `@softistx/graxia-redis` shares them across
 	 * processes). An in-memory cache of 1 000 entries when `apq` is on and none is given.
 	 * With `strict` it is read only (something else fills it).
 	 */

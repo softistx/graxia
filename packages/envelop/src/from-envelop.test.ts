@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { fromEnvelop } from './from-envelop';
 
 const message = (plugins: unknown[]) => {
@@ -52,7 +52,7 @@ describe('fromEnvelop', () => {
 		'onExecutionResult',
 	])('the yoga hook %s is refused', (key) => {
 		expect(message([{ [key]: () => {} }])).toContain(
-			`uses "${key}": this is a graphql-yoga plugin, not an Envelop one, and graxia cannot run it. Rewrite it with definePlugin from @graxia/core.`,
+			`uses "${key}": this is a graphql-yoga plugin, not an Envelop one, and graxia cannot run it. Rewrite it with definePlugin from @softistx/graxia.`,
 		);
 	});
 

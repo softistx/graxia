@@ -5,7 +5,7 @@ import type {
 	OnParsePayload,
 	OnValidateDone,
 	OnValidatePayload,
-} from '@graxia/core';
+} from '@softistx/graxia';
 import { GraphQLError, parse, validate } from 'graphql';
 import { extender, type opKey, opOf } from './early-context';
 import * as refuse from './refuse';

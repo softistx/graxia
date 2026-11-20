@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, test } from 'bun:test';
-import { createGraxia, createSchema } from '@graxia/core';
 import {
 	Client,
 	StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client';
 import { fromJsonSchema } from '@modelcontextprotocol/server';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { call, rpc } from './fixtures.test-util';
 import { createMcp } from './index';
 import { listed } from './operations.test-util';

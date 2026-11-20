@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { connectRedis, RedisError } from '@softistx/redis';
 import type { RedisClient } from 'bun';
 import { redisCache } from './cache';

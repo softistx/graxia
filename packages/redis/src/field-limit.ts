@@ -1,4 +1,4 @@
-import { type FieldLimit, GraxiaConfigError } from '@graxia/core';
+import { type FieldLimit, GraxiaConfigError } from '@softistx/graxia';
 import { consumeRateLimit } from '@softistx/redis';
 import type { RedisClient } from 'bun';
 import { type RedisConnection, resolveLink } from './connection';
@@ -100,7 +100,7 @@ export function redisFieldLimit(
 	const name = (options.prefix ?? 'graxia:limit:').replace(/:$/, '');
 	if (name.length === 0)
 		throw new GraxiaConfigError(
-			'@graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"',
+			'@softistx/graxia-redis: redisFieldLimit prefix must hold at least one character before its ":"',
 		);
 	const prefix = `${name}:`;
 	return {

@@ -1,7 +1,7 @@
-# Ready for agents: `@graxia/core/agent`
+# Ready for agents: `@softistx/graxia/agent`
 
 A schema an AI agent can read and act on needs four things: what each field requires, the limits of
-each input, the errors each field may return, and a `fix` on every error. `@graxia/core/agent` adds
+each input, the errors each field may return, and a `fix` on every error. `@softistx/graxia/agent` adds
 the first three as three descriptive directives, prints the schema an agent may see, and lints the
 descriptions. It is a separate subpath: the root import stays lean.
 
@@ -11,14 +11,14 @@ import {
 	lintDescriptions,
 	printSchemaFor,
 	visibleSchema,
-} from '@graxia/core/agent';
+} from '@softistx/graxia/agent';
 ```
 
 ## The directives
 
 ```ts
-import { createSchema } from '@graxia/core';
-import { agentTypeDefs } from '@graxia/core/agent';
+import { createSchema } from '@softistx/graxia';
+import { agentTypeDefs } from '@softistx/graxia/agent';
 
 const schema = createSchema()({
 	typeDefs: [
@@ -64,7 +64,7 @@ same information in `extensions` with `agentExtensions`:
 
 ```ts
 import { GraphQLString } from 'graphql';
-import { agentExtensions } from '@graxia/core/agent';
+import { agentExtensions } from '@softistx/graxia/agent';
 
 const field = {
 	type: GraphQLString,
@@ -78,7 +78,7 @@ const field = {
 ## Reading them
 
 ```ts
-import { constraintOf, errorsOf, needsOf } from '@graxia/core/agent';
+import { constraintOf, errorsOf, needsOf } from '@softistx/graxia/agent';
 
 needsOf(fieldOrType); // [['members:read']]: AND of any-of groups; [['a'], ['b', 'c']] is a AND (b OR c)
 constraintOf(argOrInputField); // { minLength: 2, maxLength: 80 } or undefined
@@ -99,7 +99,7 @@ const sdl = printSchemaFor(schema, {
 });
 ```
 
-`can` is typed `Can`, exported from `@graxia/core/agent`: `(permission: string) => boolean`.
+`can` is typed `Can`, exported from `@softistx/graxia/agent`: `(permission: string) => boolean`.
 
 - A field or type whose `@needs` fails is removed. A type left without fields is removed, and so is
   every field that returns it, until nothing changes. A union loses removed members and goes when none is left.
@@ -120,7 +120,7 @@ const sdl = printSchemaFor(schema, {
 
 ```ts
 import { expect, test } from 'bun:test';
-import { lintDescriptions } from '@graxia/core/agent';
+import { lintDescriptions } from '@softistx/graxia/agent';
 import { schema } from './schema';
 
 const knownErrorCodes = ['BAD_USER_INPUT', 'CONFLICT', 'NOT_FOUND'];

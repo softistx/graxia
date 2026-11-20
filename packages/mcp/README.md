@@ -1,4 +1,6 @@
-# @graxia/mcp
+# @softistx/graxia-mcp
+
+> Moved from `@graxia/mcp`: see the [migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md).
 
 A Model Context Protocol server for a [graxia](https://github.com/softistx/graxia) API. An agent
 (Claude, an IDE, any MCP client) connects over Streamable HTTP, reads the schema it is allowed to
@@ -12,10 +14,10 @@ cost, trusted documents, error masking and rate limits.
 ## Install
 
 ```sh
-bun add @graxia/mcp @graxia/core graphql
+bun add @softistx/graxia-mcp @softistx/graxia graphql
 ```
 
-Requires Bun 1.4.4 or later and `@graxia/core` 0.5 or later.
+Requires Bun 1.4.4 or later and `@softistx/graxia` 0.5 or later.
 
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported.
@@ -23,8 +25,8 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 ## Mount it
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema });
@@ -92,8 +94,8 @@ createMcp(graxia, {
 ## Typed tools
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 import manifest from './persisted-documents.json';
 
 // In the manifest: """Find a book by its id.""" query BookById($id: ID!) { book(id: $id) { id title } }
@@ -116,8 +118,8 @@ listing every problem of the manifest, each with its fix. See
 ## OAuth
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp, mcpAuth } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp, mcpAuth } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start. `verifyJwt` is your token check (signature and
 // issuer): it resolves the claims, and must resolve undefined for a bad token, not throw

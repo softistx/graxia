@@ -3,15 +3,15 @@
 `graphiql()` is a graxia plugin that serves the GraphiQL 4 page from the GraphQL endpoint itself.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { graphiql } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { graphiql } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [graphiql()] });
 graxia.serve({ port: 3000 });
 ```
 
-Install it as a normal dependency (`bun add @graxia/graphiql`): the plugin is off in production by
+Install it as a normal dependency (`bun add @softistx/graxia-graphiql`): the plugin is off in production by
 default, so it can stay in `dependencies`; the bundle costs disk only.
 
 Looking for Apollo Sandbox? See [its guide](./apollo-sandbox.md); the two cannot be enabled together.
@@ -45,7 +45,7 @@ needed.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
 [core's Security guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
-exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
+exactly these two shapes of `GET`, and answers them itself. It needs `@softistx/graxia` 0.4 or later
 (`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
 foreign-`Origin` request for the page is refused like any other request, and a same-origin
 navigation passes. An exempt request no plugin answers is refused as before.
@@ -79,7 +79,7 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 ## `@defer` and `@stream`
 
 GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
-payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
+payloads into the response pane as they arrive. This needs `@softistx/graxia` 0.4 or later: older versions answered
 `INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
 [incremental delivery](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
 `createGraxia` turns it off.

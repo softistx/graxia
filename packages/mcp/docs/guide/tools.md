@@ -54,7 +54,7 @@ codes. A document that does not parse is refused here (the token limit of graxia
 The typed tools add `MCP_UNKNOWN_ARGUMENT` ([troubleshooting](../troubleshooting.md)), and `auth` adds
 `MCP_UNAUTHORIZED`, `MCP_INSUFFICIENT_SCOPE` and `MCP_TOKEN_IN_URL`
 ([troubleshooting auth](../troubleshooting-auth.md)). `McpErrorCode` (an exported type) is the union
-of the codes `@graxia/mcp` emits.
+of the codes `@softistx/graxia-mcp` emits.
 
 `operationName` picks the operation: only the selected one is checked against the tool's kind, so a
 document holding a query and a mutation runs its query in `graphql_query`.

@@ -12,7 +12,7 @@ A topic map gives each topic its publish arguments: `[payload]`, or `[id, payloa
 scoped by an id (a post, a room, a user). `[]` is a signal without data.
 
 ```ts
-import { createPubSub } from '@graxia/core';
+import { createPubSub } from '@softistx/graxia';
 
 type Post = { id: string; published: boolean };
 const pubsub = createPubSub<{
@@ -56,7 +56,7 @@ away. A throw in a predicate or a mapper returns the source, then rejects. A typ
 the element type.
 
 ```ts
-import { filter, map, pipe } from '@graxia/core';
+import { filter, map, pipe } from '@softistx/graxia';
 
 subscribe: (_: unknown, { id }: { id: string }) =>
 	pipe(
@@ -100,9 +100,9 @@ const pubsub = createPubSub<Topics>({
 
 | You write                                                            | In graxia                                                             |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, from `@graxia/core` (options differ, see below)        |
+| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, from `@softistx/graxia` (options differ, see below)    |
 | Yoga `pubsub.subscribe('post', id)`, `publish('post', id, p)`        | same names, arguments and typing                                      |
-| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | same names and typing, from `@graxia/core`                            |
+| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | same names and typing, from `@softistx/graxia`                        |
 | Apollo `graphql-subscriptions` `pubsub.asyncIterableIterator(['A'])` | `pubsub.subscribe('A')`                                               |
 | Apollo `pubsub.publish('A', { a: payload })`                         | `pubsub.publish('A', payload)`, the payload is not wrapped in a field |
 
@@ -138,11 +138,11 @@ The same shape, not the same package. The real differences from Yoga:
 ## Several processes
 
 The memory PubSub only reaches subscribers in the same process. For several instances, swap it
-for `redisPubSub` from [`@graxia/redis`](https://www.npmjs.com/package/@graxia/redis): it implements the same `PubSub`
+for `redisPubSub` from [`@softistx/graxia-redis`](https://www.npmjs.com/package/@softistx/graxia-redis): it implements the same `PubSub`
 interface on `@softistx/redis` (a topic with an id is the channel `topic:id`), so resolvers do not change.
 
 ```ts
-import { redisPubSub } from '@graxia/redis';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
 ```

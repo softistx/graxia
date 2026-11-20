@@ -1,12 +1,12 @@
 # Testing
 
-Two tools, no socket: `graxia.execute` runs an operation in process, and `@graxia/core/testing`
+Two tools, no socket: `graxia.execute` runs an operation in process, and `@softistx/graxia/testing`
 talks to `graxia.fetch` with real HTTP semantics. Neither imports `bun:test`; use any runner.
 
 The examples share this setup:
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:
@@ -69,7 +69,7 @@ is the string form codegen's `documentMode: string` emits. No dependency is adde
 the variables are inferred, and wrong variables fail to compile:
 
 ```ts
-import type { TypedDocument } from '@graxia/core';
+import type { TypedDocument } from '@softistx/graxia';
 import { parse } from 'graphql';
 
 const Greet = parse(
@@ -117,7 +117,7 @@ if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
   `cause`, never in the response), or the instance was disposed (503, `SHUTTING_DOWN`).
 
 ```ts
-import { GraxiaExecuteError } from '@graxia/core';
+import { GraxiaExecuteError } from '@softistx/graxia';
 
 try {
 	await graxia.execute({ document: '{ hello }' });
@@ -133,7 +133,7 @@ try {
 `graxia.fetch`, so status codes, negotiation, GET encoding and batching behave as over HTTP.
 
 ```ts
-import { createTestClient, expectNoErrors } from '@graxia/core/testing';
+import { createTestClient, expectNoErrors } from '@softistx/graxia/testing';
 
 const client = createTestClient(graxia, { headers: { 'x-tenant': 'acme' } });
 

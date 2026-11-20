@@ -5,7 +5,7 @@
  *
  * This replaces `changeset publish`, which falls back to a plain `npm publish`
  * in the package directory: npm does not rewrite `workspace:^`, so
- * `@graxia/redis` would ship `peerDependencies["@graxia/core"]: "workspace:^"`.
+ * `@softistx/graxia-redis` would ship `peerDependencies["@softistx/graxia"]: "workspace:^"`.
  * Here each package is packed with `bun pm pack` (which rewrites the range),
  * the packed manifest is asserted to hold no `workspace:` range, and that
  * tarball is what `npm publish` uploads. A version already on npm is skipped,

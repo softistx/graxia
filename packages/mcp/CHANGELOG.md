@@ -1,4 +1,6 @@
-# @graxia/mcp
+# @softistx/graxia-mcp
+
+> Released as `@graxia/mcp` up to the last version below; the package moved to `@softistx/graxia-mcp` in the next minor.
 
 ## 0.1.10
 

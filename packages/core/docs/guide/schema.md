@@ -10,7 +10,7 @@ through graxia, call `experimentalExecuteIncrementally`, or build it with
 `createSchema()({ typeDefs, resolvers, incremental: false })` (no `@defer`, no incremental queries).
 
 ```ts
-import { createSchema } from '@graxia/core';
+import { createSchema } from '@softistx/graxia';
 
 type AppContext = { user: { name: string } };
 

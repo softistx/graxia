@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { buildOperationTools } from './build';
 import { schema } from './schemas.test-util';
 import type { McpOperationsOptions } from './types';

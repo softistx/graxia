@@ -5,21 +5,24 @@ description: >-
   reads the installed and target versions, collects the CHANGELOG entries in
   between, lists the migrations that apply, applies them, and runs the app's
   typecheck and the specs it touched. Use when asked to upgrade or bump an
-  @graxia package, or when an app broke after a bump.
+  @softistx/graxia package, or when an app broke after a bump.
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
-Upgrade an application's `@graxia/*` packages from one version to another.
+Upgrade an application's `@softistx/graxia*` packages from one version to another.
 
+0. If any `@graxia/*` package is installed (`@graxia/core`, `@graxia/envelop`, `@graxia/graphiql`, `@graxia/mcp`, `@graxia/redis`), apply the
+   scope migration first, ranges included: https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md.
+   Then continue with the steps below on the new names.
 1. Read the installed versions (`bun pm ls`, `package.json`) and the target
-   ones. The packages move together: `@graxia/redis`, `@graxia/graphiql` and
-   `@graxia/mcp` peer on `@graxia/core`, so bump core first and keep every
+   ones. The packages move together: `@softistx/graxia-redis`, `@softistx/graxia-graphiql` and
+   `@softistx/graxia-mcp` peer on `@softistx/graxia`, so bump core first and keep every
    range on a version that accepts it. A pre-1.0 minor (`0.x` to `0.y`) may
    break: `^0.x` ranges do not follow it, move them by hand.
 2. Collect what changed between the two versions. The installed packages ship
    the `## Migrating from …` sections of their guides (for example
-   `node_modules/@graxia/core/docs/guide/pubsub.md#migrating-from-03` and
-   `node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`), and
+   `node_modules/@softistx/graxia/docs/guide/pubsub.md#migrating-from-03` and
+   `node_modules/@softistx/graxia-redis/docs/guide/redis.md#migrating-from-01`), and
    the troubleshooting pages. The changelog is not in the tarball: read
    `https://github.com/softistx/graxia/blob/develop/packages/<dir>/CHANGELOG.md`
    (`<dir>` is `core`, `redis`, `graphiql` or `mcp`) or the GitHub releases.

@@ -60,5 +60,5 @@ await Bun.write(
 );
 const total = Object.values(files).reduce((sum, f) => sum + f.size, 0);
 console.log(
-	`@graxia/graphiql: ${script} + ${style} + ${sandbox}, ${(total / 1e6).toFixed(2)} MB raw`,
+	`@softistx/graxia-graphiql: ${script} + ${style} + ${sandbox}, ${(total / 1e6).toFixed(2)} MB raw`,
 );

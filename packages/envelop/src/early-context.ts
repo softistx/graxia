@@ -1,4 +1,4 @@
-import { createStateKey, type RequestState } from '@graxia/core';
+import { createStateKey, type RequestState } from '@softistx/graxia';
 import type { Op } from './types';
 
 /** The per-operation record of one adapter (a key per `fromEnvelop` call). */

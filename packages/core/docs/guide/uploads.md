@@ -1,10 +1,10 @@
 # File uploads
 
-`@graxia/core` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
+`@softistx/graxia` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
 (`operations`, `map`, one part per file). It is off by default.
 
 ```ts
-import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+import { createGraxia, createSchema, GraphQLFile } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: `

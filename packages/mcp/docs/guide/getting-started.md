@@ -3,12 +3,12 @@
 ## Install and mount
 
 ```sh
-bun add @graxia/mcp @graxia/core graphql
+bun add @softistx/graxia-mcp @softistx/graxia graphql
 ```
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema });
@@ -21,7 +21,7 @@ Bun.serve({
 ```
 
 `createMcp(graxia, options)` reads the schema and the body limit from the instance
-(`graxia.schema`, `graxia.limits.bodyBytes`, `@graxia/core` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
+(`graxia.schema`, `graxia.limits.bodyBytes`, `@softistx/graxia` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
 `Response` out, and never rejects. `mcp.dispose()` stops the handler (in-flight requests are aborted),
 like `graxia.dispose()`.
 

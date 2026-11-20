@@ -1,9 +1,10 @@
 # Roadmap
 
-Where `@graxia/mcp` is going, as what you get. A direction, not a commitment.
+Where `@softistx/graxia-mcp` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
+- **Moving to the `@softistx` scope** — the package is now `@softistx/graxia-mcp` (it was `@graxia/mcp`). Same code and API; replace the dependency and the imports ([migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md)). The old name is deprecated.
 - **Follow-ups from the first release** — sharper refusals: a nesting overflow answers with the fix
   to flatten the query ([#90](https://github.com/softistx/graxia/issues/90)), and `allowedHosts`
   entries are normalised at boot as a request's host is

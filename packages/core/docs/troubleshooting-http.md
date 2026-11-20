@@ -72,7 +72,7 @@ to a string) before calling `execute`.
 
 ## persisted: true needs a document; pass { sha256Hash } to send a hash alone
 
-Thrown by the `@graxia/core/testing` client: `persisted: true` computes the hash from the document,
+Thrown by the `@softistx/graxia/testing` client: `persisted: true` computes the hash from the document,
 so the document cannot be `null`.
 
 ```ts

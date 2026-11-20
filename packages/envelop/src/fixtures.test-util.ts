@@ -4,7 +4,7 @@ import {
 	createSchema,
 	type GraxiaOptions,
 	type GraxiaPlugin,
-} from '@graxia/core';
+} from '@softistx/graxia';
 
 /** How many times each resolver ran: specs reset it with `calls.reset()`. */
 export const calls = {

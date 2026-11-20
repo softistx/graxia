@@ -1,6 +1,6 @@
 # host-embedding
 
-An app that owns `Bun.serve` and embeds `@graxia/core` in one of its routes. Private, not published:
+An app that owns `Bun.serve` and embeds `@softistx/graxia` in one of its routes. Private, not published:
 it is a worked example and the host the specs run against.
 
 ## What it shows
@@ -14,7 +14,7 @@ it is a worked example and the host the specs run against.
 
 ## Prerequisite
 
-The example imports `@graxia/core`'s `dist`, so build first, at the repository root:
+The example imports `@softistx/graxia`'s `dist`, so build first, at the repository root:
 
 ```sh
 bun install && bun run build

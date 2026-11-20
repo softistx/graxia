@@ -18,8 +18,8 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
 ## PubSub
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+import { createGraxia, createSchema } from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 const pubsub = redisPubSub<{ tick: [payload: number] }>({
 	url: process.env.REDIS_URL,

@@ -1,4 +1,6 @@
-# @graxia/redis
+# @softistx/graxia-redis
+
+> Released as `@graxia/redis` up to the last version below; the package moved to `@softistx/graxia-redis` in the next minor.
 
 ## 0.2.11
 

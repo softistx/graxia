@@ -21,7 +21,7 @@ context is never declared twice:
 
 ```ts
 // src/context.ts
-import { type ContextInit, type InferContext } from '@graxia/core';
+import { type ContextInit, type InferContext } from '@softistx/graxia';
 
 export const plugins = [
 	/* your plugins */
@@ -61,7 +61,7 @@ export default config;
 ## Passing `Resolvers` to `createSchema`
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { context, plugins, type AppContext } from './context';
 import type { Resolvers } from './generated';
 

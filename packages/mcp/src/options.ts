@@ -1,5 +1,5 @@
-import type { Graxia, ServerContextArg } from '@graxia/core';
-import type { Can } from '@graxia/core/agent';
+import type { Graxia, ServerContextArg } from '@softistx/graxia';
+import type { Can } from '@softistx/graxia/agent';
 import type { McpAuthInfo, McpAuthOptions } from './auth/types';
 import type { McpOperationsOptions } from './operations/types';
 

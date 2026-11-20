@@ -8,7 +8,7 @@ Masking is always on, in every environment.
 ## Exposed errors
 
 ```ts
-import { exposedError } from '@graxia/core';
+import { exposedError } from '@softistx/graxia';
 
 const resolvers = {
 	Query: {
@@ -58,7 +58,7 @@ its errors (the `ErrorHttp` type: `status`, `headers`, `spec`). `http` is remove
 serialized extensions of every transport.
 
 ```ts
-import { type ErrorHttp, exposedError } from '@graxia/core';
+import { type ErrorHttp, exposedError } from '@softistx/graxia';
 
 throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
@@ -123,7 +123,7 @@ compile. Add your own by augmenting the interface:
 
 ```ts
 // graxia.d.ts
-declare module '@graxia/core' {
+declare module '@softistx/graxia' {
 	interface GraxiaErrorCodes {
 		PAYMENT_REQUIRED: true;
 	}

@@ -1,6 +1,6 @@
-# @graxia/core documentation
+# @softistx/graxia documentation
 
-`@graxia/core` is the Bun-native GraphQL server engine on graphql 17: hand it a schema and get a
+`@softistx/graxia` is the Bun-native GraphQL server engine on graphql 17: hand it a schema and get a
 `fetch` handler that speaks GraphQL over HTTP, extended through typed plugins. These pages go
 deeper than the [npm page](../README.md): each guide covers one area, with examples you can copy.
 
@@ -10,6 +10,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Guides
 
 - [GraphQL over HTTP](./guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
+- [Migrating from the `@graxia` scope](./guide/migrating-from-graxia-scope.md): the new package names, first versions and a codemod.
 - [Migrating from `@alxia/graphql`](./guide/migrating-from-alxia-graphql.md): option mapping, the deliberate differences and the 34-item parity table, with a runnable host.
 - [Plugins](./guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./guide/context.md): `getContext()`, `signal`, `dispose()`.
@@ -26,8 +27,8 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Rate limiting fields](./guide/rate-limiting.md): `fieldRateLimit`, aliases and fragments counted, `single`, keys and IPv6, stores, 429.
 - [Telemetry](./guide/telemetry.md): spans for requests, parse, validate and operations, resolver spans, propagation, the optional peer.
 - [Production](./guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, health checks and a checklist.
-- [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@graxia/core/testing`.
-- [Ready for agents](./guide/agent.md): `@graxia/core/agent`, `@needs` / `@constraint` / `@errors`, `printSchemaFor`, `lintDescriptions`, the `fix` contract.
+- [Testing: `execute` and the test client](./guide/testing.md): in-process execution, `@softistx/graxia/testing`.
+- [Ready for agents](./guide/agent.md): `@softistx/graxia/agent`, `@needs` / `@constraint` / `@errors`, `printSchemaFor`, `lintDescriptions`, the `fix` contract.
 - [Errors: exposed, masked, correlation ids](./guide/errors.md): `exposedError`, `onUnexpected`, `maskError`.
 
 ## Help

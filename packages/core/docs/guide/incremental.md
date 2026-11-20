@@ -5,7 +5,7 @@ Incremental delivery sends the parts of a result as they become ready: a query w
 default for queries and mutations, over `multipart/mixed` and over server-sent events.
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:

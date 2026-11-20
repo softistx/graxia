@@ -15,14 +15,14 @@
       },
     },
     "examples/host-embedding": {
-      "name": "@graxia/example-host-embedding",
+      "name": "@softistx/graxia-example-host-embedding",
       "dependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "graphql": "17.1.0",
       },
     },
     "packages/core": {
-      "name": "@graxia/core",
+      "name": "@softistx/graxia",
       "version": "0.14.0",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
@@ -46,7 +46,7 @@
       ],
     },
     "packages/envelop": {
-      "name": "@graxia/envelop",
+      "name": "@softistx/graxia-envelop",
       "version": "0.1.8",
       "devDependencies": {
         "@envelop/core": "6.0.1",
@@ -55,13 +55,13 @@
         "@envelop/persisted-operations": "11.0.1",
         "@envelop/response-cache": "10.0.1",
         "@graphql-hive/logger": "1.2.0",
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "@types/bun": "^1.4.5",
         "graphql": "17.1.0",
       },
       "peerDependencies": {
         "@envelop/core": "^5.6.1 || ^6.0.1",
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "graphql": "^17.1.0",
         "typescript": "^6.0.3 || ^7.0.0",
       },
@@ -70,11 +70,11 @@
       ],
     },
     "packages/graphiql": {
-      "name": "@graxia/graphiql",
+      "name": "@softistx/graxia-graphiql",
       "version": "0.2.8",
       "devDependencies": {
         "@graphiql/toolkit": "^1.0.1",
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "@types/bun": "^1.4.5",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
@@ -85,7 +85,7 @@
         "react-dom": "19",
       },
       "peerDependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "typescript": "^6.0.3 || ^7.0.0",
       },
       "optionalPeers": [
@@ -93,20 +93,20 @@
       ],
     },
     "packages/mcp": {
-      "name": "@graxia/mcp",
+      "name": "@softistx/graxia-mcp",
       "version": "0.1.10",
       "dependencies": {
         "@modelcontextprotocol/server": "~2.4.0",
         "zod": "^4.2.0",
       },
       "devDependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "@modelcontextprotocol/client": "~2.4.0",
         "@types/bun": "^1.4.5",
         "graphql": "^17.1.0",
       },
       "peerDependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "graphql": "^17.1.0",
         "typescript": "^6.0.3 || ^7.0.0",
       },
@@ -115,15 +115,15 @@
       ],
     },
     "packages/redis": {
-      "name": "@graxia/redis",
+      "name": "@softistx/graxia-redis",
       "version": "0.2.11",
       "devDependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "@softistx/redis": "^0.24.1",
         "@types/bun": "^1.4.5",
       },
       "peerDependencies": {
-        "@graxia/core": "workspace:^",
+        "@softistx/graxia": "workspace:^",
         "@softistx/redis": "^0.24.1",
         "typescript": "^6.0.3 || ^7.0.0",
       },
@@ -352,17 +352,17 @@
 
     "@graphql-typed-document-node/core": ["@graphql-typed-document-node/core@3.2.0", "", { "peerDependencies": { "graphql": "^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0" } }, "sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ=="],
 
-    "@graxia/core": ["@graxia/core@workspace:packages/core"],
+    "@softistx/graxia": ["@softistx/graxia@workspace:packages/core"],
 
-    "@graxia/envelop": ["@graxia/envelop@workspace:packages/envelop"],
+    "@softistx/graxia-envelop": ["@softistx/graxia-envelop@workspace:packages/envelop"],
 
-    "@graxia/example-host-embedding": ["@graxia/example-host-embedding@workspace:examples/host-embedding"],
+    "@softistx/graxia-example-host-embedding": ["@softistx/graxia-example-host-embedding@workspace:examples/host-embedding"],
 
-    "@graxia/graphiql": ["@graxia/graphiql@workspace:packages/graphiql"],
+    "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@workspace:packages/graphiql"],
 
-    "@graxia/mcp": ["@graxia/mcp@workspace:packages/mcp"],
+    "@softistx/graxia-mcp": ["@softistx/graxia-mcp@workspace:packages/mcp"],
 
-    "@graxia/redis": ["@graxia/redis@workspace:packages/redis"],
+    "@softistx/graxia-redis": ["@softistx/graxia-redis@workspace:packages/redis"],
 
     "@headlessui/react": ["@headlessui/react@2.2.10", "", { "dependencies": { "@floating-ui/react": "^0.26.16", "@react-aria/focus": "^3.20.2", "@react-aria/interactions": "^3.25.0", "@tanstack/react-virtual": "^3.13.9", "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "^18 || ^19 || ^19.0.0-rc", "react-dom": "^18 || ^19 || ^19.0.0-rc" } }, "sha512-5pVLNK9wlpxTUTy9GpgbX/SdcRh+HBnPktjM2wbiLTH4p+2EPHBO1aoSryUCuKUIItdDWO9ITlhUL8UnUN/oIA=="],
 

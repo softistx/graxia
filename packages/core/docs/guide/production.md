@@ -37,7 +37,7 @@ production, always give it.
 ## A recommended configuration
 
 One instance with trusted documents, a rate limit shared across instances, Redis for the
-PubSub, telemetry and an error logger. It needs `@graxia/redis`, `@softistx/telemetry` and an
+PubSub, telemetry and an error logger. It needs `@softistx/graxia-redis`, `@softistx/telemetry` and an
 exporter such as `@softistx/telemetry-otlp` (see [Telemetry](./telemetry.md#setup)).
 
 ```ts
@@ -47,8 +47,8 @@ import {
 	createSchema,
 	fieldRateLimit,
 	type PubSub,
-} from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+} from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 import { redisLimit } from './redis-limit'; // the adapter of Rate limiting, "Stores"
 
 type Topics = { tick: [payload: { n: number }] };
@@ -131,7 +131,7 @@ holds what must be shared: the PubSub above and, if you run `mixed` mode with AP
 endpoint, the registered queries:
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 
 export const apqStore = redisCache({ prefix: 'graxia:pq:' });
 // createGraxia({ schema, trustedDocuments: { mode: 'mixed', store: apqStore } })

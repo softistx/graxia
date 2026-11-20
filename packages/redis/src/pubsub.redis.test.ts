@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { filter, pipe } from '@graxia/core';
+import { filter, pipe } from '@softistx/graxia';
 import { RedisClient } from 'bun';
 import {
 	describeRedis,

@@ -52,7 +52,7 @@ createGraxia<{ request: Request }>()({ schema, plugins: [auth] });
 
 A field provided with another type reads `… needs context.db, which the context provides as another
 type`. An optional field (`{ db?: string }`) may be absent. Before this check (a minor of
-`@graxia/core`), such a call compiled and either failed at runtime or worked only through an untyped
+`@softistx/graxia`), such a call compiled and either failed at runtime or worked only through an untyped
 `serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; write `createGraxia<Host>()({ ... })` instead. See
 [Plugins](./guide/plugins.md#typed-context).
 

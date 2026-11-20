@@ -85,7 +85,7 @@ Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fiel
 
 The server answers but your backend shows nothing. In order:
 
-1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
+1. `@softistx/telemetry` is not installed next to `@softistx/graxia`. It is an optional peer: graxia
    traces nothing without it. `bun add @softistx/telemetry`.
 2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
    call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such

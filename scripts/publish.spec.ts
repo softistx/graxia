@@ -12,9 +12,12 @@ describe('publish', () => {
 		expect(
 			workspaceRanges({
 				name: 'x',
-				peerDependencies: { '@graxia/core': 'workspace:^', graphql: '^17.0.0' },
+				peerDependencies: {
+					'@softistx/graxia': 'workspace:^',
+					graphql: '^17.0.0',
+				},
 			}),
-		).toEqual(['peerDependencies.@graxia/core: workspace:^']);
+		).toEqual(['peerDependencies.@softistx/graxia: workspace:^']);
 		expect(workspaceRanges({ peerDependencies: { a: '^0.2.0' } })).toEqual([]);
 	});
 
@@ -52,7 +55,7 @@ describe('publish', () => {
 	test('treats a staged version as already published, nothing else', () => {
 		expect(
 			isAlreadyPublishedError(
-				'npm error code E409\nnpm error 409 Conflict - PUT https://registry.npmjs.org/@graxia%2fcore - Cannot publish over previously staged version "0.2.0".',
+				'npm error code E409\nnpm error 409 Conflict - PUT https://registry.npmjs.org/@softistx%2fgraxia - Cannot publish over previously staged version "0.2.0".',
 			),
 		).toBe(true);
 		expect(
@@ -60,12 +63,12 @@ describe('publish', () => {
 		).toBe(false);
 		expect(
 			isAlreadyPublishedError(
-				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@graxia%2fredis - You cannot publish over the previously published versions: 0.2.2.',
+				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@softistx%2fgraxia-redis - You cannot publish over the previously published versions: 0.2.2.',
 			),
 		).toBe(true);
 		expect(
 			isAlreadyPublishedError(
-				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@graxia%2fredis - You do not have permission to publish "@graxia/redis". Are you logged in as the correct user?',
+				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@softistx%2fgraxia-redis - You do not have permission to publish "@softistx/graxia-redis". Are you logged in as the correct user?',
 			),
 		).toBe(false);
 		expect(isAlreadyPublishedError('npm error code E409\nconflict')).toBe(

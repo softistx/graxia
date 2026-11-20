@@ -74,7 +74,7 @@ describe('accessProblems', () => {
 	test('accepts a public package', () => {
 		expect(
 			accessProblems({
-				name: '@graxia/core',
+				name: '@softistx/graxia',
 				publishConfig: { access: 'public' },
 			}),
 		).toEqual([]);
@@ -83,7 +83,7 @@ describe('accessProblems', () => {
 	test('refuses a restricted package', () => {
 		expect(
 			accessProblems({
-				name: '@graxia/core',
+				name: '@softistx/graxia',
 				publishConfig: { access: 'restricted' },
 			}),
 		).toHaveLength(1);
@@ -92,7 +92,7 @@ describe('accessProblems', () => {
 	test('refuses another registry', () => {
 		expect(
 			accessProblems({
-				name: '@graxia/core',
+				name: '@softistx/graxia',
 				publishConfig: {
 					registry: 'https://npm.softistx.com',
 					access: 'public',
@@ -102,6 +102,6 @@ describe('accessProblems', () => {
 	});
 
 	test('refuses a package with no publishConfig', () => {
-		expect(accessProblems({ name: '@graxia/core' })).toHaveLength(1);
+		expect(accessProblems({ name: '@softistx/graxia' })).toHaveLength(1);
 	});
 });

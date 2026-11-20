@@ -4,102 +4,103 @@
 
 One entry per published package: what it is, how to install it, its peers, the public names of each entry point and the docs its tarball ships. Read the pages in `node_modules`: they match the installed version.
 
-## @graxia/core
+## @softistx/graxia
 
 The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client (0.14.0)
 
-- Install: `bun add @graxia/core graphql`
+- Install: `bun add @softistx/graxia graphql`
 - Peers: `@softistx/telemetry` `^0.5.0` (optional), `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/core`: `ApolloPersistedQueryManifest`, `BasePayload`, `BatchingOption`, `CacheSetOptions`, `ComputeCostArgs`, `ContextFactory`, `ContextInit`, `ContextOf`, `CoreContext`, `CostOptions`, `CostlessStore`, `CrossOrigin`, `CsrfOptions`, `DEFAULT_CSRF_HEADERS`, `DEFAULT_LIMIT_CODE`, `DEFAULT_LIST_SIZE`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_COST`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DocumentCacheOptions`, `DocumentCaches`, `DocumentInput`, `DocumentLimits`, `Empty`, `EnumValues`, `ErrorHttp`, `ExecuteArgs`, `ExecuteBase`, `ExecuteFn`, `ExecutionOutput`, `ExposedErrorOptions`, `FieldDecision`, `FieldLimit`, `FieldRateLimitOptions`, `FieldResolver`, `FieldRule`, `GraphQLFile`, `GraphQLParams`, `Graxia`, `GraxiaConfigError`, `GraxiaError`, `GraxiaErrorCode`, `GraxiaErrorCodes`, `GraxiaExecuteError`, `GraxiaLimits`, `GraxiaOptions`, `GraxiaPlugin`, `GraxiaPluginError`, `GraxiaServeOptions`, `GraxiaSocketData`, `HookReturn`, `HookStage`, `IncrementalOptions`, `InferContext`, `IsTypeOf`, `KeyValueCache`, `MaskError`, `MaskInfo`, `MaybePromise`, `MemoryCacheOptions`, `MemoryFieldLimitOptions`, `MemoryPubSub`, `MemoryPubSubOptions`, `OnContextPayload`, `OnExecuteDone`, `OnExecutePayload`, `OnParamsDone`, `OnParamsInput`, `OnParamsPayload`, `OnParseDone`, `OnParsePayload`, `OnRequestDone`, `OnRequestPayload`, `OnResponsePayload`, `OnResultChunkPayload`, `OnSubscribePayload`, `OnUnexpected`, `OnValidateDone`, `OnValidatePayload`, `OperationLimits`, `Operator`, `OptionsArg`, `OriginRefusal`, `OriginRefusalReason`, `ParseFn`, `PluginContext`, `PluginRequires`, `PubSub`, `PubSubIterator`, `PubSubPayload`, `PubSubSubscribeArgs`, `PubSubTopics`, `RequestState`, `RequiresContext`, `Resolvers`, `SameOriginOptions`, `SchemaOptions`, `SchemaWithContext`, `ServerContextArg`, `SetupApi`, `StateKey`, `SubscriptionFieldResolver`, `SubscriptionsOptions`, `TelemetryInstance`, `TelemetryOptions`, `TrustedDocumentsOptions`, `TrustedManifest`, `TypeDefs`, `TypeResolver`, `TypeResolvers`, `TypedDocument`, `TypedString`, `UnexpectedInfo`, `UnexpectedPhase`, `UploadsOptions`, `ValidationFn`, `WebSocketContext`, `WebSocketOptions`, `WithServerContext`, `computeOperationCost`, `costDirectives`, `createGraxia`, `createMemoryCache`, `createPubSub`, `createSchema`, `createStateKey`, `definePlugin`, `exposedError`, `fieldRateLimit`, `filter`, `getContext`, `getRequestId`, `isGraxiaError`, `limitFromStore`, `map`, `memoryFieldLimit`, `pipe`, `tryGetContext`
-  - `@graxia/core/agent`: `AgentDirectiveName`, `AgentExtensions`, `Can`, `Constraint`, `ConstraintTarget`, `ErrorCodeName`, `LintDescriptionsOptions`, `LintIssue`, `LintRule`, `Need`, `NeedsTarget`, `PrintSchemaForOptions`, `RequiredDescriptions`, `agentDirectives`, `agentExtensions`, `agentTypeDefs`, `constraintOf`, `errorsOf`, `lintDescriptions`, `needsOf`, `printSchemaFor`, `visibleSchema`
-  - `@graxia/core/testing`: `TestBatchEntry`, `TestBatchResult`, `TestClient`, `TestClientOptions`, `TestMutateOptions`, `TestOperationOptions`, `TestQueryOptions`, `TestResult`, `createTestClient`, `expectNoErrors`
+  - `@softistx/graxia`: `ApolloPersistedQueryManifest`, `BasePayload`, `BatchingOption`, `CacheSetOptions`, `ComputeCostArgs`, `ContextFactory`, `ContextInit`, `ContextOf`, `CoreContext`, `CostOptions`, `CostlessStore`, `CrossOrigin`, `CsrfOptions`, `DEFAULT_CSRF_HEADERS`, `DEFAULT_LIMIT_CODE`, `DEFAULT_LIST_SIZE`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_COST`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DocumentCacheOptions`, `DocumentCaches`, `DocumentInput`, `DocumentLimits`, `Empty`, `EnumValues`, `ErrorHttp`, `ExecuteArgs`, `ExecuteBase`, `ExecuteFn`, `ExecutionOutput`, `ExposedErrorOptions`, `FieldDecision`, `FieldLimit`, `FieldRateLimitOptions`, `FieldResolver`, `FieldRule`, `GraphQLFile`, `GraphQLParams`, `Graxia`, `GraxiaConfigError`, `GraxiaError`, `GraxiaErrorCode`, `GraxiaErrorCodes`, `GraxiaExecuteError`, `GraxiaLimits`, `GraxiaOptions`, `GraxiaPlugin`, `GraxiaPluginError`, `GraxiaServeOptions`, `GraxiaSocketData`, `HookReturn`, `HookStage`, `IncrementalOptions`, `InferContext`, `IsTypeOf`, `KeyValueCache`, `MaskError`, `MaskInfo`, `MaybePromise`, `MemoryCacheOptions`, `MemoryFieldLimitOptions`, `MemoryPubSub`, `MemoryPubSubOptions`, `OnContextPayload`, `OnExecuteDone`, `OnExecutePayload`, `OnParamsDone`, `OnParamsInput`, `OnParamsPayload`, `OnParseDone`, `OnParsePayload`, `OnRequestDone`, `OnRequestPayload`, `OnResponsePayload`, `OnResultChunkPayload`, `OnSubscribePayload`, `OnUnexpected`, `OnValidateDone`, `OnValidatePayload`, `OperationLimits`, `Operator`, `OptionsArg`, `OriginRefusal`, `OriginRefusalReason`, `ParseFn`, `PluginContext`, `PluginRequires`, `PubSub`, `PubSubIterator`, `PubSubPayload`, `PubSubSubscribeArgs`, `PubSubTopics`, `RequestState`, `RequiresContext`, `Resolvers`, `SameOriginOptions`, `SchemaOptions`, `SchemaWithContext`, `ServerContextArg`, `SetupApi`, `StateKey`, `SubscriptionFieldResolver`, `SubscriptionsOptions`, `TelemetryInstance`, `TelemetryOptions`, `TrustedDocumentsOptions`, `TrustedManifest`, `TypeDefs`, `TypeResolver`, `TypeResolvers`, `TypedDocument`, `TypedString`, `UnexpectedInfo`, `UnexpectedPhase`, `UploadsOptions`, `ValidationFn`, `WebSocketContext`, `WebSocketOptions`, `WithServerContext`, `computeOperationCost`, `costDirectives`, `createGraxia`, `createMemoryCache`, `createPubSub`, `createSchema`, `createStateKey`, `definePlugin`, `exposedError`, `fieldRateLimit`, `filter`, `getContext`, `getRequestId`, `isGraxiaError`, `limitFromStore`, `map`, `memoryFieldLimit`, `pipe`, `tryGetContext`
+  - `@softistx/graxia/agent`: `AgentDirectiveName`, `AgentExtensions`, `Can`, `Constraint`, `ConstraintTarget`, `ErrorCodeName`, `LintDescriptionsOptions`, `LintIssue`, `LintRule`, `Need`, `NeedsTarget`, `PrintSchemaForOptions`, `RequiredDescriptions`, `agentDirectives`, `agentExtensions`, `agentTypeDefs`, `constraintOf`, `errorsOf`, `lintDescriptions`, `needsOf`, `printSchemaFor`, `visibleSchema`
+  - `@softistx/graxia/testing`: `TestBatchEntry`, `TestBatchResult`, `TestClient`, `TestClientOptions`, `TestMutateOptions`, `TestOperationOptions`, `TestQueryOptions`, `TestResult`, `createTestClient`, `expectNoErrors`
 - Docs, in the installed package:
-  - `node_modules/@graxia/core/README.md`: @graxia/core
-  - `node_modules/@graxia/core/docs/guide/agent.md`: Ready for agents: `@graxia/core/agent`
-  - `node_modules/@graxia/core/docs/guide/codegen.md`: Codegen
-  - `node_modules/@graxia/core/docs/guide/context.md`: Context, cancellation and shutdown
-  - `node_modules/@graxia/core/docs/guide/errors.md`: Errors
-  - `node_modules/@graxia/core/docs/guide/http.md`: GraphQL over HTTP
-  - `node_modules/@graxia/core/docs/guide/incremental.md`: `@defer` and `@stream`
-  - `node_modules/@graxia/core/docs/guide/limits-and-caches.md`: Limits and caches
-  - `node_modules/@graxia/core/docs/guide/migrating-from-alxia-graphql.md`: Migrating from `@alxia/graphql`
-  - `node_modules/@graxia/core/docs/guide/plugins.md`: Plugins
-  - `node_modules/@graxia/core/docs/guide/production.md`: Production
-  - `node_modules/@graxia/core/docs/guide/pubsub.md`: PubSub
-  - `node_modules/@graxia/core/docs/guide/rate-limiting.md`: Rate limiting fields
-  - `node_modules/@graxia/core/docs/guide/schema.md`: Schema
-  - `node_modules/@graxia/core/docs/guide/security.md`: Security: CSRF, origins, introspection
-  - `node_modules/@graxia/core/docs/guide/subscriptions.md`: Subscriptions over server-sent events
-  - `node_modules/@graxia/core/docs/guide/telemetry.md`: Telemetry
-  - `node_modules/@graxia/core/docs/guide/testing.md`: Testing
-  - `node_modules/@graxia/core/docs/guide/trusted-documents.md`: Trusted documents and persisted queries
-  - `node_modules/@graxia/core/docs/guide/uploads.md`: File uploads
-  - `node_modules/@graxia/core/docs/guide/websocket.md`: Subscriptions over WebSocket
-  - `node_modules/@graxia/core/docs/troubleshooting-http.md`: Troubleshooting: HTTP, execute and testing
-  - `node_modules/@graxia/core/docs/troubleshooting-limits.md`: Troubleshooting: request limits
-  - `node_modules/@graxia/core/docs/troubleshooting-plugins.md`: Troubleshooting: plugins and context
-  - `node_modules/@graxia/core/docs/troubleshooting-rate-limits.md`: Troubleshooting: rate limits and telemetry
-  - `node_modules/@graxia/core/docs/troubleshooting-schema.md`: Troubleshooting: schema and resolvers
-  - `node_modules/@graxia/core/docs/troubleshooting-security.md`: Troubleshooting: security
-  - `node_modules/@graxia/core/docs/troubleshooting-subscriptions.md`: Troubleshooting: subscriptions and incremental delivery
-  - `node_modules/@graxia/core/docs/troubleshooting-uploads.md`: Troubleshooting: file uploads
-  - `node_modules/@graxia/core/docs/troubleshooting.md`: Troubleshooting
+  - `node_modules/@softistx/graxia/README.md`: @softistx/graxia
+  - `node_modules/@softistx/graxia/docs/guide/agent.md`: Ready for agents: `@softistx/graxia/agent`
+  - `node_modules/@softistx/graxia/docs/guide/codegen.md`: Codegen
+  - `node_modules/@softistx/graxia/docs/guide/context.md`: Context, cancellation and shutdown
+  - `node_modules/@softistx/graxia/docs/guide/errors.md`: Errors
+  - `node_modules/@softistx/graxia/docs/guide/http.md`: GraphQL over HTTP
+  - `node_modules/@softistx/graxia/docs/guide/incremental.md`: `@defer` and `@stream`
+  - `node_modules/@softistx/graxia/docs/guide/limits-and-caches.md`: Limits and caches
+  - `node_modules/@softistx/graxia/docs/guide/migrating-from-alxia-graphql.md`: Migrating from `@alxia/graphql`
+  - `node_modules/@softistx/graxia/docs/guide/migrating-from-graxia-scope.md`: Migrating from the `@graxia` scope
+  - `node_modules/@softistx/graxia/docs/guide/plugins.md`: Plugins
+  - `node_modules/@softistx/graxia/docs/guide/production.md`: Production
+  - `node_modules/@softistx/graxia/docs/guide/pubsub.md`: PubSub
+  - `node_modules/@softistx/graxia/docs/guide/rate-limiting.md`: Rate limiting fields
+  - `node_modules/@softistx/graxia/docs/guide/schema.md`: Schema
+  - `node_modules/@softistx/graxia/docs/guide/security.md`: Security: CSRF, origins, introspection
+  - `node_modules/@softistx/graxia/docs/guide/subscriptions.md`: Subscriptions over server-sent events
+  - `node_modules/@softistx/graxia/docs/guide/telemetry.md`: Telemetry
+  - `node_modules/@softistx/graxia/docs/guide/testing.md`: Testing
+  - `node_modules/@softistx/graxia/docs/guide/trusted-documents.md`: Trusted documents and persisted queries
+  - `node_modules/@softistx/graxia/docs/guide/uploads.md`: File uploads
+  - `node_modules/@softistx/graxia/docs/guide/websocket.md`: Subscriptions over WebSocket
+  - `node_modules/@softistx/graxia/docs/troubleshooting-http.md`: Troubleshooting: HTTP, execute and testing
+  - `node_modules/@softistx/graxia/docs/troubleshooting-limits.md`: Troubleshooting: request limits
+  - `node_modules/@softistx/graxia/docs/troubleshooting-plugins.md`: Troubleshooting: plugins and context
+  - `node_modules/@softistx/graxia/docs/troubleshooting-rate-limits.md`: Troubleshooting: rate limits and telemetry
+  - `node_modules/@softistx/graxia/docs/troubleshooting-schema.md`: Troubleshooting: schema and resolvers
+  - `node_modules/@softistx/graxia/docs/troubleshooting-security.md`: Troubleshooting: security
+  - `node_modules/@softistx/graxia/docs/troubleshooting-subscriptions.md`: Troubleshooting: subscriptions and incremental delivery
+  - `node_modules/@softistx/graxia/docs/troubleshooting-uploads.md`: Troubleshooting: file uploads
+  - `node_modules/@softistx/graxia/docs/troubleshooting.md`: Troubleshooting
 
-## @graxia/envelop
+## @softistx/graxia-envelop
 
 Run Envelop plugins inside graxia with one adapter (0.1.8)
 
-- Install: `bun add @graxia/envelop @envelop/core @graxia/core graphql`
-- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@graxia/core` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Install: `bun add @softistx/graxia-envelop @envelop/core @softistx/graxia graphql`
+- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@softistx/graxia` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
+  - `@softistx/graxia-envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
 - Docs, in the installed package:
-  - `node_modules/@graxia/envelop/README.md`: @graxia/envelop
-  - `node_modules/@graxia/envelop/docs/guide/envelop.md`: Running Envelop plugins
-  - `node_modules/@graxia/envelop/docs/troubleshooting.md`: Troubleshooting
+  - `node_modules/@softistx/graxia-envelop/README.md`: @softistx/graxia-envelop
+  - `node_modules/@softistx/graxia-envelop/docs/guide/envelop.md`: Running Envelop plugins
+  - `node_modules/@softistx/graxia-envelop/docs/troubleshooting.md`: Troubleshooting
 
-## @graxia/graphiql
+## @softistx/graxia-graphiql
 
 GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.8)
 
-- Install: `bun add @graxia/graphiql @graxia/core`
-- Peers: `@graxia/core` `^0.14.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Install: `bun add @softistx/graxia-graphiql @softistx/graxia`
+- Peers: `@softistx/graxia` `^0.14.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/graphiql`: `ApolloSandboxOptions`, `GraphiQLOptions`, `SandboxInitialState`, `apolloSandbox`, `graphiql`, `sandboxContentSecurityPolicy`
+  - `@softistx/graxia-graphiql`: `ApolloSandboxOptions`, `GraphiQLOptions`, `SandboxInitialState`, `apolloSandbox`, `graphiql`, `sandboxContentSecurityPolicy`
 - Docs, in the installed package:
-  - `node_modules/@graxia/graphiql/README.md`: @graxia/graphiql
-  - `node_modules/@graxia/graphiql/docs/guide/apollo-sandbox.md`: Apollo Sandbox
-  - `node_modules/@graxia/graphiql/docs/guide/graphiql.md`: GraphiQL
-  - `node_modules/@graxia/graphiql/docs/troubleshooting.md`: Troubleshooting
+  - `node_modules/@softistx/graxia-graphiql/README.md`: @softistx/graxia-graphiql
+  - `node_modules/@softistx/graxia-graphiql/docs/guide/apollo-sandbox.md`: Apollo Sandbox
+  - `node_modules/@softistx/graxia-graphiql/docs/guide/graphiql.md`: GraphiQL
+  - `node_modules/@softistx/graxia-graphiql/docs/troubleshooting.md`: Troubleshooting
 
-## @graxia/mcp
+## @softistx/graxia-mcp
 
 Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.1.10)
 
-- Install: `bun add @graxia/mcp @graxia/core graphql`
-- Peers: `@graxia/core` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Install: `bun add @softistx/graxia-mcp @softistx/graxia graphql`
+- Peers: `@softistx/graxia` `^0.14.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/mcp`: `Can`, `Mcp`, `McpAuthInfo`, `McpAuthOptions`, `McpErrorCode`, `McpHost`, `McpOperationInfo`, `McpOperationsOptions`, `McpOptions`, `McpScopes`, `createMcp`, `mcpAuth`
+  - `@softistx/graxia-mcp`: `Can`, `Mcp`, `McpAuthInfo`, `McpAuthOptions`, `McpErrorCode`, `McpHost`, `McpOperationInfo`, `McpOperationsOptions`, `McpOptions`, `McpScopes`, `createMcp`, `mcpAuth`
 - Docs, in the installed package:
-  - `node_modules/@graxia/mcp/README.md`: @graxia/mcp
-  - `node_modules/@graxia/mcp/docs/guide/auth.md`: OAuth resource server
-  - `node_modules/@graxia/mcp/docs/guide/getting-started.md`: Getting started
-  - `node_modules/@graxia/mcp/docs/guide/operations.md`: Persisted operations as typed tools
-  - `node_modules/@graxia/mcp/docs/guide/security.md`: Security
-  - `node_modules/@graxia/mcp/docs/guide/tools.md`: Tools
-  - `node_modules/@graxia/mcp/docs/troubleshooting-auth.md`: Troubleshooting auth
-  - `node_modules/@graxia/mcp/docs/troubleshooting.md`: Troubleshooting
+  - `node_modules/@softistx/graxia-mcp/README.md`: @softistx/graxia-mcp
+  - `node_modules/@softistx/graxia-mcp/docs/guide/auth.md`: OAuth resource server
+  - `node_modules/@softistx/graxia-mcp/docs/guide/getting-started.md`: Getting started
+  - `node_modules/@softistx/graxia-mcp/docs/guide/operations.md`: Persisted operations as typed tools
+  - `node_modules/@softistx/graxia-mcp/docs/guide/security.md`: Security
+  - `node_modules/@softistx/graxia-mcp/docs/guide/tools.md`: Tools
+  - `node_modules/@softistx/graxia-mcp/docs/troubleshooting-auth.md`: Troubleshooting auth
+  - `node_modules/@softistx/graxia-mcp/docs/troubleshooting.md`: Troubleshooting
 
-## @graxia/redis
+## @softistx/graxia-redis
 
 Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.2.11)
 
-- Install: `bun add @graxia/redis @graxia/core @softistx/redis`
-- Peers: `@graxia/core` `^0.14.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Install: `bun add @softistx/graxia-redis @softistx/graxia @softistx/redis`
+- Peers: `@softistx/graxia` `^0.14.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/redis`: `RedisCacheOptions`, `RedisConnection`, `RedisFieldLimit`, `RedisFieldLimitOptions`, `RedisPubSub`, `RedisPubSubOptions`, `redisCache`, `redisFieldLimit`, `redisPubSub`
+  - `@softistx/graxia-redis`: `RedisCacheOptions`, `RedisConnection`, `RedisFieldLimit`, `RedisFieldLimitOptions`, `RedisPubSub`, `RedisPubSubOptions`, `redisCache`, `redisFieldLimit`, `redisPubSub`
 - Docs, in the installed package:
-  - `node_modules/@graxia/redis/README.md`: @graxia/redis
-  - `node_modules/@graxia/redis/docs/guide/redis.md`: Redis PubSub, cache and field rate limit
-  - `node_modules/@graxia/redis/docs/troubleshooting.md`: Troubleshooting
+  - `node_modules/@softistx/graxia-redis/README.md`: @softistx/graxia-redis
+  - `node_modules/@softistx/graxia-redis/docs/guide/redis.md`: Redis PubSub, cache and field rate limit
+  - `node_modules/@softistx/graxia-redis/docs/troubleshooting.md`: Troubleshooting

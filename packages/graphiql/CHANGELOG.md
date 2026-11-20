@@ -1,4 +1,6 @@
-# @graxia/graphiql
+# @softistx/graxia-graphiql
+
+> Released as `@graxia/graphiql` up to the last version below; the package moved to `@softistx/graxia-graphiql` in the next minor.
 
 ## 0.2.8
 
