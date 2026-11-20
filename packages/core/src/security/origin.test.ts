@@ -1,6 +1,7 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import { createGraxia } from '../server/create-graxia';
 import { schema } from '../server/fixtures.test-util';
+import type { CsrfOptions } from './options';
 
 const request = (headers: HeadersInit, post = true) =>
 	post
@@ -110,96 +111,37 @@ describe('csrf sameOrigin', () => {
 		expect(await status(on, { 'sec-fetch-site': 'same-origin' })).toBe(200);
 	});
 
-	describe('refuse', () => {
-		const answer = (csrf: unknown, headers: HeadersInit) =>
-			createGraxia({ schema, csrf: csrf as never }).fetch(request(headers));
-
-		test('a custom status and body replace the default 403', async () => {
-			const response = await answer(
-				{
-					sameOrigin: {
-						refuse: () => new Response('not here', { status: 404 }),
-					},
-				},
-				{ origin: 'https://evil.test' },
-			);
-			expect(response.status).toBe(404);
-			expect(await response.text()).toBe('not here');
-		});
-
-		test('an async refuse is awaited', async () => {
-			const response = await answer(
-				{
-					sameOrigin: {
-						refuse: async () => {
-							await Promise.resolve();
-							return Response.json({ nope: true }, { status: 418 });
-						},
-					},
-				},
-				{ origin: 'https://evil.test' },
-			);
-			expect(response.status).toBe(418);
-			expect(await response.json()).toEqual({ nope: true });
-		});
-
-		test('it gets the request and the reason of each refusal', async () => {
-			const seen: [string, string | null][] = [];
-			const csrf = {
-				sameOrigin: {
-					refuse: (req: Request, reason: string) => {
-						seen.push([reason, req.headers.get('origin')]);
-						return new Response(null, { status: 404 });
-					},
-				},
-			};
-			await answer(csrf, { origin: 'https://evil.test' });
-			await answer(csrf, { origin: 'null' });
-			await answer(csrf, { 'sec-fetch-site': 'cross-site' });
-			expect(seen).toEqual([
-				['cross-origin', 'https://evil.test'],
-				['null-origin', 'null'],
-				['cross-site', null],
-			]);
-		});
-
-		test('it is not called for an allowed request, and the default stays without it', async () => {
-			let calls = 0;
-			const csrf = {
-				sameOrigin: {
-					allowedOrigins: ['https://web.test'],
-					refuse: () => {
-						calls++;
-						return new Response(null, { status: 404 });
-					},
-				},
-			};
-			expect((await answer(csrf, { origin: 'https://web.test' })).status).toBe(
-				200,
-			);
-			expect(calls).toBe(0);
-			const plain = await answer(
-				{ sameOrigin: { allowedOrigins: ['https://web.test'] } },
-				{ origin: 'https://evil.test' },
-			);
-			expect(plain.status).toBe(403);
-			expect(JSON.stringify(await plain.json())).toContain('FORBIDDEN_ORIGIN');
-		});
-
-		test('it also answers a refused WebSocket upgrade', async () => {
-			let upgraded = false;
-			const graxia = createGraxia({
+	describe('onRefused', () => {
+		type Handler = NonNullable<
+			NonNullable<Exclude<CsrfOptions['sameOrigin'], boolean>>['onRefused']
+		>;
+		const make = (
+			onRefused: unknown,
+			extra: Record<string, unknown> = {},
+			options: Record<string, unknown> = {},
+		) =>
+			createGraxia({
 				schema,
-				csrf: {
-					sameOrigin: { refuse: () => new Response(null, { status: 404 }) },
-				},
+				csrf: { sameOrigin: { onRefused, ...extra } } as never,
+				...options,
 			});
-			const response = await graxia.upgrade(
+		const answer = (
+			onRefused: unknown,
+			headers: HeadersInit,
+			extra: Record<string, unknown> = {},
+		) => make(onRefused, extra).fetch(request(headers));
+		const evil = { origin: 'https://evil.test' };
+		const upgradeOf = (
+			graxia: ReturnType<typeof createGraxia>,
+			headers: HeadersInit,
+		) => {
+			let upgraded = false;
+			const response = graxia.upgrade(
 				new Request('http://app.test/graphql', {
 					headers: {
 						upgrade: 'websocket',
 						'sec-websocket-protocol': 'graphql-transport-ws',
-						origin: 'https://evil.test',
+						...headers,
 					},
 				}),
 				{
@@ -209,8 +151,160 @@ describe('csrf sameOrigin', () => {
 					},
 				} as never,
 			);
-			expect(response?.status).toBe(404);
-			expect(upgraded).toBe(false);
+			return { response, upgraded: () => upgraded };
+		};
+
+		test('a custom status and body replace the default 403', async () => {
+			const response = await answer(
+				() => new Response('not here', { status: 404 }),
+				evil,
+			);
+			expect(response.status).toBe(404);
+			expect(await response.text()).toBe('not here');
+		});
+
+		test('an async onRefused is awaited', async () => {
+			const response = await answer(async () => {
+				await Promise.resolve();
+				return Response.json({ nope: true }, { status: 418 });
+			}, evil);
+			expect(response.status).toBe(418);
+			expect(await response.json()).toEqual({ nope: true });
+		});
+
+		test('it gets the request, the reason and websocket: false of each refusal', async () => {
+			const seen: unknown[] = [];
+			const onRefused: Handler = (req, info) => {
+				seen.push([info.reason, info.websocket, req.headers.get('origin')]);
+				return new Response(null, { status: 404 });
+			};
+			await answer(onRefused, evil);
+			await answer(onRefused, { origin: 'null' });
+			await answer(onRefused, { 'sec-fetch-site': 'cross-site' });
+			expect(seen).toEqual([
+				['cross-origin', false, 'https://evil.test'],
+				['null-origin', false, 'null'],
+				['no-origin', false, null],
+			]);
+		});
+
+		test('same-site without Origin is no-origin', async () => {
+			const seen: string[] = [];
+			await answer(
+				(_req: Request, info: { reason: string }) => {
+					seen.push(info.reason);
+					return undefined;
+				},
+				{ 'sec-fetch-site': 'same-site' },
+			);
+			expect(seen).toEqual(['no-origin']);
+		});
+
+		test('returning undefined, or a non-Response, gives the default 403', async () => {
+			for (const result of [undefined, null, { status: 404 }, 'nope']) {
+				const response = await answer(() => result, evil);
+				expect(response.status).toBe(403);
+				expect(JSON.stringify(await response.json())).toContain(
+					'FORBIDDEN_ORIGIN',
+				);
+			}
+			const asyncDefault = await answer(async () => undefined, evil);
+			expect(asyncDefault.status).toBe(403);
+		});
+
+		test('it is not called for an allowed request, and the default stays without it', async () => {
+			let calls = 0;
+			const onRefused = () => {
+				calls++;
+				return new Response(null, { status: 404 });
+			};
+			const allowed = { allowedOrigins: ['https://web.test'] };
+			expect(
+				(await answer(onRefused, { origin: 'https://web.test' }, allowed))
+					.status,
+			).toBe(200);
+			expect(calls).toBe(0);
+			const plain = await createGraxia({
+				schema,
+				csrf: { sameOrigin: allowed },
+			}).fetch(request(evil));
+			expect(plain.status).toBe(403);
+			expect(JSON.stringify(await plain.json())).toContain('FORBIDDEN_ORIGIN');
+		});
+
+		test('crossOrigin json refuses a simple request through it', async () => {
+			let reason = '';
+			const simple = new Request('http://app.test/graphql?query=%7Bhello%7D', {
+				headers: evil,
+			});
+			// requireHeader off so the GET is a simple request the origin check refuses
+			const graxia = createGraxia({
+				schema,
+				csrf: {
+					requireHeader: false,
+					sameOrigin: {
+						crossOrigin: 'json',
+						onRefused: (_req: Request, info: { reason: string }) => {
+							reason = info.reason;
+							return new Response(null, { status: 404 });
+						},
+					},
+				},
+			});
+			expect((await graxia.fetch(simple)).status).toBe(404);
+			expect(reason).toBe('cross-origin');
+		});
+
+		test('no-store is added, an existing cache-control is kept', async () => {
+			const added = await answer(
+				() => new Response('x', { status: 404 }),
+				evil,
+			);
+			expect(added.headers.get('cache-control')).toBe('no-store');
+			const kept = await answer(
+				() =>
+					new Response('x', {
+						status: 404,
+						headers: { 'cache-control': 'max-age=60' },
+					}),
+				evil,
+			);
+			expect(kept.headers.get('cache-control')).toBe('max-age=60');
+		});
+
+		test('a throwing or rejecting onRefused is a 500 reported once', async () => {
+			for (const onRefused of [
+				() => {
+					throw new Error('boom');
+				},
+				async () => {
+					throw new Error('boom');
+				},
+			]) {
+				const onUnexpected = mock();
+				const graxia = make(onRefused, {}, { onUnexpected });
+				const response = await graxia.fetch(request(evil));
+				expect(response.status).toBe(500);
+				expect(onUnexpected).toHaveBeenCalledTimes(1);
+				const socket = mock();
+				const upgrade = make(onRefused, {}, { onUnexpected: socket });
+				const { response: refused, upgraded } = upgradeOf(upgrade, evil);
+				expect((await refused)?.status).toBe(500);
+				expect(socket).toHaveBeenCalledTimes(1);
+				expect(upgraded()).toBe(false);
+			}
+		});
+
+		test('it answers a refused WebSocket upgrade, async too, with websocket: true', async () => {
+			const seen: unknown[] = [];
+			const graxia = make(async (_req: Request, info: unknown) => {
+				seen.push(info);
+				return new Response(null, { status: 404 });
+			});
+			const { response, upgraded } = upgradeOf(graxia, evil);
+			expect((await response)?.status).toBe(404);
+			expect(upgraded()).toBe(false);
+			expect(seen).toEqual([{ reason: 'cross-origin', websocket: true }]);
 		});
 	});
 

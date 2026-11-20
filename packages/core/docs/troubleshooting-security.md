@@ -55,18 +55,18 @@ needs it); `__typename` is always allowed.
 
 `requireHeader` is `true`, `false` or a non-empty array of valid header names (no spaces).
 
-## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })
+## csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin, onRefused })
 
-Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin }`.
+Pass `sameOrigin: true`, `false` or `{ allowedOrigins, crossOrigin, onRefused }`.
 
 ## csrf.sameOrigin.crossOrigin must be "refuse", "json" or "allow"
 
 Pick one of the three modes (see [Security](./guide/security.md)).
 
-## csrf.sameOrigin.refuse must be a function ((request, reason) => Response)
+## csrf.sameOrigin.onRefused must be a function ((request, { reason, websocket }) => Response | undefined)
 
-`refuse` is a function returning a `Response` (or a promise of one), for example
-`refuse: () => new Response('Not found', { status: 404 })`. See [Security](./guide/security.md).
+`onRefused` is a function returning a `Response` (or `undefined`, or a promise of either), for example
+`onRefused: () => new Response('Not found', { status: 404 })`. See [Security](./guide/security.md).
 
 ## csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")
 

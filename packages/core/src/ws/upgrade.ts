@@ -55,9 +55,10 @@ export async function upgradeRequest(
 			'Open the connection with a GET request carrying the Upgrade: websocket header.',
 			{ headers: { allow: 'GET' }, code: 'METHOD_NOT_ALLOWED' },
 		);
-	const forbidden = await checkUpgrade(rt, request);
-	if (forbidden) return forbidden;
 	try {
+		const checked = checkUpgrade(rt, request);
+		const forbidden = checked instanceof Promise ? await checked : checked;
+		if (forbidden) return forbidden;
 		await rt.ready;
 		const entered = await rt.engine.runners.onRequest({
 			request,

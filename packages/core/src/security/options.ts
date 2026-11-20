@@ -13,10 +13,17 @@ export type CrossOrigin = 'refuse' | 'json' | 'allow';
 
 /**
  * Why `csrf.sameOrigin` refused a request: `cross-origin` (an `Origin` that is not the server's own
- * or allowed, or a WebSocket upgrade from one), `null-origin` (`Origin: null`), or `cross-site`
- * (no `Origin`, but `Sec-Fetch-Site` says another site sent it).
+ * or allowed), `null-origin` (`Origin: null`), or `no-origin` (there is no `Origin` header and
+ * `Sec-Fetch-Site` is `cross-site` or `same-site`).
  */
-export type OriginRefusalReason = 'cross-origin' | 'null-origin' | 'cross-site';
+export type OriginRefusalReason = 'cross-origin' | 'null-origin' | 'no-origin';
+
+/** What `csrf.sameOrigin.onRefused` is told about a refusal. */
+export interface OriginRefusal {
+	reason: OriginRefusalReason;
+	/** `true` for a WebSocket upgrade, `false` for an HTTP request. */
+	websocket: boolean;
+}
 
 /** The `csrf.sameOrigin` option as an object. */
 export interface SameOriginOptions {
@@ -29,14 +36,17 @@ export interface SameOriginOptions {
 	 */
 	crossOrigin?: CrossOrigin;
 	/**
-	 * Answers a refused origin with your own Response in place of the 403 `FORBIDDEN_ORIGIN`
-	 * (a 404 to hide the endpoint, a per-route body). It is called for every refusal, a WebSocket
-	 * upgrade's included, with the request and the {@link OriginRefusalReason}; it may be async.
+	 * Called for every refused origin, a WebSocket upgrade's included (which an `Origin` check
+	 * refuses even with `sameOrigin` off; `onRefused` does not apply there), with the request and
+	 * an {@link OriginRefusal}. Return a `Response` to answer it yourself (a 404 to hide the
+	 * endpoint, a per-route body); it gets `cache-control: no-store` unless it sets one. Return
+	 * `undefined` (or anything that is not a `Response`) for the default 403 `FORBIDDEN_ORIGIN`.
+	 * It may be async. A throw is an unexpected failure (a 500, reported to `onUnexpected`).
 	 */
-	refuse?: (
+	onRefused?: (
 		request: Request,
-		reason: OriginRefusalReason,
-	) => Response | Promise<Response>;
+		info: OriginRefusal,
+	) => Response | undefined | Promise<Response | undefined>;
 }
 
 /** The `csrf` option of `createGraxia`. */
@@ -60,7 +70,7 @@ export interface ResolvedCsrf {
 	sameOrigin: boolean;
 	crossOrigin: CrossOrigin;
 	allowedOrigins: ReadonlySet<string>;
-	refuse?: SameOriginOptions['refuse'];
+	onRefused?: SameOriginOptions['onRefused'];
 }
 
 const TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
@@ -116,9 +126,9 @@ export function resolveCsrf(csrf: unknown): ResolvedCsrf | false {
 	if (sameOrigin === true) return { ...resolved, sameOrigin: true };
 	if (typeof sameOrigin !== 'object' || sameOrigin === null)
 		throw new GraxiaConfigError(
-			'csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin })',
+			'csrf.sameOrigin must be a boolean or an object ({ allowedOrigins, crossOrigin, onRefused })',
 		);
-	const { allowedOrigins = [], crossOrigin = 'refuse', refuse } = sameOrigin;
+	const { allowedOrigins = [], crossOrigin = 'refuse', onRefused } = sameOrigin;
 	if (
 		crossOrigin !== 'refuse' &&
 		crossOrigin !== 'json' &&
@@ -131,16 +141,16 @@ export function resolveCsrf(csrf: unknown): ResolvedCsrf | false {
 		throw new GraxiaConfigError(
 			'csrf.sameOrigin.allowedOrigins must be a list of origins (e.g. "https://app.example.com")',
 		);
-	if (refuse !== undefined && typeof refuse !== 'function')
+	if (onRefused !== undefined && typeof onRefused !== 'function')
 		throw new GraxiaConfigError(
-			'csrf.sameOrigin.refuse must be a function ((request, reason) => Response)',
+			'csrf.sameOrigin.onRefused must be a function ((request, { reason, websocket }) => Response | undefined)',
 		);
 	return {
 		...resolved,
 		sameOrigin: true,
 		crossOrigin,
 		allowedOrigins: new Set(allowedOrigins.map(originOf)),
-		...(refuse === undefined ? {} : { refuse }),
+		...(onRefused === undefined ? {} : { onRefused }),
 	};
 }
 

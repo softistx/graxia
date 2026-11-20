@@ -82,7 +82,7 @@ definePlugin({
 browser's and passes. A request is same-origin when `Origin` equals the origin of the request URL
 (behind a proxy, graxia must see the public URL, or list that origin) or is in `allowedOrigins`.
 `Origin: null` is always refused. `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin` counts as a
-cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`, unless `refuse` answers it.
+cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`, unless `onRefused` answers it.
 
 | `crossOrigin`      | A request from another origin                                               |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -106,11 +106,19 @@ Each entry of `allowedOrigins` is an origin: scheme, host and optional port, no 
 
 ### Answering a refused origin yourself
 
-`refuse(request, reason)` replaces the 403 `FORBIDDEN_ORIGIN` with your own `Response` (it may be
-async). It runs for every refusal, a WebSocket upgrade's included, and never for an allowed
-request. `reason` is `'cross-origin'` (another origin), `'null-origin'` (`Origin: null`) or
-`'cross-site'` (no `Origin`, but `Sec-Fetch-Site` says another site). Without it the default
-403 is unchanged. A non-function throws `csrf.sameOrigin.refuse must be a function`.
+`onRefused(request, { reason, websocket })` lets you answer a refused origin with your own
+`Response` (it may be async) in place of the 403 `FORBIDDEN_ORIGIN`. It runs for every refusal,
+never for an allowed request.
+
+- `reason` is `'cross-origin'` (an `Origin` that is not the server's own or allowed),
+  `'null-origin'` (`Origin: null`) or `'no-origin'` (there is no `Origin` header and
+  `Sec-Fetch-Site` is `cross-site` or `same-site`).
+- `websocket` is `true` for a WebSocket upgrade, `false` for an HTTP request. The upgrade's origin
+  check is always on; `onRefused` is read only from a `sameOrigin` object, so with `sameOrigin`
+  off it does not apply to it.
+- Return `undefined` (or anything that is not a `Response`) to keep the default 403: it fails closed.
+- A `Response` with no `cache-control` header gets `cache-control: no-store`; one that sets it keeps it.
+- A throw or a rejection is an unexpected failure: a 500, reported once to `onUnexpected`.
 
 ```ts
 createGraxia({
@@ -118,11 +126,11 @@ createGraxia({
 	csrf: {
 		sameOrigin: {
 			allowedOrigins: ['https://app.example.com'],
-			// hide the endpoint from other sites
-			refuse: (request, reason) =>
-				reason === 'cross-origin'
+			// hide the endpoint from other sites; defer to the 403 for the rest
+			onRefused: (request, { reason, websocket }) =>
+				reason === 'cross-origin' && !websocket
 					? new Response('Not found', { status: 404 })
-					: new Response(null, { status: 403 }),
+					: undefined,
 		},
 	},
 });

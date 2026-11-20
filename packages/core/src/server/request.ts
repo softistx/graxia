@@ -104,9 +104,8 @@ async function answer(
 		rt.engine.csrfExempt(request, (error) =>
 			rt.unexpected.report(error, state, 'request'),
 		);
-	const forbidden = inProcess
-		? undefined
-		: await checkRequest(rt, request, exempt);
+	const refused = inProcess ? undefined : checkRequest(rt, request, exempt);
+	const forbidden = refused instanceof Promise ? await refused : refused;
 	if (forbidden) return forbidden;
 	const entered = await rt.engine.runners.onRequest({
 		request,

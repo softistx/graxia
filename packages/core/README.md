@@ -205,10 +205,10 @@ createGraxia({
 });
 ```
 
-`csrf.sameOrigin.refuse(request, reason)` answers a refused origin with your own `Response` instead of the 403:
+`csrf.sameOrigin.onRefused(request, { reason, websocket })` answers a refused origin with your own `Response` instead of the 403 (return `undefined` to keep the 403):
 
 ```ts
-csrf: { sameOrigin: { refuse: () => new Response('Not found', { status: 404 }) } },
+csrf: { sameOrigin: { onRefused: () => new Response('Not found', { status: 404 }) } },
 ```
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
