@@ -1,4 +1,5 @@
 import { type ExecutionArgs, type ExecutionResult, execute } from 'graphql';
+import { stampRaisedByGraphql } from '../errors/fixes';
 import type { RequestState } from '../plugins/state';
 import type { ExecuteFn, ExecutionOutput } from '../plugins/types';
 import { failure, type Outcome, settle, unexpected } from './outcome';
@@ -61,7 +62,10 @@ export async function runExecutionStage(
 	if (stage.error === undefined) {
 		try {
 			result =
-				stage.out.result ?? (await (stage.out.executeFn ?? fallback)(args));
+				stage.out.result ??
+				(stage.out.executeFn
+					? await stage.out.executeFn(args)
+					: stampRaisedByGraphql(await fallback(args)));
 		} catch (error) {
 			if (args.abortSignal?.aborted) aborted = true;
 			else thrown = error;
@@ -82,6 +86,7 @@ export async function runExecutionStage(
 		return {
 			outcome: failure('The operation was aborted.', {
 				code: 'OPERATION_ABORTED',
+				fix: 'Send the request again, and keep the connection open until the answer arrives.',
 				// 499 (client closed request) when the client left, 503 otherwise (shutdown).
 				status: request.signal.aborted ? 499 : 503,
 			}),

@@ -80,7 +80,8 @@ The format is detected and validated when `createGraxia` runs (a bad manifest is
   `persisted-documents.json` next to the generated files.
 
 **An Apollo persisted query manifest**, from `npx @apollo/generate-persisted-query-manifest`:
-`{ format: 'apollo-persisted-query-manifest', version: 1, operations: [{ id, body, name, type }] }`.
+`{ format: 'apollo-persisted-query-manifest', version: 1, operations: [{ id, body, name, type }] }`
+(`import manifest from './manifest.json'` type-checks: `format` and `version` are checked when it is read).
 The Apollo `id` is the SHA-256 of the operation, so `createPersistedQueryLink` finds it as a hash.
 
 **A `Map<string, string>`** built in code, for example from a database.
@@ -197,6 +198,11 @@ something else fills (with `extractKey`), still serve documents.
 
 Run `mixed` in development, so GraphiQL and ad-hoc queries work, and `strict` in production. The
 default follows `NODE_ENV`; set `mode` to pin it.
+
+`graxia.trustedDocuments` is `{ mode }` with the mode in force (the `NODE_ENV` default applied), or
+`undefined` without the option. `graxia.execute` is your own code calling in process, so it runs a
+document in any mode; a layer that forwards documents from its clients to `execute` (as
+`@graxia/mcp` does) reads the mode and refuses them in `strict`.
 
 ## Error codes
 

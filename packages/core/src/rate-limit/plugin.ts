@@ -66,7 +66,10 @@ export function fieldRateLimit<Ctx extends object = any>(
 					payload,
 					400,
 					new GraphQLError(`${name} may be selected once per operation.`, {
-						extensions: { code: 'FIELD_SELECTED_ONCE' },
+						extensions: {
+							code: 'FIELD_SELECTED_ONCE',
+							fix: `Select ${name} once per operation, in a separate operation if you need it again.`,
+						},
 					}),
 				);
 		}
@@ -84,7 +87,11 @@ export function fieldRateLimit<Ctx extends object = any>(
 				payload,
 				429,
 				new GraphQLError(RETRY_MESSAGE, {
-					extensions: { code, retryAfter: seconds },
+					extensions: {
+						code,
+						retryAfter: seconds,
+						fix: `Retry after ${seconds} seconds (see the Retry-After header).`,
+					},
 				}),
 				{ 'retry-after': String(seconds), 'cache-control': 'no-store' },
 			);

@@ -1,4 +1,5 @@
 import { describe, expect, spyOn, test } from 'bun:test';
+import { INTERNAL_FIX } from '../errors/fixes';
 import { definePlugin } from '../plugins/define';
 import { createStateKey } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
@@ -19,6 +20,7 @@ const generic = (res: Response) => ({
 			message: 'Unexpected error.',
 			extensions: {
 				code: 'INTERNAL_SERVER_ERROR',
+				fix: INTERNAL_FIX,
 				correlationId: res.headers.get('x-request-id'),
 			},
 		},

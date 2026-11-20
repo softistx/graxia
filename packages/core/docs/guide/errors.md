@@ -26,7 +26,7 @@ const resolvers = {
 ```
 
 The response error is `{ message: "Book not found.", path, locations, extensions: { id, code: "NOT_FOUND", fix: "Check the id." } }`.
-`fix` is one short sentence telling the client how to recover; `extensions` carries anything else
+Every error graxia itself emits carries one too (see [The `fix` contract](#the-fix-contract)). `fix` is one short sentence telling the client how to recover; `extensions` carries anything else
 (`code` and `fix` win over the same names). `isGraxiaError(value)` tells an error made by
 `exposedError` from any other value.
 
@@ -50,6 +50,14 @@ A document that parses but does not validate against the schema answers with gra
 errors (exposed), each carrying `extensions.code: "GRAPHQL_VALIDATION_FAILED"` (Apollo
 compatible). The HTTP status is unchanged (400 with `application/graphql-response+json`, 200 with
 `application/json`). Errors that a plugin supplies with `setResult` keep what the plugin gave them.
+
+## Variable and operation-name errors
+
+A variable that is missing or has the wrong type is refused by graphql before any field runs: the
+answer has graphql's message, `extensions.code: "BAD_USER_INPUT"` and a `fix`. An error that
+already has a code (an `exposedError` thrown by a custom scalar) keeps it. An operation name the
+document does not have, or a missing one when the document holds several operations, is refused by
+graxia with the same code and a `fix` that says to send `operationName`.
 
 ## Typed codes
 
@@ -157,3 +165,26 @@ as a coercion error with that message, before any resolver runs. Graxia does not
 `originalError` it can tell from a client's mistake). From a scalar, throw
 `exposedError('BAD_USER_INPUT', 'Invalid date.')` or a `GraphQLError` with a safe message, never a
 message that names internals.
+
+## The `fix` contract
+
+Every error graxia itself emits carries `extensions.fix`, one short sentence saying what the client
+changes, in development and in production. Messages and codes do not depend on it.
+
+| the error                                                                                                       | the `fix` says                                                                |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| a syntax error, a document over the token or depth limit                                                        | correct the document at the position the error points to                      |
+| a validation failure (unknown field, a limit, introspection off)                                                | change the operation to match the schema                                      |
+| a variable that is missing or invalid (`BAD_USER_INPUT`, raised before any field)                               | check the operation against the schema                                        |
+| an unknown or missing operation name (`BAD_USER_INPUT`)                                                         | send `operationName`, naming one operation of the document                    |
+| an HTTP refusal: 404, 405, 406, 413, 415, invalid JSON or parameters, a batch over its limit, CSRF and `Origin` | what to send instead (a header, a smaller body, one operation)                |
+| a subscription over plain JSON, `@defer` or `@stream` over a transport that cannot stream                       | which transport or `Accept` to use, or to remove the directive                |
+| trusted documents and APQ refusals, a rate limit, a field selected twice, a shutdown, an aborted operation      | the id or hash to send, when to retry, what to remove                         |
+| a null in a non-null field                                                                                      | report it with the request id (a server bug)                                  |
+| a masked unexpected error (`INTERNAL_SERVER_ERROR`)                                                             | "Retry later; quote the correlationId when you report it." It never says why. |
+
+What graxia never touches: an error you throw. An `exposedError` carries the `fix` you give it (write one, so an
+agent can recover), and a `GraphQLError` of your own, including one a `subscribe` threw or an error in a deferred
+payload, stays as you wrote it. A validation rule's own `code` and extensions are kept; only a missing `fix` is
+added. Errors of a plugin's own executor (a replaced `executeFn`) are the plugin's. See
+[Ready for agents](./agent.md) for how an agent reads them, and `lintDescriptions` for the `@errors` codes.

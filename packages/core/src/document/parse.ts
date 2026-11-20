@@ -6,6 +6,7 @@ import {
 	Source,
 	TokenKind,
 } from 'graphql';
+import { PARSE_FIX } from '../errors/fixes';
 import type { ParseFn } from '../plugins/types';
 import { tooDeepAt } from './nesting';
 import {
@@ -42,7 +43,7 @@ export function parseFailure(
 	cause?: unknown,
 ): GraphQLError {
 	return new GraphQLError(message, {
-		extensions: { code: PARSE_FAILED, ...extensions },
+		extensions: { code: PARSE_FAILED, fix: PARSE_FIX, ...extensions },
 		...(cause === undefined ? {} : { originalError: asError(cause) }),
 	});
 }
@@ -136,7 +137,11 @@ export function parseWithLimits(
 						source: error.source,
 						positions: error.positions,
 						originalError: error,
-						extensions: { ...error.extensions, code: PARSE_FAILED },
+						extensions: {
+							fix: PARSE_FIX,
+							...error.extensions,
+							code: PARSE_FAILED,
+						},
 					}),
 				],
 			};

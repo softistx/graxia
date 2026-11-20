@@ -40,11 +40,18 @@ export async function upgradeRequest(
 ): Promise<Response | undefined> {
 	const { path } = rt.options;
 	if (path !== false && new URL(request.url).pathname !== path)
-		return refusal(404, 'Not found.');
+		return refusal(
+			404,
+			'Not found.',
+			`Open the WebSocket on the GraphQL path, ${path}.`,
+		);
 	if (request.method !== 'GET')
-		return refusal(405, 'A WebSocket upgrade must be a GET request.', {
-			allow: 'GET',
-		});
+		return refusal(
+			405,
+			'A WebSocket upgrade must be a GET request.',
+			'Open the connection with a GET request carrying the Upgrade: websocket header.',
+			{ headers: { allow: 'GET' } },
+		);
 	const forbidden = checkUpgrade(rt, request);
 	if (forbidden) return forbidden;
 	try {
@@ -61,13 +68,18 @@ export async function upgradeRequest(
 			return refusal(
 				400,
 				`The Sec-WebSocket-Protocol header must offer "${SUBPROTOCOL}".`,
+				`Open the socket with the "${SUBPROTOCOL}" subprotocol.`,
 			);
 		const headers = new Headers(state.responseHeaders);
 		headers.set('sec-websocket-protocol', SUBPROTOCOL);
 		headers.set(REQUEST_ID_HEADER, state.get(requestIdKey) ?? '');
 		const data: SocketData = { request, state, serverContext };
 		if (!server.upgrade(request, { data, headers }))
-			return refusal(400, 'The WebSocket upgrade failed.');
+			return refusal(
+				400,
+				'The WebSocket upgrade failed.',
+				'Send a valid WebSocket upgrade request (Upgrade, Connection and Sec-WebSocket-Key headers).',
+			);
 		// The socket is open: a failing after-hook is reported, never an answer.
 		await entered
 			.runAfter({ response: new Response(null, { status: 101 }) })

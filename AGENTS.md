@@ -24,7 +24,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
-publish 0.1.0, released with core 0.2.0), and `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0); the other packages stay `"private": true` until their own slice, and removing it is
+publish 0.1.0, released with core 0.2.0), `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0), and `@graxia/mcp` is public since S23 (first publish 0.1.0, in 0.5); the other packages stay `"private": true` until their own slice, and removing it is
 a deliberate change, named in its PR.
 
 ## Scripts
@@ -32,6 +32,26 @@ a deliberate change, named in its PR.
 - `bun run changeset:status` compares against `origin/develop`; set `CHANGESET_BASE`
   to compare against another base, e.g. `CHANGESET_BASE=origin/feat/m1-http-core bun run changeset:status`
   from a slice branch of an integration branch.
+
+## Generated files
+
+Three files are generated and never edited by hand; a spec fails when one is stale.
+
+| script                    | owns                                                      | command                            |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------- |
+| `scripts/plugin-index.ts` | `plugins/graxia/skills/use-graxia/references/packages.md` | `bun run plugin:index` (`--check`) |
+| `scripts/llms.ts`         | `llms.txt` and `llms-full.txt` at the repository root     | `bun run llms` (`--check`)         |
+
+Run them after a change to a published package's `package.json` (version, description, peers,
+`exports`), its public exports, its README, `docs/guide/*.md` or `docs/troubleshooting*.md`.
+`bun run changeset:version` regenerates them too: commit the result on the Version PR branch, or the
+stale specs fail. `llms.ts` writes two files, `llms.txt` and `llms-full.txt`. `bun test ./scripts/` (in CI)
+runs `plugin-index.spec.ts`, `llms.spec.ts` and `plugin-manifests.spec.ts`. The index reads the
+public names from the source of each `exports` entry; the roadmap pages are not in `llms*.txt`.
+
+The release itself is its own step, after the Version PR merges: `bunx changeset git-tag && git push --follow-tags` from an up-to-date `develop`.
+
+At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, then regenerate.
 
 ## Invariants
 
@@ -48,6 +68,12 @@ a deliberate change, named in its PR.
   core keeps them internal (not in its public surface), and the `topic:id` channel is a wire format that two
   processes on different versions must agree on, so Redis owns it. `channel.test.ts` pins both copies to the
   same output; change one, change the other.
+- `packages/mcp/src/tools/operation.ts` copies core's parse fix texts (`PARSE_FIX`, the token-limit fix):
+  core does not export them. Change core's wording, change the copy.
+- `packages/mcp/src/operations/documents.ts` reads the three `TrustedManifest` formats itself instead of using
+  core's `normalizeManifest`: core keeps it internal, and the reader must also report a bad entry by its id
+  rather than throw on the first. A fourth manifest format in core is added there too
+  (`operations-tools.test.ts` runs the three).
 
 ## Divergences from nxgt-data
 
@@ -76,5 +102,4 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
 - **No `examples/` yet** (the workspace glob is kept; `examples/host-embedding` lands in S29).
-- **`plugins/graxia`** is a stub with a hand-written package index; the generated
-  index and `llms.txt` land in S26.
+- **`plugins/graxia`** carries a generated package index (see "Generated files").

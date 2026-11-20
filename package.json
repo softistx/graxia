@@ -15,11 +15,13 @@
 		"fix": "biome check --write",
 		"format": "biome format",
 		"changeset": "changeset",
-		"changeset:version": "changeset version && bun install --lockfile-only",
+		"changeset:version": "changeset version && bun install --lockfile-only && bun run plugin:index && bun run llms",
 		"changeset:publish": "bun run build && bun run verify:artifacts && bun run scripts/publish.ts",
 		"publish:dry-run": "bun run scripts/publish.ts --dry-run",
 		"changeset:status": "changeset status --since=${CHANGESET_BASE:-origin/develop}",
-		"verify:artifacts": "bun run scripts/verify-artifacts.ts"
+		"verify:artifacts": "bun run scripts/verify-artifacts.ts",
+		"plugin:index": "bun run scripts/plugin-index.ts",
+		"llms": "bun run scripts/llms.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.8",

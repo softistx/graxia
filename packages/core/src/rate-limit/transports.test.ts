@@ -37,6 +37,7 @@ describe('over a real server', () => {
 		expect(message.payload[0].extensions).toEqual({
 			code: 'RATE_LIMITED',
 			retryAfter: 3,
+			fix: expect.any(String),
 		});
 		expect(c.calls[0]?.key).toMatch(/^hello:.*(127\.0\.0\.1|::1)/);
 	});

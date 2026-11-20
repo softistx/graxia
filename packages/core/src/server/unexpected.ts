@@ -1,3 +1,4 @@
+import { INTERNAL_FIX } from '../errors/fixes';
 import { UNEXPECTED_MESSAGE } from '../errors/mask';
 import { requestIdKey } from '../http/request-id';
 import { jsonResponse } from '../http/respond';
@@ -78,6 +79,7 @@ export function createUnexpectedHandler(
 					message: UNEXPECTED_MESSAGE,
 					extensions: {
 						code: 'INTERNAL_SERVER_ERROR',
+						fix: INTERNAL_FIX,
 						...(correlationId !== undefined ? { correlationId } : {}),
 					},
 				},

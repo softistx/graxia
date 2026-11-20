@@ -246,3 +246,19 @@ describe('graxia.execute', () => {
 		expect(error.response.headers.get('x-request-id')).toBeTruthy();
 	});
 });
+
+describe('graxia.schema and graxia.limits', () => {
+	test('expose the served schema and the limits in force', () => {
+		const graxia = createGraxia({ schema });
+		expect(graxia.schema).toBe(schema);
+		expect(graxia.limits).toEqual({ bodyBytes: 1 << 20, tokens: 15_000 });
+	});
+
+	test('limits reflect the options, `false` for a token limit that is off', () => {
+		const graxia = createGraxia({
+			schema,
+			limits: { bodyBytes: 500, tokens: false },
+		});
+		expect(graxia.limits).toEqual({ bodyBytes: 500, tokens: false });
+	});
+});
