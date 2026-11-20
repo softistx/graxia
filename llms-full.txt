@@ -934,6 +934,10 @@ An aborted operation answers `{"errors":[{"message":"The operation was aborted."
 with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
+The same holds for `graxia.execute({ signal })`: an aborted signal, before the call or while a
+resolver runs, resolves to that error result (no rejection, no `data`), and `context.signal` aborts
+([Testing](./testing.md#aborting-with-signal)).
+
 ## `getContext()` for code far below a resolver
 
 The resolver's third argument is the way to reach the context. When a helper or a logger is called
@@ -1954,6 +1958,13 @@ process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
 `dispose()` stops only the servers `graxia.serve()` started; a host that owns `Bun.serve` stops it
 itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
 503 first.
+
+## Aborting an in-process execute
+
+Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` resolves instead, to
+`{ errors: [{ extensions: { code: 'OPERATION_ABORTED' } }] }`, like the HTTP answer. A test that
+expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
+([Testing](./testing.md#aborting-with-signal)).
 
 ## graphql 17
 
@@ -3477,6 +3488,24 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 `execute` is exempt from the CSRF and origin checks, and from the `strict` trusted-documents
 refusal (`PERSISTED_QUERY_ONLY`): a document you pass in process is yours. The operation limits
 still apply. To test the refusal itself, go through `fetch` or the test client.
+
+### Aborting with `signal`
+
+An aborted `signal` never makes `execute` reject: it resolves to a result with one error,
+`extensions.code` `OPERATION_ABORTED` (the same answer HTTP gives, status 499), and no `data`. This
+holds when the signal is already aborted before the call (no resolver runs) and when it aborts while
+a resolver runs. The resolver's `context.signal` aborts too, and `execute` does not wait for a
+resolver that ignores it. `onUnexpected` is not called.
+
+```ts
+const result = await graxia.execute({
+	document: '{ report }',
+	signal: AbortSignal.timeout(1_000),
+});
+if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
+	// timed out or cancelled
+}
+```
 
 ### What it does not do
 
