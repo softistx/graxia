@@ -4,6 +4,7 @@ import {
 	ATTR,
 	type Env,
 	fail,
+	hostTraceKey,
 	type Live,
 	parentKey,
 	quietKey,
@@ -74,7 +75,12 @@ export async function traceRequest<R extends Response | undefined>(
 	run: () => Promise<R>,
 	upgrade: boolean,
 ): Promise<R> {
-	if (!env.operationSpans) return run();
+	if (!env.operationSpans && env.api.currentSpan() !== undefined) {
+		// The host spans the request: graxia's span would duplicate it. Keep its trace for the operations of a socket.
+		const traceparent = env.api.currentTraceparent();
+		if (traceparent) state.set(hostTraceKey, traceparent);
+		return run();
+	}
 	// A span already active (a host's) is the parent; otherwise a `traceparent` header is.
 	const nested = !env.propagate || env.api.currentSpan() !== undefined;
 	const id = state.get(requestIdKey);

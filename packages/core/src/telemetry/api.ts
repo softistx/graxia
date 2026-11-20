@@ -41,6 +41,7 @@ export interface StartOptions {
 export interface TelemetryApi {
 	startSpan(name: string, options?: StartOptions): SpanLike;
 	currentSpan(): unknown;
+	currentTraceparent(): string | undefined;
 	withTelemetry<T>(telemetry: TelemetryInstance, fn: () => T): T;
 }
 

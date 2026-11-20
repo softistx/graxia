@@ -15,14 +15,16 @@ export interface TelemetryOptions {
 	 */
 	resolverSpans?: boolean | { trivial?: boolean };
 	/**
-	 * `graxia.request` and operation spans. `true` by default. `false` for a host that already spans
-	 * the request and the operation: graxia drops both and keeps its parse, validate and resolver
-	 * spans, parented under the host's active span (HTTP and WebSocket alike). The document
-	 * attribute then goes on the validate span, and the cause of each masked error becomes a failed
-	 * `graphql.error` span.
+	 * `graphql.request` and operation spans. `true` by default. `false` for a host that already
+	 * spans the request and the operation: graxia then drops both and keeps its parse, validate
+	 * and resolver spans, parented under the host's active span (a socket's operations continue
+	 * the host's trace from its upgrade). The operation's type, name, document id and, with
+	 * `document`, source go on the validate span, and the cause of a masked error becomes a failed
+	 * `graphql.error` span. With no active host span at the request there is nothing to
+	 * duplicate: graxia makes its spans as usual, and `propagate` keeps its meaning.
 	 */
 	operationSpans?: boolean;
-	/** Puts the document source in `graphql.document` on the operation span (on the validate span when `operationSpans` is `false`). `false` by default: it may hold literals. */
+	/** Puts the document source in `graphql.document` on the operation span (on the validate span when the host spans the operation, see `operationSpans`). `false` by default: it may hold literals. */
 	document?: boolean;
 	/** Reads W3C trace context (`traceparent`) from the request headers when no span is active. `true` by default. */
 	propagate?: boolean;

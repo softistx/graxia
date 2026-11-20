@@ -3,7 +3,15 @@ import {
 	type GraphQLSchema,
 	isObjectType,
 } from 'graphql';
-import { ATTR, type Env, fail, type Live, SPAN, start } from './spans';
+import {
+	ATTR,
+	type Env,
+	fail,
+	type Live,
+	recorded,
+	SPAN,
+	start,
+} from './spans';
 
 /** What a wrapped resolver reads for the operation it runs in. */
 interface Bound {
@@ -61,6 +69,7 @@ function traced(
 		},
 	});
 	const failed = (error: unknown) => {
+		if (typeof error === 'object' && error !== null) recorded.add(error);
 		fail(live, error);
 		live.end();
 	};

@@ -134,17 +134,26 @@ are duplicates. Drop them and keep the rest:
 createGraxia({ schema, telemetry: { operationSpans: false } });
 ```
 
-With `operationSpans: false`, over HTTP and WebSocket alike:
+With `operationSpans: false` and a span active when the request arrives (HTTP and WebSocket alike):
 
 - there is no `graphql.request` span and no operation span;
 - `graphql.parse`, `graphql.validate` and, with `resolverSpans`, `graphql.resolve x` are still made,
-  children of the host's active span (a WebSocket message has none unless your handler opens one);
-- `document: true` puts `graphql.document` on the validate span;
+  children of the host's active span. A WebSocket message is handled outside the host's context, so
+  graxia keeps the host's `traceparent` from the upgrade request and the socket's spans continue
+  that trace, under the host's upgrade span;
+- the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
+  and, with `document: true`, `graphql.document`;
 - the original exception behind each masked error is a failed `graphql.error` span, a child of the
-  host's active span, so it is not lost;
-- the operation attributes (`graphql.operation.*`, `graphql.error.count`, `graxia.events`) and the
-  request's (`http.*`, `graxia.refusal.code`) are not recorded, and `propagate` has no effect: the
-  host owns the trace.
+  host's active span, unless a resolver span already recorded it; a timeout or abort makes none;
+- `graphql.error.count`, `graxia.events` and the request's attributes (`http.*`,
+  `graxia.refusal.code`) are not recorded.
+
+> Temporary, until nxgt-telemetry#62: `currentSpan()` is read-only, so graxia cannot put these on the
+> host's span; the validate span and the `graphql.error` span stand in until it can.
+
+**With no span active at the request there is nothing to duplicate.** graxia then makes its
+`graphql.request` and operation spans as usual, and `propagate` keeps its meaning (the `traceparent`
+header is read). A step span never starts a trace of its own.
 
 This replaces `telemetry: false` for such a host, which also loses every step span.
 

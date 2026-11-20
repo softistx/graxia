@@ -10,6 +10,7 @@ import {
 	documentIdOf,
 	type Env,
 	fail,
+	hostTraceKey,
 	type Operation,
 	operationKey,
 	parentOf,
@@ -33,10 +34,18 @@ export async function traceOperation(
 	run: () => Promise<Outcome>,
 ): Promise<Outcome> {
 	if (state.get(quietKey)) return run();
-	const live = env.operationSpans
-		? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
-		: hostSpan(env);
-	const op: Operation = { live, errors: 0, events: 0, ended: false };
+	const host = state.get(hostTraceKey);
+	const live =
+		host === undefined
+			? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
+			: hostSpan(env, host);
+	const op: Operation = {
+		live,
+		errors: 0,
+		events: 0,
+		ended: false,
+		...(host === undefined ? {} : { standIn: {} }),
+	};
 	state.set(operationKey, op);
 	const inContext = <T>(work: () => T) => live.run(work);
 	try {
@@ -63,8 +72,13 @@ export function describeOperation(
 	const op = state.get(operationKey);
 	if (!op) return;
 	const { operation, source, params } = info;
-	if (!env.operationSpans) {
-		if (env.document) op.document = source;
+	if (op.standIn) {
+		const facts = op.standIn;
+		facts[ATTR.operationType] = operation.operation;
+		if (operation.name) facts[ATTR.operationName] = operation.name.value;
+		if (env.document) facts[ATTR.document] = source;
+		const id = documentIdOf(params);
+		if (id) facts[ATTR.documentId] = id;
 		return;
 	}
 	const name = operation.name?.value;
@@ -92,9 +106,13 @@ export async function traceStep<R extends StepLike>(
 		{ kind: 'internal' },
 	);
 	try {
+		// Set first, so a validate step that throws keeps them.
+		if (name === 'validate')
+			for (const [key, value] of Object.entries(
+				state.get(operationKey)?.standIn ?? {},
+			))
+				live.attribute(key, value);
 		const result = await run();
-		const document = state.get(operationKey)?.document;
-		if (document !== undefined) live.attribute(ATTR.document, document);
 		if (result.cacheHit !== undefined)
 			live.attribute(ATTR.cacheHit, result.cacheHit);
 		if (result.errors?.length)
