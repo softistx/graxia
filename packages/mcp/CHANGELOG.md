@@ -1,5 +1,15 @@
 # @graxia/mcp
 
+## 0.1.2
+
+### Patch Changes
+
+- [#114](https://github.com/softistx/graxia/pull/114) [`57441c2`](https://github.com/softistx/graxia/commit/57441c28e5256423a8d8c2f343b42564d01128d4) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The typed-tools internals no longer use `any` for the host context. The operations guide now says what a manifest that yields no tool does, that a throwing `can` leaves the typed tools out of `tools/list`, and that GraphQL Code Generator's client preset drops operation descriptions (use `descriptions`).
+
+- [#110](https://github.com/softistx/graxia/pull/110) [`6f1603c`](https://github.com/softistx/graxia/commit/6f1603c079c5fb9d13a6c988a3187372ce064f80) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A document nested so deeply that graphql's parser overflows its stack is still refused with `GRAPHQL_PARSE_FAILED`, and its fix is now core's `Flatten the operation.` instead of asking to correct the syntax.
+- Updated dependencies [[`57441c2`](https://github.com/softistx/graxia/commit/57441c28e5256423a8d8c2f343b42564d01128d4), [`566a13c`](https://github.com/softistx/graxia/commit/566a13c3ef9d8d018bab10a3868401b9d7512ca1), [`7503614`](https://github.com/softistx/graxia/commit/750361498e9c78ebf67b33c718e1754b47326d67)]:
+  - @graxia/core@0.6.2
+
 ## 0.1.1
 
 ### Patch Changes
