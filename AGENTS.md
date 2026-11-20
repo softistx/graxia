@@ -85,7 +85,7 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
   `changeset publish` either, which falls back to a plain `npm publish` that leaves
   `workspace:^` in the manifest. The script packs each public package with `bun pm pack`,
   asserts the packed manifest holds no `workspace:` range, runs `npm publish <tgz>`
-  (provenance in CI), skips versions already on npm (and a publish that fails with E409 "previously staged version", when several tag runs of one commit race the registry). It refuses (dry run too) while unversioned changesets exist
+  (provenance in CI), skips versions already on npm (and a publish that npm refuses because the version is already there: E409 "previously staged version" or E403 "You cannot publish over the previously published versions", when several tag runs of one commit follow each other). It refuses (dry run too) while unversioned changesets exist
   or a package is 0.0.0, and it never tags: after the Version PR merges, from an
   up-to-date `develop`, run `bunx changeset git-tag && git push --follow-tags`.
   `bun run publish:dry-run` packs and asserts only. `publishConfig` is
