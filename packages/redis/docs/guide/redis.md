@@ -13,7 +13,7 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
   closes it. `redisPubSub` also opens one extra connection for subscriptions (`createRawSubscriber` duplicates
   the client), because a subscribed connection cannot run other commands; that one it closes.
 
-`@softistx/redis` is a peer dependency (range `^0.24.0`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
+`@softistx/redis` is a peer dependency (range `^0.24.1`), and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`.
 
 ## PubSub
 
@@ -139,7 +139,7 @@ options) is not an outage and still rejects.
    iterator when the operation stops), and the topic type ``{ [k: `post:${string}`]: Post }`` becomes
    `{ post: [id: string, payload: Post] }`; this follows core's Yoga-shaped PubSub. Channel names on Redis are unchanged,
    so old and new processes still talk during a rolling deploy.
-2. **Peer.** Install `@softistx/redis` (range `^0.24.0`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
+2. **Peer.** Install `@softistx/redis` (range `^0.24.1`) and `zod`, which its type declarations import: `bun add @softistx/redis zod`.
 3. **Cache prefix.** A prefix is used with exactly one trailing `:`. A prefix that does not end in `:` writes new keys
    (`app:<key>` instead of `app<key>`); entries written by 0.1 are no longer read and expire or can be deleted. A prefix
    that already ends in `:` (the default `graxia:cache:`) keeps its keys. A prefix with no character before its `:`

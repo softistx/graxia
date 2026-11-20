@@ -89,7 +89,7 @@ Model Context Protocol server over graxia: stateless Streamable HTTP with graphq
 Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.2.2)
 
 - Install: `bun add @graxia/redis @graxia/core @softistx/redis`
-- Peers: `@graxia/core` `^0.6.0`, `@softistx/redis` `^0.24.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@graxia/core` `^0.6.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/redis`: `RedisCacheOptions`, `RedisConnection`, `RedisFieldLimit`, `RedisFieldLimitOptions`, `RedisPubSub`, `RedisPubSubOptions`, `redisCache`, `redisFieldLimit`, `redisPubSub`
 - Docs, in the installed package:
