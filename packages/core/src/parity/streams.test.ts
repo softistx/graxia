@@ -1,7 +1,19 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { createSchema } from '../schema/create-schema';
 import { resolveStreaming } from '../server/streaming-options';
-import { raw, sleep, start, until } from '../ws/ws.test-util';
+import { raw, sleep, start as startOne, until } from '../ws/ws.test-util';
+
+const started: ReturnType<typeof startOne>[] = [];
+/** `start` from the ws helpers, remembering every instance so each is disposed. */
+const start: typeof startOne = (options) => {
+	const one = startOne(options);
+	started.push(one);
+	return one;
+};
+afterEach(async () => {
+	for (const one of started.splice(0))
+		await one.graxia.dispose({ timeout: 100 });
+});
 
 let signals: AbortSignal[] = [];
 

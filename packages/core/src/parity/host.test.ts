@@ -118,7 +118,11 @@ describe('a host owns the server', () => {
 
 describe('quiet logs', () => {
 	const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
-	const spies = methods.map((method) => ({ method, spy: undefined as any }));
+	type Spy = ReturnType<typeof spyOn>;
+	const spies = methods.map((method) => ({
+		method,
+		spy: undefined as unknown as Spy,
+	}));
 	beforeEach(() => {
 		for (const entry of spies) entry.spy = spyOn(console, entry.method);
 	});

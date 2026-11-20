@@ -59,7 +59,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                      |
 | `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                  |
 | `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0` |
-| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](../../../graphiql/README.md) plugin, see [Explorer](#explorer)                                                                  |
+| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
 | `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
 | Yoga `batching`                        | `batching: true \| { limit }`                                                                                                                            |
@@ -143,7 +143,7 @@ no `renderSandbox` hook: pass the plugin.
 
 graxia has no `cors` option: it never sets an `access-control-*` header and answers `OPTIONS` with
 405. CORS belongs to the host, which knows its origins, in front of `fetch` (a preflight answered,
-the headers added to the response). The example's `cors.ts` is 40 lines.
+the headers added to the response). The example's `cors.ts` is a working one.
 
 ## Peers
 
@@ -173,7 +173,7 @@ older clients). Upgrade `graphql` first, and any package that still pins 16.
 
 ## Parity with @alxia/graphql 0.16.4
 
-The 33 items of the plan, each proved by a spec. The table is code,
+The 33 behaviours checked by the parity suite, each proved by a spec. The table is code,
 [`src/parity/checklist.ts`](https://github.com/softistx/graxia/blob/develop/packages/core/src/parity/checklist.ts),
 and `checklist.test.ts` fails when a referenced spec or test title disappears or a difference has
 no section above. `same` means the behaviour is kept; the others link to their section.
