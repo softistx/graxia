@@ -1,3 +1,4 @@
+import type { ExecutionResult } from 'graphql';
 import {
 	bindErrorHeaders,
 	readErrorHttp,
@@ -16,7 +17,7 @@ import { runOperation } from './operation';
 import type { Outcome } from './outcome';
 import { readGet, readPost } from './read-request';
 import type { Runtime } from './runtime';
-import { streamResponse } from './stream-response';
+import { preparePayload, streamResponse } from './stream-response';
 
 interface Call {
 	request: Request;
@@ -72,7 +73,6 @@ export async function dispatch(
 					{ ...call, state: operation },
 					outcome,
 					sseFormat,
-					{ state, media: reading.media ?? 'application/json' },
 				);
 			return multipart && outcome.kind === 'stream'
 				? streamResponse(
@@ -131,7 +131,7 @@ async function runBatch(
 
 /**
  * The answer over a stream format (`text/event-stream`): the operation's results as events.
- * A subscription that fails before its source stream opens, with errors that carry `extensions.http`, is answered as plain JSON (see `errorHttp`).
+ * A subscription that fails before its source stream opens keeps the event stream but takes the status and headers of `extensions.http` (see `streamBeforeOpen`).
  * What fails before an operation exists (a status was chosen: bad params,
  * mutation over GET, aborted) keeps its plain HTTP answer; a parse, validation
  * or execution error is a `next` event, as the protocol asks.
@@ -141,8 +141,7 @@ function encodeStreamed(
 	call: Call,
 	outcome: Outcome,
 	format: StreamFormat,
-	plain: { state: StateBag; media: MediaType },
-): Response {
+): Promise<Response> | Response {
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
 		return rt.unexpected.respond(outcome.error, call.state, 'execution');
@@ -153,18 +152,55 @@ function encodeStreamed(
 			'application/json',
 			outcome.headers,
 		);
-	// A subscription refused before its source stream opened, whose errors ask
-	// for an HTTP status or headers, is a plain JSON answer like a query's.
-	if (
-		outcome.kind === 'result' &&
-		outcome.beforeStream &&
-		rt.options.errorHttp
-	) {
-		const asked = readErrorHttp(outcome.result, plain.media);
-		if (asked.status !== undefined || asked.headers !== undefined)
-			return encode(rt, plain.state, outcome, plain.media);
-	}
+	if (outcome.kind === 'result' && outcome.beforeStream && rt.options.errorHttp)
+		return streamBeforeOpen(rt, call, outcome, format);
 	return streamResponse(rt, call, outcome, format);
+}
+
+/**
+ * A subscription that failed before its source stream opened, as graphql-yoga
+ * answers it: still an event stream (`next`, `complete`), but with the status
+ * and headers the errors' `extensions.http` ask for, read from the payload
+ * once the `onResultChunk` hooks and masking have run (once: the stream sends
+ * it as is). `spec` never drops the status here. A plugin refusal's status
+ * wins over the errors'.
+ */
+async function streamBeforeOpen(
+	rt: Runtime,
+	call: Call,
+	outcome: Extract<Outcome, { kind: 'result' }>,
+	format: StreamFormat,
+): Promise<Response> {
+	const { request, state } = call;
+	let payload: unknown;
+	try {
+		payload = await (outcome.scope ?? ((work) => work()))(() =>
+			preparePayload(rt, request, state, outcome.result, true),
+		);
+	} catch (error) {
+		rt.unexpected.report(error, state, 'execution');
+		payload = rt.unexpected.body(state);
+	}
+	const asked =
+		typeof payload === 'object' && payload !== null && !Array.isArray(payload)
+			? readErrorHttp(
+					payload as ExecutionResult,
+					'application/graphql-response+json',
+				)
+			: undefined;
+	const refusal = outcome.refusal;
+	const status = refusal?.status ?? asked?.status;
+	return streamResponse(
+		rt,
+		call,
+		{ ...outcome, result: (asked?.result ?? payload) as ExecutionResult },
+		format,
+		{
+			...(status !== undefined && status !== 200 ? { status } : {}),
+			...(asked?.headers ? { headers: asked.headers } : {}),
+			...(refusal?.headers ? { refusalHeaders: refusal.headers } : {}),
+		},
+	);
 }
 
 function encode(
