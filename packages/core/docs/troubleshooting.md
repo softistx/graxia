@@ -276,6 +276,56 @@ The document parsed but does not validate against the schema. Every such error c
 
 `limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
 
+## uploads.bodyBytes must be a positive integer
+
+`uploads.bodyBytes`, `uploads.fileBytes` or `uploads.files` is not an integer of at least 1 (message
+`uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes` when the file limit is
+above the body limit). Pass byte counts such as `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 }`.
+
+## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight.
+
+`createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
+can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
+or turn uploads off.
+
+```ts
+createGraxia({ schema, uploads: true }); // CSRF header required (default)
+```
+
+## File uploads (multipart/form-data) are not enabled on this server.
+
+415 `UPLOADS_NOT_ENABLED`: a multipart body reached a server without `uploads`. Send JSON, or enable it:
+`createGraxia({ uploads: true })`.
+
+## The request body is larger than uploads.bodyBytes (N bytes).
+
+413 `UPLOAD_TOO_LARGE`. The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or
+raise it. The same code answers `File "0" is larger than uploads.fileBytes (N bytes).` (one file) and
+`The "operations" field is larger than limits.bodyBytes (N bytes).` (the JSON part; raise `limits.bodyBytes`).
+
+## The request holds N files; uploads.files allows M.
+
+413 `UPLOAD_TOO_MANY_FILES`. Send fewer files per request or raise `uploads.files`.
+
+## The multipart body could not be parsed. (and the other `UPLOAD_INVALID` messages)
+
+400 `UPLOAD_INVALID`: the request breaks the GraphQL multipart request spec. Send `operations` (JSON), then
+`map` (file field name → paths such as `variables.file`), then one part per file. The messages:
+
+- `The multipart body could not be parsed.`: a missing or wrong boundary, or a truncated body.
+- `The multipart request has no "operations" field.` / `no "map" field.`
+- `The "operations" field is not valid JSON.`
+- `The "map" field must be a JSON object of file field names to arrays of paths.`
+- `Map entry "0" points at "query"; a file may only go under "variables".`
+- `Map entry "0" points at "variables.f", which is not null in "operations".`: the slot must be `null` in `operations`.
+- `Map entry "0" path "variables.__proto__" is not allowed.`
+- `Map entry "0" has no file part.` / `File part "1" is not in "map".`
+
+## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
+
+`GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or
+a literal was written in the document. Send the file as a multipart part.
+
 ## batching.limit must be a positive integer
 
 `batching: { limit }` needs an integer of at least 1.

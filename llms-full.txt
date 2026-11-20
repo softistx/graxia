@@ -264,6 +264,27 @@ createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: 
 Setup, the span tree, attributes, every option and the migration from `@opentelemetry/api`:
 [Telemetry](./docs/guide/telemetry.md).
 
+## File uploads
+
+The GraphQL multipart request spec, off by default. Resolvers receive Bun's Web `File`.
+
+```ts
+import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+
+const schema = createSchema()({
+	typeDefs:
+		'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
+	resolvers: {
+		File: GraphQLFile,
+		Mutation: { upload: (_, args) => (args['file'] as File).name },
+	},
+});
+createGraxia({ schema, uploads: true }).serve(); // 16 MiB body, 8 MiB per file, 10 files
+```
+
+It needs the CSRF header (`x-graphql-csrf: 1`); `createGraxia` refuses `uploads` with the check off.
+Limits, memory cost, batching and clients: [File uploads](./docs/guide/uploads.md).
+
 ## Trusted documents
 
 Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
@@ -471,6 +492,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
 |                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
+|                        | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
 | `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
@@ -490,6 +512,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
+- [File uploads](./docs/guide/uploads.md): the multipart request spec, `GraphQLFile`, limits, CSRF, memory cost.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
@@ -1275,6 +1298,7 @@ server) to it. The compiler checks that the context matches your schema's `creat
   [Security](./security.md).
 - **POST** needs `Content-Type: application/json` (a charset, if given, must be UTF-8), otherwise 415.
   The body is `{ query, variables?, operationName?, extensions? }`; `null` means absent.
+- **Multipart**: with `uploads` on, a `multipart/form-data` POST is read as the GraphQL multipart request spec (see [File uploads](./uploads.md)): 413 `UPLOAD_TOO_LARGE` / `UPLOAD_TOO_MANY_FILES` past its limits, 400 `UPLOAD_INVALID` for a malformed request. With `uploads` off it is 415 `UPLOADS_NOT_ENABLED`. It always needs the CSRF header.
 - **GET** reads `query`, `operationName`, and `variables` / `extensions` as URL-encoded JSON. A
   mutation over GET answers 405 with `Allow: POST`, decided right after parsing and before validation.
 - **Accept**: `application/graphql-response+json` or `application/json`. A missing header, `*/*` and
@@ -1572,6 +1596,18 @@ and nesting cases add `extensions.limit` and `extensions.fix`. A parser stack ov
 (`RangeError`, a document nested just under `limits.nesting` that still overflows the parser) is
 reported the same way, never thrown and never masked as `Unexpected error.`; it carries `fix` but
 no `limit`, and is not cached.
+
+## Upload limits
+
+With [`uploads`](./uploads.md) on, a multipart request has three more limits, checked before any resolver runs:
+
+| Option              | Default | Meaning                                |
+| ------------------- | ------- | -------------------------------------- |
+| `uploads.bodyBytes` | 16 MiB  | Most bytes of the whole multipart body |
+| `uploads.fileBytes` | 8 MiB   | Most bytes of one file                 |
+| `uploads.files`     | 10      | Most file parts in one request         |
+
+The `operations` field stays under `limits.bodyBytes`.
 
 ## Operation limits
 
@@ -2659,6 +2695,10 @@ createGraxia({ schema, csrf: { requireHeader: false } }); // no header check
 createGraxia({ schema, csrf: false }); // no CSRF or origin check at all
 ```
 
+### Uploads
+
+A `multipart/form-data` POST is a simple request, so [uploads](./uploads.md) always need the CSRF header, checked before the body is read. `createGraxia` refuses `uploads` with `csrf: false` or `csrf: { requireHeader: false }` at boot.
+
 ### Client setup
 
 ```ts
@@ -3525,6 +3565,144 @@ document in any mode; a layer that forwards documents from its clients to `execu
 
 See [Troubleshooting](../troubleshooting.md) for each message and the configuration errors.
 
+# @graxia/core — File uploads
+
+Source: packages/core/docs/guide/uploads.md
+
+# File uploads
+
+`@graxia/core` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
+(`operations`, `map`, one part per file). It is off by default.
+
+```ts
+import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+
+const schema = createSchema()({
+	typeDefs: `
+		scalar File
+		type Query { ok: Boolean }
+		type Mutation { upload(file: File!): String! }
+	`,
+	resolvers: {
+		File: GraphQLFile,
+		Mutation: {
+			upload: async (_parent, args) => {
+				const file = args['file'] as File;
+				return `${file.name}: ${(await file.text()).length}`;
+			},
+		},
+	},
+});
+
+createGraxia({ schema, uploads: true }).serve();
+```
+
+```sh
+curl localhost:3000/graphql -H 'x-graphql-csrf: 1' \
+  -F operations='{"query":"mutation($f: File!){ upload(file: $f) }","variables":{"f":null}}' \
+  -F map='{"0":["variables.f"]}' -F 0=@a.txt
+```
+
+## The `File` a resolver gets
+
+Each file reaches the resolver as Bun's Web `File` (`name`, `type`, `size`, `text()`, `arrayBuffer()`,
+`stream()`), set into `variables` at each path the `map` names. One file may fill several paths, in
+lists and nested inputs too.
+
+`GraphQLFile` is the scalar to register for `scalar File`. It accepts only a `File`: a JSON request that
+sends a string where a file is due, and an inline literal, are refused with
+`File must be sent as a file part of a multipart request (GraphQL multipart request spec).`
+It is input only. With graphql-codegen, map the scalar with `scalars: { File: 'File' }` to type the
+argument. A schema that names the scalar `Upload` (Apollo, graphql-upload) wraps it:
+
+```ts
+import { GraphQLScalarType } from 'graphql';
+const Upload = new GraphQLScalarType({
+	...GraphQLFile.toConfig(),
+	name: 'Upload',
+});
+```
+
+## Limits
+
+```ts
+createGraxia({
+	schema,
+	uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 },
+});
+```
+
+| Option              | Default | Refusal                                                    |
+| ------------------- | ------- | ---------------------------------------------------------- |
+| `uploads.bodyBytes` | 16 MiB  | 413 `UPLOAD_TOO_LARGE`, the whole body                     |
+| `uploads.fileBytes` | 8 MiB   | 413 `UPLOAD_TOO_LARGE`, one file (never above `bodyBytes`) |
+| `uploads.files`     | 10      | 413 `UPLOAD_TOO_MANY_FILES`                                |
+
+The `operations` field stays under `limits.bodyBytes` (1 MiB). `Content-Length` is checked first, then
+the stream is counted and cancelled the moment it passes `uploads.bodyBytes`, whatever the header said.
+A refused upload never reaches a resolver.
+
+**Memory.** The body is buffered (up to `uploads.bodyBytes`, plus a copy while it is joined) and parsed by
+Bun before the operation runs, so each upload in flight costs up to about twice `bodyBytes` of memory.
+Size the limits for your concurrency. Streaming each part to disk or S3 without buffering is on the
+[roadmap](../roadmap.md).
+
+## CSRF
+
+A `multipart/form-data` POST is a "simple" request a browser sends cross-site without a preflight, so it
+always needs the CSRF header (`x-graphql-csrf: 1`, or any of `csrf.requireHeader`), checked before the body
+is read. `createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`
+at boot (`GraxiaConfigError`). Apollo's `createUploadLink` and urql's `multipartFetchExchange` take
+`headers: { 'x-graphql-csrf': '1' }`.
+
+## Batching, trusted documents, plugins
+
+- `operations` may be an array when `batching` is on; map paths then start with the entry index
+  (`0.variables.file`).
+- The operations go through `onParams` like a JSON body: `strict` trusted documents refuse an arbitrary
+  query and a multipart `operations` with a `documentId` works. Parse, validation and operation limits apply.
+- WebSocket carries no files. The answer may be JSON, SSE or `multipart/mixed` per `Accept`.
+- `graxia.execute` sends variables as JSON, so it cannot carry a `File`: test uploads through `graxia.fetch`.
+
+## Testing
+
+```ts
+const body = new FormData();
+body.set(
+	'operations',
+	JSON.stringify({
+		query: 'mutation($f: File!){ upload(file: $f) }',
+		variables: { f: null },
+	}),
+);
+body.set('map', JSON.stringify({ 0: ['variables.f'] }));
+body.set('0', new File(['hello'], 'a.txt'));
+const response = await graxia.fetch(
+	new Request('http://x/graphql', {
+		method: 'POST',
+		headers: { 'x-graphql-csrf': '1' },
+		body,
+	}),
+);
+```
+
+## Coming from other servers
+
+- **graphql-yoga**: the same Web `File`; `scalar File` and `GraphQLFile` replace the built-in.
+- **graphql-upload**: there is no `createReadStream`; use `file.stream()`, `file.arrayBuffer()` or `file.text()`.
+
+## Refusals
+
+| Status | Code                    | When                                                             |
+| ------ | ----------------------- | ---------------------------------------------------------------- |
+| 415    | `UPLOADS_NOT_ENABLED`   | multipart body, `uploads` off                                    |
+| 413    | `UPLOAD_TOO_LARGE`      | body, a file or `operations` over its limit                      |
+| 413    | `UPLOAD_TOO_MANY_FILES` | more files than `uploads.files`                                  |
+| 400    | `UPLOAD_INVALID`        | a body or `map` that breaks the spec, a path outside `variables` |
+| 403    | `CSRF_HEADER_REQUIRED`  | no CSRF header                                                   |
+
+See [Troubleshooting](../troubleshooting.md) for each message.
+
 # @graxia/core — Subscriptions over WebSocket
 
 Source: packages/core/docs/guide/websocket.md
@@ -3979,6 +4157,56 @@ The document parsed but does not validate against the schema. Every such error c
 ## limits.bodyBytes must be a positive integer
 
 `limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
+
+## uploads.bodyBytes must be a positive integer
+
+`uploads.bodyBytes`, `uploads.fileBytes` or `uploads.files` is not an integer of at least 1 (message
+`uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes` when the file limit is
+above the body limit). Pass byte counts such as `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 }`.
+
+## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight.
+
+`createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
+can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
+or turn uploads off.
+
+```ts
+createGraxia({ schema, uploads: true }); // CSRF header required (default)
+```
+
+## File uploads (multipart/form-data) are not enabled on this server.
+
+415 `UPLOADS_NOT_ENABLED`: a multipart body reached a server without `uploads`. Send JSON, or enable it:
+`createGraxia({ uploads: true })`.
+
+## The request body is larger than uploads.bodyBytes (N bytes).
+
+413 `UPLOAD_TOO_LARGE`. The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or
+raise it. The same code answers `File "0" is larger than uploads.fileBytes (N bytes).` (one file) and
+`The "operations" field is larger than limits.bodyBytes (N bytes).` (the JSON part; raise `limits.bodyBytes`).
+
+## The request holds N files; uploads.files allows M.
+
+413 `UPLOAD_TOO_MANY_FILES`. Send fewer files per request or raise `uploads.files`.
+
+## The multipart body could not be parsed. (and the other `UPLOAD_INVALID` messages)
+
+400 `UPLOAD_INVALID`: the request breaks the GraphQL multipart request spec. Send `operations` (JSON), then
+`map` (file field name → paths such as `variables.file`), then one part per file. The messages:
+
+- `The multipart body could not be parsed.`: a missing or wrong boundary, or a truncated body.
+- `The multipart request has no "operations" field.` / `no "map" field.`
+- `The "operations" field is not valid JSON.`
+- `The "map" field must be a JSON object of file field names to arrays of paths.`
+- `Map entry "0" points at "query"; a file may only go under "variables".`
+- `Map entry "0" points at "variables.f", which is not null in "operations".`: the slot must be `null` in `operations`.
+- `Map entry "0" path "variables.__proto__" is not allowed.`
+- `Map entry "0" has no file part.` / `File part "1" is not in "map".`
+
+## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
+
+`GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or
+a literal was written in the document. Send the file as a multipart part.
 
 ## batching.limit must be a positive integer
 

@@ -5,7 +5,7 @@ Where graxia is going, as what you get. A direction, not a commitment.
 ## Now
 
 - **Envelop and migration** (M6) — run Envelop plugins unchanged, multipart
-  uploads, and a parity suite so applications on `@alxia/graphql` can move to
+  uploads (landed on the integration branch; streaming uploads are Later), and a parity suite so applications on `@alxia/graphql` can move to
   graxia.
 
 ## Not planned
