@@ -1,5 +1,11 @@
 # @graxia/core
 
+## 0.6.1
+
+### Patch Changes
+
+- [#107](https://github.com/softistx/graxia/pull/107) [`e9b0f4a`](https://github.com/softistx/graxia/commit/e9b0f4acfc411bf1d347d49c894ae7206bdf75c8) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Fewer allocations per request on the hot path: the `Accept` header is read once, responses graxia builds are sealed in place, a passing cost check is remembered per document and stages without hooks run without promises (in the repository benchmark, a cached document goes from 23.2 KB to 16.1 KB of heap per request and serves about 12 to 26 % more requests per second).
+
 ## 0.6.0
 
 ### Minor Changes
