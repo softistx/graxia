@@ -6,7 +6,7 @@ One entry per published package: what it is, how to install it, its peers, the p
 
 ## @graxia/core
 
-The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client (0.12.0)
+The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client (0.13.0)
 
 - Install: `bun add @graxia/core graphql`
 - Peers: `@softistx/telemetry` `^0.5.0` (optional), `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
@@ -48,10 +48,10 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
 
 ## @graxia/envelop
 
-Run Envelop plugins inside graxia with one adapter (0.1.6)
+Run Envelop plugins inside graxia with one adapter (0.1.7)
 
 - Install: `bun add @graxia/envelop @envelop/core @graxia/core graphql`
-- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@graxia/core` `^0.12.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@graxia/core` `^0.13.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
 - Docs, in the installed package:
@@ -61,10 +61,10 @@ Run Envelop plugins inside graxia with one adapter (0.1.6)
 
 ## @graxia/graphiql
 
-GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.6)
+GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.7)
 
 - Install: `bun add @graxia/graphiql @graxia/core`
-- Peers: `@graxia/core` `^0.12.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@graxia/core` `^0.13.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/graphiql`: `ApolloSandboxOptions`, `GraphiQLOptions`, `SandboxInitialState`, `apolloSandbox`, `graphiql`, `sandboxContentSecurityPolicy`
 - Docs, in the installed package:
@@ -75,10 +75,10 @@ GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.2.6
 
 ## @graxia/mcp
 
-Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.1.8)
+Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.1.9)
 
 - Install: `bun add @graxia/mcp @graxia/core graphql`
-- Peers: `@graxia/core` `^0.12.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@graxia/core` `^0.13.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/mcp`: `Can`, `Mcp`, `McpAuthInfo`, `McpAuthOptions`, `McpErrorCode`, `McpHost`, `McpOperationInfo`, `McpOperationsOptions`, `McpOptions`, `McpScopes`, `createMcp`, `mcpAuth`
 - Docs, in the installed package:
@@ -93,10 +93,10 @@ Model Context Protocol server over graxia: stateless Streamable HTTP with graphq
 
 ## @graxia/redis
 
-Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.2.9)
+Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis (0.2.10)
 
 - Install: `bun add @graxia/redis @graxia/core @softistx/redis`
-- Peers: `@graxia/core` `^0.12.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Peers: `@graxia/core` `^0.13.0`, `@softistx/redis` `^0.24.1`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/redis`: `RedisCacheOptions`, `RedisConnection`, `RedisFieldLimit`, `RedisFieldLimitOptions`, `RedisPubSub`, `RedisPubSubOptions`, `redisCache`, `redisFieldLimit`, `redisPubSub`
 - Docs, in the installed package:
