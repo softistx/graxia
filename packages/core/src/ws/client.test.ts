@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { createClient } from 'graphql-ws';
 import { exposedError } from '../errors/exposed';
 import { definePlugin } from '../plugins/define';
-import { createGraxia } from '../server/create-graxia';
 import { getContext } from '../server/context';
+import { createGraxia } from '../server/create-graxia';
 import { pubsub, raw, schema, sleep, start, until } from './ws.test-util';
 
 const client = (url: string, options: object = {}) =>
