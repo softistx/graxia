@@ -34,6 +34,10 @@ interface field the caller sees can still return objects of a type the view hide
 name that type in a fragment, but `__typename` and the interface's fields come back. A resolver of
 a union or interface field must itself leave out the objects the caller may not read.
 
+A `can` that throws fails closed: `tools/list` answers without the typed tools of that request
+(it is not an error response), a typed-tool call answers `The server failed to run the operation.
+Fix: retry later.`, and the thrown error goes to `onError`, never to the agent.
+
 ## Typed tools only
 
 `graphql_query` lets an agent write any operation the caller may see. To let it run only

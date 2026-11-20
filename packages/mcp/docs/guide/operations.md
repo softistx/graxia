@@ -104,10 +104,24 @@ operations: {
 A variable's description becomes the `description` of its property. A variable without one takes
 the description of the argument or input field it feeds.
 
-> Your toolchain must keep the descriptions in the manifest. GraphQL Code Generator's client preset
-> keeps them when the project's `graphql` is 16.12 or later (flattened to one line); before 16.12
-> the sources do not parse with a description, so use `descriptions`. Open
-> `persisted-documents.json` to check: the boot error names each operation that lacks one.
+> Your toolchain must keep the descriptions in the manifest, and GraphQL Code Generator's client
+> preset does not: run with `@graphql-codegen/cli` 8.0.0, `@graphql-codegen/client-preset` 7.0.0
+> and `graphql` 16.15.0, the preset accepts an operation with a `"""description"""` but writes
+> neither `persisted-documents.json` (`query Books { books { id title } }`) nor the generated
+> `DocumentNode` with it. Give the descriptions with `descriptions`, or build the manifest with a
+> tool that keeps them. Open your `persisted-documents.json` to check: the boot error names each
+> operation that lacks a description.
+
+### No tool at all
+
+When `include` (or the manifest) leaves no operation, and the generic tools are on, `createMcp`
+does not fail or warn: the server runs with `graphql_schema`, `graphql_query` and
+`graphql_mutate` only, as if `operations` were not set. With `genericTools: false` the same case
+throws. When graxia runs trusted documents in strict mode the generic tools are refused, so the
+agent gets `graphql_schema` alone, and `onError` receives the `GraxiaConfigError`
+``createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …`` (see
+[troubleshooting](../troubleshooting.md)). Check what an agent gets with a `tools/list` request: the typed tools are the ones after
+`graphql_schema`.
 
 ## The input schema
 
@@ -217,5 +231,6 @@ surface: see [security](./security.md#typed-tools-only).
 Parsing, validation and both schemas are computed once, in `createMcp`. Per request only the
 filter by the caller's view runs: once for all callers without `can`; with `can`, once per
 `tools/list` and `tools/call` request (the view is built, so `can` runs, for those two only:
-`initialize`, `ping` and notifications never call it). When `can` throws, nothing typed is listed
-and a call answers `The server failed to run the operation. Fix: retry later.`
+`initialize`, `ping` and notifications never call it). When `can` throws, the typed tools are left
+out of `tools/list` (fail closed: the list keeps only the generic tools that are on, `graphql_schema` alone with `genericTools: false`; it is not an error), the
+error goes to `onError`, and a call answers `The server failed to run the operation. Fix: retry later.`
