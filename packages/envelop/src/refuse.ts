@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 
 /** The Envelop hooks graxia runs. */
 export const SUPPORTED = new Set([
@@ -46,12 +46,12 @@ export const instrumentation = (label: string) =>
 
 export const yogaKey = (label: string, key: string) =>
 	refuse(
-		`${label} uses "${key}": this is a graphql-yoga plugin, not an Envelop one, and graxia cannot run it. Rewrite it with definePlugin from @graxia/core.`,
+		`${label} uses "${key}": this is a graphql-yoga plugin, not an Envelop one, and graxia cannot run it. Rewrite it with definePlugin from @softistx/graxia.`,
 	);
 
 export const unknownKey = (label: string, key: string) =>
 	refuse(
-		`${label} uses "${key}", which is not an Envelop hook graxia knows. Check the spelling, or write it as a graxia plugin with definePlugin from @graxia/core.`,
+		`${label} uses "${key}", which is not an Envelop hook graxia knows. Check the spelling, or write it as a graxia plugin with definePlugin from @softistx/graxia.`,
 	);
 
 export const setSchema = (label: string) =>

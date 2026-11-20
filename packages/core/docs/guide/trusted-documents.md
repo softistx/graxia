@@ -6,7 +6,7 @@ expensive or probing query, and clients send a short id instead of the text. Aut
 queries (APQ) are the friendlier cousin for development and for clients with no build step.
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 import manifest from './persisted-documents.json';
 
 const graxia = createGraxia({
@@ -163,10 +163,10 @@ The answers keep the status of any other error before execution: 200 for `applic
 for `application/graphql-response+json`. Both carry the errors in the body, which is what the
 clients read to retry.
 
-Use `redisCache()` from `@graxia/redis` as the store so every process sees the registrations:
+Use `redisCache()` from `@softistx/graxia-redis` as the store so every process sees the registrations:
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 createGraxia({
 	schema,
 	trustedDocuments: {
@@ -202,7 +202,7 @@ default follows `NODE_ENV`; set `mode` to pin it.
 `graxia.trustedDocuments` is `{ mode }` with the mode in force (the `NODE_ENV` default applied), or
 `undefined` without the option. `graxia.execute` is your own code calling in process, so it runs a
 document in any mode; a layer that forwards documents from its clients to `execute` (as
-`@graxia/mcp` does) reads the mode and refuses them in `strict`.
+`@softistx/graxia-mcp` does) reads the mode and refuses them in `strict`.
 
 ## Error codes
 

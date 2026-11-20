@@ -1,8 +1,8 @@
 # Running Envelop plugins
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { fromEnvelop } from '@graxia/envelop';
+import { createGraxia } from '@softistx/graxia';
+import { fromEnvelop } from '@softistx/graxia-envelop';
 import { useDepthLimit } from '@envelop/depth-limit';
 
 createGraxia({
@@ -75,9 +75,9 @@ subscribe go through core's error handling.
 ## Migrating from graphql-yoga
 
 1. Move every Envelop plugin from `createYoga({ plugins })` into `fromEnvelop([...])`.
-2. Yoga's own plugins (`onRequest`, `onResultProcess`, ...) are refused: replace them with `definePlugin` from `@graxia/core`.
+2. Yoga's own plugins (`onRequest`, `onResultProcess`, ...) are refused: replace them with `definePlugin` from `@softistx/graxia`.
 3. Pass the schema to `createGraxia({ schema })`; `useSchema` and `setSchema` are not needed.
-4. CORS, GraphiQL and persisted operations have graxia options of their own (`trustedDocuments`, `@graxia/graphiql`).
+4. CORS, GraphiQL and persisted operations have graxia options of their own (`trustedDocuments`, `@softistx/graxia-graphiql`).
 
 ## Tested plugins
 

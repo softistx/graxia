@@ -16,12 +16,12 @@ the package was installed without its `dist/assets/` (check `files` in a custom 
 ## GraphiQL assets not found at …
 
 The plugin throws this on the first page request when `dist/assets/manifest.json` is missing: the
-installed `@graxia/graphiql` has no `dist/assets`. Reinstall the package; in the graxia repository,
+installed `@softistx/graxia-graphiql` has no `dist/assets`. Reinstall the package; in the graxia repository,
 run `bun run build`.
 
 ## 403 `CSRF_HEADER_REQUIRED` when opening the page
 
-The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4
+The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@softistx/graxia` 0.4
 or later, and only with `Accept: text/html` and no `query`. Upgrade core, or check that the request
 is the browser's navigation and not a script. See core's
 [troubleshooting](https://github.com/softistx/graxia/blob/develop/packages/core/docs/troubleshooting.md).

@@ -21,7 +21,11 @@ spends 3 units on `signIn`, whatever the aliases and fragments around it.
 ## Quick start
 
 ```ts
-import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+import {
+	createGraxia,
+	fieldRateLimit,
+	memoryFieldLimit,
+} from '@softistx/graxia';
 
 const graxia = createGraxia({
 	schema,
@@ -117,14 +121,14 @@ Put `request` in the context (`context: ({ request }) => ({ request })`) or use 
   `limit` can never pass: it is one call, refused, with that call's `retryAfter` (or `windowMs`
   when the call allowed). The policy
   comes from `store.policy`, from `policy`, or both when they agree.
-- `redisFieldLimit({ url, limit, windowMs })` from `@graxia/redis`: shared state across servers, a GCRA bucket
+- `redisFieldLimit({ url, limit, windowMs })` from `@softistx/graxia-redis`: shared state across servers, a GCRA bucket
   timed by the Redis server, failing open when Redis is down. See the
   [Redis guide](https://github.com/softistx/graxia/blob/develop/packages/redis/docs/guide/redis.md#field-rate-limit). Or your own `{ consume }`: any object that
   answers `{ allowed, retryAfter }` for a key and a cost is a `FieldLimit`.
 
 ```ts
-import { fieldRateLimit } from '@graxia/core';
-import { redisFieldLimit } from '@graxia/redis';
+import { fieldRateLimit } from '@softistx/graxia';
+import { redisFieldLimit } from '@softistx/graxia-redis';
 
 fieldRateLimit({
 	fields: {

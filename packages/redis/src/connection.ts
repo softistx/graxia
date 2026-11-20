@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import {
 	connectRedis,
 	type RedisConnection as Holder,
@@ -32,7 +32,7 @@ export interface RedisLink {
 export function resolveLink(options: RedisConnection): RedisLink {
 	if (options.client !== undefined && options.url !== undefined)
 		throw new GraxiaConfigError(
-			'@graxia/redis: pass either "url" or "client", not both',
+			'@softistx/graxia-redis: pass either "url" or "client", not both',
 		);
 	const given = options.client;
 	if (given !== undefined)
@@ -44,7 +44,9 @@ export function resolveLink(options: RedisConnection): RedisLink {
 	return {
 		async client() {
 			if (released)
-				throw new GraxiaConfigError('@graxia/redis: used after dispose()');
+				throw new GraxiaConfigError(
+					'@softistx/graxia-redis: used after dispose()',
+				);
 			holder ??= connectRedis(uri);
 			const pending = holder;
 			try {
@@ -80,7 +82,7 @@ export function resolveLink(options: RedisConnection): RedisLink {
 function shared(error: unknown, uri: string): unknown {
 	if (error instanceof RedisError && error.code === 'URI_CONFLICT')
 		return new GraxiaConfigError(
-			`@graxia/redis: ${redactUri(uri)} is already connected by another module with other options; pass that client as { client }`,
+			`@softistx/graxia-redis: ${redactUri(uri)} is already connected by another module with other options; pass that client as { client }`,
 			{ cause: error },
 		);
 	return error;

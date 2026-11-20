@@ -1,4 +1,4 @@
-import type { ExecutionOutput } from '@graxia/core';
+import type { ExecutionOutput } from '@softistx/graxia';
 
 export const isAsyncIterable = (
 	value: unknown,

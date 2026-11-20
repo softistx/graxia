@@ -1,60 +1,60 @@
-# @graxia/envelop
+# @softistx/graxia-envelop
 
 ## 0.1.8
 
 ### Patch Changes
 
 - Updated dependencies [[`f5ef13f`](https://github.com/softistx/graxia/commit/f5ef13fec198d0af098c94b97904a0e2e3053840)]:
-  - @graxia/core@0.14.0
+  - @softistx/graxia@0.14.0
 
 ## 0.1.7
 
 ### Patch Changes
 
 - Updated dependencies [[`9f7f3fa`](https://github.com/softistx/graxia/commit/9f7f3fac773e77a6f0738b85901bfa4f6d5ce7c7)]:
-  - @graxia/core@0.13.0
+  - @softistx/graxia@0.13.0
 
 ## 0.1.6
 
 ### Patch Changes
 
 - Updated dependencies [[`5c7cd1c`](https://github.com/softistx/graxia/commit/5c7cd1c2b747e9af5c379d2a8a4915b6ee9295a3)]:
-  - @graxia/core@0.12.0
+  - @softistx/graxia@0.12.0
 
 ## 0.1.5
 
 ### Patch Changes
 
 - Updated dependencies [[`e802b0a`](https://github.com/softistx/graxia/commit/e802b0a7c2ab281228222797e36c4e70143c0ccc)]:
-  - @graxia/core@0.11.0
+  - @softistx/graxia@0.11.0
 
 ## 0.1.4
 
 ### Patch Changes
 
 - Updated dependencies [[`8efc081`](https://github.com/softistx/graxia/commit/8efc081372345df50387894f77f2b36a97194f6d), [`1b7629d`](https://github.com/softistx/graxia/commit/1b7629d1445ce83ca201ae375967cb899b845ed2)]:
-  - @graxia/core@0.10.0
+  - @softistx/graxia@0.10.0
 
 ## 0.1.3
 
 ### Patch Changes
 
 - Updated dependencies [[`730f845`](https://github.com/softistx/graxia/commit/730f845cb04e1cd64d1fecbc3821285ec6f03519)]:
-  - @graxia/core@0.9.0
+  - @softistx/graxia@0.9.0
 
 ## 0.1.2
 
 ### Patch Changes
 
 - Updated dependencies [[`b2b814f`](https://github.com/softistx/graxia/commit/b2b814f62d03c658b3948c45ba9dca1b71a6bc40), [`c7c407e`](https://github.com/softistx/graxia/commit/c7c407e43784e509b49066b2faeeae9494d9cc52), [`54aaf11`](https://github.com/softistx/graxia/commit/54aaf115cf1ec6d566e37806fb18877263d7d462)]:
-  - @graxia/core@0.8.0
+  - @softistx/graxia@0.8.0
 
 ## 0.1.1
 
 ### Patch Changes
 
 - Updated dependencies [[`b0cd3ec`](https://github.com/softistx/graxia/commit/b0cd3ec4999a20ac5bb3c435483a08424a4bb7e4)]:
-  - @graxia/core@0.7.0
+  - @softistx/graxia@0.7.0
 
 ## 0.1.0
 
@@ -65,4 +65,4 @@
 ### Patch Changes
 
 - Updated dependencies [[`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11)]:
-  - @graxia/core@0.6.0
+  - @softistx/graxia@0.6.0

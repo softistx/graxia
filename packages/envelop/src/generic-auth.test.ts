@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { useGenericAuth } from '@envelop/generic-auth';
-import { createSchema } from '@graxia/core';
+import { createSchema } from '@softistx/graxia';
 import { type Booted, boot, typeDefs } from './fixtures.test-util';
 import { fromEnvelop } from './from-envelop';
 

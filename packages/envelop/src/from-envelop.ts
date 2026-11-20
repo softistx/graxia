@@ -1,5 +1,5 @@
 import type { Plugin as EnvelopPlugin } from '@envelop/core';
-import type { Empty, GraxiaPlugin } from '@graxia/core';
+import type { Empty, GraxiaPlugin } from '@softistx/graxia';
 import { contextHooks } from './context';
 import { documentHooks } from './document';
 import { opKey } from './early-context';

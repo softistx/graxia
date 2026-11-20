@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 
 /** The hostname an `allowedHosts` entry should be, or `undefined` when it is already one. */
 function hostnameOf(entry: string): string | undefined {

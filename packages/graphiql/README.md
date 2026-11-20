@@ -1,4 +1,4 @@
-# @graxia/graphiql
+# @softistx/graxia-graphiql
 
 The [GraphiQL](https://github.com/graphql/graphiql) 4 page for graxia, bundled at build time: it runs
 under a strict content security policy, with no CDN, no external font and no analytics.
@@ -12,7 +12,7 @@ explorer, not both.
 ## Install
 
 ```sh
-bun add @graxia/graphiql @graxia/core
+bun add @softistx/graxia-graphiql @softistx/graxia
 ```
 
 A normal dependency, not `-d`: the plugin is off in production by default, so it can stay in
@@ -20,13 +20,13 @@ A normal dependency, not `-d`: the plugin is off in production by default, so it
 
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported. The package has no runtime dependency besides the
-`@graxia/core` peer: GraphiQL, React and the clients are inside the shipped bundle.
+`@softistx/graxia` peer: GraphiQL, React and the clients are inside the shipped bundle.
 
 ## Use
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { graphiql } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { graphiql } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [graphiql()] });
@@ -72,7 +72,7 @@ time, hence `'unsafe-inline'` for styles only. See [the guide](./docs/guide/grap
 ## Apollo Sandbox
 
 ```ts
-import { apolloSandbox } from '@graxia/graphiql';
+import { apolloSandbox } from '@softistx/graxia-graphiql';
 
 createGraxia({ schema, plugins: [apolloSandbox({ title: 'My API' })] });
 ```

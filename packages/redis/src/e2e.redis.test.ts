@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { describeRedis, redisUrl, uniquePrefix } from './env.test-util';
 import { redisPubSub } from './pubsub';
 

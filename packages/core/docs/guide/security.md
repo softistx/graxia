@@ -53,7 +53,7 @@ createClient({ url, fetchOptions: { headers: { 'x-graphql-csrf': '1' } } });
 
 A plugin may declare `csrfExempt(request: Request): boolean` for the few `GET` requests it serves
 itself and a browser cannot send with a custom header: a page opened by navigation, or the
-`<script>` and `<link>` it loads (the GraphiQL page of `@graxia/graphiql` is the case).
+`<script>` and `<link>` it loads (the GraphiQL page of `@softistx/graxia-graphiql` is the case).
 
 - Core consults it for `GET` only, and only for the CSRF **header** check. The `Origin` check
   (`csrf.sameOrigin`), the path check and the method check still apply.

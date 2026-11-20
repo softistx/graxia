@@ -1,0 +1,79 @@
+import { describe, expect, test } from 'bun:test';
+import { MOVED, type Npm, plan, run } from './deprecate-moved';
+
+function fake(
+	published: Record<string, string>,
+	deprecated: Record<string, (string | undefined)[]>,
+): Npm & { calls: string[] } {
+	const calls: string[] = [];
+	return {
+		calls,
+		latestVersion: async (n) => published[n] ?? null,
+		deprecations: async (n) => deprecated[n] ?? [],
+		deprecate: async (n, m) => {
+			calls.push(`${n} ${m}`);
+		},
+	};
+}
+
+describe('deprecate-moved', () => {
+	test('maps core to @softistx/graxia and the rest to @softistx/graxia-<x>', () => {
+		expect(Object.fromEntries(MOVED)).toEqual({
+			'@graxia/core': '@softistx/graxia',
+			'@graxia/envelop': '@softistx/graxia-envelop',
+			'@graxia/graphiql': '@softistx/graxia-graphiql',
+			'@graxia/mcp': '@softistx/graxia-mcp',
+			'@graxia/redis': '@softistx/graxia-redis',
+		});
+	});
+
+	test('skips every pair while the new names are not on npm', async () => {
+		const npm = fake({}, { '@graxia/core': ['0.14.0'] as never });
+		const out = await run(npm, false, () => {});
+		expect(out.every((o) => o.action === 'skip-new-not-published')).toBe(true);
+		expect(npm.calls).toEqual([]);
+	});
+
+	test('deprecates when the new name is published and a version is not marked', async () => {
+		const npm = fake(
+			{ '@softistx/graxia': '0.15.0' },
+			{ '@graxia/core': ['moved to @softistx/graxia', undefined] },
+		);
+		await run(npm, false, () => {});
+		expect(npm.calls).toEqual(['@graxia/core moved to @softistx/graxia']);
+	});
+
+	test('skips a name whose versions all carry the message (idempotent)', async () => {
+		const npm = fake(
+			{ '@softistx/graxia-mcp': '0.2.0' },
+			{
+				'@graxia/mcp': [
+					'moved to @softistx/graxia-mcp',
+					'moved to @softistx/graxia-mcp',
+				],
+			},
+		);
+		const out = await plan(npm);
+		expect(out.find((o) => o.old === '@graxia/mcp')?.action).toBe(
+			'skip-already-deprecated',
+		);
+	});
+
+	test('skips an old name that is not on npm', async () => {
+		const out = await plan(fake({ '@softistx/graxia-redis': '0.3.0' }, {}));
+		expect(out.find((o) => o.old === '@graxia/redis')?.action).toBe(
+			'skip-old-not-published',
+		);
+	});
+
+	test('--dry-run never calls deprecate', async () => {
+		const npm = fake(
+			{ '@softistx/graxia': '0.15.0' },
+			{ '@graxia/core': [undefined] },
+		);
+		const lines: string[] = [];
+		await run(npm, true, (l) => lines.push(l));
+		expect(npm.calls).toEqual([]);
+		expect(lines.join('\n')).toContain('dry-run');
+	});
+});

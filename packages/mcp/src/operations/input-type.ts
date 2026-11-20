@@ -1,4 +1,4 @@
-import { constraintOf } from '@graxia/core/agent';
+import { constraintOf } from '@softistx/graxia/agent';
 import {
 	type GraphQLEnumType,
 	type GraphQLInputField,

@@ -1,4 +1,4 @@
-import type { Constraint } from '@graxia/core/agent';
+import type { Constraint } from '@softistx/graxia/agent';
 import type { JsonSchema } from './types';
 
 /** `@constraint` argument to JSON Schema keyword, for a string or a number. */

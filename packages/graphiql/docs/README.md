@@ -1,4 +1,4 @@
-# @graxia/graphiql documentation
+# @softistx/graxia-graphiql documentation
 
 - [GraphiQL](./guide/graphiql.md): serving model, CSP, assets and caching, subscriptions, proxies and sub-paths, production.
 - [Apollo Sandbox](./guide/apollo-sandbox.md): `apolloSandbox()`, the two Apollo hosts in the CSP, the third-party risk, using it with GraphiQL.

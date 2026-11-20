@@ -1,4 +1,4 @@
-# @graxia/mcp documentation
+# @softistx/graxia-mcp documentation
 
 - [Getting started](./guide/getting-started.md): install, mount, connect a client, host context.
 - [Tools](./guide/tools.md): `graphql_schema`, `graphql_query`, `graphql_mutate`, results and errors.

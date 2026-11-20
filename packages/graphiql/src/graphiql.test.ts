@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 import { browser, fakeAssets, host } from './fixtures.test-util';
 import { createGraphiQL } from './graphiql';
 

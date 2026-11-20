@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createPubSub } from '@graxia/core';
+import { createPubSub } from '@softistx/graxia';
 import { channelOf } from './channel';
 
 test('the redis channel is the topic:id core uses', async () => {

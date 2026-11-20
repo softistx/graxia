@@ -1,4 +1,4 @@
-/** The error codes of `@graxia/mcp`; the rest of what an agent reads comes from `@graxia/core`. */
+/** The error codes of `@softistx/graxia-mcp`; the rest of what an agent reads comes from `@softistx/graxia`. */
 export const MCP_ERROR_CODES = [
 	'MCP_OPERATION_NOT_ALLOWED',
 	'MCP_EXECUTION_REFUSED',
@@ -8,22 +8,22 @@ export const MCP_ERROR_CODES = [
 	'MCP_TOKEN_IN_URL',
 ] as const;
 
-/** A code only `@graxia/mcp` emits. */
+/** A code only `@softistx/graxia-mcp` emits. */
 export type McpErrorCode = (typeof MCP_ERROR_CODES)[number];
 
-declare module '@graxia/core' {
+declare module '@softistx/graxia' {
 	interface GraxiaErrorCodes {
-		/** Emitted by @graxia/mcp: the tool runs another kind of operation than the one sent (a mutation in `graphql_query`, a query in `graphql_mutate`). */
+		/** Emitted by @softistx/graxia-mcp: the tool runs another kind of operation than the one sent (a mutation in `graphql_query`, a query in `graphql_mutate`). */
 		MCP_OPERATION_NOT_ALLOWED: true;
-		/** Emitted by @graxia/mcp: `graxia.execute` ended without a GraphQL result and its response carried no error to relay (a plugin's bare `respond`, a shutdown). */
+		/** Emitted by @softistx/graxia-mcp: `graxia.execute` ended without a GraphQL result and its response carried no error to relay (a plugin's bare `respond`, a shutdown). */
 		MCP_EXECUTION_REFUSED: true;
-		/** Emitted by @graxia/mcp: a typed tool was called with an argument its input schema does not have. */
+		/** Emitted by @softistx/graxia-mcp: a typed tool was called with an argument its input schema does not have. */
 		MCP_UNKNOWN_ARGUMENT: true;
-		/** Emitted by @graxia/mcp: a 401, the request has no valid bearer token (`auth` is set). */
+		/** Emitted by @softistx/graxia-mcp: a 401, the request has no valid bearer token (`auth` is set). */
 		MCP_UNAUTHORIZED: true;
-		/** Emitted by @graxia/mcp: a 403, the token lacks the read scope, or the write scope `graphql_mutate` and the typed tools of mutations need. */
+		/** Emitted by @softistx/graxia-mcp: a 403, the token lacks the read scope, or the write scope `graphql_mutate` and the typed tools of mutations need. */
 		MCP_INSUFFICIENT_SCOPE: true;
-		/** Emitted by @graxia/mcp: a 400, the access token was sent in the query string. */
+		/** Emitted by @softistx/graxia-mcp: a 400, the access token was sent in the query string. */
 		MCP_TOKEN_IN_URL: true;
 	}
 }

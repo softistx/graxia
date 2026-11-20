@@ -1,6 +1,6 @@
-# @graxia/envelop documentation
+# @softistx/graxia-envelop documentation
 
-`@graxia/envelop` runs Envelop plugins inside graxia. The [npm page](../README.md) has the quick start; these pages go
+`@softistx/graxia-envelop` runs Envelop plugins inside graxia. The [npm page](../README.md) has the quick start; these pages go
 deeper.
 
 ## Guides

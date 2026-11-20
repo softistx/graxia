@@ -19,7 +19,7 @@ bun add @softistx/telemetry @softistx/telemetry-otlp
 ```ts
 import { createTelemetry } from '@softistx/telemetry';
 import { otlpExporter } from '@softistx/telemetry-otlp';
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const telemetry = createTelemetry('my-api', {
 	exporters: [otlpExporter({ endpoint: 'http://localhost:4318' })],

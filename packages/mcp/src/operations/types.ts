@@ -1,4 +1,4 @@
-import type { TrustedManifest } from '@graxia/core';
+import type { TrustedManifest } from '@softistx/graxia';
 import type { DocumentNode } from 'graphql';
 
 /** A JSON Schema (2020-12) node, as plain JSON. */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { useResponseCache } from '@envelop/response-cache';
-import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+import { createGraxia, createSchema, GraphQLFile } from '@softistx/graxia';
 import { fromEnvelop } from './from-envelop';
 
 const QUERY = 'query Read($f: File) { read(file: $f) }';

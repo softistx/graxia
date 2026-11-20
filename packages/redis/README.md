@@ -1,4 +1,4 @@
-# @graxia/redis
+# @softistx/graxia-redis
 
 Redis PubSub, cache and field rate limit for graxia, on [`@softistx/redis`](https://www.npmjs.com/package/@softistx/redis)
 (one shared client per URI, one reconnecting subscriber connection, server-timed rate limits) over Bun's built-in
@@ -7,13 +7,13 @@ Redis client. No ioredis or node-redis.
 ## Install
 
 ```sh
-bun add @graxia/redis @graxia/core @softistx/redis zod
+bun add @softistx/graxia-redis @softistx/graxia @softistx/redis zod
 ```
 
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`^0.24.1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
+- `@softistx/graxia` and `@softistx/redis` (`^0.24.1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
 - With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
   that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
@@ -37,8 +37,8 @@ Exports: `redisPubSub`, `redisCache`, `redisFieldLimit` and the types `RedisConn
 and `pipe` / `filter` / `map` do not change. A topic with an id is the Redis channel `<prefix>topic:id`. Subscribers in other processes receive what you publish.
 
 ```ts
-import { filter, pipe } from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+import { filter, pipe } from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 type Topics = {
 	post: [id: string, payload: { id: string; published: boolean }];
@@ -84,7 +84,7 @@ Options: `url` (`REDIS_URL`, then `redis://localhost:6379`, through `connectRedi
 queries: `trustedDocuments: { store: redisCache({ url }) }` shares registrations across processes (`url` is optional: `REDIS_URL`, then `redis://localhost:6379`, shared per URI).
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 
 const cache = redisCache({
 	url: process.env.REDIS_URL,
@@ -102,8 +102,8 @@ await cache.dispose?.(); // lets go of a shared client it opened; a `client` you
 `@softistx/redis`'s `consumeRateLimit`, timed by the Redis server (no common clock needed).
 
 ```ts
-import { fieldRateLimit } from '@graxia/core';
-import { redisFieldLimit } from '@graxia/redis';
+import { fieldRateLimit } from '@softistx/graxia';
+import { redisFieldLimit } from '@softistx/graxia-redis';
 
 fieldRateLimit({
 	fields: {

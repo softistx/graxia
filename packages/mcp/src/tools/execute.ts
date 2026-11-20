@@ -1,5 +1,5 @@
-import { GraxiaExecuteError } from '@graxia/core';
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { GraxiaExecuteError } from '@softistx/graxia';
 import { validate } from 'graphql';
 import type { McpHost } from '../options';
 import type { View } from '../view';

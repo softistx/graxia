@@ -28,10 +28,10 @@ outcome and run even when a validation rule throws.
 `KeyValueCache` contract. The store of automatic persisted queries is one (`trustedDocuments.store`, see
 [Trusted documents](./trusted-documents.md)); upcoming features (response caching) take one too,
 and your own plugins can use it today. `redisCache` from
-`@graxia/redis` implements the same contract across processes.
+`@softistx/graxia-redis` implements the same contract across processes.
 
 ```ts
-import { createMemoryCache } from '@graxia/core';
+import { createMemoryCache } from '@softistx/graxia';
 
 const cache = createMemoryCache({ maxEntries: 500 });
 await cache.set('greeting', 'hello', { ttlMs: 60_000 });
@@ -127,7 +127,7 @@ serves them (the limits are fixed per instance). A plugin's `onValidate` rules k
 
 `graxia.limits` holds the resolved `bodyBytes` and `tokens` (`tokens` is `false` when that limit is
 off), and `graxia.schema` the schema served. A layer in front of the instance, such as
-`@graxia/mcp`, reads them to enforce the same numbers instead of asking you to repeat them.
+`@softistx/graxia-mcp`, reads them to enforce the same numbers instead of asking you to repeat them.
 
 ### Cost
 

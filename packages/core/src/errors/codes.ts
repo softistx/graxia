@@ -2,7 +2,7 @@
  * The error codes `exposedError` accepts. Add your own by augmenting it:
  *
  * ```ts
- * declare module '@graxia/core' {
+ * declare module '@softistx/graxia' {
  *   interface GraxiaErrorCodes {
  *     PAYMENT_REQUIRED: true;
  *   }

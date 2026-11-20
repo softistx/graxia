@@ -1,5 +1,5 @@
-import type { Empty, GraxiaPlugin } from '@graxia/core';
-import { createGraxia, createSchema } from '@graxia/core';
+import type { Empty, GraxiaPlugin } from '@softistx/graxia';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { fromEnvelop } from './index';
 
 interface User {

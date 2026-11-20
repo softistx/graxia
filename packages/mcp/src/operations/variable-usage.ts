@@ -1,4 +1,4 @@
-import { type Constraint, constraintOf } from '@graxia/core/agent';
+import { type Constraint, constraintOf } from '@softistx/graxia/agent';
 import {
 	type DocumentNode,
 	type FragmentDefinitionNode,

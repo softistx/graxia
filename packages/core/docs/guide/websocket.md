@@ -20,7 +20,7 @@ Queries, mutations and subscriptions all run on a socket, through the same pipel
 ## Serve
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const graxia = createGraxia({ schema });
 graxia.serve({ port: 3000 }); // HTTP, SSE and ws://localhost:3000/graphql
@@ -95,7 +95,7 @@ A plugin's `onParams` also runs for every WebSocket operation, and a browser's u
 `init.connectionParams`; `undefined` over HTTP and SSE, and for a socket opened without a payload).
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 export const requireClientHeader = definePlugin()({
 	name: 'require-client-header',
@@ -199,7 +199,7 @@ operation's context of that socket, so `onExecute` and `onSubscribe` read the ho
 per-connection state in `args.contextValue`.
 
 ```ts
-import { createGraxia, definePlugin } from '@graxia/core';
+import { createGraxia, definePlugin } from '@softistx/graxia';
 import { schema } from './schema'; // your executable schema
 
 // `signal` is added by graxia per operation: do not pass it in serverContext

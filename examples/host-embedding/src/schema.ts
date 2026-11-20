@@ -1,4 +1,4 @@
-import { createSchema } from '@graxia/core';
+import { createSchema } from '@softistx/graxia';
 import type { Ctx } from './context';
 
 const sleep = (ms: number, signal: AbortSignal) =>

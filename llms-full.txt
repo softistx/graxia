@@ -1,10 +1,10 @@
 Every page of the graxia packages in full. Relative links inside a page are relative to the source path printed above it.
 
-# @graxia/core — @graxia/core
+# @softistx/graxia — @softistx/graxia
 
 Source: packages/core/README.md
 
-# @graxia/core
+# @softistx/graxia
 
 The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, with no
 adapter layer. Pass a schema, get a `fetch` handler that follows the
@@ -27,7 +27,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 ## Install
 
 ```sh
-bun add @graxia/core graphql@^17
+bun add @softistx/graxia graphql@^17
 bun add @softistx/telemetry  # optional, enables spans
 ```
 
@@ -36,7 +36,7 @@ The snippets below reuse the `graxia` and `schema` of the quick start instead of
 ## Quick start
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { hello(name: String = "world"): String }',
@@ -63,10 +63,10 @@ A plugin is a plain object with a `name` and the hooks it needs (`onRequest`, `o
 hook runs it after the stage (except `onContext` and `onResponse`, which have no
 after-hook; `onResponse` replaces the response with `setResponse`). A plugin may also declare
 `csrfExempt(request)` for its own `GET` requests (see [Security](./docs/guide/security.md)); for an
-in-browser explorer see `@graxia/graphiql`.
+in-browser explorer see `@softistx/graxia-graphiql`.
 
 ```ts
-import { createGraxia, definePlugin } from '@graxia/core';
+import { createGraxia, definePlugin } from '@softistx/graxia';
 
 const timing = definePlugin({
 	name: 'timing',
@@ -95,7 +95,7 @@ import {
 	createGraxia,
 	createSchema,
 	type InferContext,
-} from '@graxia/core';
+} from '@softistx/graxia';
 
 const context = async ({ request }: ContextInit) => ({
 	user: await authenticate(request), // { id: string } | null
@@ -126,7 +126,7 @@ Throw `exposedError` to show an error to the client; anything else is masked as
 `Unexpected error.` with a correlation id equal to the `x-request-id` header.
 
 ```ts
-import { createGraxia, createSchema, exposedError } from '@graxia/core';
+import { createGraxia, createSchema, exposedError } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { book(id: ID!): String }',
@@ -153,7 +153,7 @@ Yoga (the highest status wins, `http` is stripped from every transport); `errorH
 `createGraxia` turns it off:
 
 ```ts
-import { type ErrorHttp, exposedError } from '@graxia/core';
+import { type ErrorHttp, exposedError } from '@softistx/graxia';
 
 throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
@@ -233,7 +233,7 @@ csrf: { sameOrigin: { onRefused: () => new Response('Not found', { status: 404 }
 ```
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
-A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
+A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@softistx/graxia-graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
 **Opt-in**
 
@@ -248,7 +248,11 @@ Limit how often a client selects chosen fields, counted across aliases and fragm
 `signIn` in one request spend 3 units). Past a limit nothing executes: `429` with `Retry-After`.
 
 ```ts
-import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+import {
+	createGraxia,
+	fieldRateLimit,
+	memoryFieldLimit,
+} from '@softistx/graxia';
 
 createGraxia({
 	schema,
@@ -268,7 +272,7 @@ createGraxia({
 
 `single: true` also refuses the field selected twice in one operation (`400`,
 `FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
-proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the limit across processes. See
+proxy or with `fetch()`. Use `redisFieldLimit` from `@softistx/graxia-redis` to share the limit across processes. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
 ## Telemetry
@@ -294,7 +298,7 @@ Setup, the span tree, attributes, every option and the migration from `@opentele
 The GraphQL multipart request spec, off by default. Resolvers receive Bun's Web `File`.
 
 ```ts
-import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+import { createGraxia, createSchema, GraphQLFile } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:
@@ -364,11 +368,11 @@ needs neither passed twice, and `graxia.trustedDocuments` (`{ mode }` in force, 
 
 ## Testing client
 
-`graxia` is the instance from the quick start. `@graxia/core/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
+`graxia` is the instance from the quick start. `@softistx/graxia/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
 socket and without importing a test runner.
 
 ```ts
-import { createTestClient, expectNoErrors } from '@graxia/core/testing';
+import { createTestClient, expectNoErrors } from '@softistx/graxia/testing';
 
 const client = createTestClient(graxia, {
 	headers: { 'x-request-source': 'test' },
@@ -381,14 +385,14 @@ result.data?.hello; // 'hello world'
 
 ## Ready for agents
 
-`@graxia/core/agent` adds descriptive `@needs`, `@constraint` and `@errors` directives, prints the schema one caller may see, and lints descriptions. Every error graxia emits carries `extensions.fix`.
+`@softistx/graxia/agent` adds descriptive `@needs`, `@constraint` and `@errors` directives, prints the schema one caller may see, and lints descriptions. Every error graxia emits carries `extensions.fix`.
 
 ```ts
 import {
 	agentTypeDefs,
 	lintDescriptions,
 	printSchemaFor,
-} from '@graxia/core/agent';
+} from '@softistx/graxia/agent';
 
 // createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers })
 const sdl = printSchemaFor(schema, {
@@ -402,10 +406,10 @@ See [Ready for agents](./docs/guide/agent.md).
 ## Key-value cache
 
 `KeyValueCache` (with `CacheSetOptions`) is a small asynchronous string store; `createMemoryCache` is the
-in-process LRU implementation with a per-entry `ttlMs`. `redisCache` in `@graxia/redis` is the shared one.
+in-process LRU implementation with a per-entry `ttlMs`. `redisCache` in `@softistx/graxia-redis` is the shared one.
 
 ```ts
-import { createMemoryCache } from '@graxia/core';
+import { createMemoryCache } from '@softistx/graxia';
 
 const cache = createMemoryCache({ maxEntries: 500 });
 await cache.set('greeting', 'hello', { ttlMs: 60_000 });
@@ -417,10 +421,10 @@ See [limits and caches](./docs/guide/limits-and-caches.md).
 ## PubSub
 
 A typed in-memory PubSub for subscription resolvers. It lives in one process; for several
-instances, `redisPubSub` from `@graxia/redis` implements the same interface.
+instances, `redisPubSub` from `@softistx/graxia-redis` implements the same interface.
 
 ```ts
-import { createPubSub, createSchema } from '@graxia/core';
+import { createPubSub, createSchema } from '@softistx/graxia';
 
 const pubsub = createPubSub<{ tick: [payload: number] }>();
 
@@ -505,22 +509,22 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 ## Exports
 
-| import                 | what it is                                                                                                                                                                                                                                            |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
-|                        | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
-|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
-|                        | Errors: `exposedError`, `ErrorHttp`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                   |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
-|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
-|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
-|                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
-|                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
-|                        | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
-|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
-| `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
+| import                     | what it is                                                                                                                                                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@softistx/graxia`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
+|                            | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
+|                            | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
+|                            | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
+|                            | Errors: `exposedError`, `ErrorHttp`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                   |
+|                            | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                            | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
+|                            | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
+|                            | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
+|                            | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
+|                            | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
+|                            | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
+| `@softistx/graxia/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
+| `@softistx/graxia/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
 ## Documentation
 
@@ -530,7 +534,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Context, cancellation and shutdown](./docs/guide/context.md): `InferContext`, the resolver context, `signal`, `getContext()`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
-- [Ready for agents](./docs/guide/agent.md): `@graxia/core/agent`, directives, `printSchemaFor`, `visibleSchema`, `lintDescriptions`, the `fix` contract.
+- [Ready for agents](./docs/guide/agent.md): `@softistx/graxia/agent`, directives, `printSchemaFor`, `visibleSchema`, `lintDescriptions`, the `fix` contract.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Codegen](./docs/guide/codegen.md): graphql-codegen's `Resolvers` with `createSchema`, `contextType`, mappers, `enumValues`.
@@ -552,14 +556,14 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 MIT
 
-# @graxia/core — Ready for agents: `@graxia/core/agent`
+# @softistx/graxia — Ready for agents: `@softistx/graxia/agent`
 
 Source: packages/core/docs/guide/agent.md
 
-# Ready for agents: `@graxia/core/agent`
+# Ready for agents: `@softistx/graxia/agent`
 
 A schema an AI agent can read and act on needs four things: what each field requires, the limits of
-each input, the errors each field may return, and a `fix` on every error. `@graxia/core/agent` adds
+each input, the errors each field may return, and a `fix` on every error. `@softistx/graxia/agent` adds
 the first three as three descriptive directives, prints the schema an agent may see, and lints the
 descriptions. It is a separate subpath: the root import stays lean.
 
@@ -569,14 +573,14 @@ import {
 	lintDescriptions,
 	printSchemaFor,
 	visibleSchema,
-} from '@graxia/core/agent';
+} from '@softistx/graxia/agent';
 ```
 
 ## The directives
 
 ```ts
-import { createSchema } from '@graxia/core';
-import { agentTypeDefs } from '@graxia/core/agent';
+import { createSchema } from '@softistx/graxia';
+import { agentTypeDefs } from '@softistx/graxia/agent';
 
 const schema = createSchema()({
 	typeDefs: [
@@ -622,7 +626,7 @@ same information in `extensions` with `agentExtensions`:
 
 ```ts
 import { GraphQLString } from 'graphql';
-import { agentExtensions } from '@graxia/core/agent';
+import { agentExtensions } from '@softistx/graxia/agent';
 
 const field = {
 	type: GraphQLString,
@@ -636,7 +640,7 @@ const field = {
 ## Reading them
 
 ```ts
-import { constraintOf, errorsOf, needsOf } from '@graxia/core/agent';
+import { constraintOf, errorsOf, needsOf } from '@softistx/graxia/agent';
 
 needsOf(fieldOrType); // [['members:read']]: AND of any-of groups; [['a'], ['b', 'c']] is a AND (b OR c)
 constraintOf(argOrInputField); // { minLength: 2, maxLength: 80 } or undefined
@@ -657,7 +661,7 @@ const sdl = printSchemaFor(schema, {
 });
 ```
 
-`can` is typed `Can`, exported from `@graxia/core/agent`: `(permission: string) => boolean`.
+`can` is typed `Can`, exported from `@softistx/graxia/agent`: `(permission: string) => boolean`.
 
 - A field or type whose `@needs` fails is removed. A type left without fields is removed, and so is
   every field that returns it, until nothing changes. A union loses removed members and goes when none is left.
@@ -678,7 +682,7 @@ const sdl = printSchemaFor(schema, {
 
 ```ts
 import { expect, test } from 'bun:test';
-import { lintDescriptions } from '@graxia/core/agent';
+import { lintDescriptions } from '@softistx/graxia/agent';
 import { schema } from './schema';
 
 const knownErrorCodes = ['BAD_USER_INPUT', 'CONFLICT', 'NOT_FOUND'];
@@ -710,7 +714,7 @@ the same in development and in production. The full contract, which errors are s
 never touched, is in [Errors](./errors.md#the-fix-contract). Errors you create with `exposedError`
 carry the `fix` you give them; write one, so an agent can recover.
 
-# @graxia/core — Codegen
+# @softistx/graxia — Codegen
 
 Source: packages/core/docs/guide/codegen.md
 
@@ -737,7 +741,7 @@ context is never declared twice:
 
 ```ts
 // src/context.ts
-import { type ContextInit, type InferContext } from '@graxia/core';
+import { type ContextInit, type InferContext } from '@softistx/graxia';
 
 export const plugins = [
 	/* your plugins */
@@ -777,7 +781,7 @@ export default config;
 ## Passing `Resolvers` to `createSchema`
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { context, plugins, type AppContext } from './context';
 import type { Resolvers } from './generated';
 
@@ -824,7 +828,7 @@ functions annotated with a different context are refused by the generated types 
 | `makeExecutableSchema({ typeDefs, resolvers })` | `createSchema<Ctx, Resolvers>()({ typeDefs, resolvers })` |
 | `context` factory in `createYoga`               | `context` option of `createGraxia`                        |
 
-# @graxia/core — Context, cancellation and shutdown
+# @softistx/graxia — Context, cancellation and shutdown
 
 Source: packages/core/docs/guide/context.md
 
@@ -858,7 +862,7 @@ import {
 	createSchema,
 	definePlugin,
 	type InferContext,
-} from '@graxia/core';
+} from '@softistx/graxia';
 
 const tenant = definePlugin({
 	name: 'tenant',
@@ -1000,7 +1004,7 @@ shortcut. Inside an operation, `getContext()` returns the same object the resolv
 loggers need no extra parameter. It is backed by `AsyncLocalStorage` (`node:async_hooks`).
 
 ```ts
-import { getContext, tryGetContext } from '@graxia/core';
+import { getContext, tryGetContext } from '@softistx/graxia';
 
 export function currentUser(): string | undefined {
 	return getContext<Ctx>().user?.id;
@@ -1071,7 +1075,7 @@ const db = definePlugin({
 });
 ```
 
-# @graxia/core — Errors
+# @softistx/graxia — Errors
 
 Source: packages/core/docs/guide/errors.md
 
@@ -1085,7 +1089,7 @@ Masking is always on, in every environment.
 ## Exposed errors
 
 ```ts
-import { exposedError } from '@graxia/core';
+import { exposedError } from '@softistx/graxia';
 
 const resolvers = {
 	Query: {
@@ -1135,7 +1139,7 @@ its errors (the `ErrorHttp` type: `status`, `headers`, `spec`). `http` is remove
 serialized extensions of every transport.
 
 ```ts
-import { type ErrorHttp, exposedError } from '@graxia/core';
+import { type ErrorHttp, exposedError } from '@softistx/graxia';
 
 throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
@@ -1200,7 +1204,7 @@ compile. Add your own by augmenting the interface:
 
 ```ts
 // graxia.d.ts
-declare module '@graxia/core' {
+declare module '@softistx/graxia' {
 	interface GraxiaErrorCodes {
 		PAYMENT_REQUIRED: true;
 	}
@@ -1320,7 +1324,7 @@ payload, stays as you wrote it. A validation rule's own `code` and extensions ar
 added. Errors of a plugin's own executor (a replaced `executeFn`) are the plugin's. See
 [Ready for agents](./agent.md) for how an agent reads them, and `lintDescriptions` for the `@errors` codes.
 
-# @graxia/core — GraphQL over HTTP
+# @softistx/graxia — GraphQL over HTTP
 
 Source: packages/core/docs/guide/http.md
 
@@ -1331,7 +1335,7 @@ on Bun. It passes every MUST and SHOULD of the `graphql-http` server audits (61 
 a real `Bun.serve` in this package's specs).
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { hello: String }',
@@ -1551,7 +1555,7 @@ trusted nor echoed, so an invalid or hostile header changes nothing. Plugins rea
 `getRequestId(state)`; they cannot set it.
 
 ```ts
-import { getRequestId } from '@graxia/core';
+import { getRequestId } from '@softistx/graxia';
 
 const log = definePlugin({
 	name: 'log',
@@ -1559,7 +1563,7 @@ const log = definePlugin({
 });
 ```
 
-# @graxia/core — `@defer` and `@stream`
+# @softistx/graxia — `@defer` and `@stream`
 
 Source: packages/core/docs/guide/incremental.md
 
@@ -1570,7 +1574,7 @@ Incremental delivery sends the parts of a result as they become ready: a query w
 default for queries and mutations, over `multipart/mixed` and over server-sent events.
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:
@@ -1702,7 +1706,7 @@ socket with 1001 and ends every operation on it.
   `INCREMENTAL_NOT_SUPPORTED`.
 - Not in a batch.
 
-# @graxia/core — Limits and caches
+# @softistx/graxia — Limits and caches
 
 Source: packages/core/docs/guide/limits-and-caches.md
 
@@ -1736,10 +1740,10 @@ outcome and run even when a validation rule throws.
 `KeyValueCache` contract. The store of automatic persisted queries is one (`trustedDocuments.store`, see
 [Trusted documents](./trusted-documents.md)); upcoming features (response caching) take one too,
 and your own plugins can use it today. `redisCache` from
-`@graxia/redis` implements the same contract across processes.
+`@softistx/graxia-redis` implements the same contract across processes.
 
 ```ts
-import { createMemoryCache } from '@graxia/core';
+import { createMemoryCache } from '@softistx/graxia';
 
 const cache = createMemoryCache({ maxEntries: 500 });
 await cache.set('greeting', 'hello', { ttlMs: 60_000 });
@@ -1835,7 +1839,7 @@ serves them (the limits are fixed per instance). A plugin's `onValidate` rules k
 
 `graxia.limits` holds the resolved `bodyBytes` and `tokens` (`tokens` is `false` when that limit is
 off), and `graxia.schema` the schema served. A layer in front of the instance, such as
-`@graxia/mcp`, reads them to enforce the same numbers instead of asking you to repeat them.
+`@softistx/graxia-mcp`, reads them to enforce the same numbers instead of asking you to repeat them.
 
 ### Cost
 
@@ -1935,13 +1939,13 @@ Validation errors are graphql's own, each with `extensions.code = 'GRAPHQL_VALID
   function, or when the document did not come from a source string.
 - `setDocument` skips parsing and `setResult` skips validation.
 
-# @graxia/core — Migrating from `@alxia/graphql`
+# @softistx/graxia — Migrating from `@alxia/graphql`
 
 Source: packages/core/docs/guide/migrating-from-alxia-graphql.md
 
 # Migrating from `@alxia/graphql`
 
-`@alxia/graphql` mounts GraphQL Yoga on an alxia app. `@graxia/core` is its replacement for a host
+`@alxia/graphql` mounts GraphQL Yoga on an alxia app. `@softistx/graxia` is its replacement for a host
 that owns `Bun.serve` (or any `fetch` router): the same protections and transports, on graphql 17,
 with no engine underneath that the host does not see. This page maps each option and says where
 graxia does something different on purpose. A runnable host is in
@@ -1955,7 +1959,7 @@ last section proves each line with a spec.
 
 ```sh
 bun remove @alxia/graphql graphql-yoga graphql-ws
-bun add @graxia/core graphql@^17.1.0
+bun add @softistx/graxia graphql@^17.1.0
 ```
 
 ## Mounting
@@ -1971,7 +1975,7 @@ const app = alxia().plugin((app) =>
 After, the host builds the instance once and calls it from its own route. One import, one call:
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const graxia = createGraxia({ schema, path: '/api/gql' });
 
@@ -1991,7 +1995,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 
 ## Options
 
-| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                                                                                   |
+| `@alxia/graphql`                       | `@softistx/graxia`                                                                                                                                                                                               |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `path`                                 | `path` (the full path, or `false` for any path)                                                                                                                                                                  |
 | `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                                                                              |
@@ -2000,15 +2004,15 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                                                                              |
 | `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                                                                          |
 | `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0`                                                         |
-| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                             |
-| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                                                                         |
+| `ide`, `graphiql`, `sandbox`           | the [`@softistx/graxia-graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                    |
+| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@softistx/graxia-envelop`                                                                                                |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                                                                                |
 | Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                                                                                     |
 | `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                                                                                       |
 | `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                                                                                      |
-| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                                                                         |
+| `fieldRateLimit`, `limitFromStore`     | the same names from `@softistx/graxia` ([Rate limiting](./rate-limiting.md))                                                                                                                                     |
 | `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin, onRefused } }`; alxia's `refuse` becomes `onRefused(request, { reason, websocket })` ([Security](./security.md#answering-a-refused-origin-yourself)) |
-| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                                                                                   |
+| `createTestClient`                     | `createTestClient` from `@softistx/graxia/testing`                                                                                                                                                               |
 | `cors`                                 | none, see [CORS](#cors)                                                                                                                                                                                          |
 | `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                                                                            |
 
@@ -2102,7 +2106,7 @@ its status. Unexpected failures go to `onUnexpected` (`console.error` by default
 
 ## Explorer
 
-`ide`, `graphiql` and `sandbox` are replaced by the `@graxia/graphiql` plugin: `graphiql()` is on in
+`ide`, `graphiql` and `sandbox` are replaced by the `@softistx/graxia-graphiql` plugin: `graphiql()` is on in
 development and off in production, with a CSP that names no external source. Apollo Sandbox is the
 `apolloSandbox()` plugin, and `sandboxContentSecurityPolicy` is the exact policy it needs. There is
 no `renderSandbox` hook: pass the plugin.
@@ -2121,7 +2125,7 @@ the headers added to the response). The example's `cors.ts` is a working one.
 
 Nothing to install beyond `graphql`: the WebSocket protocol is implemented in the package (remove
 `graphql-ws` and `graphql-yoga`), and `@softistx/telemetry` is an optional peer, a no-op without it.
-`@graxia/graphiql` and `@graxia/envelop` are their own packages, installed when used.
+`@softistx/graxia-graphiql` and `@softistx/graxia-envelop` are their own packages, installed when used.
 
 ## Refusal codes
 
@@ -2168,7 +2172,7 @@ expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
 `@alxia/graphql` up to 0.16 (on Yoga) answered this status. Like GraphQL Yoga, graxia reads the `extensions.http` of the GraphQL errors of a single operation answered as plain JSON (`application/json` or `application/graphql-response+json`).
 
 ```ts
-import { type ErrorHttp } from '@graxia/core';
+import { type ErrorHttp } from '@softistx/graxia';
 
 throw new GraphQLError('Email taken.', {
 	extensions: {
@@ -2238,7 +2242,48 @@ no section above. `same` means the behaviour is kept; the others link to their s
 | 34  | `extensions.http` status and headers on errors                                                     | differs: [Status and headers from errors](#status-and-headers-from-errors) |
 | 35  | A subscription refused before its stream opens keeps its stream, with its `extensions.http` status | differs: [Status and headers from errors](#status-and-headers-from-errors) |
 
-# @graxia/core — Plugins
+# @softistx/graxia — Migrating from the `@graxia` scope
+
+Source: packages/core/docs/guide/migrating-from-graxia-scope.md
+
+# Migrating from the `@graxia` scope
+
+The graxia packages moved to the `@softistx` scope. The code and the API are unchanged; only the
+package names differ. The versions continue from the current ones (`@softistx/graxia` starts at 0.15.0).
+
+| Old name           | New name                    |
+| ------------------ | --------------------------- |
+| `@graxia/core`     | `@softistx/graxia`          |
+| `@graxia/envelop`  | `@softistx/graxia-envelop`  |
+| `@graxia/graphiql` | `@softistx/graxia-graphiql` |
+| `@graxia/mcp`      | `@softistx/graxia-mcp`      |
+| `@graxia/redis`    | `@softistx/graxia-redis`    |
+
+Subpaths keep their name: `@graxia/core/agent` is now `@softistx/graxia/agent`, and
+`@graxia/core/testing` is `@softistx/graxia/testing`.
+
+## Codemod
+
+From your project root, this rewrites the imports and every `package.json` (macOS `sed`; on GNU
+`sed` use `-i` without the empty string):
+
+```sh
+rg -l '@graxia/' --glob '!node_modules' --glob '!bun.lock' \
+  | xargs sed -i '' -E 's#@graxia/core#@softistx/graxia#g; s#@graxia/(envelop|graphiql|mcp|redis)#@softistx/graxia-\1#g'
+bun install
+```
+
+Review the diff, then reinstall so the lockfile follows. An error message that names a package
+(for example a missing peer) now prints the new name.
+
+## The old names are deprecated
+
+`@graxia/*` receives no further releases. Once the new names are published, each old package is
+deprecated on npm with the message `moved to <new name>`, so an install of the old name prints a
+warning. Nothing is unpublished: existing installs keep working. The deprecation is made by the
+publish workflow (`scripts/deprecate-moved.ts`), idempotently, and only after the replacement is on npm.
+
+# @softistx/graxia — Plugins
 
 Source: packages/core/docs/guide/plugins.md
 
@@ -2247,7 +2292,7 @@ Source: packages/core/docs/guide/plugins.md
 A plugin is a plain object with a `name` and the hooks it needs. `definePlugin` types it.
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 export const timing = definePlugin({
 	name: 'timing',
@@ -2394,7 +2439,7 @@ over a WebSocket, `connectionParams`. `onExecute` sees it too, through `args.con
 `onValidate` ties a document that fails validation to its socket, which `onExecute` never sees.
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 // graxia.upgrade(request, server, { socketId: crypto.randomUUID() })
 export const invalidDocuments = definePlugin()({
@@ -2438,7 +2483,7 @@ the sequence stops there (later plugins do not run `setup`), `graxia.ready` reje
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
 `setup` receives `{ plugins, transports, schema }`: `schema` is the instance's `GraphQLSchema` (so a plugin can
-read it once, at boot, as `@graxia/envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
+read it once, at boot, as `@softistx/graxia-envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
 `transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
 instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
 that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.
@@ -2458,7 +2503,7 @@ one request shares. Two keys with the same name are distinct. The request's id i
 `getRequestId(state)`.
 
 ```ts
-import { createStateKey, definePlugin } from '@graxia/core';
+import { createStateKey, definePlugin } from '@softistx/graxia';
 
 export const userKey = createStateKey<{ id: string }>('user');
 
@@ -2483,7 +2528,7 @@ writes.
 reaches `onExecute` and `onSubscribe`, and `ContextOf` folds a list of plugins.
 
 ```ts
-import { type ContextOf, definePlugin } from '@graxia/core';
+import { type ContextOf, definePlugin } from '@softistx/graxia';
 
 const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',
@@ -2513,7 +2558,7 @@ provides with another type, is a compile error that names the plugin and the fie
 one (`{ db?: string }`) may be absent.
 
 ```ts
-import { type ContextInit, createGraxia, definePlugin } from '@graxia/core';
+import { type ContextInit, createGraxia, definePlugin } from '@softistx/graxia';
 
 const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',
@@ -2550,7 +2595,7 @@ createGraxia<{}>()({ schema, plugins: [auth] }); // error: plugin "auth" needs c
 A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
 Like the schema check, it stops with TS2589 at about 50 chained plugins.
 
-# @graxia/core — Production
+# @softistx/graxia — Production
 
 Source: packages/core/docs/guide/production.md
 
@@ -2593,7 +2638,7 @@ production, always give it.
 ## A recommended configuration
 
 One instance with trusted documents, a rate limit shared across instances, Redis for the
-PubSub, telemetry and an error logger. It needs `@graxia/redis`, `@softistx/telemetry` and an
+PubSub, telemetry and an error logger. It needs `@softistx/graxia-redis`, `@softistx/telemetry` and an
 exporter such as `@softistx/telemetry-otlp` (see [Telemetry](./telemetry.md#setup)).
 
 ```ts
@@ -2603,8 +2648,8 @@ import {
 	createSchema,
 	fieldRateLimit,
 	type PubSub,
-} from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+} from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 import { redisLimit } from './redis-limit'; // the adapter of Rate limiting, "Stores"
 
 type Topics = { tick: [payload: { n: number }] };
@@ -2687,7 +2732,7 @@ holds what must be shared: the PubSub above and, if you run `mixed` mode with AP
 endpoint, the registered queries:
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 
 export const apqStore = redisCache({ prefix: 'graxia:pq:' });
 // createGraxia({ schema, trustedDocuments: { mode: 'mixed', store: apqStore } })
@@ -2801,7 +2846,7 @@ const server = Bun.serve({
 - [ ] `SIGTERM` drains: start a subscription, send the signal, see it complete.
 - [ ] Probes answer, and the orchestrator's grace period exceeds twice `shutdownTimeout`.
 
-# @graxia/core — PubSub
+# @softistx/graxia — PubSub
 
 Source: packages/core/docs/guide/pubsub.md
 
@@ -2819,7 +2864,7 @@ A topic map gives each topic its publish arguments: `[payload]`, or `[id, payloa
 scoped by an id (a post, a room, a user). `[]` is a signal without data.
 
 ```ts
-import { createPubSub } from '@graxia/core';
+import { createPubSub } from '@softistx/graxia';
 
 type Post = { id: string; published: boolean };
 const pubsub = createPubSub<{
@@ -2863,7 +2908,7 @@ away. A throw in a predicate or a mapper returns the source, then rejects. A typ
 the element type.
 
 ```ts
-import { filter, map, pipe } from '@graxia/core';
+import { filter, map, pipe } from '@softistx/graxia';
 
 subscribe: (_: unknown, { id }: { id: string }) =>
 	pipe(
@@ -2907,9 +2952,9 @@ const pubsub = createPubSub<Topics>({
 
 | You write                                                            | In graxia                                                             |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, from `@graxia/core` (options differ, see below)        |
+| Yoga `createPubSub<{ post: [id: string, payload: Post] }>()`         | the same line, from `@softistx/graxia` (options differ, see below)    |
 | Yoga `pubsub.subscribe('post', id)`, `publish('post', id, p)`        | same names, arguments and typing                                      |
-| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | same names and typing, from `@graxia/core`                            |
+| Yoga `pipe`, `filter`, `map` (`graphql-yoga`)                        | same names and typing, from `@softistx/graxia`                        |
 | Apollo `graphql-subscriptions` `pubsub.asyncIterableIterator(['A'])` | `pubsub.subscribe('A')`                                               |
 | Apollo `pubsub.publish('A', { a: payload })`                         | `pubsub.publish('A', payload)`, the payload is not wrapped in a field |
 
@@ -2945,11 +2990,11 @@ The same shape, not the same package. The real differences from Yoga:
 ## Several processes
 
 The memory PubSub only reaches subscribers in the same process. For several instances, swap it
-for `redisPubSub` from [`@graxia/redis`](https://www.npmjs.com/package/@graxia/redis): it implements the same `PubSub`
+for `redisPubSub` from [`@softistx/graxia-redis`](https://www.npmjs.com/package/@softistx/graxia-redis): it implements the same `PubSub`
 interface on `@softistx/redis` (a topic with an id is the channel `topic:id`), so resolvers do not change.
 
 ```ts
-import { redisPubSub } from '@graxia/redis';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
 ```
@@ -2959,7 +3004,7 @@ const pubsub = redisPubSub<Topics>({ url: process.env.REDIS_URL });
 `await pubsub.dispose()` ends every open iterator, makes later `subscribe()` calls return a
 finished iterator and turns `publish()` into a no-op.
 
-# @graxia/core — Rate limiting fields
+# @softistx/graxia — Rate limiting fields
 
 Source: packages/core/docs/guide/rate-limiting.md
 
@@ -2986,7 +3031,11 @@ spends 3 units on `signIn`, whatever the aliases and fragments around it.
 ## Quick start
 
 ```ts
-import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+import {
+	createGraxia,
+	fieldRateLimit,
+	memoryFieldLimit,
+} from '@softistx/graxia';
 
 const graxia = createGraxia({
 	schema,
@@ -3082,14 +3131,14 @@ Put `request` in the context (`context: ({ request }) => ({ request })`) or use 
   `limit` can never pass: it is one call, refused, with that call's `retryAfter` (or `windowMs`
   when the call allowed). The policy
   comes from `store.policy`, from `policy`, or both when they agree.
-- `redisFieldLimit({ url, limit, windowMs })` from `@graxia/redis`: shared state across servers, a GCRA bucket
+- `redisFieldLimit({ url, limit, windowMs })` from `@softistx/graxia-redis`: shared state across servers, a GCRA bucket
   timed by the Redis server, failing open when Redis is down. See the
   [Redis guide](https://github.com/softistx/graxia/blob/develop/packages/redis/docs/guide/redis.md#field-rate-limit). Or your own `{ consume }`: any object that
   answers `{ allowed, retryAfter }` for a key and a cost is a `FieldLimit`.
 
 ```ts
-import { fieldRateLimit } from '@graxia/core';
-import { redisFieldLimit } from '@graxia/redis';
+import { fieldRateLimit } from '@softistx/graxia';
+import { redisFieldLimit } from '@softistx/graxia-redis';
 
 fieldRateLimit({
 	fields: {
@@ -3129,7 +3178,7 @@ so a plugin that swaps the executor later cannot skip the count. List it first a
 plugins. Rate limiting every request, not only fields, belongs in front of graxia (a proxy or
 gateway).
 
-# @graxia/core — Schema
+# @softistx/graxia — Schema
 
 Source: packages/core/docs/guide/schema.md
 
@@ -3145,7 +3194,7 @@ through graxia, call `experimentalExecuteIncrementally`, or build it with
 `createSchema()({ typeDefs, resolvers, incremental: false })` (no `@defer`, no incremental queries).
 
 ```ts
-import { createSchema } from '@graxia/core';
+import { createSchema } from '@softistx/graxia';
 
 type AppContext = { user: { name: string } };
 
@@ -3228,7 +3277,7 @@ Every failure is a `GraxiaConfigError` (`code: "GRAXIA_CONFIG"`): invalid SDL (t
 `cause`), an invalid schema (for example no `Query` type), a duplicate or unknown resolver, a resolver
 map given for a scalar that is not a `GraphQLScalarType`, or an enum value the enum lacks.
 
-# @graxia/core — Security: CSRF, origins, introspection
+# @softistx/graxia — Security: CSRF, origins, introspection
 
 Source: packages/core/docs/guide/security.md
 
@@ -3287,7 +3336,7 @@ createClient({ url, fetchOptions: { headers: { 'x-graphql-csrf': '1' } } });
 
 A plugin may declare `csrfExempt(request: Request): boolean` for the few `GET` requests it serves
 itself and a browser cannot send with a custom header: a page opened by navigation, or the
-`<script>` and `<link>` it loads (the GraphiQL page of `@graxia/graphiql` is the case).
+`<script>` and `<link>` it loads (the GraphiQL page of `@softistx/graxia-graphiql` is the case).
 
 - Core consults it for `GET` only, and only for the CSRF **header** check. The `Origin` check
   (`csrf.sameOrigin`), the path check and the method check still apply.
@@ -3407,7 +3456,7 @@ When `NODE_ENV` is unset both default to on, so set `NODE_ENV=production` (or
 `NODE_ENV` is read once, when `createGraxia` runs. Set `introspection: true` or
 `suggestions: true` to keep them in production.
 
-# @graxia/core — Subscriptions over server-sent events
+# @softistx/graxia — Subscriptions over server-sent events
 
 Source: packages/core/docs/guide/subscriptions.md
 
@@ -3428,7 +3477,7 @@ stream, for any operation type:
 | subscription    | one `next` per event, then `complete` at the end |
 
 ```ts
-import { createGraxia, createPubSub, createSchema } from '@graxia/core';
+import { createGraxia, createPubSub, createSchema } from '@softistx/graxia';
 
 const pubsub = createPubSub<{ tick: [payload: number] }>();
 const schema = createSchema<{ signal: AbortSignal }>()({
@@ -3568,7 +3617,7 @@ The call is a safeguard: in Bun 1.4.4 a probe of a silent streaming response was
 `idleTimeout` either way, but the documented default may apply on other versions or transports. Keep
 `sse.keepAliveMs` under the idle timeout of any proxy in front of the server.
 
-# @graxia/core — Telemetry
+# @softistx/graxia — Telemetry
 
 Source: packages/core/docs/guide/telemetry.md
 
@@ -3593,7 +3642,7 @@ bun add @softistx/telemetry @softistx/telemetry-otlp
 ```ts
 import { createTelemetry } from '@softistx/telemetry';
 import { otlpExporter } from '@softistx/telemetry-otlp';
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const telemetry = createTelemetry('my-api', {
 	exporters: [otlpExporter({ endpoint: 'http://localhost:4318' })],
@@ -3798,19 +3847,19 @@ unchanged. Differences:
 An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).
 
-# @graxia/core — Testing
+# @softistx/graxia — Testing
 
 Source: packages/core/docs/guide/testing.md
 
 # Testing
 
-Two tools, no socket: `graxia.execute` runs an operation in process, and `@graxia/core/testing`
+Two tools, no socket: `graxia.execute` runs an operation in process, and `@softistx/graxia/testing`
 talks to `graxia.fetch` with real HTTP semantics. Neither imports `bun:test`; use any runner.
 
 The examples share this setup:
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:
@@ -3873,7 +3922,7 @@ is the string form codegen's `documentMode: string` emits. No dependency is adde
 the variables are inferred, and wrong variables fail to compile:
 
 ```ts
-import type { TypedDocument } from '@graxia/core';
+import type { TypedDocument } from '@softistx/graxia';
 import { parse } from 'graphql';
 
 const Greet = parse(
@@ -3921,7 +3970,7 @@ if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
   `cause`, never in the response), or the instance was disposed (503, `SHUTTING_DOWN`).
 
 ```ts
-import { GraxiaExecuteError } from '@graxia/core';
+import { GraxiaExecuteError } from '@softistx/graxia';
 
 try {
 	await graxia.execute({ document: '{ hello }' });
@@ -3937,7 +3986,7 @@ try {
 `graxia.fetch`, so status codes, negotiation, GET encoding and batching behave as over HTTP.
 
 ```ts
-import { createTestClient, expectNoErrors } from '@graxia/core/testing';
+import { createTestClient, expectNoErrors } from '@softistx/graxia/testing';
 
 const client = createTestClient(graxia, { headers: { 'x-tenant': 'acme' } });
 
@@ -4013,7 +4062,7 @@ const { results } = await batched.batch([
 
 Without batching the answer is a 400 and `results` is empty.
 
-# @graxia/core — Trusted documents and persisted queries
+# @softistx/graxia — Trusted documents and persisted queries
 
 Source: packages/core/docs/guide/trusted-documents.md
 
@@ -4025,7 +4074,7 @@ expensive or probing query, and clients send a short id instead of the text. Aut
 queries (APQ) are the friendlier cousin for development and for clients with no build step.
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 import manifest from './persisted-documents.json';
 
 const graxia = createGraxia({
@@ -4182,10 +4231,10 @@ The answers keep the status of any other error before execution: 200 for `applic
 for `application/graphql-response+json`. Both carry the errors in the body, which is what the
 clients read to retry.
 
-Use `redisCache()` from `@graxia/redis` as the store so every process sees the registrations:
+Use `redisCache()` from `@softistx/graxia-redis` as the store so every process sees the registrations:
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 createGraxia({
 	schema,
 	trustedDocuments: {
@@ -4221,7 +4270,7 @@ default follows `NODE_ENV`; set `mode` to pin it.
 `graxia.trustedDocuments` is `{ mode }` with the mode in force (the `NODE_ENV` default applied), or
 `undefined` without the option. `graxia.execute` is your own code calling in process, so it runs a
 document in any mode; a layer that forwards documents from its clients to `execute` (as
-`@graxia/mcp` does) reads the mode and refuses them in `strict`.
+`@softistx/graxia-mcp` does) reads the mode and refuses them in `strict`.
 
 ## Error codes
 
@@ -4237,17 +4286,17 @@ document in any mode; a layer that forwards documents from its clients to `execu
 
 See [Troubleshooting](../troubleshooting.md) for each message and the configuration errors.
 
-# @graxia/core — File uploads
+# @softistx/graxia — File uploads
 
 Source: packages/core/docs/guide/uploads.md
 
 # File uploads
 
-`@graxia/core` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
+`@softistx/graxia` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
 (`operations`, `map`, one part per file). It is off by default.
 
 ```ts
-import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+import { createGraxia, createSchema, GraphQLFile } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: `
@@ -4378,7 +4427,7 @@ const response = await graxia.fetch(
 
 See [Troubleshooting: file uploads](../troubleshooting-uploads.md) for each message.
 
-# @graxia/core — Subscriptions over WebSocket
+# @softistx/graxia — Subscriptions over WebSocket
 
 Source: packages/core/docs/guide/websocket.md
 
@@ -4404,7 +4453,7 @@ Queries, mutations and subscriptions all run on a socket, through the same pipel
 ## Serve
 
 ```ts
-import { createGraxia } from '@graxia/core';
+import { createGraxia } from '@softistx/graxia';
 
 const graxia = createGraxia({ schema });
 graxia.serve({ port: 3000 }); // HTTP, SSE and ws://localhost:3000/graphql
@@ -4479,7 +4528,7 @@ A plugin's `onParams` also runs for every WebSocket operation, and a browser's u
 `init.connectionParams`; `undefined` over HTTP and SSE, and for a socket opened without a payload).
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 export const requireClientHeader = definePlugin()({
 	name: 'require-client-header',
@@ -4583,7 +4632,7 @@ operation's context of that socket, so `onExecute` and `onSubscribe` read the ho
 per-connection state in `args.contextValue`.
 
 ```ts
-import { createGraxia, definePlugin } from '@graxia/core';
+import { createGraxia, definePlugin } from '@softistx/graxia';
 import { schema } from './schema'; // your executable schema
 
 // `signal` is added by graxia per operation: do not pass it in serverContext
@@ -4667,7 +4716,7 @@ subscription's source iterator after it has yielded ends the operation with a la
 `errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported.
 The last `next` (`errors`, no `data`) goes through `onResultChunk` first, like over SSE.
 
-# @graxia/core — Troubleshooting: HTTP, execute and testing
+# @softistx/graxia — Troubleshooting: HTTP, execute and testing
 
 Source: packages/core/docs/troubleshooting-http.md
 
@@ -4745,7 +4794,7 @@ to a string) before calling `execute`.
 
 ## persisted: true needs a document; pass { sha256Hash } to send a hash alone
 
-Thrown by the `@graxia/core/testing` client: `persisted: true` computes the hash from the document,
+Thrown by the `@softistx/graxia/testing` client: `persisted: true` computes the hash from the document,
 so the document cannot be `null`.
 
 ```ts
@@ -4821,7 +4870,7 @@ cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
 Every request-level refusal (413, 415, 400, 404, 405, 406) has a stable `extensions.code`: see
 [Refusal codes](./guide/http.md#refusal-codes). Match on the code, not on the message.
 
-# @graxia/core — Troubleshooting: request limits
+# @softistx/graxia — Troubleshooting: request limits
 
 Source: packages/core/docs/troubleshooting-limits.md
 
@@ -4963,7 +5012,7 @@ createGraxia({ schema, limits: { bodyBytes: 1_000_000 } });
 createGraxia({ schema, batching: true }); // or { limit: 25 }
 ```
 
-# @graxia/core — Troubleshooting: plugins and context
+# @softistx/graxia — Troubleshooting: plugins and context
 
 Source: packages/core/docs/troubleshooting-plugins.md
 
@@ -5021,7 +5070,7 @@ createGraxia<{ request: Request }>()({ schema, plugins: [auth] });
 
 A field provided with another type reads `… needs context.db, which the context provides as another
 type`. An optional field (`{ db?: string }`) may be absent. Before this check (a minor of
-`@graxia/core`), such a call compiled and either failed at runtime or worked only through an untyped
+`@softistx/graxia`), such a call compiled and either failed at runtime or worked only through an untyped
 `serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; write `createGraxia<Host>()({ ... })` instead. See
 [Plugins](./guide/plugins.md#typed-context).
 
@@ -5123,7 +5172,7 @@ form `createGraxia<Host>()({ … })`), not a server. Pass the options in the sec
 is not `false`. Call it from a resolver, leave `asyncContext` on, or read the resolver's context
 argument. See [Context](./guide/context.md).
 
-# @graxia/core — Troubleshooting: rate limits and telemetry
+# @softistx/graxia — Troubleshooting: rate limits and telemetry
 
 Source: packages/core/docs/troubleshooting-rate-limits.md
 
@@ -5214,7 +5263,7 @@ Use `resolverSpans: true`, or `resolverSpans: { trivial: true }` to include fiel
 
 The server answers but your backend shows nothing. In order:
 
-1. `@softistx/telemetry` is not installed next to `@graxia/core`. It is an optional peer: graxia
+1. `@softistx/telemetry` is not installed next to `@softistx/graxia`. It is an optional peer: graxia
    traces nothing without it. `bun add @softistx/telemetry`.
 2. No telemetry is installed or passed. Without one, spans are detached and nothing is emitted:
    call `createTelemetry(...).install()` (or pass `telemetry: { instance }`) with an exporter, such
@@ -5234,7 +5283,7 @@ your span inside that same telemetry (`withTelemetry(instance, ...)` is already 
 resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
 appear".
 
-# @graxia/core — Troubleshooting: schema and resolvers
+# @softistx/graxia — Troubleshooting: schema and resolvers
 
 Source: packages/core/docs/troubleshooting-schema.md
 
@@ -5245,7 +5294,7 @@ Schema directives, `createSchema` and resolver-map errors, headed by the message
 ## Unknown directive "@needs" (or "@constraint", "@errors")
 
 `createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
-`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
+`agentTypeDefs` from `@softistx/graxia/agent` to `typeDefs`, or pass `agentDirectives` to a schema
 built in code.
 
 ```ts
@@ -5364,7 +5413,7 @@ starting with `__` are reserved by GraphQL).
 A field's resolver is a function, or an object with `resolve` and/or `subscribe` functions. Anything
 else (a value, `null`) is refused. For a constant, write `() => value`.
 
-# @graxia/core — Troubleshooting: security
+# @softistx/graxia — Troubleshooting: security
 
 Source: packages/core/docs/troubleshooting-security.md
 
@@ -5548,7 +5597,7 @@ Only version 1 of `apollo-persisted-query-manifest` is read.
 
 The Apollo manifest has no `operations` list, or an entry is not an object.
 
-# @graxia/core — Troubleshooting: subscriptions and incremental delivery
+# @softistx/graxia — Troubleshooting: subscriptions and incremental delivery
 
 Source: packages/core/docs/troubleshooting-subscriptions.md
 
@@ -5758,7 +5807,7 @@ Bun.serve({ fetch: (request, server) => graxia.fetch(request, { server }) });
 
 Keep `subscriptions.sse.keepAliveMs` below the idle timeout of any proxy in front of the server.
 
-# @graxia/core — Troubleshooting: file uploads
+# @softistx/graxia — Troubleshooting: file uploads
 
 Source: packages/core/docs/troubleshooting-uploads.md
 
@@ -5873,7 +5922,7 @@ The reverse, `File part "1" is not in "map".`, is the same mistake: every file p
 `GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or a
 literal was written in the document. Send the file as a multipart part.
 
-# @graxia/core — Troubleshooting
+# @softistx/graxia — Troubleshooting
 
 Source: packages/core/docs/troubleshooting.md
 
@@ -5891,17 +5940,17 @@ The errors a consumer can hit, headed by the message as it appears. Find the top
 - [Telling refusals apart](./troubleshooting-http.md#telling-refusals-apart): every request-level refusal (413, 415, 400, 404, 405, 406) carries a stable `extensions.code`.
 - [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.
 
-# @graxia/envelop — @graxia/envelop
+# @softistx/graxia-envelop — @softistx/graxia-envelop
 
 Source: packages/envelop/README.md
 
-# @graxia/envelop
+# @softistx/graxia-envelop
 
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { fromEnvelop } from '@graxia/envelop';
+import { createGraxia } from '@softistx/graxia';
+import { fromEnvelop } from '@softistx/graxia-envelop';
 import { useDepthLimit } from '@envelop/depth-limit';
 
 createGraxia({
@@ -5913,14 +5962,14 @@ createGraxia({
 ## Install
 
 ```sh
-bun add @graxia/envelop @graxia/core @envelop/core graphql
+bun add @softistx/graxia-envelop @softistx/graxia @envelop/core graphql
 bun add @envelop/depth-limit # the Envelop plugins you want
 ```
 
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field) and `graphql@^17.1`.
-- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
+- `@softistx/graxia` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your `tsconfig.json`; `nodenext` is not supported.
 
 ## What it runs
@@ -5946,15 +5995,15 @@ package's specs on graphql 17.1, over a real `Bun.serve`. Versions and notes are
 See [`docs/`](./docs): the [guide](./docs/guide/envelop.md), [troubleshooting](./docs/troubleshooting.md) and the
 [roadmap](./docs/roadmap.md).
 
-# @graxia/envelop — Running Envelop plugins
+# @softistx/graxia-envelop — Running Envelop plugins
 
 Source: packages/envelop/docs/guide/envelop.md
 
 # Running Envelop plugins
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { fromEnvelop } from '@graxia/envelop';
+import { createGraxia } from '@softistx/graxia';
+import { fromEnvelop } from '@softistx/graxia-envelop';
 import { useDepthLimit } from '@envelop/depth-limit';
 
 createGraxia({
@@ -6027,9 +6076,9 @@ subscribe go through core's error handling.
 ## Migrating from graphql-yoga
 
 1. Move every Envelop plugin from `createYoga({ plugins })` into `fromEnvelop([...])`.
-2. Yoga's own plugins (`onRequest`, `onResultProcess`, ...) are refused: replace them with `definePlugin` from `@graxia/core`.
+2. Yoga's own plugins (`onRequest`, `onResultProcess`, ...) are refused: replace them with `definePlugin` from `@softistx/graxia`.
 3. Pass the schema to `createGraxia({ schema })`; `useSchema` and `setSchema` are not needed.
-4. CORS, GraphiQL and persisted operations have graxia options of their own (`trustedDocuments`, `@graxia/graphiql`).
+4. CORS, GraphiQL and persisted operations have graxia options of their own (`trustedDocuments`, `@softistx/graxia-graphiql`).
 
 ## Tested plugins
 
@@ -6050,7 +6099,7 @@ With uploads on, a query that takes a `File` would answer the first cached resul
 `params` hold the operation), or use `shouldCacheResult` or `ignoredTypes`. A spec in this package pins the hazard (two
 different files, the same answer) and the `enabled` fix (the resolver runs twice).
 
-# @graxia/envelop — Troubleshooting
+# @softistx/graxia-envelop — Troubleshooting
 
 Source: packages/envelop/docs/troubleshooting.md
 
@@ -6074,7 +6123,7 @@ An Envelop plugin carries `instrumentation`. Remove it, or use `createGraxia({ t
 
 A plugin uses a graphql-yoga hook (`onRequest`, `onRequestParse`, `onParams`, `onResultProcess`, `onResponse`,
 `onYogaInit`, `onExecutionResult`). They belong to the HTTP layer graxia replaces: rewrite the plugin with `definePlugin`
-from `@graxia/core`.
+from `@softistx/graxia`.
 
 ## uses "onXxx", which is not an Envelop hook graxia knows
 
@@ -6102,11 +6151,11 @@ Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces 
 This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
 `query` with the id, or use core's `trustedDocuments` with `documentId`.
 
-# @graxia/graphiql — @graxia/graphiql
+# @softistx/graxia-graphiql — @softistx/graxia-graphiql
 
 Source: packages/graphiql/README.md
 
-# @graxia/graphiql
+# @softistx/graxia-graphiql
 
 The [GraphiQL](https://github.com/graphql/graphiql) 4 page for graxia, bundled at build time: it runs
 under a strict content security policy, with no CDN, no external font and no analytics.
@@ -6120,7 +6169,7 @@ explorer, not both.
 ## Install
 
 ```sh
-bun add @graxia/graphiql @graxia/core
+bun add @softistx/graxia-graphiql @softistx/graxia
 ```
 
 A normal dependency, not `-d`: the plugin is off in production by default, so it can stay in
@@ -6128,13 +6177,13 @@ A normal dependency, not `-d`: the plugin is off in production by default, so it
 
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported. The package has no runtime dependency besides the
-`@graxia/core` peer: GraphiQL, React and the clients are inside the shipped bundle.
+`@softistx/graxia` peer: GraphiQL, React and the clients are inside the shipped bundle.
 
 ## Use
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { graphiql } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { graphiql } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [graphiql()] });
@@ -6180,7 +6229,7 @@ time, hence `'unsafe-inline'` for styles only. See [the guide](./docs/guide/grap
 ## Apollo Sandbox
 
 ```ts
-import { apolloSandbox } from '@graxia/graphiql';
+import { apolloSandbox } from '@softistx/graxia-graphiql';
 
 createGraxia({ schema, plugins: [apolloSandbox({ title: 'My API' })] });
 ```
@@ -6202,7 +6251,7 @@ troubleshooting are in [the guide](./docs/guide/apollo-sandbox.md).
 See [`docs/`](./docs): the [GraphiQL guide](./docs/guide/graphiql.md), [Apollo Sandbox guide](./docs/guide/apollo-sandbox.md), [troubleshooting](./docs/troubleshooting.md)
 and [roadmap](./docs/roadmap.md).
 
-# @graxia/graphiql — Apollo Sandbox
+# @softistx/graxia-graphiql — Apollo Sandbox
 
 Source: packages/graphiql/docs/guide/apollo-sandbox.md
 
@@ -6214,8 +6263,8 @@ from the GraphQL endpoint, pointed at that same endpoint. Unlike [`graphiql()`](
 itself runs in an Apollo-hosted iframe.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { apolloSandbox } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { apolloSandbox } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [apolloSandbox()] });
@@ -6363,7 +6412,7 @@ production in core). Keep it behind your own authentication, or leave it develop
 
 See also [troubleshooting](../troubleshooting.md#apollo-sandbox).
 
-# @graxia/graphiql — GraphiQL
+# @softistx/graxia-graphiql — GraphiQL
 
 Source: packages/graphiql/docs/guide/graphiql.md
 
@@ -6372,15 +6421,15 @@ Source: packages/graphiql/docs/guide/graphiql.md
 `graphiql()` is a graxia plugin that serves the GraphiQL 4 page from the GraphQL endpoint itself.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { graphiql } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { graphiql } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [graphiql()] });
 graxia.serve({ port: 3000 });
 ```
 
-Install it as a normal dependency (`bun add @graxia/graphiql`): the plugin is off in production by
+Install it as a normal dependency (`bun add @softistx/graxia-graphiql`): the plugin is off in production by
 default, so it can stay in `dependencies`; the bundle costs disk only.
 
 Looking for Apollo Sandbox? See [its guide](./apollo-sandbox.md); the two cannot be enabled together.
@@ -6414,7 +6463,7 @@ needed.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
 [core's Security guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
-exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
+exactly these two shapes of `GET`, and answers them itself. It needs `@softistx/graxia` 0.4 or later
 (`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
 foreign-`Origin` request for the page is refused like any other request, and a same-origin
 navigation passes. An exempt request no plugin answers is refused as before.
@@ -6448,7 +6497,7 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 ## `@defer` and `@stream`
 
 GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
-payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
+payloads into the response pane as they arrive. This needs `@softistx/graxia` 0.4 or later: older versions answered
 `INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
 [incremental delivery](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
 `createGraxia` turns it off.
@@ -6495,7 +6544,7 @@ enabled for the "two explorers" check, so disable the other one with `false`.
 but it invites schema exploration, and the schema is only visible when introspection is on (core turns
 it off in production). Keep it behind your own authentication, or leave it development only.
 
-# @graxia/graphiql — Troubleshooting
+# @softistx/graxia-graphiql — Troubleshooting
 
 Source: packages/graphiql/docs/troubleshooting.md
 
@@ -6517,12 +6566,12 @@ the package was installed without its `dist/assets/` (check `files` in a custom 
 ## GraphiQL assets not found at …
 
 The plugin throws this on the first page request when `dist/assets/manifest.json` is missing: the
-installed `@graxia/graphiql` has no `dist/assets`. Reinstall the package; in the graxia repository,
+installed `@softistx/graxia-graphiql` has no `dist/assets`. Reinstall the package; in the graxia repository,
 run `bun run build`.
 
 ## 403 `CSRF_HEADER_REQUIRED` when opening the page
 
-The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4
+The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@softistx/graxia` 0.4
 or later, and only with `Accept: text/html` and no `query`. Upgrade core, or check that the request
 is the browser's navigation and not a script. See core's
 [troubleshooting](https://github.com/softistx/graxia/blob/develop/packages/core/docs/troubleshooting.md).
@@ -6577,11 +6626,11 @@ Sandbox's connection settings.
 Both explorers answer the same `GET`. Install one, or disable the other (`enabled: false`). See
 [the guide](./guide/apollo-sandbox.md#with-graphiql).
 
-# @graxia/mcp — @graxia/mcp
+# @softistx/graxia-mcp — @softistx/graxia-mcp
 
 Source: packages/mcp/README.md
 
-# @graxia/mcp
+# @softistx/graxia-mcp
 
 A Model Context Protocol server for a [graxia](https://github.com/softistx/graxia) API. An agent
 (Claude, an IDE, any MCP client) connects over Streamable HTTP, reads the schema it is allowed to
@@ -6595,10 +6644,10 @@ cost, trusted documents, error masking and rate limits.
 ## Install
 
 ```sh
-bun add @graxia/mcp @graxia/core graphql
+bun add @softistx/graxia-mcp @softistx/graxia graphql
 ```
 
-Requires Bun 1.4.4 or later and `@graxia/core` 0.5 or later.
+Requires Bun 1.4.4 or later and `@softistx/graxia` 0.5 or later.
 
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported.
@@ -6606,8 +6655,8 @@ The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bund
 ## Mount it
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema });
@@ -6675,8 +6724,8 @@ createMcp(graxia, {
 ## Typed tools
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 import manifest from './persisted-documents.json';
 
 // In the manifest: """Find a book by its id.""" query BookById($id: ID!) { book(id: $id) { id title } }
@@ -6699,8 +6748,8 @@ listing every problem of the manifest, each with its fix. See
 ## OAuth
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp, mcpAuth } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp, mcpAuth } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start. `verifyJwt` is your token check (signature and
 // issuer): it resolves the claims, and must resolve undefined for a bad token, not throw
@@ -6752,13 +6801,13 @@ See [`docs/`](./docs): [getting started](./docs/guide/getting-started.md), [auth
 [roadmap](./docs/roadmap.md). The schema and the body limit come from the graxia instance
 (`graxia.schema`, `graxia.limits`, core 0.5).
 
-# @graxia/mcp — OAuth resource server
+# @softistx/graxia-mcp — OAuth resource server
 
 Source: packages/mcp/docs/guide/auth.md
 
 # OAuth resource server
 
-With `auth`, `@graxia/mcp` is an OAuth 2.1 **resource server** (MCP authorization spec, RFC 9728,
+With `auth`, `@softistx/graxia-mcp` is an OAuth 2.1 **resource server** (MCP authorization spec, RFC 9728,
 RFC 8707): it accepts bearer access tokens, it never issues them. Your authorization server does.
 
 ## The flow
@@ -6772,8 +6821,8 @@ RFC 8707): it accepts bearer access tokens, it never issues them. Your authoriza
 ## Mount it
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 const graxia = createGraxia({ schema });
 const mcp = createMcp(graxia, {
@@ -6930,7 +6979,7 @@ resolvers, with no second verification. Outside a tool call, and during a call t
 without `auth`, it is `undefined`.
 
 ```ts
-import { mcpAuth } from '@graxia/mcp';
+import { mcpAuth } from '@softistx/graxia-mcp';
 
 const graxia = createGraxia({
 	schema,
@@ -6945,7 +6994,7 @@ verifies tokens itself keeps working.
 
 `bearerCaller` resolves a request to its caller (an API key or an access token for the resource)
 or to the `Response` to answer instead, so it is the whole verifier. No dependency is added to
-`@graxia/mcp`.
+`@softistx/graxia-mcp`.
 
 ```ts
 import {
@@ -6953,7 +7002,7 @@ import {
 	bearerCaller,
 	protectedResource,
 } from '@softistx/janus-oauth';
-import { createMcp, mcpAuth } from '@graxia/mcp';
+import { createMcp, mcpAuth } from '@softistx/graxia-mcp';
 
 const resource = 'https://api.example.com/mcp';
 const issuer = 'https://auth.example.com';
@@ -7002,9 +7051,9 @@ const context = () => {
   are. It checks the expiry and the audience itself, hence no `expiresAt` and `audience: 'verifier'`.
 - `verifyToken` must not read the request body: hand the request to `callerOf` untouched, it
   authenticates from the headers.
-- A DPoP-bound token is not accepted by `@graxia/mcp`; leave `dpop` off on `protectedResource`.
+- A DPoP-bound token is not accepted by `@softistx/graxia-mcp`; leave `dpop` off on `protectedResource`.
 
-# @graxia/mcp — Getting started
+# @softistx/graxia-mcp — Getting started
 
 Source: packages/mcp/docs/guide/getting-started.md
 
@@ -7013,12 +7062,12 @@ Source: packages/mcp/docs/guide/getting-started.md
 ## Install and mount
 
 ```sh
-bun add @graxia/mcp @graxia/core graphql
+bun add @softistx/graxia-mcp @softistx/graxia graphql
 ```
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema });
@@ -7031,7 +7080,7 @@ Bun.serve({
 ```
 
 `createMcp(graxia, options)` reads the schema and the body limit from the instance
-(`graxia.schema`, `graxia.limits.bodyBytes`, `@graxia/core` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
+(`graxia.schema`, `graxia.limits.bodyBytes`, `@softistx/graxia` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
 `Response` out, and never rejects. `mcp.dispose()` stops the handler (in-flight requests are aborted),
 like `graxia.dispose()`.
 
@@ -7091,7 +7140,7 @@ To give agents your persisted operations as tools with typed arguments, see
 `instructions` is shown to the model when it connects: say what the API is for in two or three
 sentences. The tools already tell it to call `graphql_schema` first.
 
-# @graxia/mcp — Persisted operations as typed tools
+# @softistx/graxia-mcp — Persisted operations as typed tools
 
 Source: packages/mcp/docs/guide/operations.md
 
@@ -7103,8 +7152,8 @@ its result (from its selection set). An agent calls `book_by_id({ id: "1" })` in
 GraphQL, and runs only operations you have reviewed.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 import manifest from './persisted-documents.json';
 
 const graxia = createGraxia({ schema, trustedDocuments: { manifest } });
@@ -7242,7 +7291,7 @@ JSON Schema 2020-12, `type: "object"`, `additionalProperties: false`, one proper
 
 ### `@constraint`
 
-`@constraint` (from `@graxia/core/agent`) becomes `minLength`, `maxLength`, `minimum`, `maximum`,
+`@constraint` (from `@softistx/graxia/agent`) becomes `minLength`, `maxLength`, `minimum`, `maximum`,
 `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `pattern`, `format`, and on a list `minItems`
 and `maxItems` (the other limits then apply to the items). It is read:
 
@@ -7332,7 +7381,7 @@ filter by the caller's view runs: once for all callers without `can`; with `can`
 out of `tools/list` (fail closed: the list keeps only the generic tools that are on, `graphql_schema` alone with `genericTools: false`; it is not an error), the
 error goes to `onError`, and a call answers `The server failed to run the operation. Fix: retry later.`
 
-# @graxia/mcp — Security
+# @softistx/graxia-mcp — Security
 
 Source: packages/mcp/docs/guide/security.md
 
@@ -7340,7 +7389,7 @@ Source: packages/mcp/docs/guide/security.md
 
 ## Authentication
 
-Set `auth` and `@graxia/mcp` is an OAuth resource server: bearer tokens, scopes, protected
+Set `auth` and `@softistx/graxia-mcp` is an OAuth resource server: bearer tokens, scopes, protected
 resource metadata ([the auth guide](./auth.md)). Every request then needs a token your
 `verifyToken` accepts, issued for this resource (the audience is checked by default), and
 `graphql_mutate` and the typed tools of mutations need the write scope (a 403 naming the tool
@@ -7398,7 +7447,7 @@ own code: build it from your repository, never from a request.
 ## Strict trusted documents
 
 `graxia.execute` runs in process and skips the trusted-documents check (it is your own code
-calling). `@graxia/mcp` forwards documents written by an agent, so it applies the mode itself:
+calling). `@softistx/graxia-mcp` forwards documents written by an agent, so it applies the mode itself:
 when `graxia.trustedDocuments.mode` is `strict` (the default under `NODE_ENV=production`),
 `graphql_query` and `graphql_mutate` are not listed and a call answers `PERSISTED_QUERY_ONLY`
 without running anything. Only the typed tools run, each a document you gave at boot. In `mixed`
@@ -7463,7 +7512,7 @@ Every operation goes through `graxia.execute`: depth and alias limits, cost, mas
 errors, field rate limits, and your `context`. MCP does not bypass any of them, and it refuses
 agent-written documents itself in `strict` trusted-documents mode (above).
 
-# @graxia/mcp — Tools
+# @softistx/graxia-mcp — Tools
 
 Source: packages/mcp/docs/guide/tools.md
 
@@ -7523,7 +7572,7 @@ codes. A document that does not parse is refused here (the token limit of graxia
 The typed tools add `MCP_UNKNOWN_ARGUMENT` ([troubleshooting](../troubleshooting.md)), and `auth` adds
 `MCP_UNAUTHORIZED`, `MCP_INSUFFICIENT_SCOPE` and `MCP_TOKEN_IN_URL`
 ([troubleshooting auth](../troubleshooting-auth.md)). `McpErrorCode` (an exported type) is the union
-of the codes `@graxia/mcp` emits.
+of the codes `@softistx/graxia-mcp` emits.
 
 `operationName` picks the operation: only the selected one is checked against the tool's kind, so a
 document holding a query and a mutation runs its query in `graphql_query`.
@@ -7570,7 +7619,7 @@ milliseconds per request. With `operations` the view decides which typed tools e
 `tools/list` and every `tools/call` build it (still once for all callers without `can`);
 `initialize`, `ping` and notifications still do not.
 
-# @graxia/mcp — Troubleshooting auth
+# @softistx/graxia-mcp — Troubleshooting auth
 
 Source: packages/mcp/docs/troubleshooting-auth.md
 
@@ -7676,7 +7725,7 @@ Thrown at startup. Every entry is an issuer URL with its scheme (`https://auth.e
 
 `?access_token=…` is refused (OAuth 2.1). Send `Authorization: Bearer <token>`.
 
-# @graxia/mcp — Troubleshooting
+# @softistx/graxia-mcp — Troubleshooting
 
 Source: packages/mcp/docs/troubleshooting.md
 
@@ -7894,11 +7943,11 @@ An unexpected failure inside the tool (a throwing `can`, a bug); its cause is no
 `tools/list` also answers without the typed tools, and a call to one gets this answer: the cause
 is in `onError`.
 
-# @graxia/redis — @graxia/redis
+# @softistx/graxia-redis — @softistx/graxia-redis
 
 Source: packages/redis/README.md
 
-# @graxia/redis
+# @softistx/graxia-redis
 
 Redis PubSub, cache and field rate limit for graxia, on [`@softistx/redis`](https://www.npmjs.com/package/@softistx/redis)
 (one shared client per URI, one reconnecting subscriber connection, server-timed rate limits) over Bun's built-in
@@ -7907,13 +7956,13 @@ Redis client. No ioredis or node-redis.
 ## Install
 
 ```sh
-bun add @graxia/redis @graxia/core @softistx/redis zod
+bun add @softistx/graxia-redis @softistx/graxia @softistx/redis zod
 ```
 
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field), and a Redis server.
-- `@graxia/core` and `@softistx/redis` (`^0.24.1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
+- `@softistx/graxia` and `@softistx/redis` (`^0.24.1`) as peer dependencies. `@softistx/redis` requires `zod` as a peer (its type declarations import it): install both, `bun add @softistx/redis zod`.
 - With `url`, the client is shared per URI with every other `connectRedis` of your process, which must use the same options for
   that URI; if another module connects it with options, pass its client as `{ client }`.
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
@@ -7937,8 +7986,8 @@ Exports: `redisPubSub`, `redisCache`, `redisFieldLimit` and the types `RedisConn
 and `pipe` / `filter` / `map` do not change. A topic with an id is the Redis channel `<prefix>topic:id`. Subscribers in other processes receive what you publish.
 
 ```ts
-import { filter, pipe } from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+import { filter, pipe } from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 type Topics = {
 	post: [id: string, payload: { id: string; published: boolean }];
@@ -7984,7 +8033,7 @@ Options: `url` (`REDIS_URL`, then `redis://localhost:6379`, through `connectRedi
 queries: `trustedDocuments: { store: redisCache({ url }) }` shares registrations across processes (`url` is optional: `REDIS_URL`, then `redis://localhost:6379`, shared per URI).
 
 ```ts
-import { redisCache } from '@graxia/redis';
+import { redisCache } from '@softistx/graxia-redis';
 
 const cache = redisCache({
 	url: process.env.REDIS_URL,
@@ -8002,8 +8051,8 @@ await cache.dispose?.(); // lets go of a shared client it opened; a `client` you
 `@softistx/redis`'s `consumeRateLimit`, timed by the Redis server (no common clock needed).
 
 ```ts
-import { fieldRateLimit } from '@graxia/core';
-import { redisFieldLimit } from '@graxia/redis';
+import { fieldRateLimit } from '@softistx/graxia';
+import { redisFieldLimit } from '@softistx/graxia-redis';
 
 fieldRateLimit({
 	fields: {
@@ -8045,7 +8094,7 @@ Redis PubSub is at most once, and graxia adds nothing on top:
 See [`docs/`](./docs): the [guide](./docs/guide/redis.md), [troubleshooting](./docs/troubleshooting.md)
 and the [roadmap](./docs/roadmap.md).
 
-# @graxia/redis — Redis PubSub, cache and field rate limit
+# @softistx/graxia-redis — Redis PubSub, cache and field rate limit
 
 Source: packages/redis/docs/guide/redis.md
 
@@ -8069,8 +8118,8 @@ Both adapters take `{ url }` or `{ client }`, never both (see [troubleshooting](
 ## PubSub
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
-import { redisPubSub } from '@graxia/redis';
+import { createGraxia, createSchema } from '@softistx/graxia';
+import { redisPubSub } from '@softistx/graxia-redis';
 
 const pubsub = redisPubSub<{ tick: [payload: number] }>({
 	url: process.env.REDIS_URL,
@@ -8214,7 +8263,7 @@ docker stop redis-test
 For application code, use `createPubSub` and `createMemoryCache` in unit tests and Redis in
 integration tests; the contracts are the same.
 
-# @graxia/redis — Troubleshooting
+# @softistx/graxia-redis — Troubleshooting
 
 Source: packages/redis/docs/troubleshooting.md
 
@@ -8222,7 +8271,7 @@ Source: packages/redis/docs/troubleshooting.md
 
 The errors a consumer can hit, headed by the message as it appears.
 
-## @graxia/redis: pass either "url" or "client", not both
+## @softistx/graxia-redis: pass either "url" or "client", not both
 
 `redisPubSub`, `redisCache` or `redisFieldLimit` received both `url` and `client` (a `GraxiaConfigError`). Pass a `url` and
 the adapter owns its connection, or pass your `client` and you own it.
@@ -8253,11 +8302,11 @@ Events published while disconnected are lost. Expect a few `onError` calls durin
 Another process published in the short window before Redis registered `SUBSCRIBE`. Await
 `pubsub.ready()` before telling publishers to start; on the same instance `publish` already waits.
 
-## @graxia/redis: <uri> is already connected by another module with other options; pass that client as { client }
+## @softistx/graxia-redis: <uri> is already connected by another module with other options; pass that client as { client }
 
 A `GraxiaConfigError` (its `cause` is `@softistx/redis`'s `RedisError` with code `URI_CONFLICT`: `connectRedis: this URI is already connected with other
 options`). `@softistx/redis` shares one client per URI, so `url` adapters (and any other `connectRedis` of your process)
-must use the same URI with the same options. `@graxia/redis` passes none: if another module connects the URI with
+must use the same URI with the same options. `@softistx/graxia-redis` passes none: if another module connects the URI with
 options (`maxRetries`, `tls`), open the client there and pass it as `client`. The error depends on the order of the
 calls: whoever connects second is refused, and that can be your application's own call rather than the adapter's. The
 URI's credentials are never in the message.
@@ -8269,7 +8318,7 @@ const redis = await connectRedis(url, { maxRetries: 3 });
 redisPubSub({ client: redis.client });
 ```
 
-## @graxia/redis: used after dispose()
+## @softistx/graxia-redis: used after dispose()
 
 An adapter that opened its client from a `url` was used after `dispose()` (a `GraxiaConfigError`). It does not
 reconnect on its own: create a new adapter.
@@ -8280,12 +8329,12 @@ await pubsub.dispose();
 const next = redisPubSub({ url: process.env.REDIS_URL }); // a new adapter, a new hold on the shared client
 ```
 
-## @graxia/redis: redisCache prefix must hold at least one character before its ":"
+## @softistx/graxia-redis: redisCache prefix must hold at least one character before its ":"
 
 `redisCache({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): the prefix names the cache, and `@softistx/redis`
 builds keys as `<name>:<key>`. Give it a name, `app` or `app:`, or leave it out for `graxia:cache:`.
 
-## @graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"
+## @softistx/graxia-redis: redisFieldLimit prefix must hold at least one character before its ":"
 
 `redisFieldLimit({ prefix: '' })` or `prefix: ':'` (a `GraxiaConfigError`): every key would start with a bare `:`, and
 limits of unrelated features could collide. Give it a name, `app` or `app:`, or leave it out for `graxia:limit:`.

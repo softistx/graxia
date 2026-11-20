@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 
 const EXCLUDE = 'or leave it out with operations.include';
 

@@ -1,4 +1,8 @@
-import { createGraxia, type Graxia, type GraxiaSocketData } from '@graxia/core';
+import {
+	createGraxia,
+	type Graxia,
+	type GraxiaSocketData,
+} from '@softistx/graxia';
 import { context, type HostContext, newResponseSet } from './context';
 import { cors } from './cors';
 import { withResponseSet } from './respond';

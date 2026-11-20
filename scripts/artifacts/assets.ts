@@ -3,8 +3,8 @@ import { $ } from 'bun';
 import type { Pkg } from './packages';
 
 const PROBE = `
-import { createGraxia, createSchema } from '@graxia/core';
-import { graphiql } from '@graxia/graphiql';
+import { createGraxia, createSchema } from '@softistx/graxia';
+import { graphiql } from '@softistx/graxia-graphiql';
 
 const graxia = createGraxia({
 	schema: createSchema()({
@@ -38,7 +38,7 @@ for (const [pattern, type] of [
 `;
 
 /**
- * A package that ships bundled assets (`@graxia/graphiql`) is imported from the
+ * A package that ships bundled assets (`@softistx/graxia-graphiql`) is imported from the
  * install and asked, through a real instance, for its page, script and style:
  * a tarball that lost `dist/assets` loads fine and 404s here.
  */
@@ -46,13 +46,14 @@ export async function assetsServe(
 	workdir: string,
 	packages: readonly Pkg[],
 ): Promise<boolean> {
-	if (!packages.some((p) => p.name === '@graxia/graphiql')) return true;
+	if (!packages.some((p) => p.name === '@softistx/graxia-graphiql'))
+		return true;
 	console.log('\nServing the GraphiQL page and its assets from the install…\n');
 	await Bun.write(join(workdir, 'assets-probe.mjs'), PROBE);
 	const ran = await $`bun run assets-probe.mjs`.cwd(workdir).nothrow();
 	if (ran.exitCode === 0) return true;
 	console.error(
-		'\nThe installed @graxia/graphiql did not serve its page and assets.\n' +
+		'\nThe installed @softistx/graxia-graphiql did not serve its page and assets.\n' +
 			'Check that `files` ships dist/assets and that build-assets.ts ran.',
 	);
 	return false;

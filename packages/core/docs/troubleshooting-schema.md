@@ -5,7 +5,7 @@ Schema directives, `createSchema` and resolver-map errors, headed by the message
 ## Unknown directive "@needs" (or "@constraint", "@errors")
 
 `createSchema` or `buildSchema` refuses the SDL because the agent directives are not declared. Add
-`agentTypeDefs` from `@graxia/core/agent` to `typeDefs`, or pass `agentDirectives` to a schema
+`agentTypeDefs` from `@softistx/graxia/agent` to `typeDefs`, or pass `agentDirectives` to a schema
 built in code.
 
 ```ts

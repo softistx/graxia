@@ -1,4 +1,4 @@
-export type { Can } from '@graxia/core/agent';
+export type { Can } from '@softistx/graxia/agent';
 export { mcpAuth } from './auth/principal';
 export type { McpAuthInfo, McpAuthOptions, McpScopes } from './auth/types';
 export type { McpErrorCode } from './codes';

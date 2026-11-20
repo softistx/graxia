@@ -6,8 +6,8 @@ from the GraphQL endpoint, pointed at that same endpoint. Unlike [`graphiql()`](
 itself runs in an Apollo-hosted iframe.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { apolloSandbox } from '@graxia/graphiql';
+import { createGraxia } from '@softistx/graxia';
+import { apolloSandbox } from '@softistx/graxia-graphiql';
 
 // `schema` is the one from the core quick start
 const graxia = createGraxia({ schema, plugins: [apolloSandbox()] });

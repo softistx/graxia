@@ -108,11 +108,12 @@ describe('the skill and the agent', () => {
 	test('every node_modules path it names exists in the package', () => {
 		const names = named.flatMap((file) => [
 			...read(file).matchAll(
-				/node_modules\/@graxia\/([a-z-]+)\/([\w./-]+?)(?:#[\w-]+)?(?=[`,;:)\s]|\.(?:\s|$))/g,
+				/node_modules\/@softistx\/graxia(?:-([a-z]+))?\/([\w./-]+?)(?:#[\w-]+)?(?=[`,;:)\s]|\.(?:\s|$))/g,
 			),
 		]);
 		expect(names.length).toBeGreaterThan(0);
-		for (const [, pkg, rest] of names) {
+		for (const [, scoped, rest] of names) {
+			const pkg = scoped ?? 'core';
 			const target = (rest as string).replace(/\/$/, '');
 			expect(
 				existsSync(join(ROOT, 'packages', pkg as string, target)),
@@ -135,11 +136,12 @@ describe('the skill and the agent', () => {
 				.replace(/[^\p{L}\p{N}\s-]/gu, '')
 				.trim()
 				.replace(/\s+/g, '-');
-		for (const [, pkg, file, anchor] of named.flatMap((f) => [
+		for (const [, scoped, file, anchor] of named.flatMap((f) => [
 			...read(f).matchAll(
-				/node_modules\/@graxia\/([a-z-]+)\/([\w./-]+?\.md)#([\w-]+)/g,
+				/node_modules\/@softistx\/graxia(?:-([a-z]+))?\/([\w./-]+?\.md)#([\w-]+)/g,
 			),
 		])) {
+			const pkg = scoped ?? 'core';
 			const headings = read(`packages/${pkg}/${file}`)
 				.split('\n')
 				.filter((l) => /^#{1,6} /.test(l))

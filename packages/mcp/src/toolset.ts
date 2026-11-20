@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { buildOperationTools } from './operations/build';
 import { operationsError, problem } from './operations/problems';
 import type { OperationTool } from './operations/types';

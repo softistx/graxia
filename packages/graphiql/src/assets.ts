@@ -1,4 +1,4 @@
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 
 export interface Manifest {
 	script: string;
@@ -42,7 +42,7 @@ async function loadManifest(base: URL): Promise<Manifest> {
 		return (await Bun.file(url).json()) as Manifest;
 	} catch (cause) {
 		throw new GraxiaConfigError(
-			`GraphiQL assets not found at ${url.href}: the installed @graxia/graphiql has no dist/assets: reinstall it; in the graxia repository, run \`bun run build\``,
+			`GraphiQL assets not found at ${url.href}: the installed @softistx/graxia-graphiql has no dist/assets: reinstall it; in the graxia repository, run \`bun run build\``,
 			{ cause },
 		);
 	}

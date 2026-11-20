@@ -1,6 +1,10 @@
 # Roadmap
 
-Where `@graxia/graphiql` is going, as what you get. A direction, not a commitment.
+Where `@softistx/graxia-graphiql` is going, as what you get. A direction, not a commitment.
+
+## Now
+
+- **Moving to the `@softistx` scope** — the package is now `@softistx/graxia-graphiql` (it was `@graxia/graphiql`). Same code and API; replace the dependency and the imports ([migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md)). The old name is deprecated.
 
 ## Later
 

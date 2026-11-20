@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
+import { GraxiaConfigError } from '@softistx/graxia';
 import type { RedisClient } from 'bun';
 import { describeRedis, redisUrl, uniquePrefix } from './env.test-util';
 import { redisFieldLimit } from './field-limit';
@@ -23,7 +23,7 @@ describe('redisFieldLimit (config)', () => {
 			expect(() =>
 				redisFieldLimit({ client, limit: 1, windowMs: 1000, prefix: bad }),
 			).toThrow(
-				'@graxia/redis: redisFieldLimit prefix must hold at least one character before its ":"',
+				'@softistx/graxia-redis: redisFieldLimit prefix must hold at least one character before its ":"',
 			);
 	});
 
@@ -35,7 +35,9 @@ describe('redisFieldLimit (config)', () => {
 				url: 'redis://x',
 				client: {},
 			} as never),
-		).toThrow('@graxia/redis: pass either "url" or "client", not both');
+		).toThrow(
+			'@softistx/graxia-redis: pass either "url" or "client", not both',
+		);
 	});
 });
 

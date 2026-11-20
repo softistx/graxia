@@ -1,60 +1,60 @@
-# @graxia/redis
+# @softistx/graxia-redis
 
 ## 0.2.11
 
 ### Patch Changes
 
 - Updated dependencies [[`f5ef13f`](https://github.com/softistx/graxia/commit/f5ef13fec198d0af098c94b97904a0e2e3053840)]:
-  - @graxia/core@0.14.0
+  - @softistx/graxia@0.14.0
 
 ## 0.2.10
 
 ### Patch Changes
 
 - Updated dependencies [[`9f7f3fa`](https://github.com/softistx/graxia/commit/9f7f3fac773e77a6f0738b85901bfa4f6d5ce7c7)]:
-  - @graxia/core@0.13.0
+  - @softistx/graxia@0.13.0
 
 ## 0.2.9
 
 ### Patch Changes
 
 - Updated dependencies [[`5c7cd1c`](https://github.com/softistx/graxia/commit/5c7cd1c2b747e9af5c379d2a8a4915b6ee9295a3)]:
-  - @graxia/core@0.12.0
+  - @softistx/graxia@0.12.0
 
 ## 0.2.8
 
 ### Patch Changes
 
 - Updated dependencies [[`e802b0a`](https://github.com/softistx/graxia/commit/e802b0a7c2ab281228222797e36c4e70143c0ccc)]:
-  - @graxia/core@0.11.0
+  - @softistx/graxia@0.11.0
 
 ## 0.2.7
 
 ### Patch Changes
 
 - Updated dependencies [[`8efc081`](https://github.com/softistx/graxia/commit/8efc081372345df50387894f77f2b36a97194f6d), [`1b7629d`](https://github.com/softistx/graxia/commit/1b7629d1445ce83ca201ae375967cb899b845ed2)]:
-  - @graxia/core@0.10.0
+  - @softistx/graxia@0.10.0
 
 ## 0.2.6
 
 ### Patch Changes
 
 - Updated dependencies [[`730f845`](https://github.com/softistx/graxia/commit/730f845cb04e1cd64d1fecbc3821285ec6f03519)]:
-  - @graxia/core@0.9.0
+  - @softistx/graxia@0.9.0
 
 ## 0.2.5
 
 ### Patch Changes
 
 - Updated dependencies [[`b2b814f`](https://github.com/softistx/graxia/commit/b2b814f62d03c658b3948c45ba9dca1b71a6bc40), [`c7c407e`](https://github.com/softistx/graxia/commit/c7c407e43784e509b49066b2faeeae9494d9cc52), [`54aaf11`](https://github.com/softistx/graxia/commit/54aaf115cf1ec6d566e37806fb18877263d7d462)]:
-  - @graxia/core@0.8.0
+  - @softistx/graxia@0.8.0
 
 ## 0.2.4
 
 ### Patch Changes
 
 - Updated dependencies [[`b0cd3ec`](https://github.com/softistx/graxia/commit/b0cd3ec4999a20ac5bb3c435483a08424a4bb7e4)]:
-  - @graxia/core@0.7.0
+  - @softistx/graxia@0.7.0
 
 ## 0.2.3
 
@@ -62,27 +62,27 @@
 
 - [#106](https://github.com/softistx/graxia/pull/106) [`84f41e3`](https://github.com/softistx/graxia/commit/84f41e3b97fde67d3255e8a8938d891a31634020) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Requires `@softistx/redis` 0.24.1 or later: queue workers re-open their blocking connection after a Redis restart.
 - Updated dependencies [[`e9b0f4a`](https://github.com/softistx/graxia/commit/e9b0f4acfc411bf1d347d49c894ae7206bdf75c8)]:
-  - @graxia/core@0.6.1
+  - @softistx/graxia@0.6.1
 
 ## 0.2.2
 
 ### Patch Changes
 
 - Updated dependencies [[`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11), [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11)]:
-  - @graxia/core@0.6.0
+  - @softistx/graxia@0.6.0
 
 ## 0.2.1
 
 ### Patch Changes
 
 - Updated dependencies [[`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1), [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1)]:
-  - @graxia/core@0.5.0
+  - @softistx/graxia@0.5.0
 
 ## 0.2.0
 
 ### Minor Changes
 
-- [#84](https://github.com/softistx/graxia/pull/84) [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9) Thanks [@SteveGT96](https://github.com/SteveGT96)! - BREAKING (pre-1.0): `@graxia/redis` runs on `@softistx/redis` instead of Bun's `RedisClient` alone. `@softistx/redis` (`^0.24.0`) becomes a peer dependency, and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`. PubSub uses one shared, reconnecting subscriber connection (reopened with a backoff when Bun gives up, no double delivery), the cache is a raw cache, and a `url` is connected through `connectRedis`, so adapters of one URI share one client (the same URI must be connected with the same options everywhere; another module's options give a `GraxiaConfigError` telling you to pass `{ client }`). A use after `dispose()` rejects. The topic signature change is in its own changeset (`yoga-pubsub-redis`); channel names and cache and payload formats on Redis are unchanged, and `redisPubSub` and `redisCache` keep their other options.
+- [#84](https://github.com/softistx/graxia/pull/84) [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9) Thanks [@SteveGT96](https://github.com/SteveGT96)! - BREAKING (pre-1.0): `@softistx/graxia-redis` runs on `@softistx/redis` instead of Bun's `RedisClient` alone. `@softistx/redis` (`^0.24.0`) becomes a peer dependency, and it needs `zod` (its type declarations import it): `bun add @softistx/redis zod`. PubSub uses one shared, reconnecting subscriber connection (reopened with a backoff when Bun gives up, no double delivery), the cache is a raw cache, and a `url` is connected through `connectRedis`, so adapters of one URI share one client (the same URI must be connected with the same options everywhere; another module's options give a `GraxiaConfigError` telling you to pass `{ client }`). A use after `dispose()` rejects. The topic signature change is in its own changeset (`yoga-pubsub-redis`); channel names and cache and payload formats on Redis are unchanged, and `redisPubSub` and `redisCache` keep their other options.
 
   Cache prefix: it is used with exactly one trailing `:`. A prefix that does not end in `:` writes new keys (`app:<key>` instead of `app<key>`); entries written by 0.1 are no longer read and expire or can be deleted. A prefix that already ends in `:` (the default) keeps its keys. A prefix with no character before its `:` (`''` or `':'`) throws a `GraxiaConfigError`.
 
@@ -90,14 +90,14 @@
 
   The peer range is `^0.24.0` (a 0.x minor is a breaking step, so it is no longer open-ended). `redisFieldLimit` now refuses an empty `prefix` (`''` or `':'`) with a `GraxiaConfigError`, like `redisCache`. The `redisPubSub` `prefix` stays verbatim (pass `'app:'`, not `'app'`).
 
-- [#84](https://github.com/softistx/graxia/pull/84) [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9) Thanks [@SteveGT96](https://github.com/SteveGT96)! - BREAKING (pre-1.0): `redisPubSub` follows `@graxia/core`'s PubSub in Yoga's shape (needs the matching core minor): tuple topics, `subscribe(topic, id?)`, `publish(topic, id?, payload)`, no `{ signal }` argument (the iterator is returned when the operation stops). A topic with an id is the Redis channel `<prefix>topic:id`, unchanged on the wire. `subscriberCount(topic, id?)` takes the id. Migration: `subscribe('post:42', { signal })` → `subscribe('post', '42')`, and the topic type ``{ [k: `post:${string}`]: Post }`` → `{ post: [id: string, payload: Post] }`.
+- [#84](https://github.com/softistx/graxia/pull/84) [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9) Thanks [@SteveGT96](https://github.com/SteveGT96)! - BREAKING (pre-1.0): `redisPubSub` follows `@softistx/graxia`'s PubSub in Yoga's shape (needs the matching core minor): tuple topics, `subscribe(topic, id?)`, `publish(topic, id?, payload)`, no `{ signal }` argument (the iterator is returned when the operation stops). A topic with an id is the Redis channel `<prefix>topic:id`, unchanged on the wire. `subscriberCount(topic, id?)` takes the id. Migration: `subscribe('post:42', { signal })` → `subscribe('post', '42')`, and the topic type ``{ [k: `post:${string}`]: Post }`` → `{ post: [id: string, payload: Post] }`.
 
   `publish` never rejects: a failing command goes to `onError`. A topic without payload delivers `null`.
 
 ### Patch Changes
 
 - Updated dependencies [[`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9), [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9), [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9), [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9), [`7731216`](https://github.com/softistx/graxia/commit/7731216aa371de460c0360a461902363d1586681), [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9), [`ce91d85`](https://github.com/softistx/graxia/commit/ce91d850a918083960a2e40d0297652003312fa9)]:
-  - @graxia/core@0.4.0
+  - @softistx/graxia@0.4.0
 
 ## 0.1.1
 
@@ -105,7 +105,7 @@
 
 - [#63](https://github.com/softistx/graxia/pull/63) [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499) Thanks [@SteveGT96](https://github.com/SteveGT96)! - docs: README names redisCache as the store of core's automatic persisted queries
 - Updated dependencies [[`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`5c22fdd`](https://github.com/softistx/graxia/commit/5c22fdde87b81a6fff3074b61020b08df3b01c5c), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499), [`bf5497c`](https://github.com/softistx/graxia/commit/bf5497c71e62bc37a48cb3ae48f37bd973e2e499)]:
-  - @graxia/core@0.3.0
+  - @softistx/graxia@0.3.0
 
 ## 0.1.0
 
@@ -116,4 +116,4 @@
 ### Patch Changes
 
 - Updated dependencies [[`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e), [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e), [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e), [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e), [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e), [`a5511e7`](https://github.com/softistx/graxia/commit/a5511e7c865f0c89728ff032ad84b871d3f7554e)]:
-  - @graxia/core@0.2.0
+  - @softistx/graxia@0.2.0

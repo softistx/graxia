@@ -1,20 +1,20 @@
 # graxia
 
 A Bun-native GraphQL server engine: typed plugins, graphql 17 and GraphQL over HTTP.
-`@graxia/core` ships the HTTP transport, plugins, context and cancellation, error masking,
+`@softistx/graxia` ships the HTTP transport, plugins, context and cancellation, error masking,
 subscriptions over server-sent events and WebSocket, `@defer` and `@stream`, a typed PubSub, a
-key-value cache contract, in-process `execute` and a test client. `@graxia/redis` swaps the PubSub
-and the cache for Redis and adds a shared field rate limit. Trusted documents (manifests, `documentId`, automatic persisted queries, strict mode) are built; telemetry runs on `@softistx/telemetry` (optional peer), and `@graxia/mcp` serves it to agents over MCP.
+key-value cache contract, in-process `execute` and a test client. `@softistx/graxia-redis` swaps the PubSub
+and the cache for Redis and adds a shared field rate limit. Trusted documents (manifests, `documentId`, automatic persisted queries, strict mode) are built; telemetry runs on `@softistx/telemetry` (optional peer), and `@softistx/graxia-mcp` serves it to agents over MCP.
 
-> Status: `@graxia/core`, `@graxia/redis`, `@graxia/graphiql`, `@graxia/mcp` and `@graxia/envelop` are public on npm. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
+> Status: `@softistx/graxia`, `@softistx/graxia-redis`, `@softistx/graxia-graphiql`, `@softistx/graxia-mcp` and `@softistx/graxia-envelop` are public on npm. The packages moved from the `@graxia` scope: see the [migration guide](packages/core/docs/guide/migrating-from-graxia-scope.md). See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
 
-| package                                 | what it is                                                     |
-| --------------------------------------- | -------------------------------------------------------------- |
-| [`@graxia/core`](packages/core)         | the engine                                                     |
-| [`@graxia/redis`](packages/redis)       | Redis PubSub, cache and field rate limit, on `@softistx/redis` |
-| [`@graxia/graphiql`](packages/graphiql) | GraphiQL and Apollo Sandbox                                    |
-| [`@graxia/mcp`](packages/mcp)           | MCP server (Streamable HTTP, schema, query and mutate tools)   |
-| [`@graxia/envelop`](packages/envelop)   | Envelop plugin adapter (`fromEnvelop`)                         |
+| package                                          | what it is                                                     |
+| ------------------------------------------------ | -------------------------------------------------------------- |
+| [`@softistx/graxia`](packages/core)              | the engine                                                     |
+| [`@softistx/graxia-redis`](packages/redis)       | Redis PubSub, cache and field rate limit, on `@softistx/redis` |
+| [`@softistx/graxia-graphiql`](packages/graphiql) | GraphiQL and Apollo Sandbox                                    |
+| [`@softistx/graxia-mcp`](packages/mcp)           | MCP server (Streamable HTTP, schema, query and mutate tools)   |
+| [`@softistx/graxia-envelop`](packages/envelop)   | Envelop plugin adapter (`fromEnvelop`)                         |
 
 Examples: [`examples/host-embedding`](examples/host-embedding) is an app that owns `Bun.serve` and embeds graxia (prefix, typed host context, cookies, CORS, WebSocket and SSE on one path, graceful shutdown).
 

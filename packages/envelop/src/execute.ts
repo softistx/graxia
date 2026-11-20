@@ -3,7 +3,7 @@ import type {
 	GraxiaPlugin,
 	OnExecuteDone,
 	OnExecutePayload,
-} from '@graxia/core';
+} from '@softistx/graxia';
 import { GraphQLError } from 'graphql';
 import type { opKey } from './early-context';
 import {

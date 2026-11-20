@@ -28,7 +28,7 @@ import {
 	createSchema,
 	definePlugin,
 	type InferContext,
-} from '@graxia/core';
+} from '@softistx/graxia';
 
 const tenant = definePlugin({
 	name: 'tenant',
@@ -170,7 +170,7 @@ shortcut. Inside an operation, `getContext()` returns the same object the resolv
 loggers need no extra parameter. It is backed by `AsyncLocalStorage` (`node:async_hooks`).
 
 ```ts
-import { getContext, tryGetContext } from '@graxia/core';
+import { getContext, tryGetContext } from '@softistx/graxia';
 
 export function currentUser(): string | undefined {
 	return getContext<Ctx>().user?.id;

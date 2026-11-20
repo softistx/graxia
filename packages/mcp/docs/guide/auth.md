@@ -1,6 +1,6 @@
 # OAuth resource server
 
-With `auth`, `@graxia/mcp` is an OAuth 2.1 **resource server** (MCP authorization spec, RFC 9728,
+With `auth`, `@softistx/graxia-mcp` is an OAuth 2.1 **resource server** (MCP authorization spec, RFC 9728,
 RFC 8707): it accepts bearer access tokens, it never issues them. Your authorization server does.
 
 ## The flow
@@ -14,8 +14,8 @@ RFC 8707): it accepts bearer access tokens, it never issues them. Your authoriza
 ## Mount it
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 
 const graxia = createGraxia({ schema });
 const mcp = createMcp(graxia, {
@@ -172,7 +172,7 @@ resolvers, with no second verification. Outside a tool call, and during a call t
 without `auth`, it is `undefined`.
 
 ```ts
-import { mcpAuth } from '@graxia/mcp';
+import { mcpAuth } from '@softistx/graxia-mcp';
 
 const graxia = createGraxia({
 	schema,
@@ -187,7 +187,7 @@ verifies tokens itself keeps working.
 
 `bearerCaller` resolves a request to its caller (an API key or an access token for the resource)
 or to the `Response` to answer instead, so it is the whole verifier. No dependency is added to
-`@graxia/mcp`.
+`@softistx/graxia-mcp`.
 
 ```ts
 import {
@@ -195,7 +195,7 @@ import {
 	bearerCaller,
 	protectedResource,
 } from '@softistx/janus-oauth';
-import { createMcp, mcpAuth } from '@graxia/mcp';
+import { createMcp, mcpAuth } from '@softistx/graxia-mcp';
 
 const resource = 'https://api.example.com/mcp';
 const issuer = 'https://auth.example.com';
@@ -244,4 +244,4 @@ const context = () => {
   are. It checks the expiry and the audience itself, hence no `expiresAt` and `audience: 'verifier'`.
 - `verifyToken` must not read the request body: hand the request to `callerOf` untouched, it
   authenticates from the headers.
-- A DPoP-bound token is not accepted by `@graxia/mcp`; leave `dpop` off on `protectedResource`.
+- A DPoP-bound token is not accepted by `@softistx/graxia-mcp`; leave `dpop` off on `protectedResource`.

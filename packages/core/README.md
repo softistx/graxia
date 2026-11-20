@@ -1,4 +1,4 @@
-# @graxia/core
+# @softistx/graxia
 
 The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, with no
 adapter layer. Pass a schema, get a `fetch` handler that follows the
@@ -21,7 +21,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 ## Install
 
 ```sh
-bun add @graxia/core graphql@^17
+bun add @softistx/graxia graphql@^17
 bun add @softistx/telemetry  # optional, enables spans
 ```
 
@@ -30,7 +30,7 @@ The snippets below reuse the `graxia` and `schema` of the quick start instead of
 ## Quick start
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { hello(name: String = "world"): String }',
@@ -57,10 +57,10 @@ A plugin is a plain object with a `name` and the hooks it needs (`onRequest`, `o
 hook runs it after the stage (except `onContext` and `onResponse`, which have no
 after-hook; `onResponse` replaces the response with `setResponse`). A plugin may also declare
 `csrfExempt(request)` for its own `GET` requests (see [Security](./docs/guide/security.md)); for an
-in-browser explorer see `@graxia/graphiql`.
+in-browser explorer see `@softistx/graxia-graphiql`.
 
 ```ts
-import { createGraxia, definePlugin } from '@graxia/core';
+import { createGraxia, definePlugin } from '@softistx/graxia';
 
 const timing = definePlugin({
 	name: 'timing',
@@ -89,7 +89,7 @@ import {
 	createGraxia,
 	createSchema,
 	type InferContext,
-} from '@graxia/core';
+} from '@softistx/graxia';
 
 const context = async ({ request }: ContextInit) => ({
 	user: await authenticate(request), // { id: string } | null
@@ -120,7 +120,7 @@ Throw `exposedError` to show an error to the client; anything else is masked as
 `Unexpected error.` with a correlation id equal to the `x-request-id` header.
 
 ```ts
-import { createGraxia, createSchema, exposedError } from '@graxia/core';
+import { createGraxia, createSchema, exposedError } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { book(id: ID!): String }',
@@ -147,7 +147,7 @@ Yoga (the highest status wins, `http` is stripped from every transport); `errorH
 `createGraxia` turns it off:
 
 ```ts
-import { type ErrorHttp, exposedError } from '@graxia/core';
+import { type ErrorHttp, exposedError } from '@softistx/graxia';
 
 throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
@@ -227,7 +227,7 @@ csrf: { sameOrigin: { onRefused: () => new Response('Not found', { status: 404 }
 ```
 
 See [Security](./docs/guide/security.md) for client setup, the `sameOrigin` modes and `NODE_ENV`.
-A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@graxia/graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
+A plugin that serves its own `GET` page (such as the GraphiQL explorer of `@softistx/graxia-graphiql`) can exempt it from the header with `csrfExempt`; core still refuses an exempt request no plugin answers.
 
 **Opt-in**
 
@@ -242,7 +242,11 @@ Limit how often a client selects chosen fields, counted across aliases and fragm
 `signIn` in one request spend 3 units). Past a limit nothing executes: `429` with `Retry-After`.
 
 ```ts
-import { createGraxia, fieldRateLimit, memoryFieldLimit } from '@graxia/core';
+import {
+	createGraxia,
+	fieldRateLimit,
+	memoryFieldLimit,
+} from '@softistx/graxia';
 
 createGraxia({
 	schema,
@@ -262,7 +266,7 @@ createGraxia({
 
 `single: true` also refuses the field selected twice in one operation (`400`,
 `FIELD_SELECTED_ONCE`). The default key is the client address `serve()` read; give `key` behind a
-proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the limit across processes. See
+proxy or with `fetch()`. Use `redisFieldLimit` from `@softistx/graxia-redis` to share the limit across processes. See
 [Rate limiting fields](./docs/guide/rate-limiting.md).
 
 ## Telemetry
@@ -288,7 +292,7 @@ Setup, the span tree, attributes, every option and the migration from `@opentele
 The GraphQL multipart request spec, off by default. Resolvers receive Bun's Web `File`.
 
 ```ts
-import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+import { createGraxia, createSchema, GraphQLFile } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs:
@@ -358,11 +362,11 @@ needs neither passed twice, and `graxia.trustedDocuments` (`{ mode }` in force, 
 
 ## Testing client
 
-`graxia` is the instance from the quick start. `@graxia/core/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
+`graxia` is the instance from the quick start. `@softistx/graxia/testing` sends requests through `graxia.fetch` with real HTTP semantics, without a
 socket and without importing a test runner.
 
 ```ts
-import { createTestClient, expectNoErrors } from '@graxia/core/testing';
+import { createTestClient, expectNoErrors } from '@softistx/graxia/testing';
 
 const client = createTestClient(graxia, {
 	headers: { 'x-request-source': 'test' },
@@ -375,14 +379,14 @@ result.data?.hello; // 'hello world'
 
 ## Ready for agents
 
-`@graxia/core/agent` adds descriptive `@needs`, `@constraint` and `@errors` directives, prints the schema one caller may see, and lints descriptions. Every error graxia emits carries `extensions.fix`.
+`@softistx/graxia/agent` adds descriptive `@needs`, `@constraint` and `@errors` directives, prints the schema one caller may see, and lints descriptions. Every error graxia emits carries `extensions.fix`.
 
 ```ts
 import {
 	agentTypeDefs,
 	lintDescriptions,
 	printSchemaFor,
-} from '@graxia/core/agent';
+} from '@softistx/graxia/agent';
 
 // createSchema()({ typeDefs: [agentTypeDefs, sdl], resolvers })
 const sdl = printSchemaFor(schema, {
@@ -396,10 +400,10 @@ See [Ready for agents](./docs/guide/agent.md).
 ## Key-value cache
 
 `KeyValueCache` (with `CacheSetOptions`) is a small asynchronous string store; `createMemoryCache` is the
-in-process LRU implementation with a per-entry `ttlMs`. `redisCache` in `@graxia/redis` is the shared one.
+in-process LRU implementation with a per-entry `ttlMs`. `redisCache` in `@softistx/graxia-redis` is the shared one.
 
 ```ts
-import { createMemoryCache } from '@graxia/core';
+import { createMemoryCache } from '@softistx/graxia';
 
 const cache = createMemoryCache({ maxEntries: 500 });
 await cache.set('greeting', 'hello', { ttlMs: 60_000 });
@@ -411,10 +415,10 @@ See [limits and caches](./docs/guide/limits-and-caches.md).
 ## PubSub
 
 A typed in-memory PubSub for subscription resolvers. It lives in one process; for several
-instances, `redisPubSub` from `@graxia/redis` implements the same interface.
+instances, `redisPubSub` from `@softistx/graxia-redis` implements the same interface.
 
 ```ts
-import { createPubSub, createSchema } from '@graxia/core';
+import { createPubSub, createSchema } from '@softistx/graxia';
 
 const pubsub = createPubSub<{ tick: [payload: number] }>();
 
@@ -499,22 +503,22 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 
 ## Exports
 
-| import                 | what it is                                                                                                                                                                                                                                            |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
-|                        | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
-|                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
-|                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
-|                        | Errors: `exposedError`, `ErrorHttp`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                   |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
-|                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
-|                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
-|                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
-|                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
-|                        | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
-|                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
-| `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
-| `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
+| import                     | what it is                                                                                                                                                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@softistx/graxia`         | Server: `createGraxia`. Schema: `createSchema`. Plugins: `definePlugin`, `createStateKey`, `getRequestId`                                                                                                                                             |
+|                            | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
+|                            | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
+|                            | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
+|                            | Errors: `exposedError`, `ErrorHttp`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                   |
+|                            | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                            | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
+|                            | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
+|                            | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
+|                            | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
+|                            | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
+|                            | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
+| `@softistx/graxia/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
+| `@softistx/graxia/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
 
 ## Documentation
 
@@ -524,7 +528,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Context, cancellation and shutdown](./docs/guide/context.md): `InferContext`, the resolver context, `signal`, `getContext()`, `dispose()`.
 - [Subscriptions](./docs/guide/subscriptions.md): server-sent events, keep-alive, cancellation, Bun idle timeout.
 - [Subscriptions over WebSocket](./docs/guide/websocket.md): `graphql-transport-ws`, auth, close codes, own `Bun.serve`.
-- [Ready for agents](./docs/guide/agent.md): `@graxia/core/agent`, directives, `printSchemaFor`, `visibleSchema`, `lintDescriptions`, the `fix` contract.
+- [Ready for agents](./docs/guide/agent.md): `@softistx/graxia/agent`, directives, `printSchemaFor`, `visibleSchema`, `lintDescriptions`, the `fix` contract.
 - [Errors](./docs/guide/errors.md): `exposedError`, masking, correlation ids, `onUnexpected`.
 - [Testing](./docs/guide/testing.md): `graxia.execute`, typed documents, the test client.
 - [Codegen](./docs/guide/codegen.md): graphql-codegen's `Resolvers` with `createSchema`, `contextType`, mappers, `enumValues`.

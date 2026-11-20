@@ -18,7 +18,7 @@ An Envelop plugin carries `instrumentation`. Remove it, or use `createGraxia({ t
 
 A plugin uses a graphql-yoga hook (`onRequest`, `onRequestParse`, `onParams`, `onResultProcess`, `onResponse`,
 `onYogaInit`, `onExecutionResult`). They belong to the HTTP layer graxia replaces: rewrite the plugin with `definePlugin`
-from `@graxia/core`.
+from `@softistx/graxia`.
 
 ## uses "onXxx", which is not an Envelop hook graxia knows
 

@@ -11,20 +11,20 @@ repository's own.
 graxia is a Bun-only GraphQL server engine on graphql 17: typed plugins,
 GraphQL over HTTP, SSE, graphql-transport-ws on Bun's WebSocket, `@defer`/`@stream`,
 trusted documents, telemetry on `@softistx/telemetry`, an MCP server. It is open source (MIT) and
-published to npm under `@graxia/*`. The plan is `docs/plan.md`, the consumer
+published to npm under `@softistx/graxia*`. The plan is `docs/plan.md`, the consumer
 roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 (tracking issue "graxia v0 roadmap").
 
-| package            | what it is                                                                                                 |
-| ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `@graxia/core`     | the engine (`createGraxia`, plugins, transports, limits, trusted documents, telemetry). Peer `graphql ^17` |
-| `@graxia/redis`    | `redisPubSub()`, `redisCache()`, `redisFieldLimit()` on `@softistx/redis`                                  |
-| `@graxia/graphiql` | GraphiQL 4 bundled, Apollo Sandbox option                                                                  |
-| `@graxia/mcp`      | MCP over Streamable HTTP, OAuth resource server                                                            |
-| `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
+| package                     | what it is                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `@softistx/graxia`          | the engine (`createGraxia`, plugins, transports, limits, trusted documents, telemetry). Peer `graphql ^17` |
+| `@softistx/graxia-redis`    | `redisPubSub()`, `redisCache()`, `redisFieldLimit()` on `@softistx/redis`                                  |
+| `@softistx/graxia-graphiql` | GraphiQL 4 bundled, Apollo Sandbox option                                                                  |
+| `@softistx/graxia-mcp`      | MCP over Streamable HTTP, OAuth resource server                                                            |
+| `@softistx/graxia-envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
-`@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
-publish 0.1.0, released with core 0.2.0), `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0), `@graxia/mcp` is public since S23 (first publish 0.1.0, in 0.5), and `@graxia/envelop` is public since S27 (first publish 0.1.0, in 0.6); the other packages stay `"private": true` until their own slice, and removing it is
+`@softistx/graxia` is public since S8 (first publish 0.1.0) and `@softistx/graxia-redis` since S13 (first
+publish 0.1.0, released with core 0.2.0), `@softistx/graxia-graphiql` is public from 0.4 (M4, first publish 0.1.0), `@softistx/graxia-mcp` is public since S23 (first publish 0.1.0, in 0.5), and `@softistx/graxia-envelop` is public since S27 (first publish 0.1.0, in 0.6); the other packages stay `"private": true` until their own slice, and removing it is
 a deliberate change, named in its PR.
 
 ## Scripts
@@ -50,9 +50,10 @@ runs `plugin-index.spec.ts`, `llms.spec.ts` and `plugin-manifests.spec.ts`. The 
 public names from the source of each `exports` entry; the roadmap pages are not in `llms*.txt`.
 
 The release itself is its own step, after the Version PR merges: `bunx changeset git-tag && git push --follow-tags` from an up-to-date `develop`.
+`publish.yml` then runs `scripts/deprecate-moved.ts` after the publish step (`continue-on-error`): once a `@softistx/graxia*` name is on npm, its old `@graxia/*` name is deprecated with "moved to <new>" (`npm deprecate`, idempotent, never an unpublish; `--dry-run` only prints). It skips a pair until the new name is published.
 
 At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, and SKILL.md's envelop pointer becomes
-`node_modules/@graxia/envelop/docs/guide/envelop.md`, then regenerate.
+`node_modules/@softistx/graxia-envelop/docs/guide/envelop.md`, then regenerate.
 
 ## Invariants
 
@@ -106,5 +107,5 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
 - **`ci.yml`**: one light job on `pull_request` to `develop` and `feat/**`; no
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
-- **`examples/host-embedding`** is a private workspace member, never published: the root `test` runs it after the packages (`bun run --filter './examples/*' test`), and it needs `bun run build` first (it imports `@graxia/core`'s `dist`). `.changeset/config.json` keeps private packages out of versioning and tags.
+- **`examples/host-embedding`** is a private workspace member, never published: the root `test` runs it after the packages (`bun run --filter './examples/*' test`), and it needs `bun run build` first (it imports `@softistx/graxia`'s `dist`). `.changeset/config.json` keeps private packages out of versioning and tags.
 - **`plugins/graxia`** carries a generated package index (see "Generated files").

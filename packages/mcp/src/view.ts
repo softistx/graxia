@@ -1,4 +1,4 @@
-import { type Can, printSchemaFor } from '@graxia/core/agent';
+import { type Can, printSchemaFor } from '@softistx/graxia/agent';
 import {
 	buildSchema,
 	type DefinitionNode,

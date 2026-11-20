@@ -1,10 +1,10 @@
-# @graxia/envelop
+# @softistx/graxia-envelop
 
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { fromEnvelop } from '@graxia/envelop';
+import { createGraxia } from '@softistx/graxia';
+import { fromEnvelop } from '@softistx/graxia-envelop';
 import { useDepthLimit } from '@envelop/depth-limit';
 
 createGraxia({
@@ -16,14 +16,14 @@ createGraxia({
 ## Install
 
 ```sh
-bun add @graxia/envelop @graxia/core @envelop/core graphql
+bun add @softistx/graxia-envelop @softistx/graxia @envelop/core graphql
 bun add @envelop/depth-limit # the Envelop plugins you want
 ```
 
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field) and `graphql@^17.1`.
-- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
+- `@softistx/graxia` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your `tsconfig.json`; `nodenext` is not supported.
 
 ## What it runs

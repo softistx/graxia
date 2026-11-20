@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { createGraxia, createSchema, GraxiaConfigError } from '@graxia/core';
+import {
+	createGraxia,
+	createSchema,
+	GraxiaConfigError,
+} from '@softistx/graxia';
 import type { RedisClient } from 'bun';
 import { until } from './env.test-util';
 import { redisPubSub } from './pubsub';
@@ -54,7 +58,9 @@ describe('redisPubSub (fake client)', () => {
 		).toThrow(GraxiaConfigError);
 		expect(() =>
 			redisPubSub({ url: 'redis://x', client: {} } as never),
-		).toThrow('@graxia/redis: pass either "url" or "client", not both');
+		).toThrow(
+			'@softistx/graxia-redis: pass either "url" or "client", not both',
+		);
 	});
 
 	test('one SUBSCRIBE per topic, shared; UNSUBSCRIBE when the last leaves', async () => {

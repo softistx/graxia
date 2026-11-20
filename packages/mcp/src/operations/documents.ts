@@ -1,4 +1,4 @@
-import type { TrustedManifest } from '@graxia/core';
+import type { TrustedManifest } from '@softistx/graxia';
 
 /** One document of a manifest. */
 export interface ManifestEntry {

@@ -1,4 +1,4 @@
-import type { GraxiaPlugin, OnContextPayload } from '@graxia/core';
+import type { GraxiaPlugin, OnContextPayload } from '@softistx/graxia';
 import { GraphQLError } from 'graphql';
 import { extender, type opKey, opOf } from './early-context';
 import * as refuse from './refuse';

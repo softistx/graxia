@@ -2,7 +2,7 @@ import {
 	type CacheSetOptions,
 	GraxiaConfigError,
 	type KeyValueCache,
-} from '@graxia/core';
+} from '@softistx/graxia';
 import {
 	type BoundRawCache,
 	bindRawCache,
@@ -38,7 +38,7 @@ export function redisCache(
 	const name = (options.prefix ?? 'graxia:cache:').replace(/:$/, '');
 	if (name.length === 0)
 		throw new GraxiaConfigError(
-			'@graxia/redis: redisCache prefix must hold at least one character before its ":"',
+			'@softistx/graxia-redis: redisCache prefix must hold at least one character before its ":"',
 		);
 	const definition = defineRawCache({ name });
 	let bound: Promise<BoundRawCache> | undefined;

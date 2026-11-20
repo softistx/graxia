@@ -6,8 +6,8 @@ its result (from its selection set). An agent calls `book_by_id({ id: "1" })` in
 GraphQL, and runs only operations you have reviewed.
 
 ```ts
-import { createGraxia } from '@graxia/core';
-import { createMcp } from '@graxia/mcp';
+import { createGraxia } from '@softistx/graxia';
+import { createMcp } from '@softistx/graxia-mcp';
 import manifest from './persisted-documents.json';
 
 const graxia = createGraxia({ schema, trustedDocuments: { manifest } });
@@ -145,7 +145,7 @@ JSON Schema 2020-12, `type: "object"`, `additionalProperties: false`, one proper
 
 ### `@constraint`
 
-`@constraint` (from `@graxia/core/agent`) becomes `minLength`, `maxLength`, `minimum`, `maximum`,
+`@constraint` (from `@softistx/graxia/agent`) becomes `minLength`, `maxLength`, `minimum`, `maximum`,
 `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `pattern`, `format`, and on a list `minItems`
 and `maxItems` (the other limits then apply to the items). It is read:
 

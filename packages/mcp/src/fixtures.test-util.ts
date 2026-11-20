@@ -1,4 +1,4 @@
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 import { createMcp, type McpOptions } from './index';
 
 export const typeDefs = /* GraphQL */ `

@@ -1,5 +1,9 @@
 import { describe, expect, spyOn, test } from 'bun:test';
-import { createGraxia, createSchema, GraxiaConfigError } from '@graxia/core';
+import {
+	createGraxia,
+	createSchema,
+	GraxiaConfigError,
+} from '@softistx/graxia';
 import { resolveAuth } from './auth/resolve';
 import { sinkOf } from './create';
 import { call, mcpFor } from './fixtures.test-util';

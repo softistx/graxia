@@ -5,7 +5,7 @@ on Bun. It passes every MUST and SHOULD of the `graphql-http` server audits (61 
 a real `Bun.serve` in this package's specs).
 
 ```ts
-import { createGraxia, createSchema } from '@graxia/core';
+import { createGraxia, createSchema } from '@softistx/graxia';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { hello: String }',
@@ -225,7 +225,7 @@ trusted nor echoed, so an invalid or hostile header changes nothing. Plugins rea
 `getRequestId(state)`; they cannot set it.
 
 ```ts
-import { getRequestId } from '@graxia/core';
+import { getRequestId } from '@softistx/graxia';
 
 const log = definePlugin({
 	name: 'log',

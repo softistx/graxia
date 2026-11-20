@@ -6,7 +6,7 @@ import {
 	type PubSubSubscribeArgs,
 	type PubSubTopics,
 	tryGetContext,
-} from '@graxia/core';
+} from '@softistx/graxia';
 import { publishRaw } from '@softistx/redis';
 import { channelOf, splitPublishArgs } from './channel';
 import {

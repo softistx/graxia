@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { GraxiaConfigError } from '@graxia/core';
 import { fromJsonSchema } from '@modelcontextprotocol/server';
+import { GraxiaConfigError } from '@softistx/graxia';
 import { call, mcpFor, rpc } from './fixtures.test-util';
 import { apollo, asMap, listed, manifest } from './operations.test-util';
 

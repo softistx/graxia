@@ -1,6 +1,10 @@
 # Roadmap
 
-Where `@graxia/redis` is going, as what you get. A direction, not a commitment.
+Where `@softistx/graxia-redis` is going, as what you get. A direction, not a commitment.
+
+## Now
+
+- **Moving to the `@softistx` scope** — the package is now `@softistx/graxia-redis` (it was `@graxia/redis`). Same code and API; replace the dependency and the imports ([migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md)). The old name is deprecated.
 
 ## Next
 

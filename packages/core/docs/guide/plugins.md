@@ -3,7 +3,7 @@
 A plugin is a plain object with a `name` and the hooks it needs. `definePlugin` types it.
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 export const timing = definePlugin({
 	name: 'timing',
@@ -150,7 +150,7 @@ over a WebSocket, `connectionParams`. `onExecute` sees it too, through `args.con
 `onValidate` ties a document that fails validation to its socket, which `onExecute` never sees.
 
 ```ts
-import { definePlugin } from '@graxia/core';
+import { definePlugin } from '@softistx/graxia';
 
 // graxia.upgrade(request, server, { socketId: crypto.randomUUID() })
 export const invalidDocuments = definePlugin()({
@@ -194,7 +194,7 @@ the sequence stops there (later plugins do not run `setup`), `graxia.ready` reje
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
 `setup` receives `{ plugins, transports, schema }`: `schema` is the instance's `GraphQLSchema` (so a plugin can
-read it once, at boot, as `@graxia/envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
+read it once, at boot, as `@softistx/graxia-envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
 `transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
 instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
 that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.
@@ -214,7 +214,7 @@ one request shares. Two keys with the same name are distinct. The request's id i
 `getRequestId(state)`.
 
 ```ts
-import { createStateKey, definePlugin } from '@graxia/core';
+import { createStateKey, definePlugin } from '@softistx/graxia';
 
 export const userKey = createStateKey<{ id: string }>('user');
 
@@ -239,7 +239,7 @@ writes.
 reaches `onExecute` and `onSubscribe`, and `ContextOf` folds a list of plugins.
 
 ```ts
-import { type ContextOf, definePlugin } from '@graxia/core';
+import { type ContextOf, definePlugin } from '@softistx/graxia';
 
 const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',
@@ -269,7 +269,7 @@ provides with another type, is a compile error that names the plugin and the fie
 one (`{ db?: string }`) may be absent.
 
 ```ts
-import { type ContextInit, createGraxia, definePlugin } from '@graxia/core';
+import { type ContextInit, createGraxia, definePlugin } from '@softistx/graxia';
 
 const auth = definePlugin<{ request: Request }>()({
 	name: 'auth',

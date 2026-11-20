@@ -1,4 +1,4 @@
-import type { Can } from '@graxia/core/agent';
+import type { Can } from '@softistx/graxia/agent';
 import type { GraphQLSchema } from 'graphql';
 import type { McpAuthInfo } from './auth/types';
 import { buildView, type View } from './view';

@@ -76,8 +76,8 @@ describe('affected', () => {
 describe('readNodes', () => {
 	test('reads the packages, a dependent naming its needs', async () => {
 		const all = await readNodes();
-		const redis = all.find((node) => node.name === '@graxia/redis');
-		expect(redis?.needs).toContain('@graxia/core');
+		const redis = all.find((node) => node.name === '@softistx/graxia-redis');
+		expect(redis?.needs).toContain('@softistx/graxia');
 	});
 });
 

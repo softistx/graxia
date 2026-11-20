@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createSchema } from '@graxia/core';
+import { createSchema } from '@softistx/graxia';
 import { GraphQLError } from 'graphql';
 import { type Booted, boot, calls, typeDefs } from './fixtures.test-util';
 import { fromEnvelop } from './from-envelop';

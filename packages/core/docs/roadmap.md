@@ -1,6 +1,10 @@
 # Roadmap
 
-Where `@graxia/core` is going, as what you get. A direction, not a commitment.
+Where `@softistx/graxia` is going, as what you get. A direction, not a commitment.
+
+## Now
+
+- **Moving to the `@softistx` scope** — the package is now `@softistx/graxia` (it was `@graxia/core`). Same code and API; replace the dependency and the imports ([migration guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/migrating-from-graxia-scope.md)). The old name is deprecated.
 
 ## Later
 
@@ -19,16 +23,16 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ### 0.6.0
 
-- **Parity and migration** — Envelop plugins run through `@graxia/envelop`, multipart uploads
+- **Parity and migration** — Envelop plugins run through `@softistx/graxia-envelop`, multipart uploads
   (see [File uploads](./guide/uploads.md)), and a parity suite, a host-embedding example and a
   migration guide from `@alxia/graphql` so an application on another GraphQL server can move over.
 
 ### 0.5.0
 
-- **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
+- **Ready for agents, the schema side** — `@softistx/graxia/agent`: `@needs`, `@constraint` and
   `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
   error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
-  `@graxia/mcp`, with its own [roadmap](https://github.com/softistx/graxia/blob/develop/packages/mcp/docs/roadmap.md).
+  `@softistx/graxia-mcp`, with its own [roadmap](https://github.com/softistx/graxia/blob/develop/packages/mcp/docs/roadmap.md).
 - **What a host needs to serve agents** — `graxia.schema`, `graxia.limits` and
   `graxia.trustedDocuments` read the resolved configuration, and the shared `Can` type names the
   permission check.
@@ -42,7 +46,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **A built-in explorer** — GraphiQL 4 bundled with no CDN under a strict content security
   policy ([#21](https://github.com/softistx/graxia/issues/21)), and an Apollo Sandbox option
   ([#22](https://github.com/softistx/graxia/issues/22)), both development-only, in
-  `@graxia/graphiql` 0.1.0.
+  `@softistx/graxia-graphiql` 0.1.0.
 - **The resolver context, written once** — `InferContext<typeof context, typeof plugins>` derives the
   type from the `context` factory, and `createGraxia` checks at compile time that it satisfies the
   schema's `createSchema<Ctx>` ([#42](https://github.com/softistx/graxia/issues/42)).
@@ -79,7 +83,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **`@defer` and `@stream`** — over `multipart/mixed` and SSE, in graphql 17's format or the legacy one
   (see [the guide](./guide/incremental.md)).
 - **A key-value cache contract** — `KeyValueCache` and `createMemoryCache` (LRU with per-entry TTL);
-  Redis implementations are in `@graxia/redis`.
+  Redis implementations are in `@softistx/graxia-redis`.
 
 ### 0.1.0
 
@@ -99,4 +103,4 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **Errors and masking** — `exposedError` with typed codes, unexpected errors masked with a
   correlation id, `maskError`, `maskErrors` and `onUnexpected`.
 - **`execute` and testing** — in-process `graxia.execute`, typed documents, and the
-  `@graxia/core/testing` client with `expectNoErrors`.
+  `@softistx/graxia/testing` client with `expectNoErrors`.
