@@ -76,7 +76,7 @@ The second argument is the `serverContext`, merged into every operation's contex
 graxia answers whatever path it is handed.
 
 The host context is typed on the `context` factory, `({ serverContext }: ContextInit<{ db: Db }>) => …`
-(do not write `createGraxia<…>`: an explicit type argument turns the schema check off). When the
+(or explicitly, `createGraxia<{ db: Db }>()({ … })`, the curried form; never `createGraxia<…>({ … })`, whose explicit type argument turns the schema check off). When the
 type has a required key, the `serverContext` of `fetch`, of `graxia.execute` and of `serve`
 (`graxia.serve({ serverContext })`) is required too, and leaving it out is a type error; when
 every key is optional (or there is no annotation) it stays optional. `serve` adds `server` (Bun's

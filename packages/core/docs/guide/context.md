@@ -66,7 +66,9 @@ factory's `ContextInit<…>` declares, and what graxia always adds (`CoreContext
 
 Annotate the factory with the host's type, `ContextInit<{ tenant: string }>`: `InferContext` reads
 it, and `fetch`, `execute` and `serve` then require that `serverContext`. Never write
-`createGraxia<…>`: an explicit type argument switches the context check off.
+`createGraxia<…>({ … })`: an explicit type argument on the direct call switches the context check off.
+To state the host explicitly instead, use the curried form, `createGraxia<{ tenant: string }>()({ … })`:
+the schema, the plugins and the factory's result stay inferred, so every check runs.
 
 ```ts
 const context = ({
@@ -95,11 +97,21 @@ plugins, `serverContext` and graxia provide are taken into account; the rest mus
 `context` factory.
 
 - A `createSchema<Ctx>()` schema whose context needs a key nobody provides, or provides with another
-  type, is a type error on `context` (a missing `context` option is "Property 'context' is missing").
+  type, is a type error on `context` (with `createGraxia<Host>()(…)`, add the key to `Host`, or return it from the factory) (a missing `context` option is "Property 'context' is missing").
 - A plain `GraphQLSchema`, or `createSchema()` without `Ctx`, is not checked.
 - A plugin list that is not a tuple (`GraxiaPlugin[]`) is not checked either.
-- Do not write `createGraxia<…>`: an explicit type argument stops TypeScript inferring the others
-  and turns the check off. Type the host on the factory, as above.
+- Do not write `createGraxia<…>({ … })`: an explicit type argument stops TypeScript inferring the others
+  and turns the check off. Type the host on the factory, as above, or write it explicitly with the
+  curried form, `createGraxia<Host>()({ … })` (two calls, since TypeScript has no partial type-argument
+  inference, as in `definePlugin<In>()({ … })`): the checks run, and `fetch`, `execute` and `serve`
+  require the same `serverContext`.
+
+```ts
+const graxia = createGraxia<{ tenant: string }>()({
+	schema: createSchema<{ tenant: string }>()({ typeDefs, resolvers }),
+	plugins,
+});
+```
 
 The errors are listed in [Troubleshooting](../troubleshooting.md).
 

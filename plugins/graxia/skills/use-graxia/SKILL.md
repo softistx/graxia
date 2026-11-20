@@ -61,7 +61,7 @@ Breaking in 0.4.0 (pre-1.0; the changesets and the changelog on GitHub,
 
 Write the resolver context once: `type Ctx = InferContext<typeof context, typeof plugins>`, then
 `createSchema<Ctx>()`; `createGraxia` checks at compile time that the factory, plugins and
-`signal` provide it. Type the host as `ContextInit<{ … }>` on the factory, never `createGraxia<…>`.
+`signal` provide it. Type the host as `ContextInit<{ … }>` on the factory, or write it explicitly with the curried form `createGraxia<Host>()({ … })`; never `createGraxia<Host>({ … })`, which turns both the schema and the plugin checks off.
 
 With graphql-codegen, point `contextType` at the `InferContext` type and pass the generated `Resolvers` as
 `createSchema<Ctx, Resolvers>()`'s second generic; a map generated for another context is a type error.

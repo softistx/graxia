@@ -47,7 +47,7 @@ type Message<
 		: string,
 > = [AbsentKeys<Required, Available>] extends [never]
 	? `graxia: plugin ${Label<Name, Index>} needs ${ContextFields<MistypedKeys<Required, Available>>}, which the context provides as another type`
-	: `graxia: plugin ${Label<Name, Index>} needs ${ContextFields<AbsentKeys<Required, Available>>}, which nothing provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)`;
+	: `graxia: plugin ${Label<Name, Index>} needs ${ContextFields<AbsentKeys<Required, Available>>}, which nothing provides (the factory's result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)`;
 
 /** The first plugin of the tuple whose requirement `Available` (plus what earlier plugins add) does not meet, as a message; `never` when all are met. */
 type FirstUnmet<

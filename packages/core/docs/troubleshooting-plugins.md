@@ -22,14 +22,14 @@ createGraxia({
 In development the default logs it with `console.error`; in production nothing is logged until you
 set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
 
-## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
+## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
 
 A type error on the `plugins` option of `createGraxia`. In full:
 
 ```text
 Type '[GraxiaPlugin<{ request: Request; }, {}, "auth">]' is not assignable to type
 'readonly [GraxiaPlugin<…>] & { readonly "graxia: plugin \"auth\" needs context.request, which nothing
-provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never; }'.
+provides (the factory's result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)": never; }'.
 ```
 
 The named plugin was built with `definePlugin<{ request: Request }>()`, and neither the `context`
@@ -45,12 +45,15 @@ createGraxia({
 	// ... or list the plugin that adds it before this one
 	plugins: [auth],
 });
+
+// ... or state the host explicitly with the curried form
+createGraxia<{ request: Request }>()({ schema, plugins: [auth] });
 ```
 
 A field provided with another type reads `… needs context.db, which the context provides as another
 type`. An optional field (`{ db?: string }`) may be absent. Before this check (a minor of
 `@graxia/core`), such a call compiled and either failed at runtime or worked only through an untyped
-`serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; see
+`serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; write `createGraxia<Host>()({ ... })` instead. See
 [Plugins](./guide/plugins.md#typed-context).
 
 ## Duplicate plugin name "x" at indexes 0 and 2
@@ -103,6 +106,7 @@ not satisfy `Ctx`. The three forms:
 - A key is missing: `Type '{ user: string; }' is not assignable to type 'MaybePromise<{ user: string; n: number; }>'`,
   then `Property 'n' is missing in type '{ user: string; }' but required in type '{ user: string; n: number; }'`.
 - A key has another type: `Type 'number' is not assignable to type 'string'`, on the key of the returned object.
+- With the curried form, a key of `Ctx` that neither `Host`, the factory nor a plugin provides is the same error: add it to `Host`.
 - No `context` option at all: `Property 'context' is missing in type '{ schema: … }' but required in type
   '{ context: (init: ContextInit<…>) => MaybePromise<{ user: string; n: number; }>; }'`.
 
@@ -112,7 +116,7 @@ intersection `(…) & (…)`; read the last line of the message, which names the
 The type in `MaybePromise<…>` is what the factory still has to return: the keys of `Ctx` that the
 plugins, `serverContext` and graxia do not already provide.
 
-Return the missing keys from the factory, or add the plugin that provides them. Writing the
+Return the missing keys from the factory, add the plugin that provides them, or, with `createGraxia<Host>()(…)`, add the key to `Host`. Writing the
 context once avoids the drift:
 
 ```ts
@@ -125,9 +129,16 @@ createGraxia({ schema, context, plugins });
 ```
 
 The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
-with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
-`ContextInit<{ db: Db }>`). See
+with an explicit type argument on the direct call (do not write `createGraxia<…>({ … })`; type the host on the factory,
+`ContextInit<{ db: Db }>`, or write `createGraxia<{ db: Db }>()({ … })`). See
 [Context](./guide/context.md#write-the-context-once).
+
+## Property 'fetch' does not exist on type '<Schema …>(options: CheckedOptions<…>) => Graxia<…>'
+
+`createGraxia()` was called with no options: with no argument it returns the curried function (the
+form `createGraxia<Host>()({ … })`), not a server. Pass the options in the second call:
+`createGraxia<Host>()({ schema })`, or `createGraxia({ schema })`. The same holds for `serve`,
+`execute` and the other members.
 
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false
 

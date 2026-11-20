@@ -83,8 +83,9 @@ export type ContextFactory<HostCtx = Record<never, never>> = (
 
 /**
  * Options of {@link createGraxia}. Every type parameter is inferred from the
- * call: type the host on the `context` factory (`ContextInit<{ … }>`), never
- * with `createGraxia<…>`, which turns the schema's context check off.
+ * call: type the host on the `context` factory (`ContextInit<{ … }>`) or with the
+ * curried `createGraxia<Host>()(…)`; never `createGraxia<Host>({ … })`, which
+ * turns both checks off.
  */
 export interface GraxiaOptions<
 	HostCtx extends object = Record<never, never>,
