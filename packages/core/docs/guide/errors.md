@@ -85,8 +85,10 @@ throw exposedError('CONFLICT', 'Email taken.', {
   cannot choose a status. A `maskError` that puts `http` on the error it returns does.
 - Not copied from Yoga: a result-level `extensions.http`; the 500 for an unexpected error without
   data (graxia masks it and keeps the media type's rule); a status outside 200 to 599 (ignored);
-  and the status and headers on the other transports. A batch (always 200), SSE, WebSocket and
+  and the status and headers on the other transports. A batch (always 200), SSE (a query, or a
+  subscription that fails after its first event), WebSocket and
   `multipart/mixed` keep their own status, but `http` is stripped from their payloads too.
+- **A subscription that fails before its source stream opens** (a `subscribe` that throws, a failed `onSubscribe` `setResult`) with errors that carry `extensions.http` status or headers is answered over SSE as a plain JSON response, the way a query is: the media type follows `Accept` (`application/json` by default), the status and headers come from the errors through the rules above, and `http` is stripped from the body. Without `extensions.http` it stays a 200 stream with one `next` event (Yoga does the same). A failure after the first event stays in the stream. `multipart/mixed` does not serve subscriptions, and WebSocket sends an `error` message: neither changes. `errorHttp: false` keeps the stream.
 - Stripping happens on the HTTP and WebSocket output only: `graxia.execute` and the telemetry still see `http`.
 - `createGraxia({ errorHttp: false })` turns it all off: the media type decides and `extensions` are untouched.
 

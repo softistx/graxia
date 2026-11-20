@@ -242,7 +242,8 @@ throw new GraphQLError('Email taken.', {
 - A status from 200 to 599 only; anything else is ignored. Under `application/json`, the error's `extensions.http.spec` set to `true` ignores its status (the headers still apply), as in Yoga.
 - Precedence of the status: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
 - `http` is removed from the serialized extensions of every transport. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
-- Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on SSE, WebSocket and `multipart/mixed`, which only get `http` stripped. A batch is always 200 here as in Yoga; its entries only lose `http`.
+- Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on WebSocket and `multipart/mixed`, which only get `http` stripped, and on an SSE query or a subscription failing after its first event, which stay streams. A batch is always 200 here as in Yoga; its entries only lose `http`.
+- A subscription that fails before its source stream opens (its `subscribe` throws a `GraphQLError` with `extensions.http`) is answered over SSE as plain JSON with that status and those headers, as in Yoga, so a 400 or 403 promised before the stream still holds. Without `extensions.http` it stays a 200 stream with one `next` event.
 - Turn it off with `createGraxia({ errorHttp: false })`.
 
 ## graphql 17
@@ -294,3 +295,4 @@ no section above. `same` means the behaviour is kept; the others link to their s
 | 32  | Host shutdown signal                                                                        | differs: [Shutdown](#shutdown)                                             |
 | 33  | Graphql 16 dropped                                                                          | differs: [graphql 17](#graphql-17)                                         |
 | 34  | `extensions.http` status and headers on errors                                              | differs: [Status and headers from errors](#status-and-headers-from-errors) |
+| 35  | A subscription refused before its stream opens answers its `extensions.http` status         | differs: [Status and headers from errors](#status-and-headers-from-errors) |

@@ -72,6 +72,7 @@ export async function dispatch(
 					{ ...call, state: operation },
 					outcome,
 					sseFormat,
+					{ state, media: reading.media ?? 'application/json' },
 				);
 			return multipart && outcome.kind === 'stream'
 				? streamResponse(
@@ -130,6 +131,7 @@ async function runBatch(
 
 /**
  * The answer over a stream format (`text/event-stream`): the operation's results as events.
+ * A subscription that fails before its source stream opens, with errors that carry `extensions.http`, is answered as plain JSON (see `errorHttp`).
  * What fails before an operation exists (a status was chosen: bad params,
  * mutation over GET, aborted) keeps its plain HTTP answer; a parse, validation
  * or execution error is a `next` event, as the protocol asks.
@@ -139,6 +141,7 @@ function encodeStreamed(
 	call: Call,
 	outcome: Outcome,
 	format: StreamFormat,
+	plain: { state: StateBag; media: MediaType },
 ): Response {
 	if (outcome.kind === 'response') return outcome.response;
 	if (outcome.kind === 'unexpected')
@@ -150,6 +153,17 @@ function encodeStreamed(
 			'application/json',
 			outcome.headers,
 		);
+	// A subscription refused before its source stream opened, whose errors ask
+	// for an HTTP status or headers, is a plain JSON answer like a query's.
+	if (
+		outcome.kind === 'result' &&
+		outcome.beforeStream &&
+		rt.options.errorHttp
+	) {
+		const asked = readErrorHttp(outcome.result, plain.media);
+		if (asked.status !== undefined || asked.headers !== undefined)
+			return encode(rt, plain.state, outcome, plain.media);
+	}
 	return streamResponse(rt, call, outcome, format);
 }
 

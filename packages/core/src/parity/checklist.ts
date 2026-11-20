@@ -1,6 +1,6 @@
 /**
  * The 33 items of `docs/plan.md` §5 (what `@alxia/graphql` 0.16.4 gives a
- * host) and item 34 (the status `@alxia/graphql` up to 0.16, on Yoga, answered), each with the specs that prove graxia covers it. `checklist.test.ts`
+ * host) and items 34 and 35 (the status `@alxia/graphql` up to 0.16, on Yoga, answered), each with the specs that prove graxia covers it. `checklist.test.ts`
  * fails when a file is gone, a test title no longer appears in its file, or a
  * divergence has no section in the migration guide: rename a referenced test
  * and this table follows.
@@ -489,6 +489,21 @@ export const PARITY: readonly ParityItem[] = [
 			'an SSE next event has no http in its extensions',
 			'a WebSocket next message has no http in its extensions',
 			'errorHttp: false turns it off',
+		),
+		differs: 'Status and headers from errors',
+	},
+	{
+		n: 35,
+		item: 'A subscription refused before its stream opens answers its extensions.http status',
+		specs: core(
+			'server/subscription-http.test.ts',
+			'over SSE it answers the status and headers of its errors as plain JSON',
+			'over SSE a 403 answers 403',
+			'the media type follows the Accept header, as for a query',
+			'over multipart/mixed a subscription is not served, so there is no stream to refuse',
+			'errorHttp: false keeps the 200 stream with the errors in a next event',
+			'without extensions.http it stays a 200 stream, as in Yoga',
+			'a failure after the first event stays in the stream, http stripped',
 		),
 		differs: 'Status and headers from errors',
 	},

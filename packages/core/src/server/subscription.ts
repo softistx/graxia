@@ -18,7 +18,8 @@ export async function subscription(
 	const run = await runExecutionStage(rt, call, args, 'onSubscribe', subscribe);
 	if ('outcome' in run) return run.outcome;
 	const { result } = run;
-	if (isSingleResult(result)) return { kind: 'result', result, scope };
+	if (isSingleResult(result))
+		return { kind: 'result', result, scope, beforeStream: true };
 	if (
 		typeof result === 'object' &&
 		result !== null &&

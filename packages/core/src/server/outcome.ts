@@ -15,6 +15,8 @@ export type Outcome =
 			refusal?: HttpRefusal;
 			/** The operation's `getContext()` scope, set once its context exists (not for a failure before it). */
 			scope?: <T>(work: () => T) => T;
+			/** A subscription that failed before its source stream opened (set by `subscription`). */
+			beforeStream?: true;
 	  }
 	| { kind: 'response'; response: Response }
 	| {
