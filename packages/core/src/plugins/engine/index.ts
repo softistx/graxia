@@ -61,6 +61,8 @@ export function createPluginEngine(
 			return fn ? [{ plugin: plugin.name, run: fn.bind(plugin) }] : [];
 		});
 	const ready = new Set<GraxiaPlugin<any, any>>();
+	/** `has` is asked per request: answered once per stage. */
+	const hasHook = new Map<HookStage, boolean>();
 	return {
 		names,
 		runners: buildRunners(hooksOf),
@@ -75,7 +77,14 @@ export function createPluginEngine(
 					return false;
 				}
 			}),
-		has: (stage) => ordered.some((p) => typeof p[stage] === 'function'),
+		has(stage) {
+			let known = hasHook.get(stage);
+			if (known === undefined) {
+				known = ordered.some((p) => typeof p[stage] === 'function');
+				hasHook.set(stage, known);
+			}
+			return known;
+		},
 		init: createSetup(ordered, names, ready, transports, schema),
 		dispose: createDispose(ordered, ready),
 	};

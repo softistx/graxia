@@ -1,6 +1,7 @@
 import { type ExecutionArgs, type ExecutionResult, execute } from 'graphql';
 import { stampRaisedByGraphql } from '../errors/fixes';
 import type { RequestState } from '../plugins/state';
+import { NO_AFTER } from '../plugins/stage';
 import type { ExecuteFn, ExecutionOutput } from '../plugins/types';
 import { failure, type Outcome, settle, unexpected } from './outcome';
 import type { Runtime } from './runtime';
@@ -59,7 +60,10 @@ export async function runExecutionStage(
 		request,
 		state,
 		args,
-		fallback: async (a) => stampRaisedByGraphql(await fallback(a)),
+		// A stage with no hook never builds a payload, so nothing reads the wrapper.
+		fallback: rt.engine.has(stageName)
+			? async (a) => stampRaisedByGraphql(await fallback(a))
+			: fallback,
 	});
 	let result: ExecutionOutput | undefined;
 	let thrown: unknown;
@@ -76,12 +80,15 @@ export async function runExecutionStage(
 			else thrown = error;
 		}
 	}
-	const afterError = await settle(stage, {
-		result,
-		setResult: (next: ExecutionOutput) => {
-			result = next;
-		},
-	});
+	const afterError =
+		stage.runAfter === NO_AFTER
+			? stage.error
+			: await settle(stage, {
+					result,
+					setResult: (next: ExecutionOutput) => {
+						result = next;
+					},
+				});
 	const error = thrown ?? afterError;
 	if (error !== undefined) {
 		await release(result);

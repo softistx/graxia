@@ -5,6 +5,7 @@ import type {
 	ValidationRule,
 } from 'graphql';
 import type { PluginEngine } from '../plugins/engine';
+import { NO_AFTER } from '../plugins/stage';
 import type { RequestState } from '../plugins/state';
 import {
 	createDocumentCache,
@@ -227,7 +228,14 @@ async function runValidate(
 	};
 }
 
-async function finish<D>(
+function finish<D>(
+	runAfter: (done: D) => Promise<void>,
+	done: D,
+): Promise<unknown> | undefined {
+	return runAfter === NO_AFTER ? undefined : finishAfter(runAfter, done);
+}
+
+async function finishAfter<D>(
 	runAfter: (done: D) => Promise<void>,
 	done: D,
 ): Promise<unknown> {

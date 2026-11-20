@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { definePlugin } from '../plugins/define';
+import type { GraxiaPlugin } from '../plugins/types';
 import { createGraxia } from './create-graxia';
 import { schema } from './fixtures.test-util';
 
@@ -9,7 +10,7 @@ const q = () =>
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify({ query: '{ hello }' }),
 	});
-const make = (...plugins: ReturnType<typeof definePlugin>[]) =>
+const make = (...plugins: GraxiaPlugin<any, any>[]) =>
 	createGraxia({ schema, plugins });
 
 describe('seal', () => {
