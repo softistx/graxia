@@ -20,8 +20,7 @@ const schema = createSchema()({
 		File: GraphQLFile,
 		Query: { ok: () => true },
 		Mutation: {
-			upload: async (_: unknown, args: Record<string, unknown>) => {
-				const file = args['file'] as File;
+			upload: async (_: unknown, { file }: { file: File }) => {
 				runs += 1;
 				return `${file.name}|${file.type}|${file.size}|${await file.text()}`;
 			},

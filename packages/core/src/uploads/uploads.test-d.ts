@@ -1,5 +1,6 @@
-import type { GraphQLScalarType } from 'graphql';
-import type { GraphQLFile, UploadsOptions } from '../index';
+import type { GraphQLResolveInfo, GraphQLScalarType } from 'graphql';
+import { GraphQLFile, type UploadsOptions } from '../index';
+import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
 import { schema } from '../server/fixtures.test-util';
 
@@ -22,4 +23,32 @@ export function types() {
 	createGraxia({ schema, uploads: 'on' });
 	assertType<Equal<typeof GraphQLFile, GraphQLScalarType<File, never>>>();
 	assertType<Equal<UploadsOptions['files'], number | undefined>>();
+	// A resolver types its arguments with a concrete object, no cast.
+	createSchema()({
+		typeDefs:
+			'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
+		resolvers: {
+			File: GraphQLFile,
+			Mutation: { upload: async (_, { file }: { file: File }) => file.name },
+		},
+	});
+	// What graphql-codegen emits with `scalars: { File: 'File' }`.
+	interface UploadResolvers {
+		Mutation: {
+			upload: (
+				parent: object,
+				args: { file: File },
+				ctx: unknown,
+				info: GraphQLResolveInfo,
+			) => Promise<string>;
+		};
+	}
+	const generated: UploadResolvers = {
+		Mutation: { upload: async (_p, { file }) => file.name },
+	};
+	createSchema()({
+		typeDefs:
+			'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
+		resolvers: { File: GraphQLFile, ...generated },
+	});
 }

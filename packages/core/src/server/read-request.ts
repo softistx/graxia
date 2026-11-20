@@ -31,10 +31,6 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 		return rt.options.uploads
 			? readMultipart(rt, request, rt.options.uploads)
 			: { response: notEnabled() };
-	if (isMultipart(request.headers.get('content-type')))
-		return rt.options.uploads
-			? readMultipart(rt, request, rt.options.uploads)
-			: { response: notEnabled() };
 	if (!isJsonContentType(request.headers.get('content-type')))
 		return {
 			response: refusal(

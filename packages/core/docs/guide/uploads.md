@@ -15,10 +15,8 @@ const schema = createSchema()({
 	resolvers: {
 		File: GraphQLFile,
 		Mutation: {
-			upload: async (_parent, args) => {
-				const file = args['file'] as File;
-				return `${file.name}: ${(await file.text()).length}`;
-			},
+			upload: async (_parent, { file }: { file: File }) =>
+				`${file.name}: ${(await file.text()).length}`,
 		},
 	},
 });
@@ -41,8 +39,8 @@ lists and nested inputs too.
 `GraphQLFile` is the scalar to register for `scalar File`. It accepts only a `File`: a JSON request that
 sends a string where a file is due, and an inline literal, are refused with
 `File must be sent as a file part of a multipart request (GraphQL multipart request spec).`
-It is input only. With graphql-codegen, map the scalar with `scalars: { File: 'File' }` to type the
-argument. A schema that names the scalar `Upload` (Apollo, graphql-upload) wraps it:
+It is input only. Type the argument with a concrete object, `({ file }: { file: File })`, no cast. With
+graphql-codegen, map the scalar with `scalars: { File: 'File' }` and the generated `Resolvers` types it. A schema that names the scalar `Upload` (Apollo, graphql-upload) wraps it:
 
 ```ts
 import { GraphQLScalarType } from 'graphql';
@@ -71,8 +69,8 @@ The `operations` field stays under `limits.bodyBytes` (1 MiB). `Content-Length` 
 the stream is counted and cancelled the moment it passes `uploads.bodyBytes`, whatever the header said.
 A refused upload never reaches a resolver.
 
-**Memory.** The body is buffered (up to `uploads.bodyBytes`, plus a copy while it is joined) and parsed by
-Bun before the operation runs, so each upload in flight costs up to about twice `bodyBytes` of memory.
+**Memory.** The body is buffered (up to `uploads.bodyBytes`) and parsed by Bun before the operation runs, so
+peak memory is about twice `bodyBytes` per request in flight (the body, then the parsed parts).
 Size the limits for your concurrency. Streaming each part to disk or S3 without buffering is on the
 [roadmap](../roadmap.md).
 
@@ -130,4 +128,4 @@ const response = await graxia.fetch(
 | 400    | `UPLOAD_INVALID`        | a body or `map` that breaks the spec, a path outside `variables` |
 | 403    | `CSRF_HEADER_REQUIRED`  | no CSRF header                                                   |
 
-See [Troubleshooting](../troubleshooting.md) for each message.
+See [Troubleshooting: file uploads](../troubleshooting-uploads.md) for each message.

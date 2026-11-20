@@ -35,6 +35,7 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/trusted-documents.md`: Trusted documents and persisted queries
   - `node_modules/@graxia/core/docs/guide/uploads.md`: File uploads
   - `node_modules/@graxia/core/docs/guide/websocket.md`: Subscriptions over WebSocket
+  - `node_modules/@graxia/core/docs/troubleshooting-uploads.md`: Troubleshooting: file uploads
   - `node_modules/@graxia/core/docs/troubleshooting.md`: Troubleshooting
 
 ## @graxia/graphiql

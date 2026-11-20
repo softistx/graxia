@@ -49,7 +49,7 @@ export type IsTypeOf = (
 /** The resolvers of one object, interface or union type. */
 export type TypeResolvers<Ctx> = {
 	[field: string]:
-		| FieldResolver<any, Ctx>
+		| FieldResolver<any, Ctx, any>
 		| SubscriptionFieldResolver<Ctx>
 		| undefined;
 } & {

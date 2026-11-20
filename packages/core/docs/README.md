@@ -32,6 +32,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Help
 
 - [Troubleshooting](./troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: file uploads](./troubleshooting-uploads.md): every upload message and its fix.
 
 ## What is next
 

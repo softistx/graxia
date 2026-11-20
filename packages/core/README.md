@@ -270,7 +270,7 @@ const schema = createSchema()({
 		'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
 	resolvers: {
 		File: GraphQLFile,
-		Mutation: { upload: (_, args) => (args['file'] as File).name },
+		Mutation: { upload: (_, { file }: { file: File }) => file.name },
 	},
 });
 createGraxia({ schema, uploads: true }).serve(); // 16 MiB body, 8 MiB per file, 10 files
@@ -514,6 +514,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: file uploads](./docs/troubleshooting-uploads.md): every upload message and its fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 
 ## License
