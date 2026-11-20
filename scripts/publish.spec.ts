@@ -58,6 +58,16 @@ describe('publish', () => {
 		expect(
 			isAlreadyPublishedError('npm error code E403\nnpm error 403 Forbidden'),
 		).toBe(false);
+		expect(
+			isAlreadyPublishedError(
+				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@graxia%2fredis - You cannot publish over the previously published versions: 0.2.2.',
+			),
+		).toBe(true);
+		expect(
+			isAlreadyPublishedError(
+				'npm error code E403\nnpm error 403 403 Forbidden - PUT https://registry.npmjs.org/@graxia%2fredis - You do not have permission to publish "@graxia/redis". Are you logged in as the correct user?',
+			),
+		).toBe(false);
 		expect(isAlreadyPublishedError('npm error code E409\nconflict')).toBe(
 			false,
 		);

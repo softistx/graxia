@@ -41,14 +41,21 @@ export function workspaceRanges(manifest: Record<string, unknown>): string[] {
 }
 
 /**
- * npm answers E409 "Cannot publish over previously staged version" when the
- * version was just published and is not yet visible on the registry (several
- * tag runs of one commit): the version is on its way, not a failure.
+ * npm says the version is already there in one of two ways, both "not a
+ * failure" for an idempotent publish:
+ * - E409 "Cannot publish over previously staged version": the version was just
+ *   published and is not yet visible on the registry (several tag runs of one
+ *   commit), so it is on its way;
+ * - E403 "403 Forbidden ... You cannot publish over the previously published
+ *   versions": the version is already visible on the registry.
+ * Any other E403 (no permission, for instance) is a real failure.
  */
 export function isAlreadyPublishedError(stderr: string): boolean {
 	return (
-		/E409|409 Conflict/i.test(stderr) &&
-		/previously staged version|cannot publish over/i.test(stderr)
+		(/E409|409 Conflict/i.test(stderr) &&
+			/previously staged version|cannot publish over/i.test(stderr)) ||
+		(/E403|403 Forbidden/i.test(stderr) &&
+			/cannot publish over the previously published version/i.test(stderr))
 	);
 }
 
