@@ -6,15 +6,15 @@ Server, `graxia.execute`, testing client and shutdown errors, headed by the mess
 
 `path` is a URL path such as `/graphql`, or `false` to serve any path.
 
-## http.errorStatus must be true or false
+## errorHttp must be true or false
 
-`http: { errorStatus }` turns the reading of `extensions.http` on errors on (`true`, the default) or off (`false`).
-Pass a boolean: `createGraxia({ schema, http: { errorStatus: false } })`.
+`errorHttp` turns the reading of `extensions.http` on errors on (`true`, the default) or off (`false`).
+Pass a boolean: `createGraxia({ schema, errorHttp: false })`.
 
 ## A GraphQL error has `extensions.http` but the response is 200
 
 The status is read only from a single operation answered as plain JSON, from an integer between 200 and 599, and under
-`application/json` not when `http.spec` is `true`. A batch, SSE, WebSocket and multipart answer ignore it, and so does a
+`application/json` not when the error's `extensions.http.spec` is `true`. A batch, SSE, WebSocket and multipart answer ignore it, and so does a
 plugin refusal's status (it wins). A masked unexpected error (a plain `Error`) carries no `http`: throw an `exposedError`
 or a `GraphQLError`, or have `maskError` keep it. See [Errors](./guide/errors.md#status-and-headers-from-errors).
 

@@ -141,12 +141,15 @@ createGraxia({
 ```
 
 An error's `extensions.http` sets the HTTP status and headers of a plain JSON answer, as in
-Yoga (the highest status wins, `http` is stripped); `http: { errorStatus: false }` turns it off:
+Yoga (the highest status wins, `http` is stripped from every transport); `errorHttp: false` on
+`createGraxia` turns it off:
 
 ```ts
-throw exposedError('EMAIL_TAKEN', 'Email taken.', {
+import { type ErrorHttp, exposedError } from '@graxia/core';
+
+throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
-	extensions: { http: { status: 409 } }, // HTTP 409, data kept
+	extensions: { http: { status: 409 } satisfies ErrorHttp }, // HTTP 409, data kept
 });
 ```
 
@@ -501,7 +504,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                        | Options: `ErrorHttp`, `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                        |
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |

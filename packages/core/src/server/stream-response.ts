@@ -1,4 +1,5 @@
 import { type ExecutionResult, GraphQLError } from 'graphql';
+import { stripPayloadHttp } from '../http/error-http';
 import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
@@ -21,9 +22,11 @@ export async function preparePayload(
 	});
 	if (stage.error !== undefined) throw stage.error;
 	const chunk = stage.out.chunk;
-	return typeof chunk === 'object' && chunk !== null && !Array.isArray(chunk)
-		? maskPayload(rt.maskResult, chunk as ExecutionResult, state)
-		: chunk;
+	if (typeof chunk !== 'object' || chunk === null || Array.isArray(chunk))
+		return chunk;
+	const masked = maskPayload(rt.maskResult, chunk as ExecutionResult, state);
+	// The status and headers are for the plain JSON answer; the stream only drops `http`.
+	return rt.options.errorHttp ? stripPayloadHttp(masked) : masked;
 }
 
 /** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped in one (a thrown non-Error becomes an `Error` of its string form), so masking reports the original. */

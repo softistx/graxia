@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { GraphQLError } from 'graphql';
+import { createClient } from 'graphql-ws';
+import { exposedError } from '../errors/exposed';
+import type { ErrorHttp } from '../http/error-http';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
+import { start } from '../ws/ws.test-util';
 import { createGraxia } from './create-graxia';
 import { httpRefusalKey } from './http-refusal';
 
@@ -17,6 +21,9 @@ const schema = createSchema()({
 		bad: String
 		sneaky: String
 		plain: String
+		exposed: String
+		later: String
+		encoded: String
 	}`,
 	resolvers: {
 		Query: {
@@ -45,6 +52,25 @@ const schema = createSchema()({
 				Object.assign(error, { extensions: { http: { status: 418 } } });
 				throw error;
 			},
+			exposed: () => {
+				throw exposedError('CONFLICT', 'Taken.', {
+					fix: 'Sign in.',
+					extensions: { http: { status: 409 } satisfies ErrorHttp },
+				});
+			},
+			later: () => {
+				throw fail('Later.', { status: 202, headers: { 'x-conflict': 'b' } });
+			},
+			encoded: () => {
+				throw fail('Encoded.', {
+					status: 418,
+					headers: {
+						'content-encoding': 'gzip',
+						'content-length': '1',
+						'x-keep': 'k',
+					},
+				});
+			},
 			plain: () => {
 				throw new GraphQLError('No http.', { extensions: { code: 'PLAIN' } });
 			},
@@ -57,7 +83,12 @@ const refusing = definePlugin({
 	onExecute({ state, setResult }) {
 		state.set(httpRefusalKey, { status: 429, headers: { 'retry-after': '3' } });
 		setResult({
-			errors: [fail('Slow down.', { status: 503 })],
+			errors: [
+				fail('Slow down.', {
+					status: 503,
+					headers: { 'retry-after': '99', 'x-e': '1' },
+				}),
+			],
 		});
 	},
 });
@@ -187,6 +218,7 @@ describe('extensions.http on GraphQL errors', () => {
 		const res = await send(guarded, q('{ hello }'));
 		expect(res.status).toBe(429);
 		expect(res.headers.get('retry-after')).toBe('3');
+		expect(res.headers.get('x-e')).toBe('1');
 	});
 
 	test('a batch is unaffected', async () => {
@@ -200,8 +232,8 @@ describe('extensions.http on GraphQL errors', () => {
 		expect(res.headers.get('x-conflict')).toBeNull();
 	});
 
-	test('http: { errorStatus: false } turns it off', async () => {
-		const off = createGraxia({ schema, http: { errorStatus: false } });
+	test('errorHttp: false turns it off', async () => {
+		const off = createGraxia({ schema, errorHttp: false });
 		const res = await send(off, q('{ conflict }'));
 		expect(res.status).toBe(200);
 		expect(res.headers.get('x-conflict')).toBeNull();
@@ -209,12 +241,144 @@ describe('extensions.http on GraphQL errors', () => {
 		expect(body.errors[0].extensions.http.status).toBe(409);
 	});
 
-	test('http.errorStatus must be true or false', () => {
+	test('errorHttp must be true or false', () => {
 		expect(() =>
 			createGraxia({
 				schema,
-				http: { errorStatus: 'no' as unknown as boolean },
+				errorHttp: 'no' as unknown as boolean,
 			}),
-		).toThrow('http.errorStatus must be true or false');
+		).toThrow('errorHttp must be true or false');
+	});
+
+	test('exposedError with extensions.http, the documented path', async () => {
+		const res = await send(app, q('{ exposed }'));
+		expect(res.status).toBe(409);
+		const body = (await res.json()) as any;
+		expect(body.errors[0].extensions).toEqual({
+			code: 'CONFLICT',
+			fix: 'Sign in.',
+		});
+	});
+
+	test('on a header clash the later error wins', async () => {
+		const res = await send(app, q('{ conflict later }'));
+		expect(res.status).toBe(409);
+		expect(res.headers.get('x-conflict')).toBe('b');
+	});
+
+	test('outcome.status wins over the errors', async () => {
+		const setting = createGraxia({
+			schema,
+			plugins: [
+				definePlugin({
+					name: 'status',
+					onExecute({ setResult, state }) {
+						state.set(httpRefusalKey, { status: 451 });
+						setResult({ errors: [fail('Nope.', { status: 500 })] });
+					},
+				}),
+			],
+		});
+		expect((await send(setting, q('{ hello }'))).status).toBe(451);
+	});
+
+	test('plugin headers win over the errors headers', async () => {
+		const guarded = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [
+				definePlugin({
+					name: 'cors',
+					onRequest({ responseHeaders }) {
+						responseHeaders.set(
+							'access-control-allow-origin',
+							'https://app.test',
+						);
+						responseHeaders.set('cache-control', 'no-store');
+					},
+				}),
+			],
+		});
+		const res = await send(guarded, q('{ conflict }'));
+		expect(res.status).toBe(409);
+		expect(res.headers.get('x-conflict')).toBe('a');
+		expect(res.headers.get('access-control-allow-origin')).toBe(
+			'https://app.test',
+		);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+	});
+
+	test('an error cannot set framing headers, content-encoding included', async () => {
+		const res = await send(app, q('{ encoded }'));
+		expect(res.status).toBe(418);
+		expect(res.headers.get('x-keep')).toBe('k');
+		expect(res.headers.get('content-encoding')).toBeNull();
+		expect(((await res.json()) as any).errors[0].message).toBe('Encoded.');
+	});
+
+	test('plain-object errors from a plugin setResult answer 409 and lose http', async () => {
+		const plain = createGraxia({
+			schema,
+			plugins: [
+				definePlugin({
+					name: 'plain',
+					onExecute({ setResult }) {
+						setResult({
+							errors: [
+								{
+									message: 'Plain.',
+									extensions: { code: 'P', http: { status: 409 } },
+								},
+							],
+						} as never);
+					},
+				}),
+			],
+		});
+		const res = await send(plain, q('{ hello }'));
+		expect(res.status).toBe(409);
+		const body = (await res.json()) as any;
+		expect(body.errors[0]).toEqual({
+			message: 'Plain.',
+			extensions: { code: 'P' },
+		});
+	});
+
+	test('a batch entry has no http in its extensions', async () => {
+		const batched = createGraxia({
+			schema,
+			batching: true,
+			onUnexpected: false,
+		});
+		const res = await send(batched, [q('{ conflict }')]);
+		const text = await res.text();
+		expect(text).toContain('Taken.');
+		expect(text).not.toContain('"http"');
+		const kept = createGraxia({ schema, batching: true, errorHttp: false });
+		expect(await (await send(kept, [q('{ conflict }')])).text()).toContain(
+			'"http"',
+		);
+	});
+
+	test('an SSE next event has no http in its extensions', async () => {
+		const res = await send(app, q('{ conflict }'), 'text/event-stream');
+		const text = await res.text();
+		expect(text).toContain('Taken.');
+		expect(text).not.toContain('"http"');
+	});
+
+	test('a WebSocket next message has no http in its extensions', async () => {
+		const { url } = start({ schema });
+		const c = createClient({ url, webSocketImpl: WebSocket, retryAttempts: 0 });
+		const seen: unknown[] = [];
+		await new Promise<void>((resolve, reject) =>
+			c.subscribe(
+				{ query: '{ conflict }' },
+				{ next: (v) => seen.push(v), error: reject, complete: resolve },
+			),
+		);
+		await c.dispose();
+		expect(JSON.stringify(seen)).toContain('Taken.');
+		expect(JSON.stringify(seen)).not.toContain('"http"');
 	});
 });

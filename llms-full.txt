@@ -147,12 +147,15 @@ createGraxia({
 ```
 
 An error's `extensions.http` sets the HTTP status and headers of a plain JSON answer, as in
-Yoga (the highest status wins, `http` is stripped); `http: { errorStatus: false }` turns it off:
+Yoga (the highest status wins, `http` is stripped from every transport); `errorHttp: false` on
+`createGraxia` turns it off:
 
 ```ts
-throw exposedError('EMAIL_TAKEN', 'Email taken.', {
+import { type ErrorHttp, exposedError } from '@graxia/core';
+
+throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
-	extensions: { http: { status: 409 } }, // HTTP 409, data kept
+	extensions: { http: { status: 409 } satisfies ErrorHttp }, // HTTP 409, data kept
 });
 ```
 
@@ -507,7 +510,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
 |                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
-|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
+|                        | Options: `ErrorHttp`, `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                        |
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
@@ -1096,28 +1099,42 @@ is **masked**. `path` and `locations` are always kept. `originalError` and stack
 ## Status and headers from errors
 
 Like GraphQL Yoga, a single operation answered as plain JSON (`application/json` or
-`application/graphql-response+json`) takes its HTTP status and headers from `extensions.http` of
-its errors. `http` is removed from the serialized extensions.
+`application/graphql-response+json`) takes its HTTP status and headers from the `extensions.http` of
+its errors (the `ErrorHttp` type: `status`, `headers`, `spec`). `http` is removed from the
+serialized extensions of every transport.
 
 ```ts
-import { exposedError } from '@graxia/core';
+import { type ErrorHttp, exposedError } from '@graxia/core';
 
-throw exposedError('EMAIL_TAKEN', 'Email taken.', {
+throw exposedError('CONFLICT', 'Email taken.', {
 	fix: 'Sign in instead.',
-	extensions: { http: { status: 409, headers: { 'x-reason': 'duplicate' } } },
+	extensions: {
+		http: {
+			status: 409,
+			headers: { 'x-reason': 'duplicate' },
+		} satisfies ErrorHttp,
+	},
 });
 // HTTP 409, `x-reason: duplicate`, `data` kept; the error's extensions are { code, fix }
 ```
 
 - The **highest** `http.status` (an integer from 200 to 599) among the errors wins; `http.headers`
-  are merged, a later error winning on a clash. Other values are ignored.
-- Under `application/json`, `http: { spec: true }` ignores the status (the headers still apply), as in Yoga.
-- Precedence: an operation-level answer (a rate limit's 429, a plugin refusal) wins, then the errors'
-  status, then the media type's rule ([Status codes](./http.md#status-codes)).
+  of all the errors are merged, a later error winning on a clash. Other values are ignored.
+- Precedence of the status: an operation-level answer (a rate limit's 429, a plugin refusal) wins,
+  then the errors' status, then the media type's rule ([Status codes](./http.md#status-codes)).
+- Precedence of the headers: what the plugins and the response already set (CORS, `cache-control`,
+  `retry-after` of a refusal) wins; an error's header is added only when absent. An error cannot set
+  `content-length`, `content-encoding`, `transfer-encoding`, `connection`, `content-type`,
+  `keep-alive`, `upgrade`, `te` or `trailer`; they are dropped.
+- Under `application/json`, the error's `extensions.http.spec` set to `true` ignores its status (its headers still apply), as in Yoga.
 - Read from the **masked** result: a masked unexpected error carries nothing, so a plain `Error`
   cannot choose a status. A `maskError` that puts `http` on the error it returns does.
-- A batch (always 200), SSE, WebSocket and `multipart/mixed` ignore it, and leave `extensions.http` as sent.
-- `createGraxia({ http: { errorStatus: false } })` turns it off: the media type decides and `extensions` are untouched.
+- Not copied from Yoga: a result-level `extensions.http`; the 500 for an unexpected error without
+  data (graxia masks it and keeps the media type's rule); a status outside 200 to 599 (ignored);
+  and the status and headers on the other transports. A batch (always 200), SSE, WebSocket and
+  `multipart/mixed` keep their own status, but `http` is stripped from their payloads too.
+- Stripping happens on the output only: `resultKey` in the request state and the telemetry still see `http`.
+- `createGraxia({ errorHttp: false })` turns it all off: the media type decides and `extensions` are untouched.
 
 ## Validation errors
 
@@ -1298,23 +1315,24 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 
 ## Options
 
-| option             | default                                           | what it does                                                                                                                                                                 |
-| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`           | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                                                                         |
-| `path`             | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                                                                          |
-| `context`          | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run                                                          |
-| `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                  |
-| `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md) |
-| `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                      |
-| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                               |
-| `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                          |
-| `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                              |
-| `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                  |
-| `introspection`    | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                                              |
-| `suggestions`      | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                                                   |
-| `asyncContext`     | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                                      |
-| `shutdownTimeout`  | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                                                                      |
-| `onUnexpected`     | `console.error` outside production                | `(error, { requestId, correlationId, phase }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed                      |
+| option             | default                                           | what it does                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`           | required                                          | any `GraphQLSchema` (`createSchema` output included)                                                                                                                                     |
+| `path`             | `/graphql`                                        | the path served; other paths answer 404. `false` serves any path (your host routes)                                                                                                      |
+| `context`          | none                                              | `({ request, serverContext, params, signal }) => object`, merged over `serverContext`, then `onContext` plugins run                                                                      |
+| `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                              |
+| `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md)             |
+| `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                                  |
+| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                                           |
+| `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                                      |
+| `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                                          |
+| `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                              |
+| `introspection`    | `true`, `false` in production                     | answers `__schema` and `__type`                                                                                                                                                          |
+| `suggestions`      | `true`, `false` in production                     | keeps "Did you mean" hints                                                                                                                                                               |
+| `asyncContext`     | `true`                                            | `getContext()` through `AsyncLocalStorage`, see [Context](./context.md)                                                                                                                  |
+| `shutdownTimeout`  | `10000`                                           | milliseconds `dispose()` waits for in-flight operations                                                                                                                                  |
+| `errorHttp`        | `true`                                            | honours `extensions.http` (`status`, `headers`, `spec`) of errors on the plain JSON answer and strips `http` from every output, see [Errors](./errors.md#status-and-headers-from-errors) |
+| `onUnexpected`     | `console.error` outside production                | `(error, { requestId, correlationId, phase }) => void` called for every unexpected failure, or `false` to stay silent. Its own exceptions are swallowed                                  |
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
 hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
@@ -1408,7 +1426,7 @@ server) to it. The compiler checks that the context matches your schema's `creat
 | plugin hook threw, `context` threw, `execute` threw                                                            | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same                     |
 
 An error's `extensions.http` sets the status and headers of a single-operation JSON answer (see
-[Status and headers from errors](./errors.md#status-and-headers-from-errors)); `http: { errorStatus: false }` turns it off.
+[Status and headers from errors](./errors.md#status-and-headers-from-errors)); `errorHttp: false` turns it off.
 
 Unexpected failures never leak their message. The body is generic whatever the cause
 (`INTERNAL_SERVER_ERROR` and a `correlationId` equal to the `x-request-id` header); the original
@@ -2114,27 +2132,26 @@ expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
 
 ## Status and headers from errors
 
-Like GraphQL Yoga, graxia reads `extensions.http` of the GraphQL errors of a single operation
-answered as plain JSON (`application/json` or `application/graphql-response+json`). `@alxia/graphql`
-before 0.17 and Yoga answered the status below; graxia used to answer 200.
+`@alxia/graphql` up to 0.16 (on Yoga) answered this status. Like GraphQL Yoga, graxia reads the `extensions.http` of the GraphQL errors of a single operation answered as plain JSON (`application/json` or `application/graphql-response+json`).
 
 ```ts
+import { type ErrorHttp } from '@graxia/core';
+
 throw new GraphQLError('Email taken.', {
 	extensions: {
 		code: 'EMAIL_TAKEN',
-		http: { status: 409, headers: { 'x-reason': 'dup' } },
+		http: { status: 409, headers: { 'x-reason': 'dup' } } satisfies ErrorHttp,
 	},
 });
 // HTTP 409, header x-reason: dup, data kept, and the error's extensions are { code: 'EMAIL_TAKEN' }
 ```
 
-- The highest `http.status` among the errors wins; `http.headers` are merged (a later error wins on a clash).
-- A status from 200 to 599 only; anything else is ignored. Under `application/json`, `http: { spec: true }` ignores the status (the headers still apply), as in Yoga.
-- Precedence: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
-- `http` is removed from the serialized extensions. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
-- Not copied from Yoga: a result-level `extensions.http`, and the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule).
-- A batch, SSE, WebSocket and `multipart/mixed` ignore it: a batch is always 200 and its entries keep `extensions.http` as sent.
-- Turn it off with `createGraxia({ http: { errorStatus: false } })`.
+- The highest `http.status` among the errors wins; `http.headers` are merged (a later error wins on a clash), and never override a header a plugin or the response set.
+- A status from 200 to 599 only; anything else is ignored. Under `application/json`, the error's `extensions.http.spec` set to `true` ignores its status (the headers still apply), as in Yoga.
+- Precedence of the status: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
+- `http` is removed from the serialized extensions of every transport. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
+- Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on a batch (always 200), SSE, WebSocket and `multipart/mixed`, which only get `http` stripped.
+- Turn it off with `createGraxia({ errorHttp: false })`.
 
 ## graphql 17
 
@@ -4538,15 +4555,15 @@ Server, `graxia.execute`, testing client and shutdown errors, headed by the mess
 
 `path` is a URL path such as `/graphql`, or `false` to serve any path.
 
-## http.errorStatus must be true or false
+## errorHttp must be true or false
 
-`http: { errorStatus }` turns the reading of `extensions.http` on errors on (`true`, the default) or off (`false`).
-Pass a boolean: `createGraxia({ schema, http: { errorStatus: false } })`.
+`errorHttp` turns the reading of `extensions.http` on errors on (`true`, the default) or off (`false`).
+Pass a boolean: `createGraxia({ schema, errorHttp: false })`.
 
 ## A GraphQL error has `extensions.http` but the response is 200
 
 The status is read only from a single operation answered as plain JSON, from an integer between 200 and 599, and under
-`application/json` not when `http.spec` is `true`. A batch, SSE, WebSocket and multipart answer ignore it, and so does a
+`application/json` not when the error's `extensions.http.spec` is `true`. A batch, SSE, WebSocket and multipart answer ignore it, and so does a
 plugin refusal's status (it wins). A masked unexpected error (a plain `Error`) carries no `http`: throw an `exposedError`
 or a `GraphQLError`, or have `maskError` keep it. See [Errors](./guide/errors.md#status-and-headers-from-errors).
 

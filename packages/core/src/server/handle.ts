@@ -1,4 +1,4 @@
-import { errorHttp } from '../http/error-http';
+import { readErrorHttp, stripErrorHttp } from '../http/error-http';
 import { multipartFormat } from '../http/multipart';
 import { type MediaType, readAccept } from '../http/negotiate';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
@@ -114,7 +114,11 @@ async function runBatch(
 			rt.unexpected.report(outcome.error, state, 'execution');
 			results.push(rt.unexpected.body(state));
 		} else if (outcome.kind === 'result')
-			results.push(rt.maskResult(outcome.result, state));
+			results.push(
+				rt.options.errorHttp
+					? stripErrorHttp(rt.maskResult(outcome.result, state))
+					: rt.maskResult(outcome.result, state),
+			);
 		else results.push(rt.unexpected.body(state));
 	}
 	return jsonResponse(results, 200, media);
@@ -164,7 +168,7 @@ function encode(
 	state.set(resultKey, result);
 	const { refusal } = outcome;
 	// Read from the masked result: a masked error carries nothing but what the masker kept.
-	const asked = rt.options.errorStatus ? errorHttp(result, media) : undefined;
+	const asked = rt.options.errorHttp ? readErrorHttp(result, media) : undefined;
 	const headers = outcome.headers ?? refusal?.headers;
 	return jsonResponse(
 		asked?.result ?? result,
@@ -173,16 +177,22 @@ function encode(
 			asked?.status ??
 			statusOf(media, result),
 		media,
-		asked?.headers ? mergeHeaders(asked.headers, headers) : headers,
+		asked?.headers ? withErrorHeaders(headers, asked.headers, state) : headers,
 	);
 }
 
-/** The errors' headers, then the outcome's or the refusal's over them. */
-function mergeHeaders(
-	base: Record<string, string>,
-	over: HeadersInit | undefined,
+/**
+ * The outcome's or refusal's headers, then the errors' headers for the names
+ * neither they nor the plugins (`state.responseHeaders`) set.
+ */
+function withErrorHeaders(
+	own: HeadersInit | undefined,
+	asked: Record<string, string>,
+	state: StateBag,
 ): Headers {
-	const out = new Headers(base);
-	for (const [name, value] of new Headers(over)) out.set(name, value);
+	const out = new Headers(own);
+	for (const [name, value] of Object.entries(asked))
+		if (!out.has(name) && !state.responseHeaders.has(name))
+			out.set(name, value);
 	return out;
 }
