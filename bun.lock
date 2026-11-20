@@ -23,7 +23,7 @@
     },
     "packages/core": {
       "name": "@graxia/core",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
         "@graphql-codegen/typescript": "^7.0.1",
@@ -47,7 +47,7 @@
     },
     "packages/envelop": {
       "name": "@graxia/envelop",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "devDependencies": {
         "@envelop/core": "6.0.1",
         "@envelop/depth-limit": "8.0.1",
@@ -71,7 +71,7 @@
     },
     "packages/graphiql": {
       "name": "@graxia/graphiql",
-      "version": "0.2.5",
+      "version": "0.2.6",
       "devDependencies": {
         "@graphiql/toolkit": "^1.0.1",
         "@graxia/core": "workspace:^",
@@ -94,7 +94,7 @@
     },
     "packages/mcp": {
       "name": "@graxia/mcp",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "dependencies": {
         "@modelcontextprotocol/server": "~2.4.0",
         "zod": "^4.2.0",
@@ -116,7 +116,7 @@
     },
     "packages/redis": {
       "name": "@graxia/redis",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "devDependencies": {
         "@graxia/core": "workspace:^",
         "@softistx/redis": "^0.24.1",
