@@ -258,6 +258,27 @@ createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: 
 Setup, the span tree, attributes, every option and the migration from `@opentelemetry/api`:
 [Telemetry](./docs/guide/telemetry.md).
 
+## File uploads
+
+The GraphQL multipart request spec, off by default. Resolvers receive Bun's Web `File`.
+
+```ts
+import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+
+const schema = createSchema()({
+	typeDefs:
+		'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
+	resolvers: {
+		File: GraphQLFile,
+		Mutation: { upload: (_, { file }: { file: File }) => file.name },
+	},
+});
+createGraxia({ schema, uploads: true }).serve(); // 16 MiB body, 8 MiB per file, 10 files
+```
+
+It needs the CSRF header (`x-graphql-csrf: 1`); `createGraxia` refuses `uploads` with the check off.
+Limits, memory cost, batching and clients: [File uploads](./docs/guide/uploads.md).
+
 ## Trusted documents
 
 Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
@@ -465,6 +486,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
 |                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
+|                        | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
 | `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
@@ -484,6 +506,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
+- [File uploads](./docs/guide/uploads.md): the multipart request spec, `GraphQLFile`, limits, CSRF, memory cost.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
@@ -491,6 +514,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: file uploads](./docs/troubleshooting-uploads.md): every upload message and its fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 
 ## License

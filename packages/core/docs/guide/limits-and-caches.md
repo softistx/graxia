@@ -56,6 +56,18 @@ and nesting cases add `extensions.limit` and `extensions.fix`. A parser stack ov
 reported the same way, never thrown and never masked as `Unexpected error.`; it carries `fix` but
 no `limit`, and is not cached.
 
+## Upload limits
+
+With [`uploads`](./uploads.md) on, a multipart request has three more limits, checked before any resolver runs:
+
+| Option              | Default | Meaning                                |
+| ------------------- | ------- | -------------------------------------- |
+| `uploads.bodyBytes` | 16 MiB  | Most bytes of the whole multipart body |
+| `uploads.fileBytes` | 8 MiB   | Most bytes of one file                 |
+| `uploads.files`     | 10      | Most file parts in one request         |
+
+The `operations` field stays under `limits.bodyBytes`.
+
 ## Operation limits
 
 On by default, so an operation over them is refused before it executes. Each is a positive

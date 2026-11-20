@@ -21,10 +21,25 @@ export type FieldResolver<
 	info: GraphQLResolveInfo,
 ) => Result | Promise<Result>;
 
+/**
+ * A field resolver whose `args` parameter is checked bivariantly (the method
+ * signature trick), so a resolver may annotate a concrete argument type such
+ * as `({ file }: { file: File })` while an unannotated one still gets
+ * `Record<string, unknown>`.
+ */
+export type BivariantResolver<Ctx, Result = unknown> = {
+	bivarianceHack(
+		parent: any,
+		args: Record<string, unknown>,
+		ctx: Ctx,
+		info: GraphQLResolveInfo,
+	): Result | Promise<Result>;
+}['bivarianceHack'];
+
 /** A subscription field: `subscribe` returns the event stream, `resolve` maps each event. */
 export type SubscriptionFieldResolver<Ctx> = {
-	resolve?: FieldResolver<any, Ctx>;
-	subscribe?: FieldResolver<any, Ctx, any, AsyncIterable<unknown>>;
+	resolve?: BivariantResolver<Ctx>;
+	subscribe?: BivariantResolver<Ctx, AsyncIterable<unknown>>;
 };
 
 /**
@@ -49,7 +64,7 @@ export type IsTypeOf = (
 /** The resolvers of one object, interface or union type. */
 export type TypeResolvers<Ctx> = {
 	[field: string]:
-		| FieldResolver<any, Ctx>
+		| BivariantResolver<Ctx>
 		| SubscriptionFieldResolver<Ctx>
 		| undefined;
 } & {

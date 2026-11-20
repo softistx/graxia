@@ -42,6 +42,14 @@ export interface GraxiaErrorCodes {
 	PROVIDED_SHA_DOESNT_MATCH: true;
 	/** Emitted by core: `strict` trusted documents refuse a query that is not persisted. */
 	PERSISTED_QUERY_ONLY: true;
+	/** Emitted by core: a multipart request while `uploads` is off (415). */
+	UPLOADS_NOT_ENABLED: true;
+	/** Emitted by core: a multipart body, a file or the `operations` field is over its limit (413). */
+	UPLOAD_TOO_LARGE: true;
+	/** Emitted by core: a multipart request holds more files than `uploads.files` (413). */
+	UPLOAD_TOO_MANY_FILES: true;
+	/** Emitted by core: a multipart request that breaks the GraphQL multipart request spec (400). */
+	UPLOAD_INVALID: true;
 	/** Emitted by `fieldRateLimit`: a field's rate limit is spent (429, `Retry-After`; the code can be changed with `code`). */
 	RATE_LIMITED: true;
 	/** Emitted by `fieldRateLimit`: a `single` field is selected more than once in the operation (400). */

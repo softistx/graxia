@@ -29,6 +29,10 @@ createGraxia({ schema, csrf: { requireHeader: false } }); // no header check
 createGraxia({ schema, csrf: false }); // no CSRF or origin check at all
 ```
 
+### Uploads
+
+A `multipart/form-data` POST is a simple request, so [uploads](./uploads.md) always need the CSRF header, checked before the body is read. `createGraxia` refuses `uploads` with `csrf: false` or `csrf: { requireHeader: false }` at boot.
+
 ### Client setup
 
 ```ts
