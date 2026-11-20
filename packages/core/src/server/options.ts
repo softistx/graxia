@@ -32,6 +32,11 @@ export interface ContextInit<HostCtx = Record<never, never>> {
 	 * timeout. Also in the context as `signal` and passed to `execute`.
 	 */
 	signal: AbortSignal;
+	/**
+	 * The client's `connection_init` payload, for an operation over a
+	 * WebSocket; undefined over HTTP and SSE.
+	 */
+	connectionParams?: Readonly<Record<string, unknown>>;
 }
 
 /** `limits` option: document limits, operation limits and the request body limit. */

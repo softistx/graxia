@@ -90,6 +90,21 @@ Bun.serve({
 });
 ```
 
+### `connectionParams` over a WebSocket
+
+For an operation over a WebSocket, `init.connectionParams` is the client's `connection_init` payload
+(`undefined` over HTTP and SSE, and when the client sent none). It is typed, no cast. It is also in
+`serverContext` and the resolver context as `connectionParams`.
+
+```ts
+const context = async ({ request, connectionParams }: ContextInit) => ({
+	// HTTP: the header; WebSocket: the token sent in connection_init
+	user: await authenticate(
+		String(connectionParams?.['token'] ?? request.headers.get('authorization')),
+	),
+});
+```
+
 ### What the compiler checks
 
 `createGraxia` compares the schema's `createSchema<Ctx>` type with the context it builds. Keys the

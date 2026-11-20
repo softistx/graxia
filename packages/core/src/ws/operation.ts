@@ -17,6 +17,8 @@ export interface OperationHost {
 	state: StateBag;
 	/** The host's context plus `connectionParams`. */
 	serverContext: Record<string, unknown>;
+	/** The client's `connection_init` payload, handed to the `context` factory. */
+	connectionParams: Record<string, unknown> | undefined;
 	/** Writes one message; resolves when the socket accepted it (backpressure). */
 	send(message: ServerMessage | string): Promise<void>;
 }
@@ -48,6 +50,7 @@ export async function runSubscribe(
 			state,
 			params,
 			serverContext: host.serverContext,
+			connectionParams: host.connectionParams,
 			method: 'POST',
 			// A socket streams: subscriptions and incremental results are allowed.
 			sse: true,

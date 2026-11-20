@@ -126,6 +126,40 @@ describe('graphql-ws client', () => {
 		await c.dispose();
 	});
 
+	test('the context factory receives init.connectionParams over a WebSocket, undefined over HTTP', async () => {
+		const seen: unknown[] = [];
+		const upgrades: (string | null)[] = [];
+		const { url, server } = start({
+			context: ({ connectionParams }) => {
+				seen.push(connectionParams);
+				return {};
+			},
+			plugins: [
+				definePlugin()({
+					name: 'ws-detect',
+					onParams: ({ request }) => {
+						upgrades.push(request.headers.get('upgrade'));
+					},
+				}),
+			],
+		});
+		const c = client(url, { connectionParams: { token: 'ok' } });
+		await collect(c, '{ hello }');
+		await c.dispose();
+		expect(seen).toEqual([{ token: 'ok' }]);
+		// A plugin tells a socket operation apart by the upgrade request's header.
+		expect(upgrades).toEqual(['websocket']);
+
+		const res = await fetch(`http://localhost:${server.port}/graphql`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ query: '{ hello }' }),
+		});
+		expect(res.status).toBe(200);
+		expect(seen).toEqual([{ token: 'ok' }, undefined]);
+		expect(upgrades).toEqual(['websocket', null]);
+	});
+
 	test('onConnect returning an object is the ack payload; false closes 4403', async () => {
 		const { url } = start({
 			subscriptions: {

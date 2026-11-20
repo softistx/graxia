@@ -67,6 +67,13 @@ Read `serverContext` in the `onValidate` payload (or its after-hook's closure): 
 context the host gave `graxia.upgrade`, plus `server` and `connectionParams`. `onRequest` and `onParse` carry it too. See
 [Reading the host context before onExecute](./guide/plugins.md#reading-the-host-context-before-onexecute).
 
+## Every WebSocket operation fails a header check in `onParams`
+
+An `onParams` hook that requires a client header also runs for each operation of a socket, whose upgrade request has no
+custom header. Return early when `request.headers.get('upgrade')?.toLowerCase() === 'websocket'`, and authenticate the
+socket with `connectionParams` (`onConnect`, or `init.connectionParams` in the `context` factory). See
+[Authentication](./guide/websocket.md#authentication).
+
 ## Request state key "x" is required but was not set
 
 `state.require(key)` ran before any hook set the key. Set it in an earlier hook (an `onRequest` of a

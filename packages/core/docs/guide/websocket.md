@@ -62,6 +62,39 @@ createGraxia({
 });
 ```
 
+To read the payload when building the context, use `init.connectionParams` in the `context` factory (typed, `undefined` over
+HTTP and SSE):
+
+```ts
+createGraxia({
+	schema,
+	context: async ({ connectionParams, request }) => ({
+		user: await authenticate(
+			String(
+				connectionParams?.['token'] ?? request.headers.get('authorization'),
+			),
+		),
+	}),
+});
+```
+
+A plugin's `onParams` also runs for every WebSocket operation, and the upgrade request carries no custom header
+(a browser cannot set one). A check on a client header there would refuse every socket operation: skip them, by the
+`Upgrade` header of the request the hook receives (the upgrade request itself). `onParams` has no `serverContext`.
+
+```ts
+import { definePlugin } from '@graxia/core';
+
+export const requireClientHeader = definePlugin()({
+	name: 'require-client-header',
+	onParams: ({ request, respond }) => {
+		if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') return; // authenticated by connectionParams
+		if (!request.headers.get('x-client'))
+			respond(new Response('Missing x-client', { status: 400 }));
+	},
+});
+```
+
 - Return `false`, or throw an `exposedError`, to refuse the connection with **4403** `Forbidden`.
   Any other throw is reported through `onUnexpected` and closes with **1011**.
 - Return an object to send it as the `connection_ack` payload (what `graphql-ws` does).

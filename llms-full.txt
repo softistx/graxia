@@ -920,6 +920,21 @@ Bun.serve({
 });
 ```
 
+### `connectionParams` over a WebSocket
+
+For an operation over a WebSocket, `init.connectionParams` is the client's `connection_init` payload
+(`undefined` over HTTP and SSE, and when the client sent none). It is typed, no cast. It is also in
+`serverContext` and the resolver context as `connectionParams`.
+
+```ts
+const context = async ({ request, connectionParams }: ContextInit) => ({
+	// HTTP: the header; WebSocket: the token sent in connection_init
+	user: await authenticate(
+		String(connectionParams?.['token'] ?? request.headers.get('authorization')),
+	),
+});
+```
+
 ### What the compiler checks
 
 `createGraxia` compares the schema's `createSchema<Ctx>` type with the context it builds. Keys the
@@ -2362,6 +2377,13 @@ wins, and the caller skips the step when `out.document`, `out.errors` or `out.re
 a subscription ends when `args.contextValue.signal` aborts (its after-hook only runs once the
 stream is created). The full start/end snippet is in
 [Observe each socket operation](./websocket.md#observe-each-socket-operation).
+
+## `onParams` also runs for WebSocket operations
+
+A check on a client header in `onParams` runs for each operation of a socket too, and the upgrade request carries no
+custom header, so it would refuse them all. Skip them with
+`request.headers.get('upgrade')?.toLowerCase() === 'websocket'` (`request` is the upgrade request). See
+[Authentication over WebSocket](./websocket.md#authentication).
 
 ## Reading the host context before `onExecute`
 
@@ -4423,6 +4445,39 @@ createGraxia({
 });
 ```
 
+To read the payload when building the context, use `init.connectionParams` in the `context` factory (typed, `undefined` over
+HTTP and SSE):
+
+```ts
+createGraxia({
+	schema,
+	context: async ({ connectionParams, request }) => ({
+		user: await authenticate(
+			String(
+				connectionParams?.['token'] ?? request.headers.get('authorization'),
+			),
+		),
+	}),
+});
+```
+
+A plugin's `onParams` also runs for every WebSocket operation, and the upgrade request carries no custom header
+(a browser cannot set one). A check on a client header there would refuse every socket operation: skip them, by the
+`Upgrade` header of the request the hook receives (the upgrade request itself). `onParams` has no `serverContext`.
+
+```ts
+import { definePlugin } from '@graxia/core';
+
+export const requireClientHeader = definePlugin()({
+	name: 'require-client-header',
+	onParams: ({ request, respond }) => {
+		if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') return; // authenticated by connectionParams
+		if (!request.headers.get('x-client'))
+			respond(new Response('Missing x-client', { status: 400 }));
+	},
+});
+```
+
 - Return `false`, or throw an `exposedError`, to refuse the connection with **4403** `Forbidden`.
   Any other throw is reported through `onUnexpected` and closes with **1011**.
 - Return an object to send it as the `connection_ack` payload (what `graphql-ws` does).
@@ -4973,6 +5028,13 @@ A document that fails validation never reaches `onExecute`, so `args.contextValu
 Read `serverContext` in the `onValidate` payload (or its after-hook's closure): it is a copy of the
 context the host gave `graxia.upgrade`, plus `server` and `connectionParams`. `onRequest` and `onParse` carry it too. See
 [Reading the host context before onExecute](./guide/plugins.md#reading-the-host-context-before-onexecute).
+
+## Every WebSocket operation fails a header check in `onParams`
+
+An `onParams` hook that requires a client header also runs for each operation of a socket, whose upgrade request has no
+custom header. Return early when `request.headers.get('upgrade')?.toLowerCase() === 'websocket'`, and authenticate the
+socket with `connectionParams` (`onConnect`, or `init.connectionParams` in the `context` factory). See
+[Authentication](./guide/websocket.md#authentication).
 
 ## Request state key "x" is required but was not set
 

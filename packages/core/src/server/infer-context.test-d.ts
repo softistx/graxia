@@ -93,6 +93,18 @@ createGraxia({
 	plugins: [tenant],
 });
 
+// connectionParams is typed on the init, no cast
+const withParams = ({ connectionParams }: ContextInit) => ({
+	token: String(connectionParams?.['token']),
+});
+assertType<Equal<InferContext<typeof withParams>['token'], string>>();
+assertType<
+	Equal<
+		ContextInit['connectionParams'],
+		Readonly<Record<string, unknown>> | undefined
+	>
+>();
+
 // optional-only keys need no factory
 createGraxia({
 	schema: createSchema<{ opt?: string }>()({ typeDefs }),
