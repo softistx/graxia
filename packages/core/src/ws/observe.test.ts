@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
+import type { ContextInit } from '../server/options';
 import { pubsub, raw, until } from './ws.test-util';
 
 const schema = createSchema<{ signal: AbortSignal }>()({
@@ -75,8 +76,9 @@ afterEach(async () => {
 
 /** A host: Bun.serve upgrading with its own per-connection state as serverContext. */
 function host(log: Log[]) {
-	const graxia = createGraxia<{ tenant: string }>({
+	const graxia = createGraxia({
 		schema,
+		context: (_: ContextInit<{ tenant: string }>) => ({}),
 		onUnexpected: false,
 		plugins: [observer(log)],
 	});

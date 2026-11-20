@@ -257,9 +257,10 @@ host's `serverContext` and the plugins build satisfies the schema's `createSchem
 
 **Checked against the plugins' requirements**: a plugin built with `definePlugin<Requires>()` needs
 `Requires` from the context. `createGraxia` checks each plugin, in order, against what the host
-provides (the `serverContext` type, what the `context` factory returns, `signal`) and what the
-plugins before it add. A field nobody provides, or provided with another type, is a compile error
-that names the plugin and the field.
+provides (the `serverContext` type declared on the factory's `init`, what the `context` factory
+returns, `signal`) and what the plugins before it add. A required field nobody provides, or
+provides with another type, is a compile error that names the plugin and the field; an optional
+one (`{ db?: string }`) may be absent.
 
 ```ts
 import { type ContextInit, createGraxia, definePlugin } from '@graxia/core';
@@ -275,23 +276,19 @@ const audit = definePlugin<{ agent: string | null }>()({
 	onContext: () => ({}),
 });
 
-// `request` comes from the host context, declared on the factory's `init`.
-createGraxia({
-	schema,
-	context: (_init: ContextInit<{ request: Request }>) => ({}),
-	plugins: [auth, audit], // `audit` reads what `auth` adds: fine
+// `request` is provided by the factory, which reads it from the host's `serverContext`.
+const context = ({ request }: ContextInit<{ request: Request }>) => ({
+	request,
 });
 
-createGraxia({ schema, plugins: [auth] }); // error: plugin "auth" requires the context field "request"
-createGraxia({
-	schema,
-	context: (_init: ContextInit<{ request: Request }>) => ({}),
-	plugins: [audit, auth], // error: `agent` is added by `auth`, which comes after `audit`
-});
+createGraxia({ schema, context, plugins: [auth, audit] }); // `audit` reads what `auth` adds: fine
+createGraxia({ schema, plugins: [auth] }); // error: plugin "auth" needs context.request
+createGraxia({ schema, context, plugins: [audit, auth] }); // error: `agent` is added by `auth`, which comes after
 ```
 
-The check skips a plugin list that is not a tuple (a `Plugin[]` variable), an untyped plugin
-(`GraxiaPlugin<any, any>`, which adds nothing the check trusts), and any call that writes the host
-type as an explicit type argument, `createGraxia<Host>({ ... })`: TypeScript then infers no other
-type argument. Declare the host on the `context` factory's `init` to keep the checks, or write
-`createGraxia<Host>` knowingly without them. `RequiresContext` is the underlying type, which you can assert yourself.
+The check is skipped for a plugin list that is not a tuple (a `Plugin[]` variable), for an untyped
+plugin (`GraxiaPlugin<any, any>`, that plugin alone: the plugins after it are still checked), and for
+any call that writes the host type as an explicit type argument, `createGraxia<Host>({ ... })`:
+TypeScript then infers no other type argument. Declare the host on the `context` factory's `init`
+to keep the checks. A plugin whose name is a plain `string` is quoted by its position (`plugin #2`).
+Like the schema check, it stops with TS2589 at about 50 chained plugins.

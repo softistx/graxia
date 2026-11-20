@@ -1,7 +1,9 @@
 import { definePlugin } from '../plugins/define';
+import type { RequirePluginContext } from '../plugins/requirement';
 import type { GraxiaPlugin } from '../plugins/types';
 import { createGraxia } from './create-graxia';
 import { schema } from './fixtures.test-util';
+import type { CoreContext } from './infer-context';
 import type { ContextInit } from './options';
 
 const auth = definePlugin<{ request: Request }>()({
@@ -49,3 +51,63 @@ createGraxia({ schema, context: withRequest, plugins: [auth, needsDb] });
 createGraxia({ schema, context: withRequest, plugins: [needsAgent, auth] });
 // @ts-expect-error wrong type for `db`
 createGraxia({ schema, context: () => ({ db: 1 }), plugins: [needsDb] });
+
+// an untyped plugin skips itself only: the plugins after it are still checked
+// @ts-expect-error `db` is provided by nothing
+createGraxia({ schema, plugins: [untyped, needsDb] });
+
+// two missing fields, both named (one key)
+const needsTwo = definePlugin<{ a: string; b: number }>()({
+	name: 'needs-two',
+});
+// @ts-expect-error `a` and `b` are provided by nothing
+createGraxia({ schema, plugins: [needsTwo] });
+
+// a const tuple declared outside the call is still checked
+const declared = [needsDb] as const;
+// @ts-expect-error `db` is provided by nothing
+createGraxia({ schema, plugins: declared });
+
+// an optional requirement may be absent; if present it must fit
+const optionalDb = definePlugin<{ db?: string }>()({ name: 'optional-db' });
+createGraxia({ schema, plugins: [optionalDb] });
+createGraxia({ schema, context: () => ({ db: 'x' }), plugins: [optionalDb] });
+// @ts-expect-error `db` is provided as a number
+createGraxia({ schema, context: () => ({ db: 1 }), plugins: [optionalDb] });
+
+// a plugin whose name is a plain `string` is quoted by position (#1)
+declare function dbPlugin(): GraxiaPlugin<{ db: string }>;
+// @ts-expect-error `db` is provided by nothing
+createGraxia({ schema, plugins: [bare, dbPlugin()] });
+
+// the documented skips: an explicit `createGraxia<Host>` and a non-tuple array
+createGraxia<{ x: string }>({ schema, plugins: [needsDb] });
+declare const list: GraxiaPlugin<{ db: string }>[];
+createGraxia({ schema, plugins: list });
+
+// the message, pinned
+type Equal<A, B> =
+	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+		? true
+		: false;
+const assertType = <_T extends true>() => {};
+assertType<
+	Equal<
+		RequirePluginContext<[typeof auth], CoreContext>,
+		{
+			plugins: {
+				readonly 'graxia: plugin "auth" needs context.request, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)': never;
+			};
+		}
+	>
+>();
+assertType<
+	Equal<
+		RequirePluginContext<[typeof needsTwo], CoreContext> extends {
+			plugins: infer P;
+		}
+			? keyof P
+			: never,
+		'graxia: plugin "needs-two" needs context.a, context.b, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)'
+	>
+>();

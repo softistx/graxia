@@ -57,17 +57,54 @@ export type ContextOf<Plugins extends readonly unknown[]> =
 		? PluginContext<Head> & ContextOf<Tail>
 		: unknown;
 
+/** True for `any`: an untyped plugin's context says nothing, so it is skipped, never trusted. */
+export type IsAny<T> = 0 extends 1 & T ? true : false;
+
+/** The keys `Req` demands (not optional) that `Available` does not have at all. */
+export type AbsentKeys<Req, Available> = {
+	[K in keyof Req]-?: Empty extends Pick<Req, K>
+		? never
+		: K extends keyof Available
+			? never
+			: K;
+}[keyof Req] &
+	string;
+
+/** The keys both have, whose type in `Available` does not fit `Req` (an optional key also accepts `undefined`). */
+export type MistypedKeys<Req, Available> = {
+	[K in keyof Req]-?: K extends keyof Available
+		? [Available[K]] extends [
+				Required<Req>[K] | (Empty extends Pick<Req, K> ? undefined : never),
+			]
+			? never
+			: K
+		: never;
+}[keyof Req] &
+	string;
+
+/** The keys of `Req` that `Available` fails to meet: absent (and required) or of another type. Never for `any`. */
+export type UnmetKeys<Req, Available> =
+	IsAny<Req> extends true
+		? never
+		: AbsentKeys<Req, Available> | MistypedKeys<Req, Available>;
+
 /**
  * Tuples only. Resolves to `Plugins` when the host context (plus what earlier plugins add)
- * satisfies every plugin's requirement, and to `never` otherwise.
+ * satisfies every plugin's requirement, and to `never` otherwise. An optional required key
+ * may be absent; an untyped (`any`) plugin requires and adds nothing the check trusts.
  */
 export type RequiresContext<
 	Plugins extends readonly unknown[],
 	HostCtx,
 > = Plugins extends readonly [infer Head, ...infer Tail]
-	? [HostCtx] extends [PluginRequires<Head>]
+	? [UnmetKeys<PluginRequires<Head>, HostCtx>] extends [never]
 		? Tail extends readonly unknown[]
-			? RequiresContext<Tail, HostCtx & PluginContext<Head>> extends never
+			? RequiresContext<
+					Tail,
+					IsAny<PluginContext<Head>> extends true
+						? HostCtx
+						: HostCtx & PluginContext<Head>
+				> extends never
 				? never
 				: Plugins
 			: Plugins

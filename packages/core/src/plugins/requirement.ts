@@ -1,49 +1,69 @@
-import type { PluginContext, PluginRequires, RequiresContext } from './define';
+import type {
+	AbsentKeys,
+	IsAny,
+	MistypedKeys,
+	PluginContext,
+	PluginRequires,
+	UnmetKeys,
+} from './define';
 
-/** The keys `Required` asks for that `Available` lacks, or provides with a type that does not fit. */
-type MissingKeys<Required, Available> = {
-	[K in keyof Required]-?: K extends keyof Available
-		? [Available[K]] extends [Required[K]]
-			? never
-			: K
-		: K;
-}[keyof Required] &
-	string;
+type UnionToIntersection<U> = (
+	U extends unknown
+		? (arg: U) => void
+		: never
+) extends (arg: infer I) => void
+	? I
+	: never;
 
-type Join<Keys extends string> = [Keys] extends [never]
-	? never
-	: Keys extends unknown
-		? `"${Keys}"`
+type LastOf<U> =
+	UnionToIntersection<U extends unknown ? () => U : never> extends () => infer L
+		? L
 		: never;
 
-/** An `any`-typed context (an untyped plugin) says nothing: it is skipped, not trusted. */
-type IsAny<T> = 0 extends 1 & T ? true : false;
+/** `"a" | "b"` becomes `"context.a, context.b"`: one string, so no field is cut from the message. */
+type ContextFields<Keys extends string, Last = LastOf<Keys>> = [Keys] extends [
+	never,
+]
+	? ''
+	: Last extends string
+		? [Exclude<Keys, Last>] extends [never]
+			? `context.${Last}`
+			: `${ContextFields<Exclude<Keys, Last>>}, context.${Last}`
+		: never;
 
-/** The first plugin of the tuple whose requirement `Available` (plus what earlier plugins add) does not meet, as a message. */
-type FirstUnmet<
+/** `"auth"` for a literal name, `#2` (its position) for a plain `string`. */
+type Label<Name extends string, Index extends unknown[]> = string extends Name
+	? `#${Index['length']}`
+	: `"${Name}"`;
+
+type Message<
+	Plugin,
+	Index extends unknown[],
+	Required,
+	Available,
+	Name extends string = Plugin extends { readonly name: infer N extends string }
+		? N
+		: string,
+> = [AbsentKeys<Required, Available>] extends [never]
+	? `graxia: plugin ${Label<Name, Index>} needs ${ContextFields<MistypedKeys<Required, Available>>}, which the context provides as another type`
+	: `graxia: plugin ${Label<Name, Index>} needs ${ContextFields<AbsentKeys<Required, Available>>}, which nothing provides (the factory's result, ContextInit<…> on its init, or an earlier plugin)`;
+
+/** The first plugin of the tuple whose requirement `Available` (plus what earlier plugins add) does not meet, as a message; `never` when all are met. */
+export type FirstUnmet<
 	Plugins extends readonly unknown[],
 	Available,
+	Index extends unknown[] = [],
 > = Plugins extends readonly [infer Head, ...infer Tail]
-	? [Available] extends [PluginRequires<Head>]
+	? [UnmetKeys<PluginRequires<Head>, Available>] extends [never]
 		? FirstUnmet<
 				Tail,
 				IsAny<PluginContext<Head>> extends true
 					? Available
-					: Available & PluginContext<Head>
+					: Available & PluginContext<Head>,
+				[...Index, unknown]
 			>
-		: UnmetMessage<
-				Head extends { readonly name: infer N extends string } ? N : string,
-				MissingKeys<PluginRequires<Head>, Available>
-			>
+		: Message<Head, Index, PluginRequires<Head>, Available>
 	: never;
-
-type UnmetMessage<
-	Name extends string,
-	Keys extends string,
-> = `graxia: plugin "${Name}" requires the context field ${UnionToList<Keys>}, which the host context does not provide. Add it to the context factory, to the serverContext type of createGraxia<HostCtx>, or to a plugin listed before it.`;
-
-type UnionToList<Keys extends string> =
-	Join<Keys> extends infer J extends string ? J : never;
 
 /**
  * The part of the `createGraxia` options that checks every plugin's required
@@ -58,10 +78,10 @@ export type RequirePluginContext<
 	? unknown
 	: number extends Plugins['length']
 		? unknown
-		: [RequiresContext<Plugins, Available>] extends [never]
-			? {
+		: [FirstUnmet<Plugins, Available>] extends [never]
+			? unknown
+			: {
 					plugins: {
 						readonly [M in FirstUnmet<Plugins, Available>]: never;
 					};
-				}
-			: unknown;
+				};
