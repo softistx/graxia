@@ -1,5 +1,11 @@
 # @graxia/core
 
+## 0.7.0
+
+### Minor Changes
+
+- [#133](https://github.com/softistx/graxia/pull/133) [`b0cd3ec`](https://github.com/softistx/graxia/commit/b0cd3ec4999a20ac5bb3c435483a08424a4bb7e4) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Every HTTP-level refusal now carries a stable `extensions.code`: `BODY_TOO_LARGE` (413), `UNSUPPORTED_MEDIA_TYPE` (415), `BODY_UNREADABLE`, `BODY_NOT_JSON`, `QUERY_REQUIRED`, `PARAMS_INVALID`, `BATCHING_DISABLED`, `BATCH_TOO_LARGE`, `BATCH_INVALID`, `BATCH_NOT_STREAMABLE`, `SUBPROTOCOL_REQUIRED` and `UPGRADE_FAILED` (400), `PATH_NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405, a mutation over GET included) and `NOT_ACCEPTABLE` (406). They are keys of `GraxiaErrorCodes`; the messages are unchanged.
+
 ## 0.6.3
 
 ### Patch Changes
