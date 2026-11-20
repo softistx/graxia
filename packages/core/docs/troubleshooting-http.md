@@ -86,3 +86,52 @@ Reported to `onUnexpected` with `phase: "dispose"`: `graxia.dispose()` aborted t
 operations and waited `shutdownTimeout`, but some resolvers did not return. They ignore the
 context's `signal`. Pass it on to what they call (`fetch(url, { signal })`, a database driver's
 cancel option), or raise `shutdownTimeout`. See [Context](./guide/context.md).
+
+## The request body is too large. (`BODY_TOO_LARGE`)
+
+413. The body is over `limits.bodyBytes` (1 MiB by default), counted as it streams. Send a smaller body, or raise the limit: `createGraxia({ schema, limits: { bodyBytes: 4 << 20 } })`. Multipart bodies have their own limit, `uploads.bodyBytes` (`UPLOAD_TOO_LARGE`).
+
+## The Content-Type must be application/json (UTF-8). (`UNSUPPORTED_MEDIA_TYPE`)
+
+415. A POST body is read as JSON only. Send `Content-Type: application/json` (a charset, if any, must be UTF-8).
+
+## The request body could not be read. / The request body is not valid UTF-8. (`BODY_UNREADABLE`)
+
+400. The stream failed (the client aborted) or the bytes are not UTF-8. Re-send the body encoded as UTF-8.
+
+## The request body is not valid JSON. (`BODY_NOT_JSON`)
+
+400. The body does not parse. Send `{ "query": "..." }`.
+
+## Must provide a query string. (`QUERY_REQUIRED`)
+
+400. The request has no `query` string (an empty one counts), and no `documentId` that resolves to one. Send `{ "query": "..." }`, or a `documentId` when trusted documents are on.
+
+## Not found. (`PATH_NOT_FOUND`)
+
+404. The request is not on graxia's `path` (`/graphql` by default). Send it to that path, or set `path`, or `path: false` to serve any path.
+
+## Only GET and POST are allowed. (`METHOD_NOT_ALLOWED`)
+
+405, with `Allow: GET, POST`. Use GET for queries or POST for any operation. A mutation over GET answers `Can only perform a mutation operation from a POST request.` (405, `Allow: POST`) with the same code.
+
+## The Accept header must allow application/graphql-response+json or application/json. (`NOT_ACCEPTABLE`)
+
+406. Send `Accept: application/graphql-response+json` or `application/json` (a missing header or `*/*` is fine).
+
+## Batching is not enabled on this server. (`BATCHING_DISABLED`)
+
+400. A JSON array body arrived while `batching` is off (the default). Send one operation, or set `batching: true` (up to 10) or `{ limit }`.
+
+## A batch holds at most N operations, got M. (`BATCH_TOO_LARGE`)
+
+400. Send fewer operations per request, or raise `batching.limit`.
+
+## A batch must hold at least one operation. (`BATCH_INVALID`)
+
+400. The array is empty, or an entry is not a valid operation (`Batch entry N: …` names it).
+
+## Telling refusals apart
+
+Every request-level refusal (413, 415, 400, 404, 405, 406) has a stable `extensions.code`: see
+[Refusal codes](./guide/http.md#refusal-codes). Match on the code, not on the message.

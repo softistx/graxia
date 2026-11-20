@@ -142,21 +142,40 @@ after-hooks, and every after-hook runs exactly once on every path.
 Every refusal graxia builds before execution carries a stable `extensions.code` (and a `fix`), so a
 client or a test matches the code, never the message. The messages are unchanged.
 
-| code                     | status | message                                                                               |
-| ------------------------ | ------ | ------------------------------------------------------------------------------------- |
-| `BODY_TOO_LARGE`         | 413    | `The request body is too large.`                                                      |
-| `UNSUPPORTED_MEDIA_TYPE` | 415    | `The Content-Type must be application/json (UTF-8).`                                  |
-| `BODY_UNREADABLE`        | 400    | `The request body could not be read.` / `The request body is not valid UTF-8.`        |
-| `INVALID_JSON`           | 400    | `The request body is not valid JSON.`                                                 |
-| `INVALID_PARAMS`         | 400    | the body, URL or multipart `operations` is not `{ query, variables?, … }`             |
-| `MISSING_QUERY`          | 400    | `Must provide a query string.`                                                        |
-| `INVALID_BATCH`          | 400    | a batch that is off, empty, over its limit or holds a bad entry                       |
-| `BATCH_NOT_STREAMABLE`   | 400    | `Batched operations cannot be sent over text/event-stream.` (or `multipart/mixed`)    |
-| `PATH_NOT_FOUND`         | 404    | `Not found.`                                                                          |
-| `METHOD_NOT_ALLOWED`     | 405    | `Only GET and POST are allowed.`; a mutation over GET (`Allow: POST`)                 |
-| `NOT_ACCEPTABLE`         | 406    | `The Accept header must allow application/graphql-response+json or application/json.` |
-| `SUBPROTOCOL_REQUIRED`   | 400    | WebSocket upgrade without the `graphql-transport-ws` subprotocol                      |
-| `UPGRADE_FAILED`         | 400    | `The WebSocket upgrade failed.`                                                       |
+| code                     | status | message                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BODY_TOO_LARGE`         | 413    | `The request body is too large.`                                                                                                                                                                                                                                                                                                                   |
+| `UNSUPPORTED_MEDIA_TYPE` | 415    | `The Content-Type must be application/json (UTF-8).`                                                                                                                                                                                                                                                                                               |
+| `BODY_UNREADABLE`        | 400    | `The request body could not be read.` or `The request body is not valid UTF-8.`                                                                                                                                                                                                                                                                    |
+| `BODY_NOT_JSON`          | 400    | `The request body is not valid JSON.`                                                                                                                                                                                                                                                                                                              |
+| `PARAMS_INVALID`         | 400    | `The request body must be a JSON object.`, `The "query" parameter must be a string.`, `The "documentId" parameter must be a string.`, `The "operationName" parameter must be a string.`, `The "variables" parameter must be an object.`, `The "extensions" parameter must be an object.`, or `The "variables" parameter must be valid JSON.` (GET) |
+| `QUERY_REQUIRED`         | 400    | `Must provide a query string.`                                                                                                                                                                                                                                                                                                                     |
+| `BATCHING_DISABLED`      | 400    | `Batching is not enabled on this server.`                                                                                                                                                                                                                                                                                                          |
+| `BATCH_TOO_LARGE`        | 400    | `A batch holds at most N operations, got M.`                                                                                                                                                                                                                                                                                                       |
+| `BATCH_INVALID`          | 400    | `A batch must hold at least one operation.` or `Batch entry N: …` (the entry's own message)                                                                                                                                                                                                                                                        |
+| `BATCH_NOT_STREAMABLE`   | 400    | `Batched operations cannot be sent over text/event-stream.` (or `multipart/mixed`)                                                                                                                                                                                                                                                                 |
+| `PATH_NOT_FOUND`         | 404    | `Not found.`                                                                                                                                                                                                                                                                                                                                       |
+| `METHOD_NOT_ALLOWED`     | 405    | `Only GET and POST are allowed.` (`Allow: GET, POST`); `Can only perform a mutation operation from a POST request.` (`Allow: POST`); `A WebSocket upgrade must be a GET request.` (`Allow: GET`)                                                                                                                                                   |
+| `NOT_ACCEPTABLE`         | 406    | `The Accept header must allow application/graphql-response+json or application/json.`                                                                                                                                                                                                                                                              |
+| `SUBPROTOCOL_REQUIRED`   | 400    | `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".`                                                                                                                                                                                                                                                                             |
+| `UPGRADE_FAILED`         | 400    | `The WebSocket upgrade failed.`                                                                                                                                                                                                                                                                                                                    |
+
+Read the code from the first error:
+
+```ts
+const res = await fetch('/graphql', { method: 'POST', headers, body });
+if (!res.ok) {
+  const { code } = (await res.json()).errors[0].extensions;
+  switch (code) {
+    case 'BODY_TOO_LARGE':
+      return 'Send less data.';
+    case 'BODY_NOT_JSON':
+      return 'The body is not JSON: check the serializer.';
+  }
+}
+```
+
+Apollo Server answers all of these with a single `BAD_REQUEST`; each maps to one of the codes above.
 
 The upload, CSRF, origin, shutdown and persisted-query refusals have their own codes, listed beside
 their messages in the guides. All of them are keys of `GraxiaErrorCodes`.

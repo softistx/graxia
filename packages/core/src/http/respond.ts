@@ -1,4 +1,5 @@
 import type { ExecutionResult, GraphQLFormattedError } from 'graphql';
+import type { GraxiaErrorCode } from '../errors/codes';
 import type { MediaType } from './negotiate';
 import { own } from './own-response';
 
@@ -23,7 +24,7 @@ export function jsonResponse(
 export function errorBody(
 	message: string,
 	fix: string,
-	code?: string,
+	code?: GraxiaErrorCode,
 ): { errors: GraphQLFormattedError[] } {
 	return {
 		errors: [{ message, extensions: { ...(code ? { code } : {}), fix } }],
@@ -39,7 +40,7 @@ export function refusal(
 	status: number,
 	message: string,
 	fix: string,
-	options: { headers?: HeadersInit; code?: string } = {},
+	options: { headers?: HeadersInit; code?: GraxiaErrorCode } = {},
 ): Response {
 	return jsonResponse(
 		errorBody(message, fix, options.code),

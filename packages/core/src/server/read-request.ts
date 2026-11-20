@@ -13,8 +13,7 @@ const PARAMS_FIX =
 const BATCH_FIX =
 	'Send one operation per request, or fewer operations in the batch.';
 
-const PARAMS = { code: 'INVALID_PARAMS' };
-const BATCH = { code: 'INVALID_BATCH' };
+const PARAMS = { code: 'PARAMS_INVALID' } as const;
 
 /** What a request carries: its operation(s), or the refusal to send. */
 export type Read =
@@ -68,7 +67,7 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 				400,
 				'The request body is not valid JSON.',
 				'Send a valid JSON object { "query": "..." } as the body.',
-				{ code: 'INVALID_JSON' },
+				{ code: 'BODY_NOT_JSON' },
 			),
 		};
 	}
@@ -76,7 +75,11 @@ export async function readPost(rt: Runtime, request: Request): Promise<Read> {
 		const batch = parseBatch(json, rt.options.batching);
 		return batch.ok
 			? { batch: batch.entries }
-			: { response: refusal(400, batch.message, BATCH_FIX, BATCH) };
+			: {
+					response: refusal(400, batch.message, BATCH_FIX, {
+						code: batch.code,
+					}),
+				};
 	}
 	const parsed = paramsFromJson(json);
 	return parsed.ok

@@ -41,7 +41,7 @@ export async function readMultipart(
 			? { batch: batch.entries }
 			: {
 					response: refusal(400, batch.message, BATCH_FIX, {
-						code: 'INVALID_BATCH',
+						code: batch.code,
 					}),
 				};
 	}
@@ -50,7 +50,7 @@ export async function readMultipart(
 		? { single: params.params }
 		: {
 				response: refusal(400, params.message, PARAMS_FIX, {
-					code: 'INVALID_PARAMS',
+					code: 'PARAMS_INVALID',
 				}),
 			};
 }

@@ -50,19 +50,19 @@ describe('HTTP-level refusals carry a stable extensions.code', () => {
 			await refused(res, 400, 'The request body is not valid UTF-8.'),
 		).toBe('BODY_UNREADABLE');
 	});
-	test('400 INVALID_JSON', async () => {
+	test('400 BODY_NOT_JSON', async () => {
 		const res = await post('{nope');
 		expect(await refused(res, 400, 'The request body is not valid JSON.')).toBe(
-			'INVALID_JSON',
+			'BODY_NOT_JSON',
 		);
 	});
-	test('400 INVALID_PARAMS (POST and GET)', async () => {
+	test('400 PARAMS_INVALID (POST and GET)', async () => {
 		const post1 = await post('{"query":1}');
 		expect(post1.status).toBe(400);
 		const body = (await post1.json()) as {
 			errors: { extensions: { code?: string } }[];
 		};
-		expect(body.errors[0]?.extensions.code).toBe('INVALID_PARAMS');
+		expect(body.errors[0]?.extensions.code).toBe('PARAMS_INVALID');
 		const get = await send(
 			{ headers: { 'x-graphql-csrf': '1' }, method: 'GET' },
 			'http://x/graphql?query=%7B&variables=%7Bnope',
@@ -71,15 +71,47 @@ describe('HTTP-level refusals carry a stable extensions.code', () => {
 		const got = (await get.json()) as {
 			errors: { extensions: { code?: string } }[];
 		};
-		expect(got.errors[0]?.extensions.code).toBe('INVALID_PARAMS');
+		expect(got.errors[0]?.extensions.code).toBe('PARAMS_INVALID');
 	});
-	test('400 INVALID_BATCH', async () => {
-		const res = await post('[]');
-		expect(res.status).toBe(400);
-		const body = (await res.json()) as {
-			errors: { extensions: { code?: string } }[];
-		};
-		expect(body.errors[0]?.extensions.code).toBe('INVALID_BATCH');
+	test.each([
+		['[]', 'BATCH_INVALID', 'A batch must hold at least one operation.'],
+		[
+			'[{"query":"{ hello }"},{"query":1}]',
+			'BATCH_INVALID',
+			'Batch entry 1: The "query" parameter must be a string.',
+		],
+	])('400 batch %#: %s', async (body, code, message) => {
+		expect(await refused(await post(body), 400, message)).toBe(code);
+	});
+	test('400 BATCH_TOO_LARGE', async () => {
+		const small = createGraxia({
+			schema,
+			onUnexpected: false,
+			batching: { limit: 1 },
+		});
+		const res = await small.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: json,
+				body: '[{"query":"{ hello }"},{"query":"{ hello }"}]',
+			}),
+		);
+		expect(
+			await refused(res, 400, 'A batch holds at most 1 operations, got 2.'),
+		).toBe('BATCH_TOO_LARGE');
+	});
+	test('400 BATCHING_DISABLED', async () => {
+		const off = createGraxia({ schema, onUnexpected: false });
+		const res = await off.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: json,
+				body: '[{"query":"{ hello }"}]',
+			}),
+		);
+		expect(
+			await refused(res, 400, 'Batching is not enabled on this server.'),
+		).toBe('BATCHING_DISABLED');
 	});
 	test('400 BATCH_NOT_STREAMABLE', async () => {
 		const res = await post('[{"query":"{ hello }"}]', {
@@ -178,10 +210,10 @@ describe('HTTP-level refusals carry a stable extensions.code', () => {
 			void server.stop(true);
 		}
 	});
-	test('400 MISSING_QUERY', async () => {
+	test('400 QUERY_REQUIRED', async () => {
 		const res = await post('{}');
 		expect(await refused(res, 400, 'Must provide a query string.')).toBe(
-			'MISSING_QUERY',
+			'QUERY_REQUIRED',
 		);
 	});
 });

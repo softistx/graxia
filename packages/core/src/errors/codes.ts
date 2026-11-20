@@ -61,13 +61,17 @@ export interface GraxiaErrorCodes {
 	/** Emitted by core: the body could not be read or is not UTF-8 (400). */
 	BODY_UNREADABLE: true;
 	/** Emitted by core: the body is not valid JSON (400). */
-	INVALID_JSON: true;
+	BODY_NOT_JSON: true;
 	/** Emitted by core: the request is not `{ query, variables?, operationName? }` shaped (400). */
-	INVALID_PARAMS: true;
+	PARAMS_INVALID: true;
 	/** Emitted by core: the request carries no `query` (and no resolvable `documentId`) (400). */
-	MISSING_QUERY: true;
-	/** Emitted by core: a batch that is off, empty, over its limit or holds a bad entry (400). */
-	INVALID_BATCH: true;
+	QUERY_REQUIRED: true;
+	/** Emitted by core: a JSON array body while `batching` is off (400). */
+	BATCHING_DISABLED: true;
+	/** Emitted by core: a batch over its `limit` (400). */
+	BATCH_TOO_LARGE: true;
+	/** Emitted by core: an empty batch, or one with a bad entry (400). */
+	BATCH_INVALID: true;
 	/** Emitted by core: a batch asked over `text/event-stream` or `multipart/mixed` (400). */
 	BATCH_NOT_STREAMABLE: true;
 	/** Emitted by core: the request is not on the GraphQL `path` (404). */

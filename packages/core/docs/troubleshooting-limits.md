@@ -135,28 +135,3 @@ createGraxia({ schema, limits: { bodyBytes: 1_000_000 } });
 ```ts
 createGraxia({ schema, batching: true }); // or { limit: 25 }
 ```
-
-## The request body is too large. (`BODY_TOO_LARGE`)
-
-413. The body is over `limits.bodyBytes` (1 MiB by default), counted as it streams. Send a smaller body, or raise the limit: `createGraxia({ schema, limits: { bodyBytes: 4 << 20 } })`. Multipart bodies have their own limit, `uploads.bodyBytes` (`UPLOAD_TOO_LARGE`).
-
-## The Content-Type must be application/json (UTF-8). (`UNSUPPORTED_MEDIA_TYPE`)
-
-415. A POST body is read as JSON only. Send `Content-Type: application/json` (a charset, if any, must be UTF-8).
-
-## The request body could not be read. / The request body is not valid UTF-8. (`BODY_UNREADABLE`)
-
-400. The stream failed (the client aborted) or the bytes are not UTF-8. Re-send the body encoded as UTF-8.
-
-## The request body is not valid JSON. (`INVALID_JSON`)
-
-400. The body does not parse. Send `{ "query": "..." }`.
-
-## Must provide a query string. (`MISSING_QUERY`)
-
-400. The request has no `query` string (an empty one counts), and no `documentId` that resolves to one. Send `{ "query": "..." }`, or a `documentId` when trusted documents are on.
-
-## Telling refusals apart
-
-Each of these refusals, and the 404, 405, 406 and batch ones, has a stable `extensions.code`: see
-[Refusal codes](./guide/http.md#refusal-codes). Match on the code, not on the message.
