@@ -894,7 +894,9 @@ factory's `ContextInit<…>` declares, and what graxia always adds (`CoreContext
 
 Annotate the factory with the host's type, `ContextInit<{ tenant: string }>`: `InferContext` reads
 it, and `fetch`, `execute` and `serve` then require that `serverContext`. Never write
-`createGraxia<…>`: an explicit type argument switches the context check off.
+`createGraxia<…>({ … })`: an explicit type argument on the direct call switches the context check off.
+To state the host explicitly instead, use the curried form, `createGraxia<{ tenant: string }>()({ … })`:
+the schema, the plugins and the factory's result stay inferred, so every check runs.
 
 ```ts
 const context = ({
@@ -926,8 +928,18 @@ plugins, `serverContext` and graxia provide are taken into account; the rest mus
   type, is a type error on `context` (a missing `context` option is "Property 'context' is missing").
 - A plain `GraphQLSchema`, or `createSchema()` without `Ctx`, is not checked.
 - A plugin list that is not a tuple (`GraxiaPlugin[]`) is not checked either.
-- Do not write `createGraxia<…>`: an explicit type argument stops TypeScript inferring the others
-  and turns the check off. Type the host on the factory, as above.
+- Do not write `createGraxia<…>({ … })`: an explicit type argument stops TypeScript inferring the others
+  and turns the check off. Type the host on the factory, as above, or write it explicitly with the
+  curried form, `createGraxia<Host>()({ … })` (two calls, since TypeScript has no partial type-argument
+  inference, as in `definePlugin<In>()({ … })`): the checks run, and `fetch`, `execute` and `serve`
+  require the same `serverContext`.
+
+```ts
+const graxia = createGraxia<{ tenant: string }>()({
+	schema: createSchema<{ tenant: string }>()({ typeDefs, resolvers }),
+	plugins,
+});
+```
 
 The errors are listed in [Troubleshooting](../troubleshooting.md).
 
@@ -1371,7 +1383,7 @@ The second argument is the `serverContext`, merged into every operation's contex
 graxia answers whatever path it is handed.
 
 The host context is typed on the `context` factory, `({ serverContext }: ContextInit<{ db: Db }>) => …`
-(do not write `createGraxia<…>`: an explicit type argument turns the schema check off). When the
+(or explicitly, `createGraxia<{ db: Db }>()({ … })`, the curried form; never `createGraxia<…>({ … })`, whose explicit type argument turns the schema check off). When the
 type has a required key, the `serverContext` of `fetch`, of `graxia.execute` and of `serve`
 (`graxia.serve({ serverContext })`) is required too, and leaving it out is a type error; when
 every key is optional (or there is no annotation) it stays optional. `serve` adds `server` (Bun's
@@ -2502,8 +2514,15 @@ createGraxia({ schema, context, plugins: [audit, auth] }); // error: `agent` is 
 The check is skipped for a plugin list that is not a tuple (a `Plugin[]` variable), for an untyped
 plugin (`GraxiaPlugin<any, any>`, that plugin alone: the plugins after it are still checked), and for
 any call that writes the host type as an explicit type argument, `createGraxia<Host>({ ... })`:
-TypeScript then infers no other type argument. Declare the host on the `context` factory's `init`
-to keep the checks. A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
+TypeScript then infers no other type argument. Keep the checks by declaring the host on the `context`
+factory's `init`, or by writing it with the curried form, `createGraxia<Host>()({ ... })`, which
+takes the host explicitly and infers the schema, the plugins and the factory's result:
+
+```ts
+createGraxia<{ request: Request }>()({ schema, plugins: [auth] }); // fine: the host provides `request`
+createGraxia<{}>()({ schema, plugins: [auth] }); // error: plugin "auth" needs context.request
+```
+A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
 Like the schema check, it stops with TS2589 at about 50 chained plugins.
 
 # @graxia/core — Production
@@ -4908,14 +4927,14 @@ createGraxia({
 In development the default logs it with `console.error`; in production nothing is logged until you
 set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
 
-## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
+## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
 
 A type error on the `plugins` option of `createGraxia`. In full:
 
 ```text
 Type '[GraxiaPlugin<{ request: Request; }, {}, "auth">]' is not assignable to type
 'readonly [GraxiaPlugin<…>] & { readonly "graxia: plugin \"auth\" needs context.request, which nothing
-provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never; }'.
+provides (the factory's result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)": never; }'.
 ```
 
 The named plugin was built with `definePlugin<{ request: Request }>()`, and neither the `context`
@@ -4931,12 +4950,15 @@ createGraxia({
 	// ... or list the plugin that adds it before this one
 	plugins: [auth],
 });
+
+// ... or state the host explicitly with the curried form
+createGraxia<{ request: Request }>()({ schema, plugins: [auth] });
 ```
 
 A field provided with another type reads `… needs context.db, which the context provides as another
 type`. An optional field (`{ db?: string }`) may be absent. Before this check (a minor of
 `@graxia/core`), such a call compiled and either failed at runtime or worked only through an untyped
-`serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; see
+`serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; write `createGraxia<Host>()({ ... })` instead. See
 [Plugins](./guide/plugins.md#typed-context).
 
 ## Duplicate plugin name "x" at indexes 0 and 2
@@ -5011,8 +5033,8 @@ createGraxia({ schema, context, plugins });
 ```
 
 The check is skipped for a plain `GraphQLSchema`, a plugin list that is not a tuple, and a call
-with an explicit type argument (do not write `createGraxia<…>`; type the host on the factory,
-`ContextInit<{ db: Db }>`). See
+with an explicit type argument on the direct call (do not write `createGraxia<…>({ … })`; type the host on the factory,
+`ContextInit<{ db: Db }>`, or write `createGraxia<{ db: Db }>()({ … })`). See
 [Context](./guide/context.md#write-the-context-once).
 
 ## getContext() called outside a graxia operation, or the instance was created with asyncContext: false

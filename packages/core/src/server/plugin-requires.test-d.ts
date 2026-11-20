@@ -96,7 +96,7 @@ assertType<
 		RequirePluginContext<[typeof auth], CoreContext>,
 		{
 			plugins: {
-				readonly 'graxia: plugin "auth" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
+				readonly 'graxia: plugin "auth" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)': never;
 			};
 		}
 	>
@@ -108,7 +108,7 @@ assertType<
 		}
 			? keyof P
 			: never,
-		'graxia: plugin "needs-two" needs context.a, context.b, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)'
+		'graxia: plugin "needs-two" needs context.a, context.b, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)'
 	>
 >();
 
@@ -135,7 +135,7 @@ assertType<
 		>,
 		{
 			plugins: {
-				readonly "graxia: plugin at index 1 needs context.db, which nothing provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never;
+				readonly "graxia: plugin at index 1 needs context.db, which nothing provides (the factory's result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)": never;
 			};
 		}
 	>
@@ -145,7 +145,7 @@ assertType<
 		RequirePluginContext<[typeof needsNumber], CoreContext>,
 		{
 			plugins: {
-				readonly 'graxia: plugin "needs-number" needs context.0, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
+				readonly 'graxia: plugin "needs-number" needs context.0, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)': never;
 			};
 		}
 	>
@@ -155,7 +155,7 @@ assertType<
 		RequirePluginContext<[typeof needsSymbol], CoreContext>,
 		{
 			plugins: {
-				readonly 'graxia: plugin "needs-symbol" needs a symbol-keyed field, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
+				readonly 'graxia: plugin "needs-symbol" needs a symbol-keyed field, which nothing provides (the factory\'s result, ContextInit<Host> on its init, createGraxia<Host>()(...), or an earlier plugin)': never;
 			};
 		}
 	>
