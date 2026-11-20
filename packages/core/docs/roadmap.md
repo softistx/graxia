@@ -28,7 +28,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
   `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
   error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
-  `@graxia/mcp`, with its own [roadmap](../../mcp/docs/roadmap.md).
+  `@graxia/mcp`, with its own [roadmap](https://github.com/softistx/graxia/blob/develop/packages/mcp/docs/roadmap.md).
 - **What a host needs to serve agents** — `graxia.schema`, `graxia.limits` and
   `graxia.trustedDocuments` read the resolved configuration, and the shared `Can` type names the
   permission check.

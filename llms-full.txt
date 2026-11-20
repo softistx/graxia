@@ -3837,7 +3837,8 @@ curl localhost:3000/graphql -H 'x-graphql-csrf: 1' \
 
 Each file reaches the resolver as Bun's Web `File` (`name`, `type`, `size`, `text()`, `arrayBuffer()`,
 `stream()`), set into `variables` at each path the `map` names. One file may fill several paths, in
-lists and nested inputs too.
+lists and nested inputs too. Each file part needs its own field name: two parts with the same name are refused as
+`UPLOAD_INVALID`.
 
 `GraphQLFile` is the scalar to register for `scalar File`. It accepts only a `File`: a JSON request that
 sends a string where a file is due, and an inline literal, are refused with
@@ -3919,6 +3920,10 @@ const response = await graxia.fetch(
 ## Coming from other servers
 
 - **graphql-yoga**: the same Web `File`; `scalar File` and `GraphQLFile` replace the built-in.
+- **Caching**: `@envelop/response-cache` hashes the variables, and a `File` serialises as `{}`, so a query taking a
+  `File` would answer the first cached result for every file (and for every user with `session: () => null`). Do not
+  cache operations with `File` arguments: use `enabled`, `shouldCacheResult` or `ignoredTypes`
+  (see the [Envelop guide](https://github.com/softistx/graxia/blob/develop/packages/envelop/docs/guide/envelop.md)).
 - **graphql-upload**: there is no `createReadStream`; use `file.stream()`, `file.arrayBuffer()` or `file.text()`.
 
 ## Refusals
@@ -4119,8 +4124,18 @@ Every message of [File uploads](./guide/uploads.md), headed by the text the serv
 
 ## uploads.bodyBytes must be a positive integer
 
-`uploads.bodyBytes` or `uploads.files` is not an integer of at least 1 (`GraxiaConfigError` at boot).
-Pass counts such as `uploads: { bodyBytes: 16 << 20, files: 10 }`.
+`uploads.bodyBytes` is not an integer of at least 1 (`GraxiaConfigError` at boot).
+Pass a size such as `uploads: { bodyBytes: 16 << 20 }`.
+
+## uploads.files must be a positive integer
+
+`uploads.files` is not an integer of at least 1 (`GraxiaConfigError` at boot). Pass a count such as
+`uploads: { files: 10 }`.
+
+## uploads must be a boolean or an object ({ bodyBytes, fileBytes, files })
+
+`uploads` was given something else, such as a string or a number (`GraxiaConfigError` at boot). Use `true`, `false`,
+or an object of limits: `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 }`.
 
 ## uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes
 
@@ -4130,7 +4145,7 @@ The per-file limit is not an integer of at least 1, or it is above `uploads.body
 createGraxia({ schema, uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 } });
 ```
 
-## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight.
+## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight. Keep csrf.requireHeader on (the default), or turn uploads off.
 
 `createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
 can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
@@ -4142,65 +4157,71 @@ createGraxia({ schema, uploads: true }); // the CSRF header is required (default
 
 ## File uploads (multipart/form-data) are not enabled on this server. (`UPLOADS_NOT_ENABLED`)
 
-415. A multipart body reached a server without `uploads`. Send JSON, or enable it:
-     `createGraxia({ uploads: true })`.
+**Status 415.** A multipart body reached a server without `uploads`. Send JSON, or enable it:
+`createGraxia({ uploads: true })`.
 
 ## The request body is larger than uploads.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-413. The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or raise the limit.
+**Status 413.** The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or raise the limit.
 
 ## File "0" is larger than uploads.fileBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-413. One file is over `uploads.fileBytes` (8 MiB by default). `"0"` is the file's field name in `map`.
-     Send a smaller file, or raise `uploads.fileBytes` (never above `uploads.bodyBytes`).
+**Status 413.** One file is over `uploads.fileBytes` (8 MiB by default). `"0"` is the file's field name in `map`.
+Send a smaller file, or raise `uploads.fileBytes` (never above `uploads.bodyBytes`).
 
 ## The "operations" field is larger than limits.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
 
-413. The JSON `operations` part is over `limits.bodyBytes` (1 MiB by default), however small the files are.
-     Send a shorter document (a persisted `documentId` helps), or raise `limits.bodyBytes`.
+**Status 413.** The JSON `operations` part is over `limits.bodyBytes` (1 MiB by default), however small the files are.
+Send a shorter document (a persisted `documentId` helps), or raise `limits.bodyBytes`.
 
 ## The request holds N files; uploads.files allows M. (`UPLOAD_TOO_MANY_FILES`)
 
-413. The `fix` says: send fewer files per request, or raise `uploads.files` on the server.
+**Status 413.** The `fix` says: send fewer files per request, or raise `uploads.files` on the server.
 
 ## The multipart body could not be parsed. (`UPLOAD_INVALID`)
 
-400. The body is not valid `multipart/form-data`: a missing or wrong boundary in the `Content-Type`, a
-     truncated body, or a body that could not be read. Let the HTTP client set the `Content-Type` (with its
-     boundary) itself.
+**Status 400.** The body is not valid `multipart/form-data`: a missing or wrong boundary in the `Content-Type`, a
+truncated body, or a body that could not be read. Let the HTTP client set the `Content-Type` (with its
+boundary) itself.
+
+## The multipart request has two file parts named "0". (`UPLOAD_INVALID`)
+
+**Status 400.** Two file parts share one field name (`0` here), so the server cannot tell which file a `map` path
+means. Give each file part its own name, as in `map`: `{ "0": ["variables.a"], "1": ["variables.b"] }`, and send the
+parts as `-F 0=@a.txt -F 1=@b.txt`. One file for several paths is one part with several paths in its `map` entry.
 
 ## The multipart request has no "operations" field. (`UPLOAD_INVALID`)
 
-400. Send `operations` first: a JSON text field holding the GraphQL request (`{ "query", "variables" }`), with
-     `null` where each file goes. The same code answers `The multipart request has no "map" field.`.
+**Status 400.** Send `operations` first: a JSON text field holding the GraphQL request (`{ "query", "variables" }`), with
+`null` where each file goes. The same code answers `The multipart request has no "map" field.`.
 
 ## The "operations" field is not valid JSON. (`UPLOAD_INVALID`)
 
-400. `operations` must be JSON text, not a file part.
+**Status 400.** `operations` must be JSON text, not a file part.
 
 ## The "map" field must be a JSON object of file field names to arrays of paths. (`UPLOAD_INVALID`)
 
-400. `map` is `{ "0": ["variables.file"] }`: each file part's field name and the non-empty list of paths
-     that receive it.
+**Status 400.** `map` is `{ "0": ["variables.file"] }`: each file part's field name and the non-empty list of paths
+that receive it.
 
 ## Map entry "0" points at "query"; a file may only go under "variables". (`UPLOAD_INVALID`)
 
-400. A path must start with `variables` (`1.variables.file` in a batch, with the entry index). `query`,
-     `operationName` and `extensions` are refused.
+**Status 400.** A path must start with `variables` (`1.variables.file` in a batch, with the entry index). `query`,
+`operationName` and `extensions` are refused.
 
 ## Map entry "0" points at "variables.f", which is not null in "operations". (`UPLOAD_INVALID`)
 
-400. The slot a path names must exist and be `null` in `operations`: write `"variables": { "f": null }`.
-     A path may not go through a value that is not an object or an array.
+**Status 400.** The slot a path names must exist and be `null` in `operations`: write `"variables": { "f": null }`.
+A path may not go through a value that is not an object or an array.
 
-## Map entry "0" path "variables.**proto**" is not allowed. (`UPLOAD_INVALID`)
+## Map entry "0" path "variables.`__proto__`" is not allowed. (`UPLOAD_INVALID`)
 
-400. `__proto__`, `constructor` and `prototype` are never followed in a path.
+**Status 400.** `__proto__`, `constructor` and `prototype` are never followed in a path.
 
 ## Map entry "0" has no file part. (`UPLOAD_INVALID`)
 
-400. `map` names a field that is not a file part of the request (it is missing, or a text field).
-     The reverse, `File part "1" is not in "map".`, is the same mistake: every file part needs a `map` entry.
+**Status 400.** `map` names a field that is not a file part of the request (it is missing, or a text field).
+The reverse, `File part "1" is not in "map".`, is the same mistake: every file part needs a `map` entry.
 
 ## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
 
@@ -4213,9 +4234,9 @@ Source: packages/core/docs/troubleshooting.md
 
 # Troubleshooting
 
-File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
-
 The errors a consumer can hit, headed by the message as it appears.
+
+File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
 
 ## Unknown directive "@needs" (or "@constraint", "@errors")
 
@@ -5133,21 +5154,17 @@ bun add @envelop/depth-limit # the Envelop plugins you want
 `onEnveloped`, `onParse`, `onValidate`, `onContextBuilding`, `onExecute` and `onSubscribe`, with their after-hooks and
 `onExecuteDone`, `onSubscribeResult`, `onNext`, `onEnd` and `onSubscribeError`, and `@defer` / `@stream` payloads. Anything
 else (`instrumentation`, a graphql-yoga hook such as `onRequest`, an unknown name, `setSchema`, `replaceSchema`) is refused
-at boot with an error that names what to write instead. Falsy entries are skipped, so `cond && usePlugin()` works.
+with an error that names what to write instead: at boot, except `setSchema` called in `onEnveloped` (it throws on each
+request) and `replaceSchema` (it fails when `graxia.ready` resolves). Falsy entries are skipped, so `cond && usePlugin()` works.
 
 What the plugins add to the context is typed with a type argument, `fromEnvelop<{ currentUser: User }>([...])`; it is a
 declaration, not a check.
 
 ## Tested plugins
 
-These run in this package's specs on graphql 17.1, over a real `Bun.serve`.
-
-| Plugin                          | Version | Notes                                                                                                                    |
-| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                                                     |
-| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` / `extractPolicies` is not supported (context identity). |
-| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                                             |
-| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                                           |
+`@envelop/depth-limit`, `@envelop/generic-auth`, `@envelop/response-cache` and `@envelop/persisted-operations` run in this
+package's specs on graphql 17.1, over a real `Bun.serve`. Versions and notes are in the
+[guide](./docs/guide/envelop.md#tested-plugins).
 
 ## Documentation
 
@@ -5201,7 +5218,7 @@ The context the Envelop hooks build on is `{ request, params, ...your host conte
 
 graxia builds one context object per operation, so a plugin that keeps a reference to the context object across
 hooks sees the one it was given at each hook, not an identical object. Known limit: `@envelop/generic-auth`'s
-`extractPolicies` / `@policy` is not supported (it relies on that identity). `serverContext` is not part of the early
+`extractPolicies` / `@policy` is not supported (it relies on that identity): a `@policy`-protected field is denied, never served. `serverContext` is not part of the early
 context.
 
 ### What the resolver context holds
@@ -5243,12 +5260,20 @@ subscribe go through core's error handling.
 
 All of them run on graphql 17.1 over a real server in this package's specs.
 
-| Plugin                                 | Result                                                                                                                              |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `@envelop/depth-limit` 8.0.1           | Runs. A too-deep query answers 400.                                                                                                 |
-| `@envelop/generic-auth` 12.0.1         | Runs in `protect-all`, `protect-granular` and `resolve-only`. Type the user with `fromEnvelop<{ currentUser: User }>`.              |
-| `@envelop/response-cache` 10.0.1       | Runs: hits, invalidation by mutation, per-session entries. Needs a request on the context, which graxia provides.                   |
-| `@envelop/persisted-operations` 11.0.1 | Runs when the client also sends a placeholder `query` (core rejects a request without one first). Prefer core's `trustedDocuments`. |
+| Plugin                                 | Result                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@envelop/depth-limit` 8.0.1           | Runs. A too-deep query answers 400.                                                                                                                    |
+| `@envelop/generic-auth` 12.0.1         | Runs in `protect-all`, `protect-granular` and `resolve-only`. Type the user with `fromEnvelop<{ currentUser: User }>`.                                 |
+| `@envelop/response-cache` 10.0.1       | Runs: hits, invalidation by mutation, per-session entries. Needs a request on the context, which graxia provides. Not for `File` arguments, see below. |
+| `@envelop/persisted-operations` 11.0.1 | Runs when the client also sends a placeholder `query` (core rejects a request without one first). Prefer core's `trustedDocuments`.                    |
+
+### response-cache and `File` variables
+
+`@envelop/response-cache` keys an entry on the query and a hash of the variables, and a `File` serialises as `{}`.
+With uploads on, a query that takes a `File` would answer the first cached result for every file, and, with
+`session: () => null`, for every user. Do not cache operations with `File` arguments: make `enabled` return `false` for them (it receives the context, whose
+`params` hold the operation), or use `shouldCacheResult` or `ignoredTypes`. A spec in this package pins the hazard (two
+different files, the same answer) and the `enabled` fix (the resolver runs twice).
 
 # @graxia/envelop — Troubleshooting
 
@@ -5257,7 +5282,8 @@ Source: packages/envelop/docs/troubleshooting.md
 # Troubleshooting
 
 The errors a consumer can hit, headed by the message as it appears. All are a `GraxiaConfigError` thrown by `fromEnvelop`
-at boot, unless said otherwise.
+at boot, unless said otherwise. Every message starts with `fromEnvelop: envelop plugin N of M (hooks)` or
+`fromEnvelop: entry N of M`; the headings below match from the verb on.
 
 ## entry N of M is X, not an Envelop plugin object
 
@@ -5296,7 +5322,7 @@ Use `setParsedDocument` in `onParse`, or throw a `GraphQLError` there.
 
 Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces the errors.
 
-## Must provide a query string
+## Must provide a query string.
 
 This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
 `query` with the id, or use core's `trustedDocuments` with `documentId`.
@@ -5581,7 +5607,7 @@ needed.
 - Everything else, a `POST`, a JSON `GET`, a WebSocket upgrade, is untouched.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
-[core's Security guide](../../../core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
+[core's Security guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
 exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
 (`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
 foreign-`Origin` request for the page is refused like any other request, and a same-origin
@@ -5618,7 +5644,7 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
 payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
 `INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
-[incremental delivery](../../../core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
+[incremental delivery](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
 `createGraxia` turns it off.
 
 ## Subscriptions
@@ -5674,7 +5700,7 @@ run `bun run build`.
 The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4
 or later, and only with `Accept: text/html` and no `query`. Upgrade core, or check that the request
 is the browser's navigation and not a script. See core's
-[troubleshooting](../../core/docs/troubleshooting.md).
+[troubleshooting](https://github.com/softistx/graxia/blob/develop/packages/core/docs/troubleshooting.md).
 
 ## The page loads but shows no schema
 

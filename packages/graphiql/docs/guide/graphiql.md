@@ -44,7 +44,7 @@ needed.
 - Everything else, a `POST`, a JSON `GET`, a WebSocket upgrade, is untouched.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
-[core's Security guide](../../../core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
+[core's Security guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
 exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
 (`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
 foreign-`Origin` request for the page is refused like any other request, and a same-origin
@@ -81,7 +81,7 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
 payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
 `INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
-[incremental delivery](../../../core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
+[incremental delivery](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
 `createGraxia` turns it off.
 
 ## Subscriptions

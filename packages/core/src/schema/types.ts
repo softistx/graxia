@@ -22,24 +22,22 @@ export type FieldResolver<
 ) => Result | Promise<Result>;
 
 /**
- * A field resolver whose `args` parameter is checked bivariantly (the method
- * signature trick), so a resolver may annotate a concrete argument type such
- * as `({ file }: { file: File })` while an unannotated one still gets
- * `Record<string, unknown>`.
+ * A field resolver of the loose map. `parent` and `args` are `any`, so a
+ * resolver may annotate a concrete argument type such as
+ * `({ file }: { file: File })`; `ctx` stays checked against the schema's
+ * context.
  */
-export type BivariantResolver<Ctx, Result = unknown> = {
-	bivarianceHack(
-		parent: any,
-		args: Record<string, unknown>,
-		ctx: Ctx,
-		info: GraphQLResolveInfo,
-	): Result | Promise<Result>;
-}['bivarianceHack'];
+export type MapResolver<Ctx, Result = unknown> = (
+	parent: any,
+	args: any,
+	ctx: Ctx,
+	info: GraphQLResolveInfo,
+) => Result | Promise<Result>;
 
 /** A subscription field: `subscribe` returns the event stream, `resolve` maps each event. */
 export type SubscriptionFieldResolver<Ctx> = {
-	resolve?: BivariantResolver<Ctx>;
-	subscribe?: BivariantResolver<Ctx, AsyncIterable<unknown>>;
+	resolve?: MapResolver<Ctx>;
+	subscribe?: MapResolver<Ctx, AsyncIterable<unknown>>;
 };
 
 /**
@@ -64,7 +62,7 @@ export type IsTypeOf = (
 /** The resolvers of one object, interface or union type. */
 export type TypeResolvers<Ctx> = {
 	[field: string]:
-		| BivariantResolver<Ctx>
+		| MapResolver<Ctx>
 		| SubscriptionFieldResolver<Ctx>
 		| undefined;
 } & {

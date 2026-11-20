@@ -13,6 +13,7 @@
 		"test",
 		"**/*.spec.ts",
 		"src/schema/codegen-fixture",
+		"src/parity",
 		"**/*.test.ts",
 		"**/*.test-util.ts",
 		"**/*.test-d.ts"

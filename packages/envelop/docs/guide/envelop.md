@@ -41,7 +41,7 @@ The context the Envelop hooks build on is `{ request, params, ...your host conte
 
 graxia builds one context object per operation, so a plugin that keeps a reference to the context object across
 hooks sees the one it was given at each hook, not an identical object. Known limit: `@envelop/generic-auth`'s
-`extractPolicies` / `@policy` is not supported (it relies on that identity). `serverContext` is not part of the early
+`extractPolicies` / `@policy` is not supported (it relies on that identity): a `@policy`-protected field is denied, never served. `serverContext` is not part of the early
 context.
 
 ### What the resolver context holds
@@ -83,9 +83,17 @@ subscribe go through core's error handling.
 
 All of them run on graphql 17.1 over a real server in this package's specs.
 
-| Plugin                                 | Result                                                                                                                              |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `@envelop/depth-limit` 8.0.1           | Runs. A too-deep query answers 400.                                                                                                 |
-| `@envelop/generic-auth` 12.0.1         | Runs in `protect-all`, `protect-granular` and `resolve-only`. Type the user with `fromEnvelop<{ currentUser: User }>`.              |
-| `@envelop/response-cache` 10.0.1       | Runs: hits, invalidation by mutation, per-session entries. Needs a request on the context, which graxia provides.                   |
-| `@envelop/persisted-operations` 11.0.1 | Runs when the client also sends a placeholder `query` (core rejects a request without one first). Prefer core's `trustedDocuments`. |
+| Plugin                                 | Result                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@envelop/depth-limit` 8.0.1           | Runs. A too-deep query answers 400.                                                                                                                    |
+| `@envelop/generic-auth` 12.0.1         | Runs in `protect-all`, `protect-granular` and `resolve-only`. Type the user with `fromEnvelop<{ currentUser: User }>`.                                 |
+| `@envelop/response-cache` 10.0.1       | Runs: hits, invalidation by mutation, per-session entries. Needs a request on the context, which graxia provides. Not for `File` arguments, see below. |
+| `@envelop/persisted-operations` 11.0.1 | Runs when the client also sends a placeholder `query` (core rejects a request without one first). Prefer core's `trustedDocuments`.                    |
+
+### response-cache and `File` variables
+
+`@envelop/response-cache` keys an entry on the query and a hash of the variables, and a `File` serialises as `{}`.
+With uploads on, a query that takes a `File` would answer the first cached result for every file, and, with
+`session: () => null`, for every user. Do not cache operations with `File` arguments: make `enabled` return `false` for them (it receives the context, whose
+`params` hold the operation), or use `shouldCacheResult` or `ignoredTypes`. A spec in this package pins the hazard (two
+different files, the same answer) and the `enabled` fix (the resolver runs twice).

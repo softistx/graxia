@@ -1,8 +1,8 @@
 # Troubleshooting
 
-File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
-
 The errors a consumer can hit, headed by the message as it appears.
+
+File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
 
 ## Unknown directive "@needs" (or "@constraint", "@errors")
 

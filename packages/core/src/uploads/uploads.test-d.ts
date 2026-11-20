@@ -51,14 +51,13 @@ export function types() {
 			'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
 		resolvers: { File: GraphQLFile, ...generated },
 	});
-	// An unannotated resolver keeps `args: Record<string, unknown>`.
+	// An unannotated resolver gets `args: any` (so a concrete type can be annotated).
 	createSchema()({
 		typeDefs: 'type Query { ok: Boolean }',
 		resolvers: {
 			Query: {
 				ok: (_, args) => {
-					assertType<Equal<typeof args, Record<string, unknown>>>();
-					// @ts-expect-error `args.x` is unknown
+					assertType<Equal<typeof args, any>>();
 					return args.x.y;
 				},
 			},

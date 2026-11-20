@@ -310,6 +310,28 @@ describe('uploads: attackers', () => {
 		);
 		expect(runs).toBe(0);
 	});
+	test('a repeated file field name: 400 naming the field, no resolver', async () => {
+		const body = new FormData();
+		body.set('operations', JSON.stringify(single().operations));
+		body.set('map', JSON.stringify({ '0': ['variables.f'] }));
+		body.append('0', new File(['a'], 'a.txt'));
+		body.append('0', new File(['b'], 'b.txt'));
+		const response = await on.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: { accept: 'application/json', ...CSRF },
+				body,
+			}),
+		);
+		expect(response.status).toBe(400);
+		const error = await errorOf(response);
+		expect(error.extensions.code).toBe('UPLOAD_INVALID');
+		expect(error.message).toBe(
+			'The multipart request has two file parts named "0". Give each file part its own name, as in the "map" field.',
+		);
+		expect(runs).toBe(0);
+	});
+
 	test('a prototype path is refused and Object.prototype stays clean', async () => {
 		const sent = single();
 		sent.map = { '0': ['variables.__proto__.polluted'] };

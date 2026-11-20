@@ -21,11 +21,13 @@ const schema = createSchema()({
 	resolvers: {
 		Query: {
 			hello: () => 'world',
-			a: (_: unknown, __: unknown, ctx: object) => seen.push(ctx),
-			b: (_: unknown, __: unknown, ctx: object) => seen.push(ctx),
+			a: (_: unknown, __: unknown, ctx: unknown) => seen.push(ctx as object),
+			b: (_: unknown, __: unknown, ctx: unknown) => seen.push(ctx as object),
 			pack: () => ({}),
 		},
-		Pack: { c: (_: unknown, __: unknown, ctx: object) => seen.push(ctx) },
+		Pack: {
+			c: (_: unknown, __: unknown, ctx: unknown) => seen.push(ctx as object),
+		},
 	},
 });
 

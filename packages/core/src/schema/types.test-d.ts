@@ -46,6 +46,18 @@ createSchema<Ctx>()({
 	},
 });
 
+// a narrower ctx annotation (`Ctx & { tenant }`) stays an error
+createSchema<Ctx>()({
+	typeDefs,
+	// @ts-expect-error ctx is Ctx, not Ctx & { tenant: string }
+	resolvers: {
+		Query: {
+			me: (_p: unknown, _a: unknown, ctx: Ctx & { tenant: string }) =>
+				ctx.tenant,
+		},
+	},
+});
+
 // the codegen generic replaces the resolvers shape
 type CodegenResolvers = {
 	Query?: { me?: FieldResolver<unknown, Ctx, Record<string, never>, string> };

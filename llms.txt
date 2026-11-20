@@ -26,7 +26,7 @@
 - [File uploads](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/uploads.md): `@graxia/core` accepts the GraphQL multipart request spec (`operations`, `map`, one part per file). It is off by default.
 - [Subscriptions over WebSocket](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/guide/websocket.md): `createGraxia` serves GraphQL over WebSocket in the `graphql-transport-ws` protocol (the one the `graphql-ws` client speaks), on Bun's native WebSocket.
 - [Troubleshooting: file uploads](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting-uploads.md): Every message of File uploads, headed by the text the server sends. The rest is in Troubleshooting.
-- [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting.md): File upload messages are in Troubleshooting: file uploads.
+- [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting.md): The errors a consumer can hit, headed by the message as it appears.
 
 ## @graxia/envelop
 

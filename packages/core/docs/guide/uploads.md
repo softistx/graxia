@@ -34,7 +34,8 @@ curl localhost:3000/graphql -H 'x-graphql-csrf: 1' \
 
 Each file reaches the resolver as Bun's Web `File` (`name`, `type`, `size`, `text()`, `arrayBuffer()`,
 `stream()`), set into `variables` at each path the `map` names. One file may fill several paths, in
-lists and nested inputs too.
+lists and nested inputs too. Each file part needs its own field name: two parts with the same name are refused as
+`UPLOAD_INVALID`.
 
 `GraphQLFile` is the scalar to register for `scalar File`. It accepts only a `File`: a JSON request that
 sends a string where a file is due, and an inline literal, are refused with
@@ -116,6 +117,10 @@ const response = await graxia.fetch(
 ## Coming from other servers
 
 - **graphql-yoga**: the same Web `File`; `scalar File` and `GraphQLFile` replace the built-in.
+- **Caching**: `@envelop/response-cache` hashes the variables, and a `File` serialises as `{}`, so a query taking a
+  `File` would answer the first cached result for every file (and for every user with `session: () => null`). Do not
+  cache operations with `File` arguments: use `enabled`, `shouldCacheResult` or `ignoredTypes`
+  (see the [Envelop guide](https://github.com/softistx/graxia/blob/develop/packages/envelop/docs/guide/envelop.md)).
 - **graphql-upload**: there is no `createReadStream`; use `file.stream()`, `file.arrayBuffer()` or `file.text()`.
 
 ## Refusals

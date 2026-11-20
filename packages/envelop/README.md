@@ -34,21 +34,17 @@ bun add @envelop/depth-limit # the Envelop plugins you want
 `onEnveloped`, `onParse`, `onValidate`, `onContextBuilding`, `onExecute` and `onSubscribe`, with their after-hooks and
 `onExecuteDone`, `onSubscribeResult`, `onNext`, `onEnd` and `onSubscribeError`, and `@defer` / `@stream` payloads. Anything
 else (`instrumentation`, a graphql-yoga hook such as `onRequest`, an unknown name, `setSchema`, `replaceSchema`) is refused
-at boot with an error that names what to write instead. Falsy entries are skipped, so `cond && usePlugin()` works.
+with an error that names what to write instead: at boot, except `setSchema` called in `onEnveloped` (it throws on each
+request) and `replaceSchema` (it fails when `graxia.ready` resolves). Falsy entries are skipped, so `cond && usePlugin()` works.
 
 What the plugins add to the context is typed with a type argument, `fromEnvelop<{ currentUser: User }>([...])`; it is a
 declaration, not a check.
 
 ## Tested plugins
 
-These run in this package's specs on graphql 17.1, over a real `Bun.serve`.
-
-| Plugin                          | Version | Notes                                                                                                                    |
-| ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `@envelop/depth-limit`          | 8.0.1   | Refuses a too-deep query with a 400.                                                                                     |
-| `@envelop/generic-auth`         | 12.0.1  | `protect-all`, `protect-granular` and `resolve-only`. `@policy` / `extractPolicies` is not supported (context identity). |
-| `@envelop/response-cache`       | 10.0.1  | Hits, mutation invalidation by id, sessions.                                                                             |
-| `@envelop/persisted-operations` | 11.0.1  | Needs a placeholder `query`; prefer core's `trustedDocuments`.                                                           |
+`@envelop/depth-limit`, `@envelop/generic-auth`, `@envelop/response-cache` and `@envelop/persisted-operations` run in this
+package's specs on graphql 17.1, over a real `Bun.serve`. Versions and notes are in the
+[guide](./docs/guide/envelop.md#tested-plugins).
 
 ## Documentation
 

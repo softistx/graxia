@@ -69,7 +69,13 @@ function split(
 					uploads.fileBytes,
 				),
 			};
-		if (!files.has(name)) files.set(name, value);
+		if (files.has(name))
+			return {
+				response: invalid(
+					`The multipart request has two file parts named "${name}". Give each file part its own name, as in the "map" field.`,
+				),
+			};
+		files.set(name, value);
 	}
 	const operations = form.get('operations');
 	if (typeof operations !== 'string')

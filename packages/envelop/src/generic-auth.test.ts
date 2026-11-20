@@ -71,4 +71,31 @@ describe('@envelop/generic-auth', () => {
 		const secret = await app.gql('{ secret }');
 		expect(secret.json.errors[0].message).toContain('Unauthorized');
 	});
+
+	test('@policy fails closed: a policy-protected field is denied', async () => {
+		const schema = createSchema()({
+			typeDefs: `directive @policy(policies: [String!]!) on FIELD_DEFINITION
+				type Query { open: String secret: String @policy(policies: ["admin"]) }`,
+			resolvers: { Query: { open: () => 'o', secret: () => 's' } },
+		});
+		app = boot(
+			[
+				fromEnvelop([
+					useGenericAuth({
+						mode: 'protect-granular',
+						resolveUserFn,
+						extractPolicies: () => ['admin'],
+					}),
+				]),
+			],
+			{ schema },
+		);
+		const open = await app.gql('{ open }');
+		expect(open.json.data.open).toBe('o');
+		const secret = await app.gql('{ secret }', {
+			headers: { authorization: 'u1' },
+		});
+		expect(secret.json.data?.secret ?? null).toBeNull();
+		expect(secret.json.errors).toBeDefined();
+	});
 });

@@ -51,7 +51,8 @@ public names from the source of each `exports` entry; the roadmap pages are not 
 
 The release itself is its own step, after the Version PR merges: `bunx changeset git-tag && git push --follow-tags` from an up-to-date `develop`.
 
-At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, then regenerate.
+At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, and SKILL.md's envelop pointer becomes
+`node_modules/@graxia/envelop/docs/guide/envelop.md`, then regenerate.
 
 ## Invariants
 

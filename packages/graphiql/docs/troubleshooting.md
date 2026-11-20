@@ -24,7 +24,7 @@ run `bun run build`.
 The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4
 or later, and only with `Accept: text/html` and no `query`. Upgrade core, or check that the request
 is the browser's navigation and not a script. See core's
-[troubleshooting](../../core/docs/troubleshooting.md).
+[troubleshooting](https://github.com/softistx/graxia/blob/develop/packages/core/docs/troubleshooting.md).
 
 ## The page loads but shows no schema
 

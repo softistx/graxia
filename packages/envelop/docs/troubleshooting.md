@@ -1,7 +1,8 @@
 # Troubleshooting
 
 The errors a consumer can hit, headed by the message as it appears. All are a `GraxiaConfigError` thrown by `fromEnvelop`
-at boot, unless said otherwise.
+at boot, unless said otherwise. Every message starts with `fromEnvelop: envelop plugin N of M (hooks)` or
+`fromEnvelop: entry N of M`; the headings below match from the verb on.
 
 ## entry N of M is X, not an Envelop plugin object
 
@@ -40,7 +41,7 @@ Use `setParsedDocument` in `onParse`, or throw a `GraphQLError` there.
 
 Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces the errors.
 
-## Must provide a query string
+## Must provide a query string.
 
 This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
 `query` with the id, or use core's `trustedDocuments` with `documentId`.
