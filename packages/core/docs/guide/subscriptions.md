@@ -91,7 +91,7 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   parameters 400, wrong method 405, `Content-Type` 415, size 413, mutation over GET 405). Once the
   request is valid, parse, validation and execution errors, and a subscription failing before its
   first event, arrive as one `next` event carrying `{ errors }`, then `complete`, status 200, as the
-  protocol asks. A hook or an executor that throws unexpectedly answers the generic 500, or, once a
+  protocol asks. One exception: a subscription that fails before its source stream opens, with errors that carry `extensions.http` (`status` or `headers`), is still that event stream, as in Yoga, but its response takes that status and those headers (`http` is stripped from the `next` event; `errorHttp: false` keeps the 200; see [Errors](./errors.md#status-and-headers-from-errors)). The same failure without `extensions.http`, and any failure after the first event, keep status 200. A hook or an executor that throws unexpectedly answers the generic 500, or, once a
   stream is open, a last `next` with the generic `Unexpected error.` body and its correlation id.
 - **Batching**: a batch (JSON array) is refused with 400 when `Accept` prefers the event stream; the
   protocol streams one operation per request.

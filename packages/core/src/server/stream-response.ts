@@ -1,5 +1,5 @@
 import { type ExecutionResult, GraphQLError } from 'graphql';
-import { stripPayloadHttp } from '../http/error-http';
+import { bindErrorHeaders, stripPayloadHttp } from '../http/error-http';
 import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
@@ -13,6 +13,7 @@ export async function preparePayload(
 	request: Request,
 	state: RequestState,
 	value: unknown,
+	keepHttp = false,
 ): Promise<unknown> {
 	// Called inside the operation's scope (see `payloadStream`).
 	const stage = await rt.engine.runners.onResultChunk({
@@ -26,7 +27,7 @@ export async function preparePayload(
 		return chunk;
 	const masked = maskPayload(rt.maskResult, chunk as ExecutionResult, state);
 	// The status and headers are for the plain JSON answer; the stream only drops `http`.
-	return rt.options.errorHttp ? stripPayloadHttp(masked) : masked;
+	return rt.options.errorHttp && !keepHttp ? stripPayloadHttp(masked) : masked;
 }
 
 /** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped in one (a thrown non-Error becomes an `Error` of its string form), so masking reports the original. */
@@ -56,6 +57,8 @@ export function streamOutcome(
 	outcome: Extract<Outcome, { kind: 'stream' | 'result' }>,
 	format: StreamFormat,
 	signals: StreamSignals,
+	/** The one payload of `outcome` was already prepared (hooks, masking, `http` stripped): send it as is. */
+	prepared = false,
 ) {
 	const { request, state } = call;
 	const live = outcome.kind === 'stream';
@@ -69,6 +72,7 @@ export function streamOutcome(
 		source: live ? outcome.source : once,
 		scope: outcome.scope ?? ((work) => work()),
 		prepare: async (value) => {
+			if (prepared) return value;
 			try {
 				return await preparePayload(rt, request, state, value);
 			} catch (error) {
@@ -139,17 +143,37 @@ export function streamResponse(
 	},
 	outcome: Extract<Outcome, { kind: 'stream' | 'result' }>,
 	format: StreamFormat,
+	answer?: {
+		/** The status and headers the errors of an already prepared payload ask for. */
+		status?: number;
+		headers?: Record<string, string>;
+	},
 ): Response {
 	const { request } = call;
 	if (outcome.kind === 'stream')
 		releaseIdleTimeout(call.serverContext['server'], request);
-	const stream = streamOutcome(rt, call, outcome, format, {
-		stop: streamStop(rt, request.signal, outcome),
-		clientGone: request.signal,
-	});
+	const stream = streamOutcome(
+		rt,
+		call,
+		outcome,
+		format,
+		{
+			stop: streamStop(rt, request.signal, outcome),
+			clientGone: request.signal,
+		},
+		answer !== undefined,
+	);
 	void rt.lifecycle.track(stream.done);
 	rt.telemetry.hold(call.state, stream.done);
-	return own(new Response(stream.body, { headers: format.headers() }));
+	const response = own(
+		new Response(stream.body, {
+			...(answer?.status !== undefined ? { status: answer.status } : {}),
+			headers: format.headers(),
+		}),
+	);
+	return answer?.headers
+		? bindErrorHeaders(response, answer.headers)
+		: response;
 }
 
 /**
