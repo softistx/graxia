@@ -2,7 +2,8 @@
 
 graxia emits spans for each request, parse, validation and operation, and optionally for each
 resolver, on [`@softistx/telemetry`](https://www.npmjs.com/package/@softistx/telemetry). It is an
-optional peer: installed, tracing is on and costs what your telemetry costs; absent, graxia does
+optional peer (a host that already spans the request can drop graxia's request and operation
+spans with `operationSpans: false`): installed, tracing is on and costs what your telemetry costs; absent, graxia does
 nothing and wraps nothing. The spans follow OpenTelemetry's GraphQL names and reach any OTLP
 backend through `@softistx/telemetry-otlp`.
 
@@ -124,11 +125,45 @@ field. Sharing the
 schema with another graxia instance, or with `telemetry: false`, is safe: a wrapped resolver
 traces only the operations of an instance that asked for it, and otherwise calls your resolver.
 
+## The host already spans the operation
+
+When your host (an instrumented server, a GraphQL layer such as `@alxia/graphql`) already makes a
+span for the request and one for the operation, graxia's `graphql.request` and operation spans
+are duplicates. Drop them and keep the rest:
+
+```ts
+createGraxia({ schema, telemetry: { operationSpans: false } });
+```
+
+With `operationSpans: false` and a span active when the request arrives (HTTP and WebSocket alike):
+
+- there is no `graphql.request` span and no operation span;
+- `graphql.parse`, `graphql.validate` and, with `resolverSpans`, `graphql.resolve x` are still made,
+  children of the host's active span. A WebSocket message is handled outside the host's context, so
+  graxia keeps the host's `traceparent` from the request (the upgrade, for a socket) and the socket's spans continue
+  that trace, under the host's upgrade span;
+- the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
+  and, with `document: true`, `graphql.document`;
+- the original exception behind each masked error is a failed `graphql.error` span, a child of the
+  host's active span, unless a resolver span already recorded it; a timeout or abort makes none;
+- `graphql.error.count`, `graxia.events` and the request's attributes (`http.*`,
+  `graxia.refusal.code`) are not recorded.
+
+> Temporary, until nxgt-telemetry#62: `currentSpan()` is read-only, so graxia cannot put these on the
+> host's span; the validate span and the `graphql.error` span stand in until it can.
+
+**With no span active at the request there is nothing to duplicate.** graxia then makes its
+`graphql.request` and operation spans as usual, and `propagate` keeps its meaning (the `traceparent`
+header is read). A step span never starts a trace of its own.
+
+This replaces `telemetry: false` for such a host, which also loses every step span.
+
 ## Active span
 
 Execution runs inside the operation span, so `currentSpan()` from `@softistx/telemetry` in a
 resolver is the operation span (or its resolver span with `resolverSpans`), and a `span()` you start
-there nests under it, and logs written there carry its `traceId`.
+there nests under it, and logs written there carry its `traceId`. With `operationSpans: false` and a
+host span active, it is the host's span instead.
 
 ## The document and PII
 
@@ -148,18 +183,20 @@ package installed does the same.
 telemetry?: false | {
 	instance?: TelemetryInstance; // a Telemetry from createTelemetry (@softistx/telemetry)
 	resolverSpans?: boolean | { trivial?: boolean };
+	operationSpans?: boolean;
 	document?: boolean;
 	propagate?: boolean;
 };
 ```
 
-| option          | default                                        | meaning                                                                  |
-| --------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| `telemetry`     | on when `@softistx/telemetry` is installed     | `false` turns every span off                                             |
-| `instance`      | the telemetry in scope, else the installed one | the `Telemetry` the spans are emitted to                                 |
-| `resolverSpans` | `false`                                        | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
-| `document`      | `false`                                        | the document source on `graphql.document` (may hold literals)            |
-| `propagate`     | `true`                                         | read the `traceparent` header of a request with no active span           |
+| option           | default                                        | meaning                                                                  |
+| ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `telemetry`      | on when `@softistx/telemetry` is installed     | `false` turns every span off                                             |
+| `instance`       | the telemetry in scope, else the installed one | the `Telemetry` the spans are emitted to                                 |
+| `resolverSpans`  | `false`                                        | `true`: your resolvers; `{ trivial: true }`: fields with no resolver too |
+| `operationSpans` | `true`                                         | `false`: no request or operation span, for a host that makes its own     |
+| `document`       | `false`                                        | the document source on `graphql.document` (may hold literals)            |
+| `propagate`      | `true`                                         | read the `traceparent` header of a request with no active span           |
 
 ## Migrating from `@opentelemetry/api`
 

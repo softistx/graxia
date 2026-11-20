@@ -7,3 +7,10 @@ const accepted: TelemetryOptions = { instance: createTelemetry('x') };
 const rejected: TelemetryOptions = { instance: {} };
 void accepted;
 void rejected;
+
+// operationSpans is a boolean.
+const spans: TelemetryOptions = { operationSpans: false };
+// @ts-expect-error a string is not a boolean
+const wrongSpans: TelemetryOptions = { operationSpans: 'no' };
+void spans;
+void wrongSpans;

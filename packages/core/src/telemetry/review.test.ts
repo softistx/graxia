@@ -88,7 +88,13 @@ describe('review', () => {
 	});
 
 	test('a stream whose stop signal is already aborted ends its span at once', async () => {
-		const env: Env = { api, instance, document: false, propagate: false };
+		const env: Env = {
+			api,
+			instance,
+			operationSpans: true,
+			document: false,
+			propagate: false,
+		};
 		const live = start(env, 'graphql.operation', undefined, {
 			kind: 'internal',
 		});

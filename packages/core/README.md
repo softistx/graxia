@@ -249,7 +249,8 @@ proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the
 Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/telemetry-otlp` for an
 OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
 validation and operation, and the original exception of an unexpected error. Without the peer,
-nothing is wrapped and nothing runs.
+nothing is wrapped and nothing runs. A host that already spans the request sets
+`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`

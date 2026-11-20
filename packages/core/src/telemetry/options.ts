@@ -14,7 +14,17 @@ export interface TelemetryOptions {
 	 * resolver (graphql's default one). Resolvers are wrapped once, in place, on the schema.
 	 */
 	resolverSpans?: boolean | { trivial?: boolean };
-	/** Puts the document source in `graphql.document` on the operation span. `false` by default: it may hold literals. */
+	/**
+	 * `graphql.request` and operation spans. `true` by default. `false` for a host that already
+	 * spans the request and the operation: graxia then drops both and keeps its parse, validate
+	 * and resolver spans, parented under the host's active span (a socket's operations continue
+	 * the host's trace from its upgrade). The operation's type, name, document id and, with
+	 * `document`, source go on the validate span, and the cause of a masked error becomes a failed
+	 * `graphql.error` span. With no active host span at the request there is nothing to
+	 * duplicate: graxia makes its spans as usual, and `propagate` keeps its meaning.
+	 */
+	operationSpans?: boolean;
+	/** Puts the document source in `graphql.document` on the operation span (on the validate span when the host spans the operation, see `operationSpans`). `false` by default: it may hold literals. */
 	document?: boolean;
 	/** Reads W3C trace context (`traceparent`) from the request headers when no span is active. `true` by default. */
 	propagate?: boolean;
@@ -24,6 +34,7 @@ export interface TelemetryOptions {
 export interface ResolvedTelemetry {
 	instance: TelemetryInstance | undefined;
 	resolvers: false | { trivial: boolean };
+	operationSpans: boolean;
 	document: boolean;
 	propagate: boolean;
 }
@@ -42,7 +53,8 @@ export function resolveTelemetry(
 		throw bad(
 			'telemetry.tracer was replaced by telemetry.instance (a Telemetry from createTelemetry in @softistx/telemetry); see the telemetry migration guide',
 		);
-	const { instance, resolverSpans, document, propagate } = option;
+	const { instance, resolverSpans, operationSpans, document, propagate } =
+		option;
 	if (
 		instance !== undefined &&
 		(typeof instance !== 'object' ||
@@ -51,6 +63,7 @@ export function resolveTelemetry(
 	)
 		throw bad('telemetry.instance must be a @softistx/telemetry Telemetry');
 	for (const [name, value] of [
+		['operationSpans', operationSpans],
 		['document', document],
 		['propagate', propagate],
 	] as const)
@@ -76,6 +89,7 @@ export function resolveTelemetry(
 			resolverSpans === undefined || resolverSpans === false
 				? false
 				: { trivial: trivial === true },
+		operationSpans: operationSpans !== false,
 		document: document === true,
 		propagate: propagate !== false,
 	};

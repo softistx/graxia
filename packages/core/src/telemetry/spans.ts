@@ -13,6 +13,7 @@ export const SPAN = {
 	parse: 'graphql.parse',
 	validate: 'graphql.validate',
 	resolve: 'graphql.resolve',
+	error: 'graphql.error',
 } as const;
 
 /** The attribute and event names of the spans. */
@@ -42,6 +43,7 @@ export const EVENT_NAME = 'graphql.event';
 export interface Env {
 	api: TelemetryApi;
 	instance: TelemetryInstance | undefined;
+	operationSpans: boolean;
 	document: boolean;
 	propagate: boolean;
 }
@@ -64,12 +66,23 @@ export const operationKey = createStateKey<Operation>(
 /** @internal Set when the request span is not recording (no SDK, or sampled out): the rest of the request is untraced. */
 export const quietKey = createStateKey<true>('graxia.telemetry.quiet');
 
+/** @internal The host's `traceparent` (`operationSpans: false`, a host span was active at the request): spans started with no active span continue its trace. */
+export const hostTraceKey = createStateKey<string>('graxia.telemetry.host');
+
+/** @internal Causes a resolver span already recorded, so a stand-in does not record them again. */
+export const recorded = new WeakSet<object>();
+
+/** @internal A stand-in for the operation span: a {@link Live} that carries the host's `traceparent`. */
+export type StandIn = Live & { traceparent?: string };
+
 /** @internal The state of an operation span. */
 export interface Operation {
 	live: Live;
 	errors: number;
 	events: number;
 	ended: boolean;
+	/** Set when the operation has no span of its own (`operationSpans: false`): what its validate span carries instead. */
+	standIn?: Record<string, string | number>;
 }
 
 /** Starts a span under `parent` (else under the active one, else a new trace). */
@@ -79,7 +92,14 @@ export function start(
 	parent: Live | undefined,
 	options: StartOptions,
 ): Live {
-	const open = () => env.api.startSpan(name, options);
+	const carried = (parent as StandIn | undefined)?.traceparent;
+	const open = () =>
+		env.api.startSpan(
+			name,
+			carried && env.api.currentSpan() === undefined
+				? { ...options, traceparent: carried }
+				: options,
+		);
 	const within = () =>
 		env.instance ? env.api.withTelemetry(env.instance, open) : open();
 	return parent ? parent.run(within) : within();
