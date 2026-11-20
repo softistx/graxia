@@ -126,3 +126,43 @@ export function acceptsMultipart(accept: string | null): boolean {
 		.map(parseRange)
 		.some((r) => r !== undefined && r.type === 'multipart/mixed' && r.q > 0);
 }
+
+/** What one `Accept` header asks for, read once. */
+export interface AcceptReading {
+	readonly eventStream: boolean;
+	readonly multipart: boolean;
+	readonly acceptsMultipart: boolean;
+	readonly media: MediaType | undefined;
+}
+
+const NO_ACCEPT: AcceptReading = {
+	eventStream: false,
+	multipart: false,
+	acceptsMultipart: false,
+	media: 'application/json',
+};
+const READINGS = new Map<string, AcceptReading>();
+const READINGS_MAX = 64;
+const READING_TEXT_MAX = 256;
+
+/**
+ * @internal The four answers for `accept`, a pure function of the text.
+ * Memoised in a bounded map (cleared when full; a long header is never
+ * stored), so a client cycling headers cannot grow it.
+ */
+export function readAccept(accept: string | null): AcceptReading {
+	if (accept === null) return NO_ACCEPT;
+	const known = READINGS.get(accept);
+	if (known) return known;
+	const reading: AcceptReading = {
+		eventStream: prefersEventStream(accept),
+		multipart: prefersMultipart(accept),
+		acceptsMultipart: acceptsMultipart(accept),
+		media: negotiate(accept),
+	};
+	if (accept.length <= READING_TEXT_MAX) {
+		if (READINGS.size >= READINGS_MAX) READINGS.clear();
+		READINGS.set(accept, reading);
+	}
+	return reading;
+}
