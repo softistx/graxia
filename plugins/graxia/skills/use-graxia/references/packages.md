@@ -52,9 +52,9 @@ GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.1.0
 
 ## @graxia/mcp
 
-Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (0.0.0)
+Model Context Protocol server over graxia: stateless Streamable HTTP with graphql_schema, graphql_query and graphql_mutate tools, and persisted operations as typed tools (not published yet)
 
-- Install: `bun add @graxia/mcp @graxia/core graphql`
+- Not on npm yet.
 - Peers: `@graxia/core` `^0.4.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
   - `@graxia/mcp`: `Can`, `Mcp`, `McpAuthInfo`, `McpAuthOptions`, `McpErrorCode`, `McpHost`, `McpOperationInfo`, `McpOperationsOptions`, `McpOptions`, `McpScopes`, `createMcp`, `mcpAuth`

@@ -10,7 +10,12 @@ import {
 	renderLlms,
 	summaryOf,
 } from './llms';
-import { describe as cut, firstParagraph, headingOf } from './package-docs';
+import {
+	describe as cut,
+	firstParagraph,
+	headingOf,
+	ROOT,
+} from './package-docs';
 
 const input: LlmsInput = {
 	summary: 'A summary.',
@@ -66,8 +71,9 @@ describe('renderLlms', () => {
 	test('has the title, the summary and a link list per package', () => {
 		expect(out.startsWith('# graxia\n\n> A summary.\n')).toBe(true);
 		expect(out).toContain(
-			`- [@x/b](${BASE_URL}/packages/b/README.md): B does things. More text.`,
+			`- [README](${BASE_URL}/packages/b/README.md): B does things. More text.`,
 		);
+		expect(BASE_URL).toStartWith('https://raw.githubusercontent.com/');
 	});
 
 	test('a package without docs gets an empty section, in order', () => {
@@ -81,6 +87,12 @@ describe('renderLlms', () => {
 });
 
 describe('renderFull', () => {
+	test('opens by saying links are relative to the source path', () => {
+		expect(renderFull(input)).toStartWith(
+			'Every page of the graxia packages in full. Relative links',
+		);
+	});
+
 	test('puts each page in full under a package separator with its source', () => {
 		const out = renderFull(input);
 		expect(out).toContain(
@@ -90,21 +102,20 @@ describe('renderFull', () => {
 });
 
 describe('summaryOf', () => {
-	test('joins the first two paragraphs after the title', () => {
-		expect(summaryOf('# t\n\nOne\nline.\n\nTwo.\n\nThree.\n')).toBe(
-			'One line. Two.',
-		);
+	test('is the first paragraph only, never a trailing "For agents" line', () => {
+		expect(
+			summaryOf('# t\n\nOne\nline.\n\nFor agents: [llms.txt](llms.txt).\n'),
+		).toBe('One line.');
 	});
 });
 
 describe('the committed files', () => {
-	const built = buildLlms();
 	for (const file of FILES) {
 		test(`${file} equals what llms.ts generates now (${FIX})`, async () => {
-			const committed = await Bun.file(
-				join(import.meta.dir, '..', file),
-			).text();
-			expect(committed, `${file} is stale: ${FIX}`).toBe(built[file]);
+			const committed = await Bun.file(join(ROOT, file)).text();
+			expect(committed === buildLlms()[file], `${file} is stale: ${FIX}`).toBe(
+				true,
+			);
 		});
 	}
 });

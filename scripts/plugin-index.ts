@@ -68,9 +68,11 @@ export function renderEntry(entry: IndexEntry): string {
 	return [
 		`## ${entry.name}`,
 		'',
-		`${entry.description} (${entry.version})`,
+		`${entry.description} (${entry.version === '0.0.0' ? 'not published yet' : entry.version})`,
 		'',
-		`- Install: \`${installLine(entry)}\``,
+		entry.version === '0.0.0'
+			? '- Not on npm yet.'
+			: `- Install: \`${installLine(entry)}\``,
 		`- Peers: ${peers}`,
 		'- Entry points and their public names:',
 		...subpaths.map((line) => `  ${line}`),
@@ -102,10 +104,17 @@ export function sourceOf(typesPath: string): string {
 	return typesPath.replace(/^\.\/dist\//, 'src/').replace(/\.d\.ts$/, '.ts');
 }
 
-const typesPathOf = (target: unknown): string | undefined =>
-	typeof target === 'object' && target !== null
-		? ((target as Record<string, unknown>)['types'] as string | undefined)
-		: undefined;
+/** The `types` path of an `exports` target, also under a nested `import`/`require`. */
+export function typesPathOf(target: unknown): string | undefined {
+	if (typeof target !== 'object' || target === null) return undefined;
+	const record = target as Record<string, unknown>;
+	if (typeof record['types'] === 'string') return record['types'];
+	for (const condition of ['import', 'require', 'default']) {
+		const nested = typesPathOf(record[condition]);
+		if (nested) return nested;
+	}
+	return undefined;
+}
 
 /** The names a source module exports, sorted, as the checker resolves them. */
 export function exportedNames(files: string[]): Map<string, string[]> {
@@ -148,9 +157,17 @@ export function readIndex(root = ROOT): IndexEntry[] {
 		);
 		const sources = keys.map((key) => {
 			const types = typesPathOf(manifest.exports?.[key]);
-			return types ? join(root, 'packages', folder, sourceOf(types)) : '';
+			const file = types
+				? join(root, 'packages', folder, sourceOf(types))
+				: undefined;
+			if (!file || !existsSync(file)) {
+				throw new Error(
+					`${manifest.name} exports "${key}", but no source file maps to its types path (${types ?? 'none'}${file ? `, tried ${file}` : ''}): fix the exports map or sourceOf in scripts/plugin-index.ts`,
+				);
+			}
+			return file;
 		});
-		const names = exportedNames(sources.filter((s) => existsSync(s)));
+		const names = exportedNames(sources);
 		return {
 			name: manifest.name,
 			version: manifest.version,

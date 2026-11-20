@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ROOT } from './package-docs';
 import {
 	buildIndex,
 	FIX,
@@ -10,6 +11,7 @@ import {
 	readIndex,
 	render,
 	sourceOf,
+	typesPathOf,
 } from './plugin-index';
 
 const entry = (over: Partial<IndexEntry> = {}): IndexEntry => ({
@@ -62,6 +64,20 @@ describe('render', () => {
 		expect(out.startsWith('<!-- GENERATED')).toBe(true);
 	});
 
+	test('version 0.0.0 is marked unpublished, without an install line', () => {
+		const out = render([entry({ version: '0.0.0' })]);
+		expect(out).toContain('The a package (not published yet)');
+		expect(out).toContain('- Not on npm yet.');
+		expect(out).not.toContain('Install:');
+	});
+
+	test('typesPathOf also reads a nested import condition', () => {
+		expect(typesPathOf({ import: { types: './dist/a.d.ts' } })).toBe(
+			'./dist/a.d.ts',
+		);
+		expect(typesPathOf('./x.js')).toBeUndefined();
+	});
+
 	test('sourceOf maps a built types path to its source', () => {
 		expect(sourceOf('./dist/index.d.ts')).toBe('src/index.ts');
 		expect(sourceOf('./dist/agent/index.d.ts')).toBe('src/agent/index.ts');
@@ -106,11 +122,33 @@ describe('readIndex on a fixture workspace', () => {
 	});
 });
 
+describe('readIndex failures', () => {
+	test('throws, naming package, subpath and path, when a source is missing', () => {
+		const root = mkdtempSync(join(tmpdir(), 'graxia-index-'));
+		try {
+			mkdirSync(join(root, 'packages', 'p', 'src'), { recursive: true });
+			writeFileSync(
+				join(root, 'packages', 'p', 'package.json'),
+				JSON.stringify({
+					name: '@x/p',
+					version: '0.1.0',
+					exports: { './sub': { types: './dist/sub.d.ts' } },
+				}),
+			);
+			expect(() => readIndex(root)).toThrow(
+				/@x\/p exports "\.\/sub".*dist\/sub\.d\.ts/,
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
 describe('the committed index', () => {
 	test(`equals what plugin-index.ts generates now (${FIX})`, async () => {
-		const committed = await Bun.file(
-			join(import.meta.dir, '..', INDEX_PATH),
-		).text();
-		expect(committed, `${INDEX_PATH} is stale: ${FIX}`).toBe(buildIndex());
+		const committed = await Bun.file(join(ROOT, INDEX_PATH)).text();
+		expect(committed === buildIndex(), `${INDEX_PATH} is stale: ${FIX}`).toBe(
+			true,
+		);
 	});
 });

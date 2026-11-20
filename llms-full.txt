@@ -1,3 +1,5 @@
+Every page of the graxia packages in full. Relative links inside a page are relative to the source path printed above it.
+
 # @graxia/core — @graxia/core
 
 Source: packages/core/README.md

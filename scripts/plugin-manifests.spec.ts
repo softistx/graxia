@@ -85,8 +85,10 @@ describe('skills and agents', () => {
 	}
 });
 
-describe('the skill', () => {
+describe('the skill and the agent', () => {
 	const skillPath = 'plugins/graxia/skills/use-graxia/SKILL.md';
+	const agentPath = 'plugins/graxia/agents/graxia-upgrade-assistant.md';
+	const named = [skillPath, agentPath];
 
 	test('names every published package, and the index is marked generated', () => {
 		const skill = read(skillPath);
@@ -104,11 +106,11 @@ describe('the skill', () => {
 	});
 
 	test('every node_modules path it names exists in the package', () => {
-		const names = [
-			...read(skillPath).matchAll(
+		const names = named.flatMap((file) => [
+			...read(file).matchAll(
 				/node_modules\/@graxia\/([a-z-]+)\/([\w./-]+?)(?:#[\w-]+)?(?=[`,;:)\s]|\.(?:\s|$))/g,
 			),
-		];
+		]);
 		expect(names.length).toBeGreaterThan(0);
 		for (const [, pkg, rest] of names) {
 			const target = (rest as string).replace(/\/$/, '');
@@ -116,6 +118,12 @@ describe('the skill', () => {
 				existsSync(join(ROOT, 'packages', pkg as string, target)),
 				`${pkg}/${target}`,
 			).toBe(true);
+		}
+	});
+
+	test('no file names a CHANGELOG.md under node_modules (it is not shipped)', () => {
+		for (const file of named) {
+			expect(read(file), file).not.toMatch(/node_modules\/[^\s`]*CHANGELOG/);
 		}
 	});
 
@@ -127,9 +135,11 @@ describe('the skill', () => {
 				.replace(/[^\p{L}\p{N}\s-]/gu, '')
 				.trim()
 				.replace(/\s+/g, '-');
-		for (const [, pkg, file, anchor] of read(skillPath).matchAll(
-			/node_modules\/@graxia\/([a-z-]+)\/([\w./-]+?\.md)#([\w-]+)/g,
-		)) {
+		for (const [, pkg, file, anchor] of named.flatMap((f) => [
+			...read(f).matchAll(
+				/node_modules\/@graxia\/([a-z-]+)\/([\w./-]+?\.md)#([\w-]+)/g,
+			),
+		])) {
 			const headings = read(`packages/${pkg}/${file}`)
 				.split('\n')
 				.filter((l) => /^#{1,6} /.test(l))

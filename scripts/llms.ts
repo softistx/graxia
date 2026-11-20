@@ -17,7 +17,8 @@ import {
 	ROOT,
 } from './package-docs';
 
-export const BASE_URL = 'https://github.com/softistx/graxia/blob/develop';
+export const BASE_URL =
+	'https://raw.githubusercontent.com/softistx/graxia/develop';
 export const FILES = ['llms.txt', 'llms-full.txt'] as const;
 export const FIX = 'run `bun run llms`';
 
@@ -42,16 +43,20 @@ export function renderLlms({ summary, packages }: LlmsInput): string {
 			'',
 			...pkg.pages.map((page) => {
 				const about = describe(firstParagraph(page.text));
-				return `- [${page.title}](${BASE_URL}/${page.path})${about ? `: ${about}` : ''}`;
+				const label = page.path.endsWith('/README.md') ? 'README' : page.title;
+				return `- [${label}](${BASE_URL}/${page.path})${about ? `: ${about}` : ''}`;
 			}),
 			'',
 		]),
 	].join('\n');
 }
 
+const FULL_INTRO =
+	'Every page of the graxia packages in full. Relative links inside a page are relative to the source path printed above it.';
+
 /** `llms-full.txt`: every page in full under its own separator. */
 export function renderFull({ packages }: LlmsInput): string {
-	return `${packages
+	return `${FULL_INTRO}\n\n${packages
 		.flatMap((pkg) =>
 			pkg.pages.map((page) =>
 				[
@@ -69,13 +74,10 @@ export function renderFull({ packages }: LlmsInput): string {
 
 /** The README's opening: its first two paragraphs, as one. */
 export function summaryOf(readme: string): string {
-	return readme
-		.replace(/^# .*\n/, '')
-		.split(/\n\s*\n/)
-		.map(firstParagraph)
-		.filter((paragraph) => paragraph !== '')
-		.slice(0, 2)
-		.join(' ');
+	const body = readme.replace(/^# .*\n/, '');
+	return firstParagraph(
+		body.split(/\n\s*\n/).find((b) => firstParagraph(b)) ?? '',
+	);
 }
 
 export function readLlms(root = ROOT): LlmsInput {

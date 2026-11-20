@@ -42,11 +42,16 @@ Three files are generated and never edited by hand; a spec fails when one is sta
 | `scripts/plugin-index.ts` | `plugins/graxia/skills/use-graxia/references/packages.md` | `bun run plugin:index` (`--check`) |
 | `scripts/llms.ts`         | `llms.txt` and `llms-full.txt` at the repository root     | `bun run llms` (`--check`)         |
 
-Run both after a change to a published package's `package.json` (version, description, peers,
-`exports`), its public exports, its README, `docs/guide/*.md` or `docs/troubleshooting*.md`, and
-after the Version PR (`bun run changeset:version`) bumps versions. `bun test ./scripts/` (in CI)
+Run them after a change to a published package's `package.json` (version, description, peers,
+`exports`), its public exports, its README, `docs/guide/*.md` or `docs/troubleshooting*.md`.
+`bun run changeset:version` regenerates them too: commit the result on the Version PR branch, or the
+stale specs fail. `llms.ts` writes two files, `llms.txt` and `llms-full.txt`. `bun test ./scripts/` (in CI)
 runs `plugin-index.spec.ts`, `llms.spec.ts` and `plugin-manifests.spec.ts`. The index reads the
 public names from the source of each `exports` entry; the roadmap pages are not in `llms*.txt`.
+
+The release itself is its own step, after the Version PR merges: `bunx changeset git-tag && git push --follow-tags` from an up-to-date `develop`.
+
+At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, then regenerate.
 
 ## Invariants
 

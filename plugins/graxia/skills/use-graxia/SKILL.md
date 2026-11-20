@@ -36,22 +36,28 @@ with its title. This skill points at them and never copies them. Read `docs/guid
 `docs/guide/production.md` of core before shipping. A bad variable or operation name answers `BAD_USER_INPUT`,
 and each package's `docs/troubleshooting.md` heads every entry with the message as it appears.
 
-Breaking defaults to know when adopting 0.3.0 (the changesets say how to turn
-each off):
+Breaking defaults to know when adopting 0.3.0 (the changesets say how to turn each off; the values are in
+`node_modules/@graxia/core/docs/guide/security.md` and `node_modules/@graxia/core/docs/guide/limits-and-caches.md`):
 
 - a `GET` or a non-JSON `POST` needs a CSRF header, otherwise 403
   `CSRF_HEADER_REQUIRED` (this includes a browser `EventSource`);
-- a WebSocket upgrade from another `Origin` is 403 `FORBIDDEN_ORIGIN` unless
-  listed in `csrf.sameOrigin.allowedOrigins`;
-- operations over depth 12, 30 aliases, 50 directives, 20 root fields or cost
-  5 000 are refused;
+- a WebSocket upgrade from another `Origin` is 403 `FORBIDDEN_ORIGIN` unless it is allowed;
+- operations over the depth, alias, directive, root-field or cost limits are refused;
 - under `NODE_ENV=production` introspection and "Did you mean" hints are off,
   and trusted documents (when configured) are `strict`; `graxia.trustedDocuments` gives the mode in force.
 
-Breaking in 0.4.0 (pre-1.0; the changesets and `CHANGELOG.md` say how to migrate): `createMemoryPubSub` became
-`createPubSub` with tuple topics (`docs/guide/pubsub.md#migrating-from-03`); telemetry runs on the optional peer
-`@softistx/telemetry` instead of `@opentelemetry/api` (`docs/guide/telemetry.md#migrating-from-opentelemetryapi`);
-`createSchema<Ctx, Resolvers>()` refuses a resolver map generated for another context.
+Breaking in 0.4.0 (pre-1.0; the changesets and the changelog on GitHub,
+`https://github.com/softistx/graxia/blob/develop/packages/core/CHANGELOG.md`, say how to migrate):
+
+- `createMemoryPubSub` became `createPubSub` with tuple topics
+  (`node_modules/@graxia/core/docs/guide/pubsub.md#migrating-from-03`);
+- telemetry runs on the optional peer `@softistx/telemetry` instead of `@opentelemetry/api`
+  (`node_modules/@graxia/core/docs/guide/telemetry.md#migrating-from-opentelemetryapi`);
+- `InferContext<typeof context, typeof plugins>` writes the resolver context once and `createGraxia` checks it
+  against `createSchema<Ctx>()`: a context that does not satisfy it no longer compiles;
+- `createSchema<Ctx, Resolvers>()` refuses a resolver map generated for another context
+  (`node_modules/@graxia/core/docs/guide/codegen.md`);
+- `createGraxia` gained inferred type parameters after `HostCtx`, and `ContextInit` defaults its parameter.
 
 Write the resolver context once: `type Ctx = InferContext<typeof context, typeof plugins>`, then
 `createSchema<Ctx>()`; `createGraxia` checks at compile time that the factory, plugins and
@@ -65,8 +71,7 @@ For a browser explorer in development, `@graxia/graphiql` (0.1.0) adds `graphiql
 read `node_modules/@graxia/graphiql/docs/`.
 
 To let an agent use the API over MCP, `@graxia/mcp` (first publish 0.1.0, not yet on npm) is
-`createMcp(graxia, { name })`, mounted as `'/mcp': (req, server) => mcp.fetch(req, { server })`:
-stateless Streamable HTTP with the tools `graphql_schema`, `graphql_query` and, with `mutations: true`,
-`graphql_mutate`. With `auth: { resource, authorizationServers, verifyToken }` it is an OAuth resource server (serve `mcp.metadata` at `mcp.metadataPath`; `mcp:read` and `mcp:write` scopes; `verifyToken` returns `scopes` and the token's `audience`, checked against `resource` unless `audience: 'verifier'`; `mcpAuth()` in the context builder); without it, put it behind the host's own auth and use `can`. `operations: { documents: manifest }` (the manifest given to `trustedDocuments`) makes each persisted operation a typed tool: every operation needs a description (`"""…"""` above it, or `operations.descriptions`), mutations need `mutations: true`, and `genericTools: false` removes `graphql_query` / `graphql_mutate`; with trusted documents in `strict` mode (the production default) those two are not listed and refuse, so the typed tools are the only way to run operations (`node_modules/@graxia/mcp/docs/guide/operations.md`); read `node_modules/@graxia/mcp/docs/`.
-
-`node_modules/@graxia/core/docs/roadmap.md` says what is next.
+`createMcp(graxia, { name })`, mounted on `/mcp` as `'/mcp': (req, server) => mcp.fetch(req, { server })`, with an
+optional OAuth resource server (`auth`) and persisted operations as typed tools (`operations`). Read
+`node_modules/@graxia/mcp/docs/guide/getting-started.md`, `node_modules/@graxia/mcp/docs/guide/auth.md` and
+`node_modules/@graxia/mcp/docs/guide/operations.md`.
