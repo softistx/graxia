@@ -1,7 +1,6 @@
 {
 	"name": "@graxia/envelop",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Run Envelop plugins inside graxia with one adapter",
 	"license": "MIT",
 	"type": "module",
@@ -46,11 +45,28 @@
 		]
 	},
 	"devDependencies": {
+		"@envelop/core": "6.0.1",
+		"@envelop/depth-limit": "8.0.1",
+		"@envelop/generic-auth": "12.0.1",
+		"@envelop/persisted-operations": "11.0.1",
+		"@envelop/response-cache": "10.0.1",
+		"@graphql-hive/logger": "1.2.0",
+		"@graxia/core": "workspace:^",
 		"@types/bun": "^1.4.4",
-		"@graxia/core": "workspace:^"
+		"graphql": "17.1.0"
 	},
 	"peerDependencies": {
+		"@envelop/core": "^5.6.1 || ^6.0.1",
 		"@graxia/core": "workspace:^",
+		"graphql": "^17.1.0",
 		"typescript": "^6.0.3 || ^7.0.0"
+	},
+	"peerDependenciesMeta": {
+		"typescript": {
+			"optional": true
+		}
+	},
+	"engines": {
+		"bun": ">=1.4.4"
 	}
 }

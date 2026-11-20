@@ -27,6 +27,12 @@
 - [Troubleshooting: file uploads](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting-uploads.md): Every message of File uploads, headed by the text the server sends. The rest is in Troubleshooting.
 - [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/core/docs/troubleshooting.md): File upload messages are in Troubleshooting: file uploads.
 
+## @graxia/envelop
+
+- [README](https://raw.githubusercontent.com/softistx/graxia/develop/packages/envelop/README.md): Run Envelop plugins inside graxia with one import and one call.
+- [Running Envelop plugins](https://raw.githubusercontent.com/softistx/graxia/develop/packages/envelop/docs/guide/envelop.md): `fromEnvelop(plugins, options?)` takes the list you would give `envelop()` and returns one graxia plugin.
+- [Troubleshooting](https://raw.githubusercontent.com/softistx/graxia/develop/packages/envelop/docs/troubleshooting.md): The errors a consumer can hit, headed by the message as it appears. All are a `GraxiaConfigError` thrown by `fromEnvelop` at boot, unless said otherwise.
+
 ## @graxia/graphiql
 
 - [README](https://raw.githubusercontent.com/softistx/graxia/develop/packages/graphiql/README.md): The GraphiQL 4 page for graxia, bundled at build time: it runs under a strict content security policy, with no CDN, no external font and no analytics.

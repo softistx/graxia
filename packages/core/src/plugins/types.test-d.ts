@@ -1,3 +1,4 @@
+import type { GraphQLSchema } from 'graphql';
 import {
 	type ContextOf,
 	definePlugin,
@@ -6,7 +7,7 @@ import {
 	type RequiresContext,
 } from './define';
 import { createStateKey, StateBag, type StateKey } from './state';
-import type { Empty } from './types';
+import type { Empty, OnExecutePayload, SetupApi } from './types';
 
 type Equal<A, B> =
 	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -133,3 +134,10 @@ const curried = definePlugin<{ request: Request }>()({
 });
 assertType<Equal<PluginContext<typeof curried>, { url: string }>>();
 assertType<Equal<PluginRequires<typeof curried>, { request: Request }>>();
+
+// `executeFn` is read-only on the payload; `setup` receives the schema.
+export const readOnlyExecuteFn = (p: OnExecutePayload) => {
+	// @ts-expect-error executeFn is read-only: use setExecuteFn
+	p.executeFn = async () => ({ data: null });
+};
+assertType<Equal<SetupApi['schema'], GraphQLSchema>>();

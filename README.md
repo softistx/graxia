@@ -15,7 +15,7 @@ and the cache for Redis and adds a shared field rate limit. Trusted documents (m
 | [`@graxia/redis`](packages/redis)       | Redis PubSub, cache and field rate limit, on `@softistx/redis` |
 | [`@graxia/graphiql`](packages/graphiql) | GraphiQL and Apollo Sandbox                                    |
 | [`@graxia/mcp`](packages/mcp)           | MCP server (Streamable HTTP, schema, query and mutate tools)   |
-| [`@graxia/envelop`](packages/envelop)   | Envelop plugin adapter                                         |
+| [`@graxia/envelop`](packages/envelop)   | Envelop plugin adapter (`fromEnvelop`)                         |
 
 For agents: [`llms.txt`](llms.txt) indexes the docs of every package, [`llms-full.txt`](llms-full.txt) holds them in full.
 
