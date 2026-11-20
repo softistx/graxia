@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { createSchema } from '@graxia/core';
+import { GraphQLError } from 'graphql';
 import { type Booted, boot, calls, pubsub } from './fixtures.test-util';
 import { fromEnvelop } from './from-envelop';
 
@@ -93,6 +95,61 @@ describe('incremental delivery', () => {
 	});
 });
 
+describe('@stream', () => {
+	const letters = createSchema()({
+		typeDefs: /* GraphQL */ `
+			type Query {
+				letters: [String!]!
+			}
+		`,
+		resolvers: {
+			Query: {
+				letters: async function* () {
+					for (const letter of ['a', 'b', 'c']) {
+						await new Promise((r) => setTimeout(r, 5));
+						yield letter;
+					}
+				},
+			},
+		},
+	});
+	const STREAM = '{ letters @stream(initialCount: 1) }';
+
+	test('onNext sees the incremental payloads and setResult changes them', async () => {
+		const seen: unknown[] = [];
+		app = boot(
+			[
+				fromEnvelop([
+					{
+						onExecute: () => ({
+							onExecuteDone: () => ({
+								onNext: ({ result, setResult }: any) => {
+									seen.push(structuredClone(result));
+									if (result.incremental)
+										setResult({
+											...result,
+											incremental: result.incremental.map((item: any) => ({
+												...item,
+												items: item.items?.map((x: string) => x.toUpperCase()),
+											})),
+										});
+								},
+							}),
+						}),
+					} as never,
+				]),
+			],
+			{ schema: letters },
+		);
+		const text = await (await app.raw(STREAM, SSE)).text();
+		expect(seen.length).toBeGreaterThan(1);
+		expect(JSON.stringify(seen)).toContain('"a"');
+		expect(text).toContain('"B"');
+		expect(text).toContain('"C"');
+		expect(text).not.toContain('"b"');
+	});
+});
+
 describe('subscriptions', () => {
 	const read = async (response: Response, needle: string) => {
 		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
@@ -135,5 +192,86 @@ describe('subscriptions', () => {
 		await read(response, '"tick":1');
 		await new Promise((r) => setTimeout(r, 100));
 		expect(ended).toBe(1);
+	});
+
+	describe('onSubscribeError', () => {
+		const failing = (subscribe: () => unknown) =>
+			createSchema()({
+				typeDefs: /* GraphQL */ `
+					type Query {
+						hello: String
+					}
+					type Subscription {
+						tick: Int!
+					}
+				`,
+				resolvers: {
+					Query: { hello: () => 'world' },
+					Subscription: {
+						tick: { subscribe: subscribe as never, resolve: (n: number) => n },
+					},
+				},
+			});
+		const replacing = (schema: unknown) =>
+			(app = boot(
+				[
+					fromEnvelop([
+						{
+							onSubscribe: () => ({
+								onSubscribeError: ({ setError }: any) =>
+									setError(new GraphQLError('replaced')),
+							}),
+						} as never,
+					]),
+				],
+				{ schema: schema as never },
+			));
+
+		test('the hook receives the iteration error and its setError result is thrown', async () => {
+			const received: unknown[] = [];
+			app = boot(
+				[
+					fromEnvelop([
+						{
+							onSubscribe: () => ({
+								onSubscribeError: ({ error, setError }: any) => {
+									received.push(error.message);
+									setError(new GraphQLError('replaced'));
+								},
+							}),
+						} as never,
+					]),
+				],
+				{
+					schema: failing(async function* () {
+						yield 1;
+						throw new Error('iteration failed');
+					}) as never,
+				},
+			);
+			const text = await (await app.raw('subscription { tick }', SSE)).text();
+			expect(received).toEqual(['iteration failed']);
+			expect(text).toContain('"tick":1');
+			expect(text).not.toContain('iteration failed');
+		});
+
+		// Suspected bug, not fixed here: the replaced GraphQLError is thrown from the
+		// stream, and core masks every error thrown while iterating a subscription as
+		// "Unexpected error." (even a plain GraphQLError with no Envelop plugin), so the
+		// guide's "onSubscribeError can setError" never reaches the client.
+		// Tracked in #111.
+		test.todo('the client sees the error set by onSubscribeError setError');
+
+		test('an error of the initial subscribe goes through core, not the hook', async () => {
+			replacing(
+				failing(() => {
+					throw new GraphQLError('initial failure');
+				}),
+			);
+			const response = await app.raw('subscription { tick }', SSE);
+			const text = await response.text();
+			expect(text).toContain('initial failure');
+			expect(text).not.toContain('replaced');
+		});
 	});
 });

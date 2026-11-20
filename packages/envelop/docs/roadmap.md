@@ -7,7 +7,6 @@ Where `@graxia/envelop` is going, as what you get. A direction, not a commitment
 - **Envelop context identity** — keep one context object across the hooks of an operation, so `@policy` of
   `@envelop/generic-auth` can work.
 - **Access to `serverContext`** in the Envelop context.
-- **More specs** — `onSubscribeError` `setError` and `@stream` ([#100](https://github.com/softistx/graxia/issues/100)).
 
 ## Not planned
 
