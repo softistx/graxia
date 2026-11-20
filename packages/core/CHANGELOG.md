@@ -1,5 +1,17 @@
 # @graxia/core
 
+## 0.6.3
+
+### Patch Changes
+
+- [#126](https://github.com/softistx/graxia/pull/126) [`5ddb586`](https://github.com/softistx/graxia/commit/5ddb5869b08d50f408ac6864a53a0c4652097c0d) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `batching: true` is accepted and means `{ limit: 10 }`, Yoga's default, as the migration guide already said. A bad `batching` value now throws a `GraxiaConfigError` naming the accepted forms (`true`, `false` or `{ limit: <positive integer> }`).
+
+- [#127](https://github.com/softistx/graxia/pull/127) [`8397f98`](https://github.com/softistx/graxia/commit/8397f98a041b82e231ef33a667876df61082dcf0) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Document what an aborted `graxia.execute` returns: a result with an `OPERATION_ABORTED` error, never a rejection.
+
+- [#130](https://github.com/softistx/graxia/pull/130) [`83904e4`](https://github.com/softistx/graxia/commit/83904e4657269574b55f6b0a61c36d44d380975e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Docs: a host that counts the request body itself (a stream that errors past its limit) gets 400 "The request body could not be read."; the migration guide, the HTTP guide and troubleshooting now say to drop the host limiter and set `limits.bodyBytes`, which answers 413 for an oversized `Content-Length` and for a chunked body, both covered by specs.
+
+- [#129](https://github.com/softistx/graxia/pull/129) [`178a736`](https://github.com/softistx/graxia/commit/178a736f2d0ac489ce054184150aecab9a78149e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Document how a host observes each WebSocket operation (start, end, outcome, duration) with a plugin that reads the `serverContext` given to `graxia.upgrade`, in the WebSocket and plugins guides and the migration guide.
+
 ## 0.6.2
 
 ### Patch Changes

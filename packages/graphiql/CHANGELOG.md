@@ -1,5 +1,16 @@
 # @graxia/graphiql
 
+## 0.2.0
+
+### Minor Changes
+
+- [#128](https://github.com/softistx/graxia/pull/128) [`8dc1b74`](https://github.com/softistx/graxia/commit/8dc1b7482c3f6501b662fe405ead76f2805f8126) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `enabled` of `graphiql()` and `apolloSandbox()` also takes a function `(request: Request) => boolean`, called for each GET the explorer would answer; `false` falls through as a disabled explorer does. A value that is neither a boolean nor a function throws a `GraxiaConfigError`. The docs now say that an unset `NODE_ENV` serves the page and show `enabled: () => myDevFlag`.
+
+### Patch Changes
+
+- Updated dependencies [[`5ddb586`](https://github.com/softistx/graxia/commit/5ddb5869b08d50f408ac6864a53a0c4652097c0d), [`8397f98`](https://github.com/softistx/graxia/commit/8397f98a041b82e231ef33a667876df61082dcf0), [`83904e4`](https://github.com/softistx/graxia/commit/83904e4657269574b55f6b0a61c36d44d380975e), [`178a736`](https://github.com/softistx/graxia/commit/178a736f2d0ac489ce054184150aecab9a78149e)]:
+  - @graxia/core@0.6.3
+
 ## 0.1.2
 
 ### Patch Changes
