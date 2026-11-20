@@ -1,5 +1,11 @@
 # @graxia/core
 
+## 0.13.1
+
+### Patch Changes
+
+- [#161](https://github.com/softistx/graxia/pull/161) [`2fd780b`](https://github.com/softistx/graxia/commit/2fd780b8742fe098ce4a6c0d1be5d9d3c6c33804) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The `@cost` and `@listSize` directives and each of their arguments now carry a description, in the `GraphQLDirective` objects and in the SDL `createSchema` adds, so a schema that must describe every element no longer needs an allowlist for them.
+
 ## 0.13.0
 
 ### Minor Changes
