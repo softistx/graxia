@@ -75,7 +75,7 @@ the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelem
 
 ## telemetry.document must be a boolean
 
-Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
+Also `telemetry.propagate must be a boolean` and `telemetry.operationSpans must be a boolean`. Pass `true` or `false`, or leave the option out.
 
 ## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
 
@@ -94,6 +94,8 @@ The server answers but your backend shows nothing. In order:
    other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
+6. `operationSpans: false` with a host span active: graxia's `graphql.request` and operation spans
+   are absent by design; see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
 
 ## A resolver span has no child spans of mine
 

@@ -2,7 +2,8 @@
 
 graxia emits spans for each request, parse, validation and operation, and optionally for each
 resolver, on [`@softistx/telemetry`](https://www.npmjs.com/package/@softistx/telemetry). It is an
-optional peer: installed, tracing is on and costs what your telemetry costs; absent, graxia does
+optional peer (a host that already spans the request can drop graxia's request and operation
+spans with `operationSpans: false`): installed, tracing is on and costs what your telemetry costs; absent, graxia does
 nothing and wraps nothing. The spans follow OpenTelemetry's GraphQL names and reach any OTLP
 backend through `@softistx/telemetry-otlp`.
 
@@ -139,7 +140,7 @@ With `operationSpans: false` and a span active when the request arrives (HTTP an
 - there is no `graphql.request` span and no operation span;
 - `graphql.parse`, `graphql.validate` and, with `resolverSpans`, `graphql.resolve x` are still made,
   children of the host's active span. A WebSocket message is handled outside the host's context, so
-  graxia keeps the host's `traceparent` from the upgrade request and the socket's spans continue
+  graxia keeps the host's `traceparent` from the request (the upgrade, for a socket) and the socket's spans continue
   that trace, under the host's upgrade span;
 - the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
   and, with `document: true`, `graphql.document`;
@@ -159,9 +160,10 @@ This replaces `telemetry: false` for such a host, which also loses every step sp
 
 ## Active span
 
-Execution runs inside the operation span (the host's active span with `operationSpans: false`), so `currentSpan()` from `@softistx/telemetry` in a
+Execution runs inside the operation span, so `currentSpan()` from `@softistx/telemetry` in a
 resolver is the operation span (or its resolver span with `resolverSpans`), and a `span()` you start
-there nests under it, and logs written there carry its `traceId`.
+there nests under it, and logs written there carry its `traceId`. With `operationSpans: false` and a
+host span active, it is the host's span instead.
 
 ## The document and PII
 

@@ -255,7 +255,8 @@ proxy or with `fetch()`. Use `redisFieldLimit` from `@graxia/redis` to share the
 Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/telemetry-otlp` for an
 OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
 validation and operation, and the original exception of an unexpected error. Without the peer,
-nothing is wrapped and nothing runs.
+nothing is wrapped and nothing runs. A host that already spans the request sets
+`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
@@ -3367,7 +3368,8 @@ Source: packages/core/docs/guide/telemetry.md
 
 graxia emits spans for each request, parse, validation and operation, and optionally for each
 resolver, on [`@softistx/telemetry`](https://www.npmjs.com/package/@softistx/telemetry). It is an
-optional peer: installed, tracing is on and costs what your telemetry costs; absent, graxia does
+optional peer (a host that already spans the request can drop graxia's request and operation
+spans with `operationSpans: false`): installed, tracing is on and costs what your telemetry costs; absent, graxia does
 nothing and wraps nothing. The spans follow OpenTelemetry's GraphQL names and reach any OTLP
 backend through `@softistx/telemetry-otlp`.
 
@@ -3504,7 +3506,7 @@ With `operationSpans: false` and a span active when the request arrives (HTTP an
 - there is no `graphql.request` span and no operation span;
 - `graphql.parse`, `graphql.validate` and, with `resolverSpans`, `graphql.resolve x` are still made,
   children of the host's active span. A WebSocket message is handled outside the host's context, so
-  graxia keeps the host's `traceparent` from the upgrade request and the socket's spans continue
+  graxia keeps the host's `traceparent` from the request (the upgrade, for a socket) and the socket's spans continue
   that trace, under the host's upgrade span;
 - the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
   and, with `document: true`, `graphql.document`;
@@ -3524,9 +3526,10 @@ This replaces `telemetry: false` for such a host, which also loses every step sp
 
 ## Active span
 
-Execution runs inside the operation span (the host's active span with `operationSpans: false`), so `currentSpan()` from `@softistx/telemetry` in a
+Execution runs inside the operation span, so `currentSpan()` from `@softistx/telemetry` in a
 resolver is the operation span (or its resolver span with `resolverSpans`), and a `span()` you start
-there nests under it, and logs written there carry its `traceId`.
+there nests under it, and logs written there carry its `traceId`. With `operationSpans: false` and a
+host span active, it is the host's span instead.
 
 ## The document and PII
 
@@ -4884,7 +4887,7 @@ the installed one. See [Migrating](./guide/telemetry.md#migrating-from-opentelem
 
 ## telemetry.document must be a boolean
 
-Also `telemetry.propagate must be a boolean`. Pass `true` or `false`, or leave the option out.
+Also `telemetry.propagate must be a boolean` and `telemetry.operationSpans must be a boolean`. Pass `true` or `false`, or leave the option out.
 
 ## telemetry.resolverSpans must be a boolean or { trivial?: boolean }
 
@@ -4903,6 +4906,8 @@ The server answers but your backend shows nothing. In order:
    other, so its spans are detached. Check `bun pm ls @softistx/telemetry` shows one version.
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
+6. `operationSpans: false` with a host span active: graxia's `graphql.request` and operation spans
+   are absent by design; see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
 
 ## A resolver span has no child spans of mine
 

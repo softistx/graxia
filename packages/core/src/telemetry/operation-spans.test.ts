@@ -172,6 +172,7 @@ describe('operationSpans over HTTP', () => {
 		await instance.flush();
 		expect(one('graphql.error').error?.message).toBe('payload boom');
 		expect(named('graphql.request')).toHaveLength(0);
+		sameTrace();
 	});
 
 	test('false with no host span: nothing to duplicate, graxia makes its spans and reads traceparent', async () => {
@@ -200,9 +201,9 @@ describe('operationSpans over HTTP', () => {
 
 describe('operationSpans over a WebSocket', () => {
 	/** A server that spans the upgrade request itself, as a host does. */
-	const serve = (telemetry: object, host: boolean) => {
+	const serve = (telemetry: object, host: boolean, schema: any = wsSchema) => {
 		const graxia = createGraxia({
-			schema: wsSchema,
+			schema,
 			onUnexpected: false,
 			telemetry,
 		});
@@ -259,6 +260,40 @@ describe('operationSpans over a WebSocket', () => {
 		sameTrace();
 		for (const name of ['graphql.parse', 'graphql.validate'])
 			expect(parentId(one(name))).toBe(idOf(one('host')));
+	});
+
+	test('false under a host span: a masked failing payload is a graphql.error in the host trace', async () => {
+		const failing = createSchema()({
+			typeDefs: 'type Query { a: Int } type Subscription { tick: Int! }',
+			resolvers: {
+				Subscription: {
+					tick: {
+						subscribe: async function* () {
+							yield 1;
+						},
+						resolve: () => {
+							throw new Error('payload boom');
+						},
+					},
+				},
+			},
+		});
+		const { url, server } = serve(off, true, failing);
+		const socket = raw(url);
+		await socket.init();
+		await socket.send({
+			id: '1',
+			type: 'subscribe',
+			payload: { query: 'subscription { tick }' },
+		});
+		await until(() => named('graphql.error').length === 1);
+		await instance.flush();
+		socket.socket.close();
+		await server.stop(true);
+		const cause = one('graphql.error');
+		expect(cause.error?.message).toBe('payload boom');
+		expect(traceOf(cause)).toBe(traceOf(one('host')));
+		expect(parentId(cause)).toBe(idOf(one('host')));
 	});
 
 	test('false with no host span: graxia makes its spans, in one trace', async () => {

@@ -15,7 +15,7 @@ const isCancellation = (cause: unknown) =>
  * unless a resolver span already recorded it.
  */
 export function hostSpan(env: Env, traceparent: string): StandIn {
-	return {
+	const standIn: StandIn = {
 		name: '',
 		status: 'ok',
 		context: { sampled: true },
@@ -26,11 +26,12 @@ export function hostSpan(env: Env, traceparent: string): StandIn {
 			if (isCancellation(cause)) return;
 			if (typeof cause === 'object' && cause !== null && recorded.has(cause))
 				return;
-			const span = start(env, SPAN.error, undefined, { kind: 'internal' });
+			const span = start(env, SPAN.error, standIn, { kind: 'internal' });
 			fail(span, cause);
 			span.end();
 		},
 		end: () => {},
 		run: (work) => work(),
 	};
+	return standIn;
 }
