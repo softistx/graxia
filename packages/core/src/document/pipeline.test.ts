@@ -23,12 +23,14 @@ const input = (source: string) => ({
 	source,
 	state: new StateBag(),
 	request,
+	serverContext: {},
 });
 const vin = (source: string, document = parse(source)) => ({
 	document,
 	cacheKey: source,
 	state: new StateBag(),
 	request,
+	serverContext: {},
 });
 
 describe('limits', () => {

@@ -56,28 +56,38 @@ export interface StepResult {
 	cacheKey?: string;
 }
 
+/** What `parse` takes. */
+export interface ParseInput {
+	source: string;
+	state: RequestState;
+	request: Request;
+	/** The host's context, as `onParse` shows it. */
+	serverContext: Readonly<Record<string, unknown>>;
+	/** A document already parsed (`graxia.execute`): used instead of parsing `source`, after `onParse` ran. */
+	document?: DocumentNode | undefined;
+}
+
+/** What `validate` takes. */
+export interface ValidateInput {
+	document: DocumentNode;
+	cacheKey?: string | undefined;
+	state: RequestState;
+	request: Request;
+	/** The host's context, as `onValidate` shows it. */
+	serverContext: Readonly<Record<string, unknown>>;
+}
+
 /** The parse and validation steps of a request. */
 export interface DocumentPipeline {
 	/** Runs `onParse`, then the limited and cached parse. */
-	parse(input: {
-		source: string;
-		state: RequestState;
-		request: Request;
-		/** A document already parsed (`graxia.execute`): used instead of parsing `source`, after `onParse` ran. */
-		document?: DocumentNode | undefined;
-	}): Promise<StepResult>;
+	parse(input: ParseInput): Promise<StepResult>;
 	/**
 	 * Runs `onValidate`, then the validation. The validation cache is used only
 	 * when `cacheKey` is given: pass the `cacheKey` that `parse` returned, never
 	 * the source yourself. A document a plugin supplied or parsed differently
 	 * has no `cacheKey` and is neither read from nor written to the cache.
 	 */
-	validate(input: {
-		document: DocumentNode;
-		cacheKey?: string | undefined;
-		state: RequestState;
-		request: Request;
-	}): Promise<StepResult>;
+	validate(input: ValidateInput): Promise<StepResult>;
 }
 
 interface Ctx {
@@ -123,19 +133,12 @@ export function createDocumentPipeline(
 	};
 }
 
-async function runParse(
-	ctx: Ctx,
-	input: {
-		source: string;
-		state: RequestState;
-		request: Request;
-		document?: DocumentNode | undefined;
-	},
-): Promise<StepResult> {
-	const { source, state, request } = input;
+async function runParse(ctx: Ctx, input: ParseInput): Promise<StepResult> {
+	const { source, state, request, serverContext } = input;
 	const outcome = await ctx.engine.runners.onParse({
 		request,
 		state,
+		serverContext,
 		params: { query: source },
 	});
 	const { out, error } = outcome;
@@ -182,17 +185,13 @@ function parseDefault(
 
 async function runValidate(
 	ctx: Ctx,
-	input: {
-		document: DocumentNode;
-		cacheKey?: string | undefined;
-		state: RequestState;
-		request: Request;
-	},
+	input: ValidateInput,
 ): Promise<StepResult> {
-	const { document, cacheKey, state, request } = input;
+	const { document, cacheKey, state, request, serverContext } = input;
 	const outcome = await ctx.engine.runners.onValidate({
 		request,
 		state,
+		serverContext,
 		schema: ctx.schema,
 		document,
 	});

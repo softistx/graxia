@@ -26,6 +26,11 @@ export interface Base {
 	state: RequestState;
 }
 
+/** The host context, carried by the stages whose payload shows it. */
+export interface Host {
+	serverContext: Readonly<Record<string, unknown>>;
+}
+
 /** Decisions collected by the `onRequest` stage. */
 export interface RequestOut {
 	response?: Response;
@@ -82,15 +87,19 @@ export interface ResponseOut {
  * step when `out.document`, `out.errors` or `out.result` is set.
  */
 export interface PluginRunners {
-	onRequest: StageRunner<Base, RequestOut, OnRequestDone>;
+	onRequest: StageRunner<Base & Host, RequestOut, OnRequestDone>;
 	onParams: StageRunner<
 		Base & { params: GraphQLParams },
 		ParamsOut,
 		OnParamsDone
 	>;
-	onParse: StageRunner<Base & { params: GraphQLParams }, ParseOut, OnParseDone>;
+	onParse: StageRunner<
+		Base & Host & { params: GraphQLParams },
+		ParseOut,
+		OnParseDone
+	>;
 	onValidate: StageRunner<
-		Base & { schema: GraphQLSchema; document: DocumentNode },
+		Base & Host & { schema: GraphQLSchema; document: DocumentNode },
 		ValidateOut,
 		OnValidateDone
 	>;

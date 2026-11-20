@@ -106,10 +106,10 @@ const gate = definePlugin({
 
 | Stage                      | Payload helpers                                                                                                                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `onRequest`                | `respond(response)` ends the stage; earlier after-hooks still run                                                                                                                     |
+| `onRequest`                | `serverContext`; `respond(response)` ends the stage; earlier after-hooks still run                                                                                                    |
 | `onParams`                 | `setParams(params)`, `respond(response)`                                                                                                                                              |
-| `onParse`                  | `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                                                                                                  |
-| `onValidate`               | `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                                                                                                        |
+| `onParse`                  | `serverContext`; `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                                                                                 |
+| `onValidate`               | `serverContext`; `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                                                                                       |
 | `onExecute`, `onSubscribe` | `executeFn` (the function that will run: the last one set, else the engine's), `setExecuteFn(fn)`, `setResult(result)` (skips execution); the after-hook gets `{ result, setResult }` |
 | `onResultChunk`            | `setChunk(chunk)`                                                                                                                                                                     |
 | `onResponse`               | `setResponse(response)`                                                                                                                                                               |
@@ -126,6 +126,36 @@ wins, and the caller skips the step when `out.document`, `out.errors` or `out.re
 a subscription ends when `args.contextValue.signal` aborts (its after-hook only runs once the
 stream is created). The full start/end snippet is in
 [Observe each socket operation](./websocket.md#observe-each-socket-operation).
+
+## Reading the host context before `onExecute`
+
+`onRequest`, `onParse` and `onValidate` payloads carry a read-only `serverContext`: a copy graxia made of
+what the host passed to `fetch`, `graxia.upgrade` or `serve({ serverContext })`, with `server` added and,
+over a WebSocket, `connectionParams`. `onExecute` sees it too, through `args.contextValue`. Reading it in
+`onValidate` ties a document that fails validation to its socket, which `onExecute` never sees.
+
+```ts
+import { definePlugin } from '@graxia/core';
+
+// graxia.upgrade(request, server, { socketId: crypto.randomUUID() })
+export const invalidDocuments = definePlugin()({
+	name: 'invalid-documents',
+	onValidate:
+		({ serverContext }) =>
+		({ errors }) => {
+			if (errors?.length)
+				console.warn(
+					`socket ${serverContext['socketId']}: ${errors[0]?.message}`,
+				);
+		},
+});
+```
+
+`serverContext` is untyped here: its values are `unknown`, so read a key with brackets and narrow it. Do not
+mutate it: over a socket, `onRequest` sees the copy stored at the upgrade, so a change there reaches every
+later operation of that socket, while `onParse` and `onValidate` get a fresh copy per operation. The other
+stages keep reading the context from `args.contextValue` (`onExecute`, `onSubscribe`) or `context`
+(`onContext`).
 
 ## Exempting a GET from the CSRF header
 
