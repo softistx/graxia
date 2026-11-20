@@ -61,15 +61,16 @@ describe('tools/list', () => {
 	});
 	test('a can that throws offers no typed tool and reports the cause', async () => {
 		const errors: unknown[] = [];
+		const cause = new Error('down');
 		const { mcp } = mcpFor({
 			operations,
 			onError: (e) => void errors.push(e),
 			can: () => {
-				throw new Error('down');
+				throw cause;
 			},
 		});
 		expect(await names(mcp)).toEqual(['graphql_schema', 'graphql_query']);
-		expect(errors).toHaveLength(1);
+		expect(errors).toEqual([cause]);
 	});
 	test('genericTools: false keeps graphql_schema and the typed tools', async () => {
 		const { mcp } = mcpFor({
