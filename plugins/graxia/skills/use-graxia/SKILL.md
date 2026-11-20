@@ -66,11 +66,11 @@ Write the resolver context once: `type Ctx = InferContext<typeof context, typeof
 With graphql-codegen, point `contextType` at the `InferContext` type and pass the generated `Resolvers` as
 `createSchema<Ctx, Resolvers>()`'s second generic; a map generated for another context is a type error.
 
-For a browser explorer in development, `@graxia/graphiql` (0.1.0) adds `graphiql()` or `apolloSandbox()` to
+For a browser explorer in development, `@graxia/graphiql` (from 0.1.0) adds `graphiql()` or `apolloSandbox()` to
 `plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
 read `node_modules/@graxia/graphiql/docs/`.
 
-To let an agent use the API over MCP, `@graxia/mcp` (first publish 0.1.0, not yet on npm) is
+To let an agent use the API over MCP, `@graxia/mcp` (from 0.1.0) is
 `createMcp(graxia, { name })`, mounted on `/mcp` as `'/mcp': (req, server) => mcp.fetch(req, { server })`, with an
 optional OAuth resource server (`auth`) and persisted operations as typed tools (`operations`). Read
 `node_modules/@graxia/mcp/docs/guide/getting-started.md`, `node_modules/@graxia/mcp/docs/guide/auth.md` and

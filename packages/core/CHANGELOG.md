@@ -1,5 +1,15 @@
 # @graxia/core
 
+## 0.5.0
+
+### Minor Changes
+
+- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `@graxia/core/agent`: the descriptive directives `@needs`, `@constraint` and `@errors`, `@needs(anyOf:)`, `printSchemaFor(schema, { can })` and `visibleSchema` for the schema one caller may see (always with a valid `Query`), `lintDescriptions`, and readers (`needsOf`, `constraintOf`, `errorsOf`). Every error graxia emits now carries `extensions.fix`, including parse and validation failures, variable errors and HTTP refusals; messages and codes are unchanged. The permission predicate type `Can` (`(permission: string) => boolean`) is exported from `@graxia/core/agent`.
+
+- [#95](https://github.com/softistx/graxia/pull/95) [`6ec2589`](https://github.com/softistx/graxia/commit/6ec2589e1de9241b8d6fc52de73a66ef629bd0e1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `Graxia` exposes `schema` (the schema it serves) and `limits` (`{ bodyBytes, tokens }`, defaults applied), so a layer in front of it, such as `@graxia/mcp`, reads them instead of taking them twice.
+
+  `Graxia` also exposes `trustedDocuments` (`{ mode: 'strict' | 'mixed' }` in force, the `NODE_ENV` default applied; `undefined` without the option), so a layer that forwards client documents to `graxia.execute` can refuse them in `strict`. A missing or invalid variable (refused by graphql before any field runs) and an unknown or missing operation name now carry `extensions.code: "BAD_USER_INPUT"` beside their `fix` (they had no code). `ApolloPersistedQueryManifest` types `format` as `string` and `version` as `number`, so a manifest imported from JSON type-checks; the values are still checked at boot.
+
 ## 0.4.0
 
 ### Minor Changes
