@@ -117,6 +117,17 @@ The document parsed but does not validate against the schema. Every such error c
 
 `limits.bodyBytes` is not an integer of at least 1. Pass a byte count, such as `1_048_576`.
 
+## The request body could not be read. (400)
+
+The body stream errored before graxia finished reading it, typically a host that wraps the request in
+its own body limiter (or a dropped connection). graxia's own `limits.bodyBytes` answers 413 for both an
+oversized `Content-Length` and a chunked body past the limit. Remove the host's limiter and set
+`limits.bodyBytes`, see [Migrating](./guide/migrating-from-alxia-graphql.md#a-hosts-own-body-limit).
+
+```ts
+createGraxia({ schema, limits: { bodyBytes: 1_000_000 } });
+```
+
 ## batching must be true, false or { limit: <positive integer> }
 
 `batching` takes `true` (up to 10 operations per batch), `false` (off, the default) or `{ limit }` with an integer of at least 1. Anything else, such as `0`, `1.5`, `'yes'` or `{ limit: 0 }`, throws when `createGraxia` is called.
