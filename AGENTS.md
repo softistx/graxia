@@ -69,7 +69,8 @@ At a package's first publish, drop its "not published yet" wording from README.m
   core keeps them internal (not in its public surface), and the `topic:id` channel is a wire format that two
   processes on different versions must agree on, so Redis owns it. `channel.test.ts` pins both copies to the
   same output; change one, change the other.
-- `packages/mcp/src/tools/operation.ts` copies core's parse fix texts (`PARSE_FIX`, the token-limit fix):
+- `packages/mcp/src/tools/operation.ts` copies core's parse fix texts (`PARSE_FIX`, the token-limit fix, and `Flatten the operation.` of the
+  nesting overflow, from `packages/core/src/document/parse.ts`):
   core does not export them. Change core's wording, change the copy.
 - `packages/mcp/src/operations/documents.ts` reads the three `TrustedManifest` formats itself instead of using
   core's `normalizeManifest`: core keeps it internal, and the reader must also report a bad entry by its id

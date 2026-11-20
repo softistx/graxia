@@ -66,13 +66,16 @@ export function parseOperation(
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		const overflow = /more than \d+ tokens/.test(message);
+		const tooDeep = error instanceof RangeError;
 		return {
 			refusal: {
 				message,
 				code: 'GRAPHQL_PARSE_FAILED',
 				fix: overflow
 					? 'Split the operation or raise limits.tokens.'
-					: 'Correct the syntax of the document at the position the error points to.',
+					: tooDeep
+						? 'Flatten the operation.'
+						: 'Correct the syntax of the document at the position the error points to.',
 			},
 		};
 	}

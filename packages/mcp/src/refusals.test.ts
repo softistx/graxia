@@ -24,6 +24,17 @@ describe('what graxia refuses reaches the agent', () => {
 		expect(error.message).toContain('tokens');
 	});
 
+	test('a document nested past what the parser survives is a parse refusal with core flatten fix', async () => {
+		const { mcp } = mcpFor({}, { limits: { nesting: false, tokens: false } });
+		const depth = 10000;
+		const query = `{ ${'a { '.repeat(depth)}id${' }'.repeat(depth)} }`;
+		expect(() => parse(query)).toThrow(RangeError);
+		const r = await call(mcp, 'graphql_query', { query });
+		const [error] = r.result.structuredContent.errors;
+		expect(error.extensions.code).toBe('GRAPHQL_PARSE_FAILED');
+		expect(error.extensions.fix).toBe('Flatten the operation.');
+	});
+
 	test('a plugin respond keeps its code and fix for the agent', async () => {
 		const refuse = (status: number, code: string) =>
 			definePlugin({
