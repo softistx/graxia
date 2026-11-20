@@ -70,6 +70,37 @@ describe('the fix of an error graphql raised', () => {
 		);
 	});
 
+	test('a missing variable and an unknown operation name get BAD_USER_INPUT', async () => {
+		const missing = await execute({
+			schema,
+			document: parse('query($x: Int!) { n(x: $x) }'),
+		});
+		expect(extensionsOf(missing)?.['code']).toBeUndefined();
+		expect(extensionsOf(mask(stampRaisedByGraphql(missing)))).toEqual({
+			code: 'BAD_USER_INPUT',
+			fix: GRAPHQL_FIX,
+		});
+		const unknown = await execute({
+			schema,
+			document: parse('query A { __typename }'),
+			operationName: 'B',
+		});
+		expect(extensionsOf(stampRaisedByGraphql(unknown))?.['code']).toBe(
+			'BAD_USER_INPUT',
+		);
+	});
+
+	test('a code the error already has is kept', () => {
+		const own = new GraphQLError('Invalid date.', {
+			extensions: { code: 'CONFLICT' },
+		});
+		const out = stampRaisedByGraphql({ errors: [own] });
+		expect(out.errors[0]?.extensions).toEqual({
+			code: 'CONFLICT',
+			fix: GRAPHQL_FIX,
+		});
+	});
+
 	test('a subscribe that throws keeps its own error, with no fix', async () => {
 		const raw = (await subscribe({
 			schema,

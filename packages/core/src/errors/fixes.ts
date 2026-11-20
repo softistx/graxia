@@ -37,8 +37,25 @@ export function withFix(error: GraphQLError, fix: string): GraphQLError {
 	});
 }
 
+/** The `code` of an error graphql raised before any field ran: the request (a variable, the operation name) cannot be used. */
+export const GRAPHQL_CODE = 'BAD_USER_INPUT';
+
+/** `error` with {@link GRAPHQL_CODE} and {@link GRAPHQL_FIX} where it has no code or no fix of its own. */
+function stamped(error: GraphQLError): GraphQLError {
+	const fixed = withFix(error, GRAPHQL_FIX);
+	if (typeof fixed.extensions['code'] === 'string') return fixed;
+	return new GraphQLError(fixed.message, {
+		nodes: fixed.nodes,
+		source: fixed.source,
+		positions: fixed.positions,
+		path: fixed.path,
+		...(fixed.originalError ? { originalError: fixed.originalError } : {}),
+		extensions: { code: GRAPHQL_CODE, ...fixed.extensions },
+	});
+}
+
 /**
- * Stamps {@link GRAPHQL_FIX} on the errors graphql itself raises before any
+ * Stamps {@link GRAPHQL_CODE} and {@link GRAPHQL_FIX} on the errors graphql itself raises before any
  * field runs (variable coercion, operation selection): graphql's documented
  * contract is a result with `errors` and no `data` key, and those errors have
  * no `path`. A field error (a resolver or a `subscribe` that threw) has a
@@ -58,7 +75,7 @@ export function stampRaisedByGraphql<T>(output: T): T {
 	return {
 		...result,
 		errors: result.errors.map((error) =>
-			error.path === undefined ? withFix(error, GRAPHQL_FIX) : error,
+			error.path === undefined ? stamped(error) : error,
 		),
 	} as T;
 }
