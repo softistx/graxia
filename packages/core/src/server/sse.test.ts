@@ -498,6 +498,7 @@ describe('a source that throws', () => {
 		).text();
 		expect(text).toContain('plain-gql');
 		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('plain-gql');
+		expect('data' in (chunks.at(-1) ?? {})).toBe(false);
 	});
 	test('onResultChunk sees an Error the source threw, which the client gets masked', async () => {
 		const { chunks, plugin } = seen();
@@ -508,5 +509,25 @@ describe('a source that throws', () => {
 		).text();
 		expect(text).toContain('Unexpected error.');
 		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('db down');
+	});
+	test('a hook throwing on that chunk reports the source error, then its own', async () => {
+		const reported: unknown[] = [];
+		const plugin = definePlugin({
+			name: 'boom',
+			onResultChunk: ({ chunk }) => {
+				if (!('data' in (chunk as object))) throw new Error('hook failed');
+			},
+		});
+		const text = await (
+			await make({
+				plugins: [plugin],
+				onUnexpected: (e: unknown) => reported.push(e),
+			}).fetch(sse({ query: 'subscription { plainAfter }' }))
+		).text();
+		expect(text).toContain('Unexpected error.');
+		expect(reported.map((e) => (e as Error).message)).toEqual([
+			'db down',
+			'hook failed',
+		]);
 	});
 });

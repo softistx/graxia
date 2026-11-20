@@ -2198,8 +2198,11 @@ final response.
   sees an SSE `next`;
 - when a subscription's source throws after it has yielded: the last payload, `{ errors: [error] }` with
   the error as thrown (a `GraphQLError`, or an `Error` wrapped in one), reaches the hook before masking,
-  over SSE and WebSocket alike. Watch `chunk.errors` there to learn that the operation failed; the
-  operation's signal only aborts when the client leaves or the server stops, with no reason;
+  over SSE and WebSocket alike. A chunk with `errors` and **no `data` key** is the source's failure, and
+  always the last payload: a resolver error sends `{ data, errors }` and the stream goes on. The
+  operation's signal aborts when the stream ends, whatever the cause (completion, a source failure, the
+  client leaving, shutdown), with no reason, so it does not tell a failure apart. A hook that drops the
+  errors with `setChunk` means nothing is reported for that failure;
 - over `multipart/mixed` (see [`@defer` and `@stream`](./incremental.md)): the initial and each
   subsequent payload of an incremental result. A query that is not incremental, over `multipart/mixed`
   or plain JSON, is answered as one plain response and its hooks do not run.
@@ -3274,7 +3277,10 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
   `GraphQLError` (`exposedError` included) is exposed as is, its message and extensions (and path, when it sets one), and a plain
   `Error` is masked and reported through `onUnexpected`, like an execution error. That last payload goes through
-  `onResultChunk` first (its `errors` hold the error as thrown), so a plugin sees the failure.
+  `onResultChunk` first (its `errors` hold the error as thrown), so a plugin sees the failure: a chunk
+  with `errors` and no `data` key is the source's failure, always the last payload. A thrown non-`Error`
+  (a string, say) is reported as an `Error` of its string form. The operation's signal aborts when the
+  stream ends, whatever the cause, with no reason.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown

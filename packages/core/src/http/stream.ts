@@ -109,9 +109,14 @@ export function payloadStream(init: PayloadStreamInit): {
 					if (!finished) controller.enqueue(init.format.chunk(data));
 				} catch (error) {
 					if (finished) return;
-					const last = await init.scope(() => init.fail(error));
+					let last: unknown;
+					try {
+						last = await init.scope(() => init.fail(error));
+					} catch {
+						last = undefined;
+					}
 					if (finished) return;
-					controller.enqueue(init.format.chunk(last));
+					if (last !== undefined) controller.enqueue(init.format.chunk(last));
 					finish(true);
 				}
 			},

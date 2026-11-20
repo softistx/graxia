@@ -26,7 +26,7 @@ export async function preparePayload(
 		: chunk;
 }
 
-/** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped so masking reports the original. */
+/** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped in one (a thrown non-Error becomes an `Error` of its string form), so masking reports the original. */
 function asGraphQLError(error: unknown): GraphQLError {
 	if (error instanceof GraphQLError) return error;
 	const original = error instanceof Error ? error : new Error(String(error));
@@ -84,6 +84,9 @@ export function streamOutcome(
 						errors: [asGraphQLError(error)],
 					});
 				} catch (hookError) {
+					// The hook threw: report the source's error too, then the hook's.
+					if (!(error instanceof GraphQLError))
+						rt.unexpected.report(error, state, 'execution');
 					error = hookError;
 				}
 			}
