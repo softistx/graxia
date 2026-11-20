@@ -66,7 +66,7 @@ a 404 without `auth`. `scopes_supported` lists the write scope only with `mutati
 | `documentation`        | `resource_documentation` of the metadata                                         |
 
 A wrong `resource` or `authorizationServers` throws at `createMcp`
-([troubleshooting](../troubleshooting.md)).
+([troubleshooting auth](../troubleshooting-auth.md)).
 
 ## `verifyToken`
 
@@ -149,16 +149,18 @@ Nothing is compared then, and a returned `audience` is only handed to `can` and 
 
 ## Scopes and step-up
 
-The read scope opens every tool but `graphql_mutate`, which is listed only when `mutations: true`
-**and** the token has the write scope; a read-only token also gets an overview without the
-`Mutation` root. A read-only token that calls it anyway (a stale tool list), alone or inside a
-JSON-RPC batch, gets a **403** `error="insufficient_scope", scope="mcp:read mcp:write"`: the
-step-up challenge that tells the client to re-authorize with both scopes. It is an HTTP answer,
-not a tool error (the SDK's tool `scopeChallenge` cannot guard a tool that is not registered for
-that caller).
+The read scope opens every tool but the ones that write: `graphql_mutate` and the
+[typed tools](./operations.md) of mutations. Those are listed only when `mutations: true` **and**
+the token has the write scope; a read-only token also gets an overview without the `Mutation`
+root. A read-only token that calls one anyway (a stale tool list), alone or inside a JSON-RPC
+batch, gets a **403** `error="insufficient_scope", scope="mcp:read mcp:write"` whose description
+names the tool called (`rename_book needs the scope mcp:write`): the step-up challenge that tells
+the client to re-authorize with both scopes. It is an HTTP answer, not a tool error (the SDK's
+tool `scopeChallenge` cannot guard a tool that is not registered for that caller).
 
-With `mutations` off there is no step-up, since no scope opens the tool: the call gets the
-protocol's `Tool graphql_mutate not found`.
+With `mutations` off there is no step-up, since no scope opens these tools: the call gets the
+protocol's `Tool graphql_mutate not found` (`Tool rename_book not found`). A mutation tool that
+`can` hides from the caller gets no step-up either: it answers like a tool that does not exist.
 
 ## The principal
 

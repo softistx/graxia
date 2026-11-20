@@ -1,4 +1,3 @@
-import { GraxiaConfigError } from '@graxia/core';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { authenticate } from './auth/bearer';
 import { metadataHandler } from './auth/metadata';
@@ -6,17 +5,15 @@ import { runAs } from './auth/principal';
 import { resolveAuth } from './auth/resolve';
 import { writeStepUp } from './auth/scopes';
 import type { McpAuthOptions } from './auth/types';
+import { toolCallsOf } from './calls';
 import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
-import { buildOperationTools } from './operations/build';
-import { operationsError, problem } from './operations/problems';
-import type { OperationTool } from './operations/types';
-import { createVisibleTools } from './operations/visible';
 import type { Mcp, McpHost, McpOptions } from './options';
 import { defaultHosts } from './origin';
 import { admit, type PipelineSettings } from './pipeline';
 import { refusal } from './refusal';
 import { serverFactory } from './server';
+import { createToolset } from './toolset';
 import { createViewSource } from './view-cache';
 
 /** The error sink: the option, `console.error` by default, never throwing. */
@@ -37,36 +34,15 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
 	};
 }
 
-/** The typed tools of `operations`, built once; `genericTools: false` needs at least one. */
-function typedTools(
-	graxia: McpHost<any>,
-	options: McpOptions<any>,
-	mutations: boolean,
-): OperationTool[] {
-	const generic = options.genericTools ?? true;
-	if (!options.operations) {
-		if (!generic)
-			throw new GraxiaConfigError(
-				'createMcp: genericTools is false and there is no operations: an agent would have nothing to call. Fix: pass operations: { documents: manifest }, or remove genericTools: false.',
-			);
-		return [];
-	}
-	const typed = buildOperationTools(
-		graxia.schema,
-		options.operations,
-		mutations,
-	);
-	if (!generic && typed.length === 0) throw operationsError([problem.empty()]);
-	return typed;
-}
-
 /**
  * Creates an MCP server over a graxia instance: Streamable HTTP, stateless,
  * with the generic tools `graphql_schema`, `graphql_query` and (with
  * `mutations: true`) `graphql_mutate`. Every operation runs through
  * `graxia.execute`, so limits, cost, trusted documents, masking and rate
  * limits apply; the schema and the body limit come from `graxia`. With
- * `operations`, each persisted operation is also a typed tool. Without
+ * `operations`, each persisted operation is also a typed tool. When graxia
+ * runs trusted documents in `strict` mode, `graphql_query` and
+ * `graphql_mutate` are not offered: only the typed tools run. Without
  * `auth` there is no authentication here: put the endpoint behind your own,
  * and use `can` for permissions. With `auth` it is an OAuth resource server
  * (bearer tokens, scopes, protected resource metadata), and `metadataPath`
@@ -98,21 +74,9 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	const mutations = options.mutations ?? false;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
-	const typed = typedTools(graxia, options, mutations);
-	const writeTools = new Set([
-		'graphql_mutate',
-		...typed.filter((tool) => tool.kind === 'mutation').map((t) => t.name),
-	]);
+	const toolset = createToolset(graxia, options, mutations);
 	const handler = createMcpHandler(
-		serverFactory({
-			graxia,
-			options,
-			auth,
-			carrier,
-			views,
-			visibleTools: options.operations ? createVisibleTools(typed) : undefined,
-			onError,
-		}),
+		serverFactory({ graxia, options, auth, carrier, toolset, onError }),
 		{
 			maxRequestBodySize: settings.maxBody,
 			onerror: (error) => onError(error),
@@ -131,18 +95,24 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 				);
 				if (admitted instanceof Response) return withCors(admitted, cors);
 				const principal = admitted.gated;
+				const serverContext = (rest[0] ?? {}) as object;
+				const state = {
+					serverContext,
+					calls: await toolCallsOf(admitted.request),
+					view: views(admitted.request, serverContext, principal),
+				};
 				// With mutations off no scope opens a writing tool: the SDK answers tool-not-found.
 				if (auth && principal && mutations) {
 					const stepUp = await writeStepUp(
-						admitted.request,
 						auth,
 						principal,
-						writeTools,
+						state.calls.called,
+						(name) => toolset.writes(name, state.view),
 					);
 					if (stepUp) return withCors(stepUp, cors);
 				}
 				// authInfo is not passed to the SDK (mcpAuth() carries the principal), so its tool scopeChallenge is unused.
-				const response = await carrier.run((rest[0] ?? {}) as object, () =>
+				const response = await carrier.run(state, () =>
 					runAs(principal, () => handler.fetch(admitted.request)),
 				);
 				return withCors(response, cors);

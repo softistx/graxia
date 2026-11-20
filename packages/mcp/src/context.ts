@@ -1,17 +1,29 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { ToolCalls } from './calls';
+import type { View } from './view';
 
-/** Carries a request's `serverContext` from `fetch` to the SDK's per-request factory. */
+/** What `fetch` knows about one request, for the SDK's per-request factory. */
+export interface RequestState {
+	/** The `serverContext` given to `fetch`. */
+	serverContext: object;
+	/** What the body asks of the tools. */
+	calls: ToolCalls;
+	/** The caller's view, built on first use and once. */
+	view: () => Promise<View>;
+}
+
+/** Carries a request's state from `fetch` to the SDK's per-request factory. */
 export interface ContextCarrier {
-	/** Runs `fn` with `serverContext` as the current one. */
-	run<T>(serverContext: object, fn: () => T): T;
-	/** The `serverContext` of the request being handled; throws outside `run`. */
-	current(): object;
+	/** Runs `fn` with `state` as the current one. */
+	run<T>(state: RequestState, fn: () => T): T;
+	/** The state of the request being handled; throws outside `run`. */
+	current(): RequestState;
 }
 
 export function createContextCarrier(): ContextCarrier {
-	const storage = new AsyncLocalStorage<object>();
+	const storage = new AsyncLocalStorage<RequestState>();
 	return {
-		run: (serverContext, fn) => storage.run(serverContext, fn),
+		run: (state, fn) => storage.run(state, fn),
 		current() {
 			const store = storage.getStore();
 			if (store === undefined)

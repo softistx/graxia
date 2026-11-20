@@ -102,7 +102,8 @@ const mcp = createMcp(graxia, {
 Each named query of the manifest is a tool (`BookById` → `book_by_id`; mutations with
 `mutations: true`; subscriptions are skipped) whose input schema comes from the operation's
 variables (types, defaults, `@constraint`) and whose output schema comes from its selection set. The
-agent sends arguments, not GraphQL, so it also works with trusted documents in `strict` mode. Every
+agent sends arguments, not GraphQL. With trusted documents in `strict` mode these are the only tools
+that run operations: `graphql_query` and `graphql_mutate` are not listed and refuse a call. Every
 operation needs a description (`"""…"""` above it, or `descriptions`); `createMcp` throws one error
 listing every problem of the manifest, each with its fix. See
 [the operations guide](./docs/guide/operations.md).

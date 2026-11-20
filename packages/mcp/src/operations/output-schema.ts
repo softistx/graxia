@@ -41,11 +41,23 @@ interface Walk {
 	fragments: ReadonlyMap<string, FragmentDefinitionNode>;
 }
 
-/** One response key: the fields selected under it, grouped by their type, and whether it is always there. */
+/** A selection set on an object, and whether it applies to every such object (`sure`). */
+interface Origin {
+	set: SelectionSetNode;
+	sure: boolean;
+}
+
+/** A field node under a response key; `sure` when it is selected on every object that has the key's parent. */
+interface Selected {
+	node: FieldNode;
+	sure: boolean;
+}
+
+/** One response key: the fields selected under it, grouped by their type, and the origins that always select it. */
 interface Slot {
-	always: boolean;
+	sureIn: Set<Origin>;
 	typename: boolean;
-	byType: Map<string, { type: GraphQLOutputType; nodes: FieldNode[] }>;
+	byType: Map<string, { type: GraphQLOutputType; nodes: Selected[] }>;
 }
 
 const conditional = (node: {
@@ -76,6 +88,7 @@ function collect(
 	parent: GraphQLCompositeType,
 	set: SelectionSetNode,
 	always: boolean,
+	origin: Origin,
 	slots: Map<string, Slot>,
 ): void {
 	for (const selection of set.selections) {
@@ -83,12 +96,12 @@ function collect(
 		if (selection.kind === Kind.FIELD) {
 			const key = selection.alias?.value ?? selection.name.value;
 			const slot = slots.get(key) ?? {
-				always: false,
+				sureIn: new Set(),
 				typename: false,
 				byType: new Map(),
 			};
 			slots.set(key, slot);
-			slot.always ||= sure;
+			if (sure) slot.sureIn.add(origin);
 			const field = isUnionType(parent)
 				? undefined
 				: parent.getFields()[selection.name.value];
@@ -100,7 +113,7 @@ function collect(
 				type: field.type,
 				nodes: [],
 			};
-			group.nodes.push(selection);
+			group.nodes.push({ node: selection, sure: sure && origin.sure });
 			slot.byType.set(String(field.type), group);
 			continue;
 		}
@@ -118,19 +131,26 @@ function collect(
 			named,
 			fragment.selectionSet,
 			sure && covers(walk.schema, parent, named),
+			origin,
 			slots,
 		);
 	}
 }
 
-/** The object the selection sets `sets` produce on `parent`: fragments merged; a key only some objects have is not required. */
+/**
+ * The object the selection sets `origins` produce on `parent`, fragments
+ * merged. A key is required when an origin that applies to every object
+ * always selects it, or when every origin does: several field nodes can
+ * share one response key, and an object may come from only some of them.
+ */
 function objectOf(
 	walk: Walk,
 	parent: GraphQLCompositeType,
-	sets: readonly SelectionSetNode[],
+	origins: readonly Origin[],
 ): JsonSchema {
 	const slots = new Map<string, Slot>();
-	for (const set of sets) collect(walk, parent, set, true, slots);
+	for (const origin of origins)
+		collect(walk, parent, origin.set, true, origin, slots);
 	const properties: Record<string, JsonSchema> = {};
 	for (const [key, slot] of slots) {
 		const shapes = [...slot.byType.values()].map((group) =>
@@ -140,7 +160,13 @@ function objectOf(
 		properties[key] =
 			shapes.length === 1 ? (shapes[0] as JsonSchema) : { anyOf: shapes };
 	}
-	const required = [...slots].filter(([, s]) => s.always).map(([key]) => key);
+	const required = [...slots]
+		.filter(
+			([, slot]) =>
+				slot.sureIn.size === origins.length ||
+				[...slot.sureIn].some((origin) => origin.sure),
+		)
+		.map(([key]) => key);
 	return {
 		type: 'object',
 		properties,
@@ -151,7 +177,7 @@ function objectOf(
 function shapeOf(
 	walk: Walk,
 	type: GraphQLOutputType,
-	nodes: readonly FieldNode[],
+	nodes: readonly Selected[],
 ): JsonSchema {
 	if (isNonNullType(type)) return shapeOf(walk, type.ofType, nodes);
 	if (isListType(type))
@@ -160,7 +186,9 @@ function shapeOf(
 		return objectOf(
 			walk,
 			type,
-			nodes.flatMap((node) => (node.selectionSet ? [node.selectionSet] : [])),
+			nodes.flatMap(({ node, sure }) =>
+				node.selectionSet ? [{ set: node.selectionSet, sure }] : [],
+			),
 		);
 	if (isEnumType(type)) return enumSchema(type);
 	const builtIn = SCALARS[type.name];
@@ -170,7 +198,7 @@ function shapeOf(
 const typeOf = (
 	walk: Walk,
 	type: GraphQLOutputType,
-	nodes: readonly FieldNode[],
+	nodes: readonly Selected[],
 ): JsonSchema =>
 	isNonNullType(type)
 		? shapeOf(walk, type.ofType, nodes)
@@ -194,7 +222,11 @@ export function outputSchemaOf(
 			fragments.set(definition.name.value, definition);
 	const root = schema.getRootType(operation.operation);
 	const data = root
-		? nullable(objectOf({ schema, fragments }, root, [operation.selectionSet]))
+		? nullable(
+				objectOf({ schema, fragments }, root, [
+					{ set: operation.selectionSet, sure: true },
+				]),
+			)
 		: {};
 	return { type: 'object', properties: { data, errors: ERRORS } };
 }

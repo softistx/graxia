@@ -2,6 +2,9 @@ import { GraxiaConfigError } from '@graxia/core';
 
 const EXCLUDE = 'or leave it out with operations.include';
 
+/** The longest tool name MCP allows. */
+export const MAX_TOOL_NAME = 128;
+
 /** The boot problems of `operations`, each as what is wrong and what to write. */
 export const problem = {
 	manifest: () =>
@@ -18,6 +21,8 @@ export const problem = {
 		messages: readonly string[],
 	) =>
 		`${names.join(', ')} (document "${id}") is not valid against the schema: ${messages.join(' ')} Fix: regenerate the manifest from the current schema, ${EXCLUDE}.`,
+	introspection: (names: readonly string[], id: string) =>
+		`${names.join(', ')} (document "${id}") selects __schema or __type: introspection is not offered over MCP, an agent reads the schema with graphql_schema. Fix: leave the operation out with operations.include.`,
 	incremental: (name: string, id: string, directive: string) =>
 		`${name} (document "${id}") uses @${directive}, which is not available over MCP: a tool returns one complete result. Fix: remove @${directive}, ${EXCLUDE}.`,
 	description: (name: string, id: string) =>
@@ -26,6 +31,10 @@ export const problem = {
 		`${name} (document "${id}") gives the tool name ${tool}, and graphql_* names are the generic tools'. Fix: rename the operation, ${EXCLUDE}.`,
 	duplicate: (tool: string, a: Named, b: Named) =>
 		`${a.name} (document "${a.id}") and ${b.name} (document "${b.id}") both give the tool name ${tool}. Fix: rename one of them, ${EXCLUDE}.`,
+	tooLong: (name: string, id: string, tool: string) =>
+		`${name} (document "${id}") gives a tool name of ${tool.length} characters, and MCP allows ${MAX_TOOL_NAME}. Fix: rename the operation, ${EXCLUDE}.`,
+	unusedDescription: (key: string, close: string | undefined) =>
+		`operations.descriptions.${key} matches no operation of operations.documents${close ? ` (there is ${close}: names are case-sensitive)` : ''}. Fix: ${close ? `rename the key to ${close}` : 'remove the key, or name it after an operation of the manifest'}.`,
 	empty: () =>
 		'genericTools is false and operations gives no tool: an agent would have nothing to call. Fix: check operations.documents and operations.include (mutations need mutations: true), or remove genericTools: false.',
 };

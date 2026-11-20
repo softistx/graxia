@@ -8,7 +8,7 @@ import {
 	valueFromASTUntyped,
 } from 'graphql';
 import { constrained, tightest } from './constraint';
-import { type Defs, typeSchema } from './input-type';
+import { newDefs, typeSchema } from './input-type';
 import type { JsonSchema } from './types';
 import { variableUsages } from './variable-usage';
 
@@ -25,7 +25,7 @@ export function inputSchemaOf(
 	document: DocumentNode,
 	operation: OperationDefinitionNode,
 ): JsonSchema {
-	const defs: Defs = {};
+	const defs = newDefs();
 	const usages = variableUsages(schema, document, operation);
 	const properties: Record<string, JsonSchema> = {};
 	const required: string[] = [];

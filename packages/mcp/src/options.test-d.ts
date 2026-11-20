@@ -168,6 +168,20 @@ void granted;
 			},
 		},
 	});
+	// An Apollo manifest imported from JSON: `format` is a string and `version` a number there.
+	const imported: {
+		format: string;
+		version: number;
+		operations: { id: string; body: string }[];
+	} = { format: 'apollo-persisted-query-manifest', version: 1, operations: [] };
+	createMcp(plain, { name: 'x', operations: { documents: imported } });
+	// A host without `trustedDocuments` (an older core, a test double) is still accepted.
+	createMcp(
+		{ execute: plain.execute, schema: plain.schema, limits: plain.limits },
+		{ name: 'x', operations: { documents: codegen } },
+	);
+	const mode: 'strict' | 'mixed' | undefined = plain.trustedDocuments?.mode;
+	void mode;
 	const manifest: TrustedManifest = codegen;
 	const options: McpOperationsOptions = { documents: manifest };
 	createMcp(plain, { name: 'x', operations: options });

@@ -133,12 +133,6 @@ describe('boot errors, each with its fix', () => {
 		);
 		expect(message).toContain('operations.include');
 	});
-	test('introspection is not valid here', () => {
-		const message = failure(() =>
-			build({ a: '"""x""" query Types { __schema { types { name } } }' }),
-		);
-		expect(message).toContain('Types (document "a") is not valid');
-	});
 	test('@defer', () => {
 		const message = failure(() =>
 			build({

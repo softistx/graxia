@@ -27,8 +27,10 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	/**
 	 * Turn the endpoint into an OAuth 2.1 resource server: every request needs
 	 * a bearer token your `verifyToken` accepts, issued for `resource`, with
-	 * the read scope (`mcp:read`); `graphql_mutate` also needs the write scope
-	 * (`mcp:write`).
+	 * the read scope (`mcp:read`); `graphql_mutate` and the typed tools of
+	 * mutations also need the write scope (`mcp:write`): without it they are
+	 * not listed, and a call answers a 403 naming the tool. With `mutations`
+	 * off they do not exist (`Tool … not found`).
 	 * Serve `mcp.metadata` at `mcp.metadataPath`. Absent: no authentication
 	 * here, put the endpoint behind your own.
 	 */
@@ -52,7 +54,9 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	/**
 	 * List `graphql_query` and `graphql_mutate`. Default `true`. `false` keeps
 	 * `graphql_schema` and the typed tools only, so an agent runs nothing but
-	 * the operations you persisted; it needs `operations`.
+	 * the operations you persisted; it needs `operations`. When graxia runs
+	 * trusted documents in `strict` mode the two are never listed and a call
+	 * is refused (`PERSISTED_QUERY_ONLY`), whatever this says.
 	 */
 	genericTools?: boolean;
 	/**
@@ -108,9 +112,11 @@ export interface Mcp<HostCtx extends object = Record<never, never>> {
 
 /**
  * The graxia instance a server is built over: it runs the operations
- * (`execute`), and gives the schema it serves and the limits it enforces.
+ * (`execute`), and gives the schema it serves, the limits it enforces and
+ * its trusted documents mode.
  */
 export type McpHost<HostCtx extends object> = Pick<
 	Graxia<HostCtx>,
 	'execute' | 'schema' | 'limits'
->;
+> &
+	Partial<Pick<Graxia<HostCtx>, 'trustedDocuments'>>;

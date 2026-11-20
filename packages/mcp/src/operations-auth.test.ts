@@ -45,6 +45,33 @@ describe('scopes of the typed tools', () => {
 		expect(challenge).toContain('rename_book needs the scope mcp:write');
 		expect(body.error.data.code).toBe('MCP_INSUFFICIENT_SCOPE');
 	});
+	test('a mutation tool the view hides answers like an unknown tool, no 403', async () => {
+		const documents = {
+			...manifest,
+			n: '"""Annotate.""" mutation Annotate { rename(id: "1", title: "x") { secretNote } }',
+		};
+		const hidden = authed({
+			operations: { documents },
+			can: () => () => false,
+		});
+		const { response, body } = await call(
+			hidden.mcp,
+			'annotate',
+			{},
+			bearer('read'),
+		);
+		expect(response.status).toBe(200);
+		expect(body.error).toEqual({
+			code: -32602,
+			message: 'Tool annotate not found',
+		});
+		const staff = authed({ operations: { documents }, can: () => () => true });
+		const seenByStaff = await call(staff.mcp, 'annotate', {}, bearer('read'));
+		expect(seenByStaff.response.status).toBe(403);
+		expect(seenByStaff.response.headers.get('www-authenticate')).toContain(
+			'annotate needs the scope mcp:write',
+		);
+	});
 	test('mutations off: the mutation tool is not found, no 403', async () => {
 		const { mcp: m } = authed({ operations, mutations: false });
 		const { response, body } = await call(

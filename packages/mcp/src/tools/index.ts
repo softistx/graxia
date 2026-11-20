@@ -1,8 +1,10 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import type { GenericTools } from '../toolset';
 import { type ExecuteContext, runOperation } from './execute';
 import { guarded } from './guard';
 import { overview, SEARCH_LIMIT, searchSdl, typesSdl } from './schema';
+import { registerStrictRefusals } from './strict';
 
 const operationInput = z.object({
 	query: z.string().describe('The GraphQL document (one operation).'),
@@ -32,8 +34,10 @@ const schemaInput = z.object({
 export interface ToolsInput {
 	context: ExecuteContext;
 	mutations: boolean;
-	/** Register `graphql_query` and `graphql_mutate`. */
-	generic: boolean;
+	/** How `graphql_query` and `graphql_mutate` stand. */
+	generic: GenericTools;
+	/** The request lists the tools: what is registered is what is advertised. */
+	listing: boolean;
 	/** The names of the typed tools this caller is offered, for the overview. */
 	typed: readonly string[];
 }
@@ -41,6 +45,7 @@ export interface ToolsInput {
 /** Registers the generic tools on a per-request server. */
 export function registerTools(server: McpServer, input: ToolsInput): void {
 	const { context, mutations, generic, typed } = input;
+	const note = typedNote(typed, generic);
 	server.registerTool(
 		'graphql_schema',
 		{
@@ -57,10 +62,12 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 					return typesSdl(view, args.types, mutations);
 				if (args.search !== undefined)
 					return searchSdl(view, args.search, mutations);
-				return overview(view, mutations, typedNote(typed, generic));
+				return overview(view, mutations, note);
 			}),
 	);
-	if (!generic) return;
+	if (generic === 'refused' && !input.listing)
+		registerStrictRefusals(server, typed);
+	if (generic !== 'on') return;
 	server.registerTool(
 		'graphql_query',
 		{
@@ -87,9 +94,12 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 }
 
 /** What the overview says about the typed tools, when the caller has some. */
-function typedNote(typed: readonly string[], generic: boolean): string {
-	if (typed.length === 0) return '';
-	return generic
+function typedNote(typed: readonly string[], generic: GenericTools): string {
+	if (typed.length === 0)
+		return generic === 'refused'
+			? 'No tool runs operations here: this server runs trusted documents only and offers you no typed tool.'
+			: '';
+	return generic === 'on'
 		? `Typed tools: ${typed.join(', ')}. Prefer the typed tools: each runs one reviewed operation and takes typed arguments; use graphql_query for anything else.`
 		: `Typed tools: ${typed.join(', ')}. They are the only way to run operations here.`;
 }

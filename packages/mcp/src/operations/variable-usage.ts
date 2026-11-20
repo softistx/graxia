@@ -1,6 +1,7 @@
 import { type Constraint, constraintOf } from '@graxia/core/agent';
 import {
 	type DocumentNode,
+	type FragmentDefinitionNode,
 	type GraphQLArgument,
 	type GraphQLInputField,
 	type GraphQLSchema,
@@ -21,9 +22,32 @@ export interface VariableUsage {
 	description?: string;
 }
 
+/** The operation and the fragments it reaches, through spreads of spreads. */
+function reachable(
+	document: DocumentNode,
+	operation: OperationDefinitionNode,
+): DocumentNode {
+	const fragments = new Map<string, FragmentDefinitionNode>();
+	for (const definition of document.definitions)
+		if (definition.kind === Kind.FRAGMENT_DEFINITION)
+			fragments.set(definition.name.value, definition);
+	const reached = new Set<FragmentDefinitionNode>();
+	const follow = (node: OperationDefinitionNode | FragmentDefinitionNode) =>
+		visit(node, {
+			FragmentSpread(spread) {
+				const fragment = fragments.get(spread.name.value);
+				if (!fragment || reached.has(fragment)) return;
+				reached.add(fragment);
+				follow(fragment);
+			},
+		});
+	follow(operation);
+	return { kind: Kind.DOCUMENT, definitions: [operation, ...reached] };
+}
+
 /**
  * Where each variable of `operation` is used as a whole argument or input
- * field value (in the operation and the document's fragments): the
+ * field value (in the operation and the fragments it reaches): the
  * constraints and the description of those arguments and fields.
  */
 export function variableUsages(
@@ -41,17 +65,8 @@ export function variableUsages(
 		usages.set(name, usage);
 	};
 	const typeInfo = new TypeInfo(schema);
-	const scoped: DocumentNode = {
-		kind: Kind.DOCUMENT,
-		definitions: [
-			operation,
-			...document.definitions.filter(
-				(definition) => definition.kind === Kind.FRAGMENT_DEFINITION,
-			),
-		],
-	};
 	visit(
-		scoped,
+		reachable(document, operation),
 		visitWithTypeInfo(typeInfo, {
 			Variable(node, _key, parent) {
 				if (!parent || Array.isArray(parent)) return;

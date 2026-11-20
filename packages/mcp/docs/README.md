@@ -5,5 +5,5 @@
 - [Persisted operations as typed tools](./guide/operations.md): `operations`, descriptions, the input and output schemas, `genericTools`.
 - [OAuth resource server](./guide/auth.md): `auth`, the metadata, scopes and step-up, `mcpAuth()`.
 - [Security](./guide/security.md): authentication, `can`, the Origin and Host checks, CORS, body size, trusted documents.
-- [Troubleshooting](./troubleshooting.md): every error message and code, with its fix.
+- [Troubleshooting](./troubleshooting.md): every error message and code, with its fix; the ones of `auth` are in [troubleshooting auth](./troubleshooting-auth.md).
 - [Roadmap](./roadmap.md): what is coming. The effort-wide roadmap is [`docs/roadmap.md`](https://github.com/softistx/graxia/blob/develop/docs/roadmap.md).

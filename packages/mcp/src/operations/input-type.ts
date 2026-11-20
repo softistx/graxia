@@ -8,13 +8,17 @@ import {
 	isInputObjectType,
 	isListType,
 	isNonNullType,
+	isRequiredInputField,
 	valueFromASTUntyped,
 } from 'graphql';
 import { constrained } from './constraint';
 import type { JsonSchema } from './types';
 
-/** The `$defs` of one input schema: every input object the variables reach, by type name. */
+/** The `$defs` of one input schema: every input object the variables reach, by type name. Make it with {@link newDefs}. */
 export type Defs = Record<string, JsonSchema>;
+
+/** An empty {@link Defs}, without a prototype: a type may be named `constructor` or `toString`. */
+export const newDefs = (): Defs => Object.create(null) as Defs;
 
 /** The JSON type of each built-in scalar. */
 export const SCALARS: Readonly<Record<string, string>> = {
@@ -59,6 +63,8 @@ function defaultOf(field: GraphQLInputField): { default?: unknown } {
 	if (declared?.literal)
 		return { default: valueFromASTUntyped(declared.literal) };
 	if (declared && 'value' in declared) return { default: declared.value };
+	// Code-first schemas (and graphql 16's) set `defaultValue`.
+	if (field.defaultValue !== undefined) return { default: field.defaultValue };
 	return {};
 }
 
@@ -88,9 +94,7 @@ function objectSchema(type: GraphQLInputObjectType, defs: Defs): JsonSchema {
 				additionalProperties: false,
 			})),
 		};
-	const required = fields
-		.filter((f) => isNonNullType(f.type) && f.default === undefined)
-		.map((f) => f.name);
+	const required = fields.filter(isRequiredInputField).map((f) => f.name);
 	return {
 		type: 'object',
 		...described(type.description),
@@ -109,7 +113,7 @@ function valueSchema(type: GraphQLInputType, defs: Defs): JsonSchema {
 		return { type: 'array', items: typeSchema(type.ofType, defs) };
 	if (isEnumType(type)) return enumSchema(type);
 	if (isInputObjectType(type)) {
-		if (!(type.name in defs)) {
+		if (!Object.hasOwn(defs, type.name)) {
 			// Reserved before it is filled, so a recursive input type ends on its own $ref.
 			defs[type.name] = {};
 			defs[type.name] = objectSchema(type, defs);

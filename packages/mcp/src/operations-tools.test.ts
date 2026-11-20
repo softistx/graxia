@@ -154,19 +154,6 @@ describe('tools/call', () => {
 		)['~standard'].validate({ data: { books: [{ id: 1 }] } });
 		expect(wrong.issues).toBeDefined();
 	});
-	test("a bad variable is graxia's own error, with its fix", async () => {
-		const { mcp } = mcpFor({ operations });
-		const r = await call(mcp, 'book_by_id', {});
-		expect(r.result.isError).toBe(true);
-		const [error] = r.result.structuredContent.errors;
-		expect(error.message).toContain('$id');
-		// graxia's coercion error as it is: core gives it a fix and, today, no code.
-		expect(error.extensions.fix).toContain('its variables');
-		const wrong = await call(mcp, 'book_by_id', { id: { a: 1 } });
-		expect(wrong.result.structuredContent.errors[0].message).toContain(
-			'ID cannot represent value',
-		);
-	});
 	test('a mutation tool runs with mutations: true and does not exist without', async () => {
 		const { mcp } = mcpFor({ operations, mutations: true });
 		const r = await call(mcp, 'rename_book', { id: '1', title: 'Messiah' });

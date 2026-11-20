@@ -3,7 +3,7 @@ import type { McpAuthInfo } from './auth/types';
 import type { Can } from './options';
 import { buildView, type View } from './view';
 
-/** Builds the caller's view on first use: initialize and `tools/list` never pay for it. */
+/** Builds the caller's view on first use, once per request: `fetch` asks for it only when the request lists or calls tools. */
 export type ViewSource = (
 	request: Request,
 	serverContext: object,
@@ -12,7 +12,8 @@ export type ViewSource = (
 
 /**
  * Without `can` every caller sees the same schema, so the view is built once;
- * with `can` it is built once per request that needs it.
+ * with `can` it is built once per request that needs it (`tools/list`,
+ * `tools/call`), never for `initialize`, `ping` or a notification.
  */
 export function createViewSource(
 	schema: GraphQLSchema,
