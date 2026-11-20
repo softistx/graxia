@@ -1,5 +1,12 @@
 # @graxia/envelop
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [[`9f7f3fa`](https://github.com/softistx/graxia/commit/9f7f3fac773e77a6f0738b85901bfa4f6d5ce7c7)]:
+  - @graxia/core@0.13.0
+
 ## 0.1.6
 
 ### Patch Changes
