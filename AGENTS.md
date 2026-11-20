@@ -33,6 +33,21 @@ a deliberate change, named in its PR.
   to compare against another base, e.g. `CHANGESET_BASE=origin/feat/m1-http-core bun run changeset:status`
   from a slice branch of an integration branch.
 
+## Generated files
+
+Three files are generated and never edited by hand; a spec fails when one is stale.
+
+| script                    | owns                                                      | command                            |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------- |
+| `scripts/plugin-index.ts` | `plugins/graxia/skills/use-graxia/references/packages.md` | `bun run plugin:index` (`--check`) |
+| `scripts/llms.ts`         | `llms.txt` and `llms-full.txt` at the repository root     | `bun run llms` (`--check`)         |
+
+Run both after a change to a published package's `package.json` (version, description, peers,
+`exports`), its public exports, its README, `docs/guide/*.md` or `docs/troubleshooting*.md`, and
+after the Version PR (`bun run changeset:version`) bumps versions. `bun test ./scripts/` (in CI)
+runs `plugin-index.spec.ts`, `llms.spec.ts` and `plugin-manifests.spec.ts`. The index reads the
+public names from the source of each `exports` entry; the roadmap pages are not in `llms*.txt`.
+
 ## Invariants
 
 - Bun only: `Bun.serve`, native WebSocket, Bun's Redis client (through `@softistx/redis`). No Node or Deno adapter.
@@ -82,5 +97,4 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
 - **No `examples/` yet** (the workspace glob is kept; `examples/host-embedding` lands in S29).
-- **`plugins/graxia`** is a stub with a hand-written package index; the generated
-  index and `llms.txt` land in S26.
+- **`plugins/graxia`** carries a generated package index (see "Generated files").
