@@ -66,7 +66,7 @@ Write the resolver context once: `type Ctx = InferContext<typeof context, typeof
 With graphql-codegen, point `contextType` at the `InferContext` type and pass the generated `Resolvers` as
 `createSchema<Ctx, Resolvers>()`'s second generic; a map generated for another context is a type error.
 
-For a browser explorer in development, `@graxia/graphiql` (0.1.0) adds `graphiql()` or `apolloSandbox()` to
+For a browser explorer in development, `@graxia/graphiql` (from 0.1.0) adds `graphiql()` or `apolloSandbox()` to
 `plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
 read `node_modules/@graxia/graphiql/docs/`.
 

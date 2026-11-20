@@ -4,8 +4,10 @@ Where `@graxia/mcp` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Follow-ups from the first release** — sharper refusals (a nesting overflow answers with the fix
-  to flatten the query), and stricter checks of `allowedHosts` at boot.
+- **Follow-ups from the first release** — sharper refusals: a nesting overflow answers with the fix
+  to flatten the query ([#90](https://github.com/softistx/graxia/issues/90)), and `allowedHosts`
+  entries are normalised at boot as a request's host is
+  ([#93](https://github.com/softistx/graxia/issues/93)).
 
 ## Not planned
 
