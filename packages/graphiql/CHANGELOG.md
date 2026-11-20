@@ -1,5 +1,12 @@
 # @graxia/graphiql
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`b0cd3ec`](https://github.com/softistx/graxia/commit/b0cd3ec4999a20ac5bb3c435483a08424a4bb7e4)]:
+  - @graxia/core@0.7.0
+
 ## 0.2.0
 
 ### Minor Changes
