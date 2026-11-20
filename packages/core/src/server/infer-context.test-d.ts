@@ -1,4 +1,5 @@
 import { definePlugin } from '../plugins/define';
+import type { OnParamsPayload } from '../plugins/types';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from './create-graxia';
 import type { InferContext } from './infer-context';
@@ -101,6 +102,12 @@ assertType<Equal<InferContext<typeof withParams>['token'], string>>();
 assertType<
 	Equal<
 		ContextInit['connectionParams'],
+		Readonly<Record<string, unknown>> | undefined
+	>
+>();
+assertType<
+	Equal<
+		OnParamsPayload['connectionParams'],
 		Readonly<Record<string, unknown>> | undefined
 	>
 >();
