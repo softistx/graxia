@@ -1,5 +1,12 @@
 # @graxia/mcp
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [[`b2b814f`](https://github.com/softistx/graxia/commit/b2b814f62d03c658b3948c45ba9dca1b71a6bc40), [`c7c407e`](https://github.com/softistx/graxia/commit/c7c407e43784e509b49066b2faeeae9494d9cc52), [`54aaf11`](https://github.com/softistx/graxia/commit/54aaf115cf1ec6d566e37806fb18877263d7d462)]:
+  - @graxia/core@0.8.0
+
 ## 0.1.3
 
 ### Patch Changes

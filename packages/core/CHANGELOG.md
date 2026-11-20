@@ -1,5 +1,17 @@
 # @graxia/core
 
+## 0.8.0
+
+### Minor Changes
+
+- [#140](https://github.com/softistx/graxia/pull/140) [`b2b814f`](https://github.com/softistx/graxia/commit/b2b814f62d03c658b3948c45ba9dca1b71a6bc40) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `telemetry.operationSpans: false`: when a host span is active, it drops graxia's `graphql.request` and operation spans and keeps the parse, validate and resolver spans (and the causes of masked errors) under it, a socket's operations included. With no host span graxia makes its spans as before. `telemetry: false` still turns every span off.
+
+- [#138](https://github.com/softistx/graxia/pull/138) [`c7c407e`](https://github.com/softistx/graxia/commit/c7c407e43784e509b49066b2faeeae9494d9cc52) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The payloads of `onRequest`, `onParse` and `onValidate` carry a read-only `serverContext`, over HTTP and over WebSocket (the context the upgrade was given). A host plugin can now tie a document that fails validation to its socket without a `WeakMap` keyed by the upgrade request.
+
+### Patch Changes
+
+- [#139](https://github.com/softistx/graxia/pull/139) [`54aaf11`](https://github.com/softistx/graxia/commit/54aaf115cf1ec6d566e37806fb18877263d7d462) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A subscription source that throws after it has yielded now reaches `onResultChunk`: the last payload is `{ errors: [error] }` with no `data` key (before masking), over SSE and WebSocket, so a plugin no longer sees the operation end "ok". `onUnexpected` still receives the original of a plain `Error` (a thrown non-`Error` arrives as an `Error` of its string form); when a hook throws on that chunk it receives the source's error first, then the hook's, but only when the source's error is not a `GraphQLError` (otherwise only the hook's error).
+
 ## 0.7.0
 
 ### Minor Changes
