@@ -1,4 +1,4 @@
-import { own } from '../http/own-response';
+import { takeOwn } from '../http/own-response';
 import { refusal } from '../http/respond';
 import { NO_AFTER } from '../plugins/stage';
 import type { StateBag } from '../plugins/state';
@@ -21,7 +21,7 @@ export function lastResort(
 	try {
 		return seal(rt.unexpected.respond(error, state), state);
 	} catch {
-		return own(new Response(null, { status: 500 }));
+		return new Response(null, { status: 500 });
 	}
 }
 
@@ -71,6 +71,8 @@ async function respond(
 	try {
 		await rt.ready;
 		const response = await answer(rt, request, serverContext, state);
+		// A plugin may keep the response it sees: it is then rebuilt, never sealed in place.
+		if (rt.engine.has('onResponse')) takeOwn(response);
 		const last = await rt.engine.runners.onResponse({
 			request,
 			state,
@@ -112,6 +114,7 @@ async function answer(
 			: (entered.out.response ??
 				(exempt ? exemptRefusal(rt, request) : undefined) ??
 				(await dispatch(rt, request, serverContext, state)));
+	if (entered.runAfter !== NO_AFTER) takeOwn(response);
 	const afterError =
 		entered.runAfter === NO_AFTER
 			? undefined

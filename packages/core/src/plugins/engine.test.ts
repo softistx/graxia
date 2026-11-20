@@ -555,4 +555,13 @@ describe('a stage without hooks', () => {
 		expect(outcome.runAfter).toBe(none.runAfter);
 		await outcome.runAfter({ response: new Response() });
 	});
+	test('the zero-hook runner only builds its init value, so it cannot throw', async () => {
+		// The zero-hook runner calls `spec.init` only: it cannot throw for a well-formed input.
+		const engine = createPluginEngine([]);
+		const outcome = await engine.runners.onResponse({
+			...base(),
+			response: new Response(),
+		});
+		expect(outcome.error).toBeUndefined();
+	});
 });

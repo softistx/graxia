@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test';
+import { own } from '../http/own-response';
 import { definePlugin } from '../plugins/define';
+import { StateBag } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
 import { createGraxia } from './create-graxia';
 import { schema } from './fixtures.test-util';
+import { seal } from './seal';
 
 const q = () =>
 	new Request('http://x/graphql', {
@@ -98,5 +101,50 @@ describe('seal', () => {
 			b.headers.get('x-request-id'),
 		);
 		expect(a.status).toBe(200);
+	});
+	test('a plugin caching the response it sees in onResponse does not leak headers across requests', async () => {
+		let cached: Response | undefined;
+		let n = 0;
+		const g = make(
+			definePlugin({
+				name: 'p',
+				onRequest: ({ responseHeaders }) =>
+					responseHeaders.append('set-cookie', `session=user${++n}`),
+				onResponse: ({ response, setResponse }) => {
+					cached ??= response;
+					setResponse(cached);
+				},
+			}),
+		);
+		await g.fetch(q());
+		const second = await g.fetch(q());
+		expect(second.headers.getSetCookie()).toEqual(['session=user2']);
+	});
+	test('the same through an onRequest after-hook', async () => {
+		let cached: Response | undefined;
+		let n = 0;
+		const g = make(
+			definePlugin({
+				name: 'p',
+				onRequest: ({ responseHeaders, respond }) => {
+					responseHeaders.append('set-cookie', `session=user${++n}`);
+					if (cached) respond(cached);
+					return ({ response }) => {
+						cached ??= response;
+					};
+				},
+			}),
+		);
+		await g.fetch(q());
+		const second = await g.fetch(q());
+		expect(second.headers.getSetCookie()).toEqual(['session=user2']);
+	});
+	test('a response graxia built is the object that comes back; any other is rebuilt', () => {
+		const state = new StateBag();
+		const mine = own(new Response('x'));
+		expect(seal(mine, state)).toBe(mine);
+		const other = new Response('x');
+		expect(seal(other, state)).not.toBe(other);
+		expect(seal(mine, state)).not.toBe(mine);
 	});
 });
