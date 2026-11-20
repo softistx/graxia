@@ -1,5 +1,15 @@
 # @graxia/core
 
+## 0.6.2
+
+### Patch Changes
+
+- [#114](https://github.com/softistx/graxia/pull/114) [`57441c2`](https://github.com/softistx/graxia/commit/57441c28e5256423a8d8c2f343b42564d01128d4) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Internal: the `Graxia` instance type moves to its own module. No behaviour or public export changes.
+
+- [#109](https://github.com/softistx/graxia/pull/109) [`566a13c`](https://github.com/softistx/graxia/commit/566a13c3ef9d8d018bab10a3868401b9d7512ca1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Docs: the troubleshooting page is split by topic (schema, plugins, limits, subscriptions, HTTP, security, rate limits, uploads), each entry still headed by its exact message.
+
+- [#115](https://github.com/softistx/graxia/pull/115) [`7503614`](https://github.com/softistx/graxia/commit/750361498e9c78ebf67b33c718e1754b47326d67) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A `GraphQLError` thrown by a subscription's source iterator while it iterates (SSE and WebSocket) is now exposed as is, with its message and extensions (and path, when it sets one), instead of `Unexpected error.`. A plain `Error` stays masked and reported through `onUnexpected`.
+
 ## 0.6.1
 
 ### Patch Changes

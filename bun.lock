@@ -22,7 +22,7 @@
     },
     "packages/core": {
       "name": "@graxia/core",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
         "@graphql-codegen/typescript": "^7.0.1",
@@ -93,7 +93,7 @@
     },
     "packages/mcp": {
       "name": "@graxia/mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@modelcontextprotocol/server": "~2.4.0",
         "zod": "^4.2.0",
