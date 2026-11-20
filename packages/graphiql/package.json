@@ -48,7 +48,7 @@
 	"devDependencies": {
 		"@graphiql/toolkit": "^1.0.1",
 		"@graxia/core": "workspace:^",
-		"@types/bun": "^1.4.4",
+		"@types/bun": "^1.4.5",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
 		"graphiql": "4.1.2",
