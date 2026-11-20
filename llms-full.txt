@@ -1066,6 +1066,7 @@ The same decision applies to an error thrown by a subscription's source iterator
 (after its first event): a `GraphQLError` reaches the client as is, a plain `Error` is masked and
 reported through `onUnexpected`. A `GraphQLError` wrapping a plain `originalError` and thrown from the
 iterator is masked (stricter than a resolver, where graphql locates and exposes it).
+`onResultChunk` sees this failure as a chunk with `errors` and no `data` key.
 
 The rule, exactly: an error is **exposed** when it has no `originalError` (graphql's own: validation,
 coercion), when it is a genuine non-null violation, or when its original is a `GraphQLError` of any
@@ -2202,7 +2203,9 @@ final response.
   always the last payload: a resolver error sends `{ data, errors }` and the stream goes on. The
   operation's signal aborts when the stream ends, whatever the cause (completion, a source failure, the
   client leaving, shutdown), with no reason, so it does not tell a failure apart. A hook that drops the
-  errors with `setChunk` means nothing is reported for that failure;
+  errors with `setChunk` means nothing is reported for that failure. If a hook throws on this chunk,
+  `onUnexpected` receives the source's error first, then the hook's, but only when the source's error is
+  not a `GraphQLError`: a `GraphQLError` source with a throwing hook reports only the hook's error;
 - over `multipart/mixed` (see [`@defer` and `@stream`](./incremental.md)): the initial and each
   subsequent payload of an incremental result. A query that is not incremental, over `multipart/mixed`
   or plain JSON, is answered as one plain response and its hooks do not run.
@@ -3277,10 +3280,12 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
   `GraphQLError` (`exposedError` included) is exposed as is, its message and extensions (and path, when it sets one), and a plain
   `Error` is masked and reported through `onUnexpected`, like an execution error. That last payload goes through
-  `onResultChunk` first (its `errors` hold the error as thrown), so a plugin sees the failure: a chunk
+  `onResultChunk` first (its `errors` hold the error: a non-`GraphQLError` arrives wrapped in a `GraphQLError` with `originalError`), so a plugin sees the failure: a chunk
   with `errors` and no `data` key is the source's failure, always the last payload. A thrown non-`Error`
   (a string, say) is reported as an `Error` of its string form. The operation's signal aborts when the
-  stream ends, whatever the cause, with no reason.
+  stream ends, whatever the cause, with no reason. If a hook throws on this chunk, `onUnexpected` receives
+  the source's error first, then the hook's, but only when the source's error is not a `GraphQLError`:
+  a `GraphQLError` source with a throwing hook reports only the hook's error.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown
@@ -4336,7 +4341,8 @@ Parse and validation errors are an `error` message and end the operation. Execut
 `next` with `errors`. Unexpected errors are masked with the correlation id (the connection's
 request id) and reported once through `onUnexpected`, like over HTTP. An error thrown by a
 subscription's source iterator after it has yielded ends the operation with a last `next` carrying
-`errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported. The last `next` goes through `onResultChunk` first, like over SSE.
+`errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported.
+The last `next` (`errors`, no `data`) goes through `onResultChunk` first, like over SSE.
 
 # @graxia/core — Troubleshooting: HTTP, execute and testing
 
@@ -5246,6 +5252,7 @@ The subscription's source iterator threw a plain `Error` (a database or library 
 yielded. The client gets the masked message and a correlation id, the original goes to `onUnexpected`.
 To tell the client why, throw a `GraphQLError` from the iterator: it is exposed
 as is, its message and extensions (and path, when it sets one), then the stream completes.
+`onResultChunk` sees this failure as a chunk with `errors` and no `data` key.
 
 ```ts
 import { GraphQLError } from 'graphql';
