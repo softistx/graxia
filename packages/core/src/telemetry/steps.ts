@@ -7,10 +7,11 @@ import { settleOutcome } from './operation';
 import { bindResolvers } from './resolvers';
 import {
 	ATTR,
+	batchedKey,
 	documentIdOf,
 	type Env,
 	fail,
-	hostTraceKey,
+	hostKey,
 	type Operation,
 	operationKey,
 	parentOf,
@@ -34,11 +35,15 @@ export async function traceOperation(
 	run: () => Promise<Outcome>,
 ): Promise<Outcome> {
 	if (state.get(quietKey)) return run();
-	const host = state.get(hostTraceKey);
+	const host = state.get(hostKey);
 	const live =
 		host === undefined
 			? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
-			: hostSpan(env, host);
+			: hostSpan(
+					env,
+					host.scope,
+					() => !host.upgrade && !state.get(batchedKey),
+				);
 	const op: Operation = {
 		live,
 		errors: 0,
@@ -73,12 +78,15 @@ export function describeOperation(
 	if (!op) return;
 	const { operation, source, params } = info;
 	if (op.standIn) {
+		// The host's span is never renamed. The validate span carries the facts, and the host's too when `op.live` writes to it.
 		const facts = op.standIn;
 		facts[ATTR.operationType] = operation.operation;
 		if (operation.name) facts[ATTR.operationName] = operation.name.value;
 		if (env.document) facts[ATTR.document] = source;
 		const id = documentIdOf(params);
 		if (id) facts[ATTR.documentId] = id;
+		for (const [key, value] of Object.entries(facts))
+			op.live.attribute(key, value);
 		return;
 	}
 	const name = operation.name?.value;

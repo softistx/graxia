@@ -143,14 +143,22 @@ With `operationSpans: false` and a span active when the request arrives (HTTP an
   graxia keeps the host's `traceparent` from the request (the upgrade, for a socket) and the socket's spans continue
   that trace, under the host's upgrade span;
 - the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
-  and, with `document: true`, `graphql.document`;
+  and, with `document: true`, `graphql.document`, as before;
+- **for a single, non-batched HTTP operation, the host's span carries them too**, plus
+  `graphql.error.count` at the operation's end (through `activeSpan()` of `@softistx/telemetry` 0.5,
+  while the request is live). `graphql.error.count` therefore appears on both spans. graxia only
+  writes attributes there: it never renames, fails or ends the host's span;
+- **nothing is written to the host's span** for a batch entry, a WebSocket operation or the end of a
+  streamed (SSE, incremental) operation, and `graxia.events` never is: those keep the step spans
+  and, for a socket, the continuation of the host's trace;
 - the original exception behind each masked error is a failed `graphql.error` span, a child of the
   host's active span, unless a resolver span already recorded it; a timeout or abort makes none;
-- `graphql.error.count`, `graxia.events` and the request's attributes (`http.*`,
-  `graxia.refusal.code`) are not recorded.
+- `graxia.events` and the request's attributes (`http.*`, `graxia.refusal.code`) are not recorded.
 
-> Temporary, until nxgt-telemetry#62: `currentSpan()` is read-only, so graxia cannot put these on the
-> host's span; the validate span and the `graphql.error` span stand in until it can.
+> `document: true` then puts the document source (which may hold literals) on the host's span too,
+> and the host may export it. Leave it off unless the host's exporter is trusted with it.
+
+This needs `@softistx/telemetry` 0.5 or later (`activeSpan()`).
 
 **With no span active at the request there is nothing to duplicate.** graxia then makes its
 `graphql.request` and operation spans as usual, and `propagate` keeps its meaning (the `traceparent`

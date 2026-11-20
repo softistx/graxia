@@ -74,7 +74,7 @@ describe('operationSpans over HTTP', () => {
 		expect(parentId(one('graphql.resolve hello'))).toBe(idOf(one('host')));
 	});
 
-	test('false under a host span: the validate span carries the operation facts and the document', async () => {
+	test('false under a host span: the host span carries the operation facts and the document', async () => {
 		const graxia = make({ telemetry: { ...off, document: true } });
 		await hosted(() =>
 			graxia.fetch(
@@ -85,13 +85,78 @@ describe('operationSpans over HTTP', () => {
 			),
 		);
 		await instance.flush();
-		expect(one('graphql.validate').attributes).toMatchObject({
+		expect(one('host').attributes).toMatchObject({
 			'graphql.operation.type': 'query',
 			'graphql.operation.name': 'Hi',
 			'graphql.document': 'query Hi { hello }',
 			'graxia.document.id': 'abc',
 		});
-		expect(one('graphql.parse').attributes['graphql.document']).toBeUndefined();
+		expect(one('host').name).toBe('host');
+		// The validate span keeps them too.
+		expect(one('graphql.validate').attributes).toMatchObject({
+			'graphql.operation.name': 'Hi',
+			'graphql.document': 'query Hi { hello }',
+		});
+	});
+
+	test('false under a host span: a single operation puts its error count on the host span', async () => {
+		const graxia = make({ telemetry: off });
+		await hosted(() => graxia.fetch(post({ query: '{ boom }' })));
+		await instance.flush();
+		expect(one('host').attributes['graphql.error.count']).toBe(1);
+	});
+
+	test('false under a host span: a batch writes no attribute on the host span', async () => {
+		const graxia = make({ telemetry: off, batching: true });
+		await hosted(() =>
+			graxia.fetch(
+				post([{ query: 'query A { hello }' }, { query: '{ boom }' }] as any),
+			),
+		);
+		await instance.flush();
+		expect(Object.keys(one('host').attributes)).not.toContainEqual(
+			expect.stringMatching(/^graphql\.|^graxia\./),
+		);
+		expect(named('graphql.validate')).toHaveLength(2);
+		expect(
+			named('graphql.validate').some(
+				(s) => s.attributes['graphql.operation.name'] === 'A',
+			),
+		).toBe(true);
+	});
+
+	test('false under a host span: a streamed operation leaves no events or late write on the host span', async () => {
+		const streaming = createSchema()({
+			typeDefs: 'type Query { a: Int } type Subscription { ticks: Int! }',
+			resolvers: {
+				Subscription: {
+					ticks: {
+						subscribe: async function* () {
+							yield 1;
+							yield 2;
+						},
+						resolve: (v: number) => v,
+					},
+				},
+			},
+		});
+		const graxia = make({ schema: streaming, telemetry: off });
+		const response = await hosted(() =>
+			graxia.fetch(
+				post(
+					{ query: 'subscription Live { ticks }' },
+					{ accept: 'text/event-stream' },
+				),
+			),
+		);
+		// The host span ended with its block; what the stream does afterwards must not reach it.
+		await response.text();
+		await new Promise((r) => setTimeout(r, 50));
+		await instance.flush();
+		const host = one('host');
+		expect(host.attributes['graxia.events']).toBeUndefined();
+		expect(host.attributes['graphql.error.count']).toBeUndefined();
+		expect(host.attributes['graphql.operation.type']).toBe('subscription');
 	});
 
 	test('false under a host span: the cause of a masked error is a failed graphql.error span', async () => {
@@ -257,6 +322,9 @@ describe('operationSpans over a WebSocket', () => {
 		await subscribe(url);
 		await server.stop(true);
 		expect(names()).toEqual(['graphql.parse', 'graphql.validate', 'host']);
+		expect(Object.keys(one('host').attributes)).not.toContainEqual(
+			expect.stringMatching(/^graphql\.|^graxia\./),
+		);
 		sameTrace();
 		for (const name of ['graphql.parse', 'graphql.validate'])
 			expect(parentId(one(name))).toBe(idOf(one('host')));

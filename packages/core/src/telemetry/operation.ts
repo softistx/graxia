@@ -38,6 +38,11 @@ export function observePayload(
 export function endOperation(op: Operation, streamed: boolean): void {
 	if (op.ended) return;
 	op.ended = true;
+	// A stand-in (the host's span) gets neither: a stream ends after the response was sent.
+	if (op.standIn && streamed) {
+		op.live.end();
+		return;
+	}
 	if (op.errors > 0) op.live.attribute(ATTR.errorCount, op.errors);
 	if (streamed) op.live.attribute(ATTR.events, op.events);
 	op.live.end();

@@ -1,5 +1,6 @@
 import { createStateKey, type RequestState } from '../plugins/state';
 import type {
+	HostScope,
 	SpanLike,
 	StartOptions,
 	TelemetryApi,
@@ -66,13 +67,20 @@ export const operationKey = createStateKey<Operation>(
 /** @internal Set when the request span is not recording (no SDK, or sampled out): the rest of the request is untraced. */
 export const quietKey = createStateKey<true>('graxia.telemetry.quiet');
 
-/** @internal The host's `traceparent` (`operationSpans: false`, a host span was active at the request): spans started with no active span continue its trace. */
-export const hostTraceKey = createStateKey<string>('graxia.telemetry.host');
+/** @internal The host's active span at the request (`operationSpans: false`): the operation's attributes go on it, and spans started with no active span (a socket's) continue its trace. */
+export const hostKey = createStateKey<{
+	scope: HostScope;
+	/** A WebSocket's upgrade: its operations write nothing to the host span. */
+	upgrade: boolean;
+}>('graxia.telemetry.host');
 
-/** @internal Causes a resolver span already recorded, so a stand-in does not record them again. */
+/** @internal Set on the state of each entry of a batch: a batch writes nothing to the host span. */
+export const batchedKey = createStateKey<true>('graxia.telemetry.batched');
+
+/** @internal Causes a resolver span already recorded, so the host stand-in does not record them again. */
 export const recorded = new WeakSet<object>();
 
-/** @internal A stand-in for the operation span: a {@link Live} that carries the host's `traceparent`. */
+/** @internal The operation span of an operation the host spans: a {@link Live} that writes to the host's span and carries its `traceparent`. */
 export type StandIn = Live & { traceparent?: string };
 
 /** @internal The state of an operation span. */
@@ -81,7 +89,7 @@ export interface Operation {
 	errors: number;
 	events: number;
 	ended: boolean;
-	/** Set when the operation has no span of its own (`operationSpans: false`): what its validate span carries instead. */
+	/** Set when the operation has no span of its own (`operationSpans: false`): what its validate span carries (the host's span gets them too, for a single HTTP operation). `live` is a stand-in for the host's span, never renamed or ended. */
 	standIn?: Record<string, string | number>;
 }
 
