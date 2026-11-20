@@ -180,10 +180,15 @@ export interface SetupApi {
 
 /**
  * A graxia plugin. `Ctx` is the context the plugin needs; `Added` is what its
- * `onContext` adds to it. Build one with `definePlugin`.
+ * `onContext` adds to it; `Name` is its literal name, which the context check
+ * quotes. Build one with `definePlugin`.
  */
-export interface GraxiaPlugin<Ctx = Empty, Added = Empty> {
-	name: string;
+export interface GraxiaPlugin<
+	Ctx = Empty,
+	Added = Empty,
+	Name extends string = string,
+> {
+	name: Name;
 	enforce?: 'pre' | 'post' | undefined;
 	/** Runs once at engine init, awaited. */
 	setup?(api: SetupApi): MaybePromise<void>;

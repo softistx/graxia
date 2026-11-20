@@ -1,6 +1,7 @@
 import type { GraphQLSchema } from 'graphql';
 import { resolveLimits } from '../document/parse';
 import { createPluginEngine } from '../plugins/engine';
+import type { RequirePluginContext } from '../plugins/requirement';
 import { StateBag } from '../plugins/state';
 import type { GraxiaPlugin } from '../plugins/types';
 import { exposeCsrfHeader } from '../security/header-key';
@@ -9,7 +10,11 @@ import { resolveTrusted } from '../trusted/options';
 import { createDispose } from './dispose';
 import { createEntry } from './entry';
 import { createExecute } from './execute';
-import type { NeededContext, RequireContext } from './infer-context';
+import type {
+	CoreContext,
+	NeededContext,
+	RequireContext,
+} from './infer-context';
 import type { Graxia } from './instance';
 import { createLifecycle } from './lifecycle';
 import type { GraxiaOptions, NoPlugins } from './options';
@@ -39,7 +44,8 @@ export function createGraxia<
 	>,
 >(
 	options: GraxiaOptions<HostCtx, Schema, Plugins, Made> &
-		RequireContext<NeededContext<Schema, HostCtx, Plugins>, HostCtx>,
+		RequireContext<NeededContext<Schema, HostCtx, Plugins>, HostCtx> &
+		RequirePluginContext<Plugins, HostCtx & CoreContext & Made>,
 ): Graxia<HostCtx> {
 	const resolved = resolve(options);
 	const documentLimits = resolveLimits(options.limits);

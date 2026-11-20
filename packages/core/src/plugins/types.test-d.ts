@@ -7,7 +7,7 @@ import {
 	type RequiresContext,
 } from './define';
 import { createStateKey, StateBag, type StateKey } from './state';
-import type { Empty, OnExecutePayload, SetupApi } from './types';
+import type { Empty, GraxiaPlugin, OnExecutePayload, SetupApi } from './types';
 
 type Equal<A, B> =
 	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
@@ -152,3 +152,32 @@ definePlugin()({
 	onParse: ({ serverContext }) => void serverContext['x'],
 	onValidate: ({ serverContext }) => void serverContext['x'],
 });
+
+// an optional requirement may be absent; a present one must fit
+const optionalNeed = definePlugin<{ db?: string }>()({
+	name: 'optional-need',
+	onContext: () => ({}),
+});
+export const optionalAbsent: RequiresContext<[typeof optionalNeed], Empty> = [
+	optionalNeed,
+];
+export const optionalFits: RequiresContext<
+	[typeof optionalNeed],
+	{ db: string }
+> = [optionalNeed];
+// @ts-expect-error a present `db` must fit `string | undefined`
+export const optionalWrong: RequiresContext<
+	[typeof optionalNeed],
+	{ db: number }
+> = [optionalNeed];
+
+// an untyped plugin is skipped; the plugins after it are still checked
+const untypedPlugin: GraxiaPlugin<any, any> = { name: 'untyped' };
+export const untypedSkipped: RequiresContext<[typeof untypedPlugin], Empty> = [
+	untypedPlugin,
+];
+// @ts-expect-error `user` is added by nobody: `any` does not satisfy it
+export const afterUntyped: RequiresContext<
+	[typeof untypedPlugin, typeof needsUser],
+	Empty
+> = [untypedPlugin, needsUser];

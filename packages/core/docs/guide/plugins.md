@@ -253,5 +253,42 @@ the plugins before it) do not provide. Returning something other than an object 
 
 **Checked against the schema**: `createGraxia` verifies that the context the `context` option, the
 host's `serverContext` and the plugins build satisfies the schema's `createSchema<Ctx>` (see
-[Context](./context.md#write-the-context-once), and `InferContext` to write it once). A plugin's
-`definePlugin<Requires>` is still checked with `RequiresContext`, which you can assert yourself.
+[Context](./context.md#write-the-context-once), and `InferContext` to write it once).
+
+**Checked against the plugins' requirements**: a plugin built with `definePlugin<Requires>()` needs
+`Requires` from the context. `createGraxia` checks each plugin, in order, against what the host
+provides (the `serverContext` type declared on the factory's `init`, what the `context` factory
+returns, `signal`) and what the plugins before it add. A required field nobody provides, or
+provides with another type, is a compile error that names the plugin and the field; an optional
+one (`{ db?: string }`) may be absent.
+
+```ts
+import { type ContextInit, createGraxia, definePlugin } from '@graxia/core';
+
+const auth = definePlugin<{ request: Request }>()({
+	name: 'auth',
+	onContext: ({ context }) => ({
+		agent: context.request.headers.get('user-agent'),
+	}),
+});
+const audit = definePlugin<{ agent: string | null }>()({
+	name: 'audit',
+	onContext: () => ({}),
+});
+
+// `request` is provided by the factory, which reads it from the host's `serverContext`.
+const context = ({ request }: ContextInit<{ request: Request }>) => ({
+	request,
+});
+
+createGraxia({ schema, context, plugins: [auth, audit] }); // `audit` reads what `auth` adds: fine
+createGraxia({ schema, plugins: [auth] }); // error: plugin "auth" needs context.request
+createGraxia({ schema, context, plugins: [audit, auth] }); // error: `agent` is added by `auth`, which comes after
+```
+
+The check is skipped for a plugin list that is not a tuple (a `Plugin[]` variable), for an untyped
+plugin (`GraxiaPlugin<any, any>`, that plugin alone: the plugins after it are still checked), and for
+any call that writes the host type as an explicit type argument, `createGraxia<Host>({ ... })`:
+TypeScript then infers no other type argument. Declare the host on the `context` factory's `init`
+to keep the checks. A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
+Like the schema check, it stops with TS2589 at about 50 chained plugins.

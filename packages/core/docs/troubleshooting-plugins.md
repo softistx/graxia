@@ -22,6 +22,37 @@ createGraxia({
 In development the default logs it with `console.error`; in production nothing is logged until you
 set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
 
+## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
+
+A type error on the `plugins` option of `createGraxia`. In full:
+
+```text
+Type '[GraxiaPlugin<{ request: Request; }, {}, "auth">]' is not assignable to type
+'readonly [GraxiaPlugin<…>] & { readonly "graxia: plugin \"auth\" needs context.request, which nothing
+provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never; }'.
+```
+
+The named plugin was built with `definePlugin<{ request: Request }>()`, and neither the `context`
+factory, nor the host type declared on its `init`, nor a plugin before it provides `request`. The
+message names the first plugin that fails (a plain `string` name is given by position, `plugin at index 1`, counted from 0)
+and every field nothing provides. A field provided with another type is reported once the missing ones are provided. Fix it where the field comes from:
+
+```ts
+createGraxia({
+	schema,
+	// declare the host context on the factory's `init` and return the field ...
+	context: ({ request }: ContextInit<{ request: Request }>) => ({ request }),
+	// ... or list the plugin that adds it before this one
+	plugins: [auth],
+});
+```
+
+A field provided with another type reads `… needs context.db, which the context provides as another
+type`. An optional field (`{ db?: string }`) may be absent. Before this check (a minor of
+`@graxia/core`), such a call compiled and either failed at runtime or worked only through an untyped
+`serverContext`. The check does not run with an explicit `createGraxia<Host>({ ... })`; see
+[Plugins](./guide/plugins.md#typed-context).
+
 ## Duplicate plugin name "x" at indexes 0 and 2
 
 Two plugins in `plugins` share a `name`. Names are unique; rename one, or remove the duplicate.

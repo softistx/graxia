@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
+import type { ContextInit } from '../server/options';
 import { raw } from '../ws/ws.test-util';
 import { definePlugin } from './define';
+import type { GraxiaPlugin } from './types';
 
 type Hook = 'onRequest' | 'onParse' | 'onValidate';
 type Host = { tenant: string; signal: AbortSignal };
@@ -31,9 +33,10 @@ afterEach(async () => {
 });
 
 /** A host upgrading sockets with its own serverContext. */
-function socketHost(plugin: ReturnType<typeof spy>) {
+function socketHost(plugin: GraxiaPlugin<Host>) {
 	const graxia = createGraxia({
 		schema,
+		context: (_: ContextInit<{ tenant: string }>) => ({}),
 		onUnexpected: false,
 		plugins: [plugin],
 	});
@@ -62,6 +65,7 @@ describe('over HTTP, each hook sees the host serverContext', () => {
 			const seen: Record<string, unknown[]> = {};
 			const graxia = createGraxia({
 				schema,
+				context: (_: ContextInit<{ tenant: string }>) => ({}),
 				onUnexpected: false,
 				plugins: [spy(seen)],
 			});
