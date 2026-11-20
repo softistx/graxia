@@ -1,8 +1,14 @@
 import type { GraphQLParams } from '../plugins/types';
 import { type ParamsResult, paramsFromJson } from './params';
 
-/** Batching option: off, or on with a most-entries limit. */
-export type BatchingOption = false | { limit: number };
+/** Batching option: `false` (off), `true` (on, 10 entries at most, as Yoga) or `{ limit }`. */
+export type BatchingOption = boolean | { limit: number };
+
+/** @internal The option once resolved: off, or on with its limit. */
+export type ResolvedBatching = false | { limit: number };
+
+/** The most entries `batching: true` accepts (graphql-yoga's default). */
+export const DEFAULT_BATCH_LIMIT = 10;
 
 /** The entries of a batch, or the reason the batch is refused (a 400). */
 export type BatchResult =
@@ -15,7 +21,7 @@ export type BatchResult =
  */
 export function parseBatch(
 	body: readonly unknown[],
-	batching: BatchingOption,
+	batching: ResolvedBatching,
 ): BatchResult {
 	if (batching === false)
 		return { ok: false, message: 'Batching is not enabled on this server.' };

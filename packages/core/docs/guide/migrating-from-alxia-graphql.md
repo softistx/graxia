@@ -62,7 +62,7 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 | `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
 | `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
 | Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
-| Yoga `batching`                        | `batching: true \| { limit }`                                                                                                                            |
+| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                             |
 | `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
 | `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
 | `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |

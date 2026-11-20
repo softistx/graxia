@@ -184,7 +184,7 @@ graxia is a transport and plugin engine, not a hardened edge. What it does, and 
   `GRAPHQL_VALIDATION_FAILED` with `extensions.limit`. Cost follows `@cost` / `@listSize`, which
   `createSchema` adds to your SDL (`costDirectives` does for a schema you build yourself);
   `computeOperationCost` returns an operation's cost for plugins and tests.
-- Batching is off unless you set `batching: { limit }`.
+- Batching is off unless you set `batching: true` (10 operations at most) or `batching: { limit }`.
 - A client's `x-request-id` is never trusted or echoed; graxia generates the id.
 - Server-sent events and WebSocket (`subscriptions.sse`, `subscriptions.ws`) are on, on the endpoint's
   path; turn either off with `false`.

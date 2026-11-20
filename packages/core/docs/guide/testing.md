@@ -194,7 +194,7 @@ await client.query(null, { documentId: 'a3f1…', method: 'GET' });
 
 ### Batching
 
-With `batching: { limit }` on the instance, `client.batch` sends a JSON array and returns
+With `batching` on the instance (`true` or `{ limit }`), `client.batch` sends a JSON array and returns
 `{ status, headers, body, results, response }`, one `{ data, errors, extensions }` per entry:
 
 ```ts
