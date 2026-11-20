@@ -9,4 +9,5 @@ The errors a consumer can hit, headed by the message as it appears. Find the top
 - [HTTP, execute and testing](./troubleshooting-http.md): `path`, shutdown, responses, `graxia.execute`, the testing client.
 - [Security](./troubleshooting-security.md): the CSRF check, introspection, persisted queries and trusted documents.
 - [Rate limits and telemetry](./troubleshooting-rate-limits.md): field rate limits, `limitFromStore`, telemetry.
+- [Telling refusals apart](./guide/http.md#refusal-codes): every request-level refusal (413, 415, 400, 404, 405, 406) carries a stable `extensions.code`.
 - [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.

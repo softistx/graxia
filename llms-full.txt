@@ -1097,7 +1097,8 @@ answered as written, with that code; other parse errors get `GRAPHQL_PARSE_FAILE
 `code` is typed as a key of `GraxiaErrorCodes`: `BAD_USER_INPUT`, `UNAUTHENTICATED`, `FORBIDDEN`,
 `NOT_FOUND`, `CONFLICT`, `INTERNAL_SERVER_ERROR`, and the codes core itself emits
 (`GRAPHQL_PARSE_FAILED`, `GRAPHQL_VALIDATION_FAILED`, `OPERATION_ABORTED`, `SHUTTING_DOWN`,
-`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`). A code that is not in the list fails to
+`SUBSCRIPTION_NOT_SUPPORTED`, `INCREMENTAL_NOT_SUPPORTED`, and the request refusals of
+[GraphQL over HTTP](./http.md#refusal-codes)). A code that is not in the list fails to
 compile. Add your own by augmenting the interface:
 
 ```ts
@@ -1363,6 +1364,29 @@ error reaches `onUnexpected` with that id. A resolver that throws a plain error 
 way inside a normal result (see [Errors](./errors.md)). `fetch` never rejects: a response Bun would refuse
 (such as `Response.error()`) also becomes this 500. A throwing executor still runs the `onExecute`
 after-hooks, and every after-hook runs exactly once on every path.
+
+## Refusal codes
+
+Every refusal graxia builds before execution carries a stable `extensions.code` (and a `fix`), so a
+client or a test matches the code, never the message. The messages are unchanged.
+
+| code                     | status | message                                                                               |
+| ------------------------ | ------ | ------------------------------------------------------------------------------------- |
+| `BODY_TOO_LARGE`         | 413    | `The request body is too large.`                                                      |
+| `UNSUPPORTED_MEDIA_TYPE` | 415    | `The Content-Type must be application/json (UTF-8).`                                  |
+| `BODY_UNREADABLE`        | 400    | `The request body could not be read.` / `The request body is not valid UTF-8.`        |
+| `INVALID_JSON`           | 400    | `The request body is not valid JSON.`                                                 |
+| `INVALID_PARAMS`         | 400    | the body, URL or multipart `operations` is not `{ query, variables?, … }`             |
+| `INVALID_BATCH`          | 400    | a batch that is off, empty, over its limit or holds a bad entry                       |
+| `BATCH_NOT_STREAMABLE`   | 400    | `Batched operations cannot be sent over text/event-stream.` (or `multipart/mixed`)    |
+| `PATH_NOT_FOUND`         | 404    | `Not found.`                                                                          |
+| `METHOD_NOT_ALLOWED`     | 405    | `Only GET and POST are allowed.`; a mutation over GET (`Allow: POST`)                 |
+| `NOT_ACCEPTABLE`         | 406    | `The Accept header must allow application/graphql-response+json or application/json.` |
+| `SUBPROTOCOL_REQUIRED`   | 400    | WebSocket upgrade without the `graphql-transport-ws` subprotocol                      |
+| `UPGRADE_FAILED`         | 400    | `The WebSocket upgrade failed.`                                                       |
+
+The upload, CSRF, origin, shutdown and persisted-query refusals have their own codes, listed beside
+their messages in the guides. All of them are keys of `GraxiaErrorCodes`.
 
 ## Plugin headers
 
@@ -4465,6 +4489,27 @@ The document parsed but does not validate against the schema. Every such error c
 createGraxia({ schema, batching: true }); // or { limit: 25 }
 ```
 
+## The request body is too large. (`BODY_TOO_LARGE`)
+
+413. The body is over `limits.bodyBytes` (1 MiB by default), counted as it streams. Send a smaller body, or raise the limit: `createGraxia({ schema, limits: { bodyBytes: 4 << 20 } })`. Multipart bodies have their own limit, `uploads.bodyBytes` (`UPLOAD_TOO_LARGE`).
+
+## The Content-Type must be application/json (UTF-8). (`UNSUPPORTED_MEDIA_TYPE`)
+
+415. A POST body is read as JSON only. Send `Content-Type: application/json` (a charset, if any, must be UTF-8).
+
+## The request body could not be read. / The request body is not valid UTF-8. (`BODY_UNREADABLE`)
+
+400. The stream failed (the client aborted) or the bytes are not UTF-8. Re-send the body encoded as UTF-8.
+
+## The request body is not valid JSON. (`INVALID_JSON`)
+
+400. The body does not parse. Send `{ "query": "..." }`.
+
+## Telling refusals apart
+
+Each of these refusals, and the 404, 405, 406 and batch ones, has a stable `extensions.code`: see
+[Refusal codes](./guide/http.md#refusal-codes). Match on the code, not on the message.
+
 # @graxia/core — Troubleshooting: plugins and context
 
 Source: packages/core/docs/troubleshooting-plugins.md
@@ -5131,14 +5176,14 @@ Close code **1008**. A socket reached graxia's handler while `subscriptions.ws` 
 The upgrade must be a `GET` to the served `path` and offer the `graphql-transport-ws` subprotocol:
 `new WebSocket(url, 'graphql-transport-ws')`.
 
-- `Not found.` (404): the path is not graxia's `path`.
-- `A WebSocket upgrade must be a GET request.` (405, `Allow: GET`).
-- `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` (400): no such subprotocol.
-- `The WebSocket upgrade failed.` (400): Bun refused the upgrade, e.g. missing `Sec-WebSocket-Key`.
+- `Not found.` (404, `PATH_NOT_FOUND`): the path is not graxia's `path`.
+- `A WebSocket upgrade must be a GET request.` (405, `METHOD_NOT_ALLOWED`, `Allow: GET`).
+- `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` (400, `SUBPROTOCOL_REQUIRED`): no such subprotocol.
+- `The WebSocket upgrade failed.` (400, `UPGRADE_FAILED`): Bun refused the upgrade, e.g. missing `Sec-WebSocket-Key`.
 
 With `subscriptions: { ws: false }` the request is handled as plain HTTP.
 
-## Batched operations cannot be sent over text/event-stream.
+## Batched operations cannot be sent over text/event-stream. (`BATCH_NOT_STREAMABLE`)
 
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
@@ -5177,7 +5222,7 @@ The schema is a `GraphQLSchema` you built without the directives (`createSchema`
 `GraphQLDeferDirective` and `GraphQLStreamDirective` next to `specifiedDirectives`; see
 [`@defer` and `@stream`](./guide/incremental.md).
 
-## Batched operations cannot be sent over multipart/mixed.
+## Batched operations cannot be sent over multipart/mixed. (`BATCH_NOT_STREAMABLE`)
 
 A JSON array body came with an `Accept` that prefers `multipart/mixed`. Send one operation per
 request, or ask for `application/json`.
@@ -5325,6 +5370,7 @@ The errors a consumer can hit, headed by the message as it appears. Find the top
 - [HTTP, execute and testing](./troubleshooting-http.md): `path`, shutdown, responses, `graxia.execute`, the testing client.
 - [Security](./troubleshooting-security.md): the CSRF check, introspection, persisted queries and trusted documents.
 - [Rate limits and telemetry](./troubleshooting-rate-limits.md): field rate limits, `limitFromStore`, telemetry.
+- [Telling refusals apart](./guide/http.md#refusal-codes): every request-level refusal (413, 415, 400, 404, 405, 406) carries a stable `extensions.code`.
 - [File uploads](./troubleshooting-uploads.md): upload limits, multipart parsing and `uploads` config errors.
 
 # @graxia/envelop — @graxia/envelop

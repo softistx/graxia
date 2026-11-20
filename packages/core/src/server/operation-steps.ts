@@ -80,6 +80,7 @@ export async function parseStep(
 				'Can only perform a mutation operation from a POST request.',
 				{
 					status: 405,
+					code: 'METHOD_NOT_ALLOWED',
 					headers: { allow: 'POST' },
 					fix: 'Send the mutation with POST.',
 				},

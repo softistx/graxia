@@ -44,6 +44,7 @@ export async function dispatch(
 				406,
 				'The Accept header must allow application/graphql-response+json or application/json.',
 				'Send "Accept: application/graphql-response+json" (or application/json).',
+				{ code: 'NOT_ACCEPTABLE' },
 			);
 		const method = request.method === 'GET' ? 'GET' : 'POST';
 		const read =
@@ -80,6 +81,7 @@ export async function dispatch(
 				400,
 				`Batched operations cannot be sent over ${sse ? 'text/event-stream' : 'multipart/mixed'}.`,
 				'Send one operation, or ask for a JSON response to batch several.',
+				{ code: 'BATCH_NOT_STREAMABLE' },
 			);
 		return await runBatch(rt, read.batch, call, media);
 	} catch (error) {

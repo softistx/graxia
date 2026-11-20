@@ -136,6 +136,29 @@ way inside a normal result (see [Errors](./errors.md)). `fetch` never rejects: a
 (such as `Response.error()`) also becomes this 500. A throwing executor still runs the `onExecute`
 after-hooks, and every after-hook runs exactly once on every path.
 
+## Refusal codes
+
+Every refusal graxia builds before execution carries a stable `extensions.code` (and a `fix`), so a
+client or a test matches the code, never the message. The messages are unchanged.
+
+| code                     | status | message                                                                               |
+| ------------------------ | ------ | ------------------------------------------------------------------------------------- |
+| `BODY_TOO_LARGE`         | 413    | `The request body is too large.`                                                      |
+| `UNSUPPORTED_MEDIA_TYPE` | 415    | `The Content-Type must be application/json (UTF-8).`                                  |
+| `BODY_UNREADABLE`        | 400    | `The request body could not be read.` / `The request body is not valid UTF-8.`        |
+| `INVALID_JSON`           | 400    | `The request body is not valid JSON.`                                                 |
+| `INVALID_PARAMS`         | 400    | the body, URL or multipart `operations` is not `{ query, variables?, … }`             |
+| `INVALID_BATCH`          | 400    | a batch that is off, empty, over its limit or holds a bad entry                       |
+| `BATCH_NOT_STREAMABLE`   | 400    | `Batched operations cannot be sent over text/event-stream.` (or `multipart/mixed`)    |
+| `PATH_NOT_FOUND`         | 404    | `Not found.`                                                                          |
+| `METHOD_NOT_ALLOWED`     | 405    | `Only GET and POST are allowed.`; a mutation over GET (`Allow: POST`)                 |
+| `NOT_ACCEPTABLE`         | 406    | `The Accept header must allow application/graphql-response+json or application/json.` |
+| `SUBPROTOCOL_REQUIRED`   | 400    | WebSocket upgrade without the `graphql-transport-ws` subprotocol                      |
+| `UPGRADE_FAILED`         | 400    | `The WebSocket upgrade failed.`                                                       |
+
+The upload, CSRF, origin, shutdown and persisted-query refusals have their own codes, listed beside
+their messages in the guides. All of them are keys of `GraxiaErrorCodes`.
+
 ## Plugin headers
 
 Every hook payload has `responseHeaders: Headers`. What a plugin sets there is merged into whatever

@@ -139,14 +139,14 @@ Close code **1008**. A socket reached graxia's handler while `subscriptions.ws` 
 The upgrade must be a `GET` to the served `path` and offer the `graphql-transport-ws` subprotocol:
 `new WebSocket(url, 'graphql-transport-ws')`.
 
-- `Not found.` (404): the path is not graxia's `path`.
-- `A WebSocket upgrade must be a GET request.` (405, `Allow: GET`).
-- `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` (400): no such subprotocol.
-- `The WebSocket upgrade failed.` (400): Bun refused the upgrade, e.g. missing `Sec-WebSocket-Key`.
+- `Not found.` (404, `PATH_NOT_FOUND`): the path is not graxia's `path`.
+- `A WebSocket upgrade must be a GET request.` (405, `METHOD_NOT_ALLOWED`, `Allow: GET`).
+- `The Sec-WebSocket-Protocol header must offer "graphql-transport-ws".` (400, `SUBPROTOCOL_REQUIRED`): no such subprotocol.
+- `The WebSocket upgrade failed.` (400, `UPGRADE_FAILED`): Bun refused the upgrade, e.g. missing `Sec-WebSocket-Key`.
 
 With `subscriptions: { ws: false }` the request is handled as plain HTTP.
 
-## Batched operations cannot be sent over text/event-stream.
+## Batched operations cannot be sent over text/event-stream. (`BATCH_NOT_STREAMABLE`)
 
 A JSON array body came with an `Accept` that prefers `text/event-stream`. Send one operation per
 request, or ask for `application/json`.
@@ -185,7 +185,7 @@ The schema is a `GraphQLSchema` you built without the directives (`createSchema`
 `GraphQLDeferDirective` and `GraphQLStreamDirective` next to `specifiedDirectives`; see
 [`@defer` and `@stream`](./guide/incremental.md).
 
-## Batched operations cannot be sent over multipart/mixed.
+## Batched operations cannot be sent over multipart/mixed. (`BATCH_NOT_STREAMABLE`)
 
 A JSON array body came with an `Accept` that prefers `multipart/mixed`. Send one operation per
 request, or ask for `application/json`.
