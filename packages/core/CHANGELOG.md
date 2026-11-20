@@ -1,5 +1,11 @@
 # @graxia/core
 
+## 0.11.0
+
+### Minor Changes
+
+- [#151](https://github.com/softistx/graxia/pull/151) [`e802b0a`](https://github.com/softistx/graxia/commit/e802b0a7c2ab281228222797e36c4e70143c0ccc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A subscription that fails before its source stream opens (its `subscribe` throws, or a plugin sets a result) and whose errors carry `extensions.http` now keeps its event stream but answers with that status and those headers, as in GraphQL Yoga: `http` is stripped from the `next` event, `spec: true` drops the status over SSE (its headers still apply), and the status is read after the `onResultChunk` hooks and masking. This keeps a 400 or 403 promised before the stream. Without `extensions.http`, and for a failure after the first event, the answer stays a 200 stream; `errorHttp: false` keeps it too. WebSocket is unchanged.
+
 ## 0.10.0
 
 ### Minor Changes
