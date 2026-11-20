@@ -4,9 +4,9 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Parity and migration** — run Envelop plugins unchanged, multipart uploads (done, see
-  [File uploads](./guide/uploads.md)), and a parity suite so an application
-  on another GraphQL server can move over.
+- **Parity and migration** — run Envelop plugins unchanged, multipart uploads (ready for the
+  next release, see [File uploads](./guide/uploads.md)), and a parity suite so an application on
+  another GraphQL server can move over.
 
 ## Later
 
