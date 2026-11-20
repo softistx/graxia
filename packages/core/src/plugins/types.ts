@@ -73,8 +73,21 @@ export interface BasePayload {
 	responseHeaders: Headers;
 }
 
+/**
+ * The host context of a request: a copy graxia made of what the host passed
+ * to `fetch`, `upgrade` or `serve({ serverContext })`, with `server` added and,
+ * over a WebSocket, `connectionParams`. Untyped (`unknown` values). Read-only:
+ * do not mutate it. A copy is made per HTTP request; over a socket `onRequest`
+ * sees the copy stored at the upgrade (a change there reaches every later
+ * operation of that socket), while `onParse` and `onValidate` get a fresh
+ * copy per operation.
+ */
+export interface WithServerContext {
+	readonly serverContext: Readonly<Record<string, unknown>>;
+}
+
 /** `onRequest`: `respond` ends the stage; later hooks are skipped. */
-export interface OnRequestPayload extends BasePayload {
+export interface OnRequestPayload extends BasePayload, WithServerContext {
 	respond(response: Response): void;
 }
 /** After-hook of `onRequest`. */
@@ -94,7 +107,7 @@ export interface OnParamsDone {
 }
 
 /** `onParse`: swap the parser or provide the document (skips parsing). */
-export interface OnParsePayload extends BasePayload {
+export interface OnParsePayload extends BasePayload, WithServerContext {
 	params: GraphQLParams;
 	setParseFn(fn: ParseFn): void;
 	setDocument(document: DocumentNode): void;
@@ -105,7 +118,7 @@ export interface OnParseDone {
 }
 
 /** `onValidate`: swap the validator, add a rule, or provide the errors (skips validation). */
-export interface OnValidatePayload extends BasePayload {
+export interface OnValidatePayload extends BasePayload, WithServerContext {
 	schema: GraphQLSchema;
 	document: DocumentNode;
 	setValidationFn(fn: ValidationFn): void;

@@ -59,7 +59,7 @@ export async function settleParams(
 /** The parse step, the operation span's name, and the early refusal of a mutation over GET. */
 export async function parseStep(
 	rt: Runtime,
-	{ request, state, params, method }: OperationInput,
+	{ request, state, params, method, serverContext }: OperationInput,
 	settled: Settled,
 ): Promise<Outcome | Parsed> {
 	const { query } = settled;
@@ -68,6 +68,7 @@ export async function parseStep(
 			source: query,
 			state,
 			request,
+			serverContext,
 			document: presetFor(state, query),
 		}),
 	);
@@ -93,11 +94,11 @@ export async function parseStep(
 /** The validate step: an outcome when the document is refused, else nothing. */
 export async function validateStep(
 	rt: Runtime,
-	{ request, state }: OperationInput,
+	{ request, state, serverContext }: OperationInput,
 	{ document, cacheKey }: Parsed,
 ): Promise<Outcome | undefined> {
 	const valid = await rt.telemetry.step(state, 'validate', () =>
-		rt.pipeline.validate({ document, cacheKey, state, request }),
+		rt.pipeline.validate({ document, cacheKey, state, request, serverContext }),
 	);
 	if (valid.error !== undefined) return unexpected(valid.error);
 	if (valid.errors) return failed(valid.errors);

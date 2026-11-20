@@ -141,3 +141,14 @@ export const readOnlyExecuteFn = (p: OnExecutePayload) => {
 	p.executeFn = async () => ({ data: null });
 };
 assertType<Equal<SetupApi['schema'], GraphQLSchema>>();
+
+// serverContext is read-only on the three early payloads.
+definePlugin()({
+	name: 'server-context',
+	onRequest: ({ serverContext }) => {
+		// @ts-expect-error serverContext is read-only
+		serverContext['x'] = 1;
+	},
+	onParse: ({ serverContext }) => void serverContext['x'],
+	onValidate: ({ serverContext }) => void serverContext['x'],
+});

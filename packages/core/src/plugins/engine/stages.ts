@@ -19,6 +19,7 @@ import type {
 	ChunkOut,
 	ContextOut,
 	ExecuteOut,
+	Host,
 	ParamsOut,
 	ParseOut,
 	PluginRunners,
@@ -33,7 +34,7 @@ type Hooks = { plugin: string; run: (payload: never) => never }[];
 // Each spec says how a stage builds its payload (with its setters) and what
 // it collects. Setters write into `out`; only `respond` calls `stop`.
 
-const requestSpec: StageSpec<Base, RequestOut> = {
+const requestSpec: StageSpec<Base & Host, RequestOut> = {
 	init: () => ({}),
 	payload: (input, out, stop) => ({
 		...input,
@@ -61,7 +62,7 @@ const paramsSpec: StageSpec<Base & { params: GraphQLParams }, ParamsOut> = {
 	}),
 };
 
-const parseSpec: StageSpec<Base, ParseOut> = {
+const parseSpec: StageSpec<Base & Host, ParseOut> = {
 	init: () => ({}),
 	payload: (input, out) => ({
 		...input,
@@ -75,7 +76,7 @@ const parseSpec: StageSpec<Base, ParseOut> = {
 	}),
 };
 
-const validateSpec: StageSpec<Base, ValidateOut> = {
+const validateSpec: StageSpec<Base & Host, ValidateOut> = {
 	init: () => ({ rules: [] }),
 	payload: (input, out) => ({
 		...input,
