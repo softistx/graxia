@@ -97,6 +97,7 @@ export async function changedSince(
 ): Promise<string[]> {
 	const run = await $`git diff --name-only --no-renames ${ref}...HEAD`
 		.cwd(cwd)
+		.env({ ...process.env, ['GIT_TERMINAL_PROMPT']: '0' })
 		.quiet();
 	return run.stdout.toString().split('\n').filter(Boolean);
 }
