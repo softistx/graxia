@@ -40,16 +40,19 @@ other request; a same-origin navigation passes.
 
 > **`headers` are rendered into the HTML**: put no secret in them.
 
+An unset `NODE_ENV` is not `production`, so the page is served. A host with its own dev flag decides
+per request: `graphiql({ enabled: () => myDevFlag })` (also on `apolloSandbox()`).
+
 ## Options
 
-| Option                 | Default                     | What                                                                                            |
-| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk.                           |
-| `title`                | `"GraphiQL"`                | The page title.                                                                                 |
-| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                               |
-| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                               |
-| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                       |
-| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one. |
+| Option                 | Default                     | What                                                                                                                                                              |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. A function `(request) => boolean` decides per request. `true` in production is a risk. An unset `NODE_ENV` serves the page. |
+| `title`                | `"GraphiQL"`                | The page title.                                                                                                                                                   |
+| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                                                                                                 |
+| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                                                                                                 |
+| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                                                                                         |
+| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one.                                                                   |
 
 ## Content security policy
 

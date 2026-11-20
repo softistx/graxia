@@ -37,6 +37,16 @@ GraphiQL reads the schema through introspection. Core turns it off in production
 `NODE_ENV=production` locally, serves nothing; the request falls through to the endpoint's normal
 answer.
 
+The reverse also holds: an **unset `NODE_ENV` serves the page**, since it is not `production`. A host
+whose dev flag is its own keeps the page off outside dev with a function, decided per request:
+
+```ts
+graphiql({ enabled: () => myDevFlag });
+```
+
+A value that is neither a boolean nor a function throws `enabled must be a boolean or a function`
+at startup.
+
 ## Apollo Sandbox
 
 ### The Sandbox page is blank

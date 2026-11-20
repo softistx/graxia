@@ -5462,16 +5462,19 @@ other request; a same-origin navigation passes.
 
 > **`headers` are rendered into the HTML**: put no secret in them.
 
+An unset `NODE_ENV` is not `production`, so the page is served. A host with its own dev flag decides
+per request: `graphiql({ enabled: () => myDevFlag })` (also on `apolloSandbox()`).
+
 ## Options
 
-| Option                 | Default                     | What                                                                                            |
-| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk.                           |
-| `title`                | `"GraphiQL"`                | The page title.                                                                                 |
-| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                               |
-| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                               |
-| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                       |
-| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one. |
+| Option                 | Default                     | What                                                                                                                                                              |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. A function `(request) => boolean` decides per request. `true` in production is a risk. An unset `NODE_ENV` serves the page. |
+| `title`                | `"GraphiQL"`                | The page title.                                                                                                                                                   |
+| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                                                                                                 |
+| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                                                                                                 |
+| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                                                                                         |
+| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one.                                                                   |
 
 ## Content security policy
 
@@ -5544,14 +5547,14 @@ apolloSandbox({
 });
 ```
 
-| Option                        | Default                     | What                                                                  |
-| ----------------------------- | --------------------------- | --------------------------------------------------------------------- |
-| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk. |
-| `title`                       | `"Apollo Sandbox"`          | The page title.                                                       |
-| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                 |
-| `initialState.variables`      | none                        | The variables (an object).                                            |
-| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                         |
-| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                             |
+| Option                        | Default                     | What                                                                                                      |
+| ----------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks. A function `(request) => boolean` decides per request. `true` in production is a risk. |
+| `title`                       | `"Apollo Sandbox"`          | The page title.                                                                                           |
+| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                                                     |
+| `initialState.variables`      | none                        | The variables (an object).                                                                                |
+| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                                                             |
+| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                                                                 |
 
 The endpoint shown in the Sandbox is the page's own URL without its query, and it is not editable.
 Apollo's usage telemetry is switched off (`runTelemetry: false`).
@@ -5637,6 +5640,26 @@ plugins: [
 	apolloSandbox({ enabled: process.env['EXPLORER'] === 'sandbox' }),
 ];
 ```
+
+## Deciding per request
+
+`enabled` also takes a function `(request: Request) => boolean`. It is called for each `GET` the
+explorer would answer (the page and its assets), and `false` falls through to the endpoint's normal
+answer, exactly as `enabled: false` does. Use it when your dev flag is not `NODE_ENV`:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+
+createGraxia({
+	schema,
+	plugins: [apolloSandbox({ enabled: () => myDevFlag })],
+});
+// or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
+```
+
+The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
+that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
+enabled for the "two explorers" check, so disable the other one with `false`.
 
 ## Enabling it in production
 
@@ -5753,6 +5776,23 @@ Asset links are relative (`?graphiql-asset=…`), so a sub-path works as long as
 query string and does not rewrite the response's CSP. A proxy that sets its own
 `Content-Security-Policy` can block the page (see [troubleshooting](../troubleshooting.md)).
 
+## Deciding per request
+
+`enabled` also takes a function `(request: Request) => boolean`. It is called for each `GET` the
+explorer would answer (the page and its assets), and `false` falls through to the endpoint's normal
+answer, exactly as `enabled: false` does. Use it when your dev flag is not `NODE_ENV`:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+
+createGraxia({ schema, plugins: [graphiql({ enabled: () => myDevFlag })] });
+// or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
+```
+
+The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
+that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
+enabled for the "two explorers" check, so disable the other one with `false`.
+
 ## Enabling it in production
 
 `enabled: true` serves the page whatever `NODE_ENV` is. It is a risk: the page itself is harmless,
@@ -5801,6 +5841,16 @@ GraphiQL reads the schema through introspection. Core turns it off in production
 `enabled` defaults to `NODE_ENV !== 'production'`. A production process, or a host that sets
 `NODE_ENV=production` locally, serves nothing; the request falls through to the endpoint's normal
 answer.
+
+The reverse also holds: an **unset `NODE_ENV` serves the page**, since it is not `production`. A host
+whose dev flag is its own keeps the page off outside dev with a function, decided per request:
+
+```ts
+graphiql({ enabled: () => myDevFlag });
+```
+
+A value that is neither a boolean nor a function throws `enabled must be a boolean or a function`
+at startup.
 
 ## Apollo Sandbox
 

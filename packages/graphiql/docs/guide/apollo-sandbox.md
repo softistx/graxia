@@ -31,14 +31,14 @@ apolloSandbox({
 });
 ```
 
-| Option                        | Default                     | What                                                                  |
-| ----------------------------- | --------------------------- | --------------------------------------------------------------------- |
-| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk. |
-| `title`                       | `"Apollo Sandbox"`          | The page title.                                                       |
-| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                 |
-| `initialState.variables`      | none                        | The variables (an object).                                            |
-| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                         |
-| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                             |
+| Option                        | Default                     | What                                                                                                      |
+| ----------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks. A function `(request) => boolean` decides per request. `true` in production is a risk. |
+| `title`                       | `"Apollo Sandbox"`          | The page title.                                                                                           |
+| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                                                     |
+| `initialState.variables`      | none                        | The variables (an object).                                                                                |
+| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                                                             |
+| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                                                                 |
 
 The endpoint shown in the Sandbox is the page's own URL without its query, and it is not editable.
 Apollo's usage telemetry is switched off (`runTelemetry: false`).
@@ -124,6 +124,26 @@ plugins: [
 	apolloSandbox({ enabled: process.env['EXPLORER'] === 'sandbox' }),
 ];
 ```
+
+## Deciding per request
+
+`enabled` also takes a function `(request: Request) => boolean`. It is called for each `GET` the
+explorer would answer (the page and its assets), and `false` falls through to the endpoint's normal
+answer, exactly as `enabled: false` does. Use it when your dev flag is not `NODE_ENV`:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+
+createGraxia({
+	schema,
+	plugins: [apolloSandbox({ enabled: () => myDevFlag })],
+});
+// or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
+```
+
+The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
+that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
+enabled for the "two explorers" check, so disable the other one with `false`.
 
 ## Enabling it in production
 
