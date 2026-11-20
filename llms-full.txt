@@ -1133,7 +1133,7 @@ throw exposedError('CONFLICT', 'Email taken.', {
   data (graxia masks it and keeps the media type's rule); a status outside 200 to 599 (ignored);
   and the status and headers on the other transports. A batch (always 200), SSE, WebSocket and
   `multipart/mixed` keep their own status, but `http` is stripped from their payloads too.
-- Stripping happens on the output only: the telemetry still sees `http`.
+- Stripping happens on the HTTP and WebSocket output only: `graxia.execute` and the telemetry still see `http`.
 - `createGraxia({ errorHttp: false })` turns it all off: the media type decides and `extensions` are untouched.
 
 ## Validation errors
