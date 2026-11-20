@@ -23,6 +23,7 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/http.md`: GraphQL over HTTP
   - `node_modules/@graxia/core/docs/guide/incremental.md`: `@defer` and `@stream`
   - `node_modules/@graxia/core/docs/guide/limits-and-caches.md`: Limits and caches
+  - `node_modules/@graxia/core/docs/guide/migrating-from-alxia-graphql.md`: Migrating from `@alxia/graphql`
   - `node_modules/@graxia/core/docs/guide/plugins.md`: Plugins
   - `node_modules/@graxia/core/docs/guide/production.md`: Production
   - `node_modules/@graxia/core/docs/guide/pubsub.md`: PubSub

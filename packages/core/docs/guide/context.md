@@ -182,6 +182,9 @@ process.on('SIGTERM', async () => {
 4. Waits for the plugins' `setup` to finish, then runs every plugin's `onDispose()` in reverse plugin order. Only the plugins whose `setup` succeeded are
    disposed. Every hook runs even when one throws; the first error is rethrown afterwards.
 
+A host that owns `Bun.serve` stops its server itself after `dispose()` (it stops only the servers `serve()` started); the
+[host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding) shows readiness, `dispose()` and `server.stop()` in order.
+
 A second call returns the same promise. `graxia` also implements `Symbol.asyncDispose`:
 
 ```ts

@@ -68,6 +68,8 @@ Bun.serve({
 To serve WebSockets from your own server too, call `graxia.upgrade(request, server)` from `fetch` when `graxia.isUpgrade(request)` and
 pass `graxia.websocket` as `websocket` (see [Subscriptions over WebSocket](./websocket.md)); on the
 same path, `serve()` does it for you.
+A complete host (prefix, typed host context, headers and cookies, CORS, WebSocket and SSE, graceful shutdown) is the
+[host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding).
 
 The second argument is the `serverContext`, merged into every operation's context. With `path: false`
 graxia answers whatever path it is handed.

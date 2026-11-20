@@ -17,6 +17,8 @@ and the cache for Redis and adds a shared field rate limit. Trusted documents (m
 | [`@graxia/mcp`](packages/mcp)           | MCP server (Streamable HTTP, schema, query and mutate tools)   |
 | [`@graxia/envelop`](packages/envelop)   | Envelop plugin adapter (`fromEnvelop`)                         |
 
+Examples: [`examples/host-embedding`](examples/host-embedding) is an app that owns `Bun.serve` and embeds graxia (prefix, typed host context, cookies, CORS, WebSocket and SSE on one path, graceful shutdown).
+
 For agents: [`llms.txt`](llms.txt) indexes the docs of every package, [`llms-full.txt`](llms-full.txt) holds them in full.
 
 Requires Bun 1.4 and `graphql@^17.1`. MIT licensed.
