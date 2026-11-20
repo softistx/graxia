@@ -311,6 +311,52 @@ describe('subscriptions', () => {
 		expect(text).not.toContain('db down');
 		expect((reported[0] as Error).message).toBe('db down');
 	});
+	test('an onResultChunk hook throwing a GraphQLError stays unexpected', async () => {
+		const reported: unknown[] = [];
+		const plugin = definePlugin({
+			name: 'boom',
+			onResultChunk: () => {
+				throw new GraphQLError('hook internal detail');
+			},
+		});
+		const graxia = make({
+			plugins: [plugin],
+			onUnexpected: (e: unknown) => reported.push(e),
+		});
+		const text = await (await graxia.fetch(sse({ query: '{ hello }' }))).text();
+		expect(text).toContain('Unexpected error.');
+		expect(text).not.toContain('hook internal detail');
+		expect(reported).toHaveLength(1);
+	});
+	test('a GraphQLError wrapping a plain cause from the iterator is masked', async () => {
+		const reported: unknown[] = [];
+		const graxia = make({
+			onUnexpected: (e: unknown) => reported.push(e),
+			schema: createSchema<{ signal: AbortSignal }>()({
+				typeDefs: 'type Query { a: Int } type Subscription { s: Int! }',
+				resolvers: {
+					Subscription: {
+						s: {
+							subscribe: async function* () {
+								yield 1;
+								throw new GraphQLError('wrapped secret', {
+									originalError: new Error('cause secret'),
+								});
+							},
+							resolve: (n: number) => n,
+						},
+					},
+				},
+			}),
+		});
+		const text = await (
+			await graxia.fetch(sse({ query: 'subscription { s }' }))
+		).text();
+		expect(text).toContain('Unexpected error.');
+		expect(text).not.toContain('secret');
+		expect(reported).toHaveLength(1);
+		expect((reported[0] as Error).message).toBe('cause secret');
+	});
 	test('onResultChunk setChunk applies before masking, query included', async () => {
 		const order: string[] = [];
 		const plugin = definePlugin({
