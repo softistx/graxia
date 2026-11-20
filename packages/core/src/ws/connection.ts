@@ -98,6 +98,7 @@ function subscribe(c: Conn, id: string, payload: unknown) {
 				...data.serverContext,
 				connectionParams: c.connectionParams,
 			},
+			connectionParams: c.connectionParams,
 			send: io.send,
 		},
 		id,

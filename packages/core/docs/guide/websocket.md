@@ -71,6 +71,45 @@ createGraxia({
   connection. `onResponse` hooks do not run: Bun writes the handshake response. Each operation
   gets its own forked state, like a batch entry.
 
+To read the payload when building the context, use `init.connectionParams` in the `context` factory (typed, `undefined` over
+HTTP and SSE):
+
+```ts
+createGraxia({
+	schema,
+	context: async ({ connectionParams, request }) => {
+		const token =
+			typeof connectionParams?.['token'] === 'string'
+				? connectionParams['token']
+				: (request.headers.get('authorization') ?? undefined);
+		return { user: await authenticate(token) };
+	},
+});
+```
+
+### Header checks in `onParams`
+
+A plugin's `onParams` also runs for every WebSocket operation, and a browser's upgrade request carries no custom header
+(a browser cannot set one). A check on a client header there would refuse every socket operation: skip them with
+`connectionParams`, which the `onParams` payload carries only for an operation over a WebSocket (the same value as
+`init.connectionParams`; `undefined` over HTTP and SSE, and for a socket opened without a payload).
+
+```ts
+import { definePlugin } from '@graxia/core';
+
+export const requireClientHeader = definePlugin()({
+	name: 'require-client-header',
+	onParams: ({ request, connectionParams, respond }) => {
+		if (connectionParams) return; // a socket operation: authenticated by connectionParams
+		if (!request.headers.get('x-client'))
+			respond(new Response('Missing x-client', { status: 400 }));
+	},
+});
+```
+
+Don't skip on the request's `Upgrade: websocket` header: any HTTP client can send it, so the check would be forgeable.
+A socket opened with no payload gets no skip either; refuse such a socket in `onConnect` (`return connectionParams !== undefined`).
+
 ## Origin and cookie-authenticated browser apps
 
 A browser sends the user's cookies with a WebSocket upgrade to any site, so graxia checks the

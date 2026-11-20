@@ -46,7 +46,13 @@ const requestSpec: StageSpec<Base & Host, RequestOut> = {
 	}),
 };
 
-const paramsSpec: StageSpec<Base & { params: GraphQLParams }, ParamsOut> = {
+const paramsSpec: StageSpec<
+	Base & {
+		params: GraphQLParams;
+		connectionParams?: Readonly<Record<string, unknown>>;
+	},
+	ParamsOut
+> = {
 	init: (input) => ({ params: input.params }),
 	payload: (input, out, stop) => ({
 		...input,

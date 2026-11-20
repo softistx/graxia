@@ -136,6 +136,12 @@ a subscription ends when `args.contextValue.signal` aborts (its after-hook only 
 stream is created). The full start/end snippet is in
 [Observe each socket operation](./websocket.md#observe-each-socket-operation).
 
+## `onParams` also runs for WebSocket operations
+
+A check on a client header in `onParams` runs for each operation of a socket too, and a browser's upgrade request carries
+no custom header, so it would refuse them all. Skip them with the payload's `connectionParams`, set only for a socket
+operation (never forgeable over HTTP). See [Header checks in `onParams`](./websocket.md#header-checks-in-onparams).
+
 ## Reading the host context before `onExecute`
 
 `onRequest`, `onParse` and `onValidate` payloads carry a read-only `serverContext`: a copy graxia made of

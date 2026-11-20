@@ -28,7 +28,7 @@ export function presetFor(state: RequestState, query: string) {
 /** Trusted documents and `onParams`: the params the rest of the pipeline works on. */
 export async function settleParams(
 	rt: Runtime,
-	{ request, state, params }: OperationInput,
+	{ request, state, params, connectionParams }: OperationInput,
 ): Promise<Outcome | Settled> {
 	const trusted = await rt.trusted?.resolve(params, request, state);
 	if (trusted && !trusted.ok)
@@ -41,6 +41,7 @@ export async function settleParams(
 		request,
 		state,
 		params: trusted ? trusted.params : params,
+		...(connectionParams ? { connectionParams } : {}),
 	});
 	const error = await settle(stage, { params: stage.out.params });
 	if (error !== undefined) return unexpected(error);

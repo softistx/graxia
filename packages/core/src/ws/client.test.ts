@@ -3,7 +3,8 @@ import { createClient } from 'graphql-ws';
 import { exposedError } from '../errors/exposed';
 import { definePlugin } from '../plugins/define';
 import { getContext } from '../server/context';
-import { pubsub, raw, sleep, start, until } from './ws.test-util';
+import { createGraxia } from '../server/create-graxia';
+import { pubsub, raw, schema, sleep, start, until } from './ws.test-util';
 
 const client = (url: string, options: object = {}) =>
 	createClient({ url, webSocketImpl: WebSocket, retryAttempts: 0, ...options });
@@ -124,6 +125,105 @@ describe('graphql-ws client', () => {
 		expect(await collect(c, '{ who }')).toEqual([{ data: { who: 'ada' } }]);
 		expect(seen).toEqual([{ token: 'ok', user: 'ada' }]);
 		await c.dispose();
+	});
+
+	test('init.connectionParams and onParams connectionParams are set over a WebSocket only', async () => {
+		const factory: unknown[] = [];
+		const params: unknown[] = [];
+		const { url, server, graxia } = start({
+			batching: true,
+			context: ({ connectionParams }) => {
+				factory.push(connectionParams);
+				return {};
+			},
+			plugins: [
+				definePlugin()({
+					name: 'ws-detect',
+					onParams: ({ connectionParams }) => {
+						params.push(connectionParams);
+					},
+				}),
+			],
+		});
+		const c = client(url, { connectionParams: { token: 'ok' } });
+		await collect(c, '{ hello }');
+		await c.dispose();
+		expect(factory).toEqual([{ token: 'ok' }]);
+		expect(params).toEqual([{ token: 'ok' }]);
+
+		// A socket opened without a payload: absent, not an empty object.
+		const bare = client(url);
+		await collect(bare, '{ hello }');
+		await bare.dispose();
+		expect(factory.at(-1)).toBeUndefined();
+		expect(params.at(-1)).toBeUndefined();
+
+		factory.length = 0;
+		params.length = 0;
+		const post = (body: unknown, headers: Record<string, string> = {}) =>
+			fetch(`http://localhost:${server.port}/graphql`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', ...headers },
+				body: JSON.stringify(body),
+			});
+		// HTTP, and a forged Upgrade header changes nothing.
+		expect((await post({ query: '{ hello }' })).status).toBe(200);
+		// SSE subscription.
+		const sse = await post(
+			{ query: 'subscription { tick }' },
+			{ accept: 'text/event-stream' },
+		);
+		expect(sse.status).toBe(200);
+		await sse.body?.cancel();
+		// A two-entry batch.
+		expect(
+			(await post([{ query: '{ hello }' }, { query: '{ hello }' }])).status,
+		).toBe(200);
+		expect(factory).toHaveLength(4);
+		expect(factory.every((v) => v === undefined)).toBe(true);
+		expect(params.every((v) => v === undefined)).toBe(true);
+
+		// A forged `Upgrade` header over HTTP (ws off, so it is not refused).
+		const forged = createGraxia({
+			schema,
+			onUnexpected: false,
+			subscriptions: { ws: false },
+			plugins: [
+				definePlugin()({
+					name: 'forged',
+					onParams: ({ connectionParams }) => {
+						params.push(connectionParams);
+					},
+				}),
+			],
+		});
+		params.length = 0;
+		const fres = await forged.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					upgrade: 'websocket',
+				},
+				body: JSON.stringify({ query: '{ hello }' }),
+			}),
+		);
+		expect(fres.status).toBe(200);
+		expect(params).toEqual([undefined]);
+		await forged.dispose();
+
+		// The host's own `connectionParams` key is not the init's.
+		factory.length = 0;
+		const res = await graxia.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ query: '{ hello }' }),
+			}),
+			{ connectionParams: { token: 'host' } },
+		);
+		expect(res.status).toBe(200);
+		expect(factory).toEqual([undefined]);
 	});
 
 	test('onConnect returning an object is the ack payload; false closes 4403', async () => {

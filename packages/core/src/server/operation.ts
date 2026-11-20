@@ -27,6 +27,8 @@ export interface OperationInput {
 	state: RequestState;
 	params: GraphQLParams;
 	serverContext: Record<string, unknown>;
+	/** The `connection_init` payload, for an operation over a WebSocket. */
+	connectionParams?: Record<string, unknown> | undefined;
 	method: 'GET' | 'POST';
 	/** The client asked for `text/event-stream`: a subscription becomes a stream. */
 	sse?: boolean;
@@ -111,7 +113,14 @@ async function prepare(
 
 async function executeOperation(
 	rt: Runtime,
-	{ request, state, serverContext, sse, multipart }: OperationInput,
+	{
+		request,
+		state,
+		serverContext,
+		connectionParams,
+		sse,
+		multipart,
+	}: OperationInput,
 	{ params, document, operation }: Prepared,
 ): Promise<Outcome> {
 	// One context and one signal per operation, never shared with a batch sibling.
@@ -122,7 +131,13 @@ async function executeOperation(
 		stop.signal,
 	]);
 	const extra = rt.context
-		? await rt.context({ request, serverContext, params, signal })
+		? await rt.context({
+				request,
+				serverContext,
+				params,
+				signal,
+				...(connectionParams ? { connectionParams } : {}),
+			})
 		: {};
 	const ctx = await rt.engine.runners.onContext({
 		request,
