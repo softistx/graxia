@@ -2277,6 +2277,8 @@ Subpaths keep their name: `@graxia/core/agent` is now `@softistx/graxia/agent`, 
 
    This also renames the dependency keys in `package.json`, but keeps their old ranges.
 
+   Without ripgrep, list the files with `grep -rl --exclude-dir=node_modules --exclude-dir=.git --exclude=bun.lock "@graxia/" .` and pipe them to the same `xargs perl` line.
+
 2. Set the ranges to the new versions (the old ones match nothing). Use only the packages you have:
 
    ```sh
