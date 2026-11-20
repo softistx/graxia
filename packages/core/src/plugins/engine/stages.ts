@@ -1,5 +1,11 @@
-import type { DocumentNode, GraphQLError, ValidationRule } from 'graphql';
+import {
+	type DocumentNode,
+	execute,
+	type GraphQLError,
+	type ValidationRule,
+} from 'graphql';
 import { GraxiaConfigError } from '../../errors/config-error';
+import { stampRaisedByGraphql } from '../../errors/fixes';
 import { createStageRunner, type StageSpec } from '../stage';
 import type {
 	ExecuteFn,
@@ -118,11 +124,19 @@ const contextSpec: StageSpec<
 	},
 };
 
-const executeSpec: StageSpec<Base, ExecuteOut> = {
+const executeSpec: StageSpec<
+	Base & { fallback?: ExecuteFn | undefined },
+	ExecuteOut
+> = {
 	init: () => ({}),
 	payload: (input, out) => ({
-		...input,
+		request: input.request,
+		state: input.state,
+		args: (input as { args?: unknown }).args,
 		responseHeaders: input.state.responseHeaders,
+		get executeFn(): ExecuteFn {
+			return out.executeFn ?? input.fallback ?? stampedExecute;
+		},
 		setExecuteFn: (fn: ExecuteFn) => {
 			out.executeFn = fn;
 		},
@@ -131,6 +145,10 @@ const executeSpec: StageSpec<Base, ExecuteOut> = {
 		},
 	}),
 };
+
+/** Core's `execute`, for a stage run without a fallback (engine specs). */
+const stampedExecute: ExecuteFn = async (args) =>
+	stampRaisedByGraphql(await execute(args));
 
 const chunkSpec: StageSpec<Base & { chunk: unknown }, ChunkOut> = {
 	afterHooks: false,

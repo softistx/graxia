@@ -102,6 +102,31 @@ describe('parse cache', () => {
 		expect(calls).toBe(2);
 	});
 
+	test('a custom parse fn error with its own code is kept as written', async () => {
+		const own = new GraphQLError('No such persisted document', {
+			extensions: { code: 'PERSISTED_MISSING' },
+		});
+		const p = make([
+			{
+				name: 'p',
+				onParse: ({ setParseFn }) =>
+					setParseFn(() => {
+						throw own;
+					}),
+			},
+		]);
+		const r = await p.parse(input('{ a }'));
+		expect(r.errors?.[0]).toBe(own);
+		const plain = make([
+			{
+				name: 'q',
+				onParse: ({ setParseFn }) => setParseFn((s) => parse(`${s} {`)),
+			},
+		]);
+		const syntax = await plain.parse(input('{ a }'));
+		expect(syntax.errors?.[0]?.extensions['code']).toBe('GRAPHQL_PARSE_FAILED');
+	});
+
 	test('setDocument skips parsing', async () => {
 		const doc = parse('{ b }');
 		const plugin: GraxiaPlugin = {

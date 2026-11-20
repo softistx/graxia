@@ -125,6 +125,13 @@ export interface OnContextPayload<Ctx = Empty> extends BasePayload {
 /** `onExecute` / `onSubscribe`: swap the function or provide the result (skips it). */
 export interface OnExecutePayload<Ctx = Empty> extends BasePayload {
 	args: ExecutionArgs & { contextValue: Ctx };
+	/**
+	 * The function that runs if no later hook replaces it: the last one set by an
+	 * earlier hook, else graxia's own (`execute`, the incremental executor or
+	 * `subscribe`). Read it to wrap it: `setExecuteFn((a) => wrap(executeFn(a)))`.
+	 * Graphql's own errors stay recognised by masking when it runs.
+	 */
+	readonly executeFn: ExecuteFn;
 	setExecuteFn(fn: ExecuteFn): void;
 	setResult(result: ExecutionOutput): void;
 }
@@ -150,6 +157,8 @@ export interface OnResponsePayload extends BasePayload {
 
 /** Passed to `setup`. */
 export interface SetupApi {
+	/** The instance's schema, the one `createGraxia({ schema })` was given. */
+	schema: GraphQLSchema;
 	/** Names of every plugin, in execution order. */
 	plugins: readonly string[];
 	/** Subscription transports the instance has on (its resolved `subscriptions` options). */

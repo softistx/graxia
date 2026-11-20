@@ -36,6 +36,19 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/websocket.md`: Subscriptions over WebSocket
   - `node_modules/@graxia/core/docs/troubleshooting.md`: Troubleshooting
 
+## @graxia/envelop
+
+Run Envelop plugins inside graxia with one adapter (not published yet)
+
+- Not on npm yet.
+- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@graxia/core` `^0.5.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Entry points and their public names:
+  - `@graxia/envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
+- Docs, in the installed package:
+  - `node_modules/@graxia/envelop/README.md`: @graxia/envelop
+  - `node_modules/@graxia/envelop/docs/guide/envelop.md`: Running Envelop plugins
+  - `node_modules/@graxia/envelop/docs/troubleshooting.md`: Troubleshooting
+
 ## @graxia/graphiql
 
 GraphiQL 4 for graxia, bundled for a strict CSP (no CDN, no external URL) (0.1.1)

@@ -4,9 +4,9 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Envelop and migration** (M6) — run Envelop plugins unchanged, multipart
-  uploads, and a parity suite so applications on `@alxia/graphql` can move to
-  graxia.
+- **Envelop and migration** (M6) — multipart uploads and a parity suite so
+  applications on `@alxia/graphql` can move to graxia. Envelop plugins already
+  run (see Shipped).
 
 ## Not planned
 
@@ -48,3 +48,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
   with schema, query and mutation tools, an OAuth resource server and persisted operations as
   typed tools (`@graxia/mcp`), and an `llms.txt` and a Claude Code plugin index generated from the
   packages and their docs.
+- **Envelop plugins run unchanged** (M6, in `@graxia/envelop` 0.1.0 and `@graxia/core` 0.6.0) —
+  `fromEnvelop(plugins)` runs `@envelop/depth-limit`, `generic-auth`, `response-cache` and
+  `persisted-operations` on graphql 17, refuses what graxia cannot run with the fix, and core's
+  `SetupApi.schema`, `executeFn` and own-code parse errors support it
+  ([#28](https://github.com/softistx/graxia/issues/28)).

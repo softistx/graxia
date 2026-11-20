@@ -55,7 +55,12 @@ export async function runExecutionStage(
 	stageName: ExecutionStage,
 	fallback: ExecuteFn = execute,
 ): Promise<StageRun> {
-	const stage = await rt.engine.runners[stageName]({ request, state, args });
+	const stage = await rt.engine.runners[stageName]({
+		request,
+		state,
+		args,
+		fallback: async (a) => stampRaisedByGraphql(await fallback(a)),
+	});
 	let result: ExecutionOutput | undefined;
 	let thrown: unknown;
 	let aborted = false;

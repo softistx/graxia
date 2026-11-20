@@ -130,6 +130,14 @@ export function parseWithLimits(
 		) {
 			return { errors: [tooMany(limits.tokens)] };
 		}
+		// A GraphQLError a custom parse function raised with its own code (an
+		// Envelop plugin, say) is the client's answer as written; graphql's
+		// syntax errors carry no code and are labelled below.
+		if (
+			error instanceof GraphQLError &&
+			typeof error.extensions['code'] === 'string'
+		)
+			return { errors: [error] };
 		if (error instanceof GraphQLError) {
 			return {
 				errors: [

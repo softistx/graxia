@@ -100,12 +100,12 @@ export interface PluginRunners {
 		void
 	>;
 	onExecute: StageRunner<
-		Base & { args: ExecutionArgs },
+		Base & { args: ExecutionArgs; fallback?: ExecuteFn },
 		ExecuteOut,
 		OnExecuteDone
 	>;
 	onSubscribe: StageRunner<
-		Base & { args: ExecutionArgs },
+		Base & { args: ExecutionArgs; fallback?: ExecuteFn },
 		ExecuteOut,
 		OnExecuteDone
 	>;
