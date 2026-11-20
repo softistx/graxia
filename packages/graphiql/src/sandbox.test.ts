@@ -234,3 +234,34 @@ describe('with graphiql()', () => {
 		);
 	});
 });
+
+describe('enabled as a function', () => {
+	test('true serves, false falls through, the Request is passed', async () => {
+		const seen: Request[] = [];
+		let open = true;
+		const app = host(
+			createApolloSandbox(
+				{
+					enabled: (request) => {
+						seen.push(request);
+						return open;
+					},
+				},
+				fakeAssets,
+			),
+		);
+		expect((await app.fetch(browser())).status).toBe(200);
+		expect(seen[0]).toBeInstanceOf(Request);
+		open = false;
+		expect((await app.fetch(browser())).status).toBe(403);
+		expect(
+			(await app.fetch(browser('?apollo-sandbox-asset=sandbox-abc.js'))).status,
+		).toBe(403);
+	});
+
+	test('another value is a config error', () => {
+		expect(() =>
+			createApolloSandbox({ enabled: 1 as never }, fakeAssets),
+		).toThrow(/boolean or a function/);
+	});
+});
