@@ -95,7 +95,7 @@ The server answers but your backend shows nothing. In order:
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
 6. `operationSpans: false` with a host span active: graxia's `graphql.request` and operation spans
-   are absent by design; see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
+   are absent by design (the operation's attributes go on the host's span for a single HTTP operation only, and `graphql.document` with `document: true`); see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
 
 ## A resolver span has no child spans of mine
 

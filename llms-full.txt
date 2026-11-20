@@ -18,7 +18,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
-- `@softistx/telemetry` `^0.4.1` is an optional peer: with it installed graxia emits spans,
+- `@softistx/telemetry` `^0.5.0` is an optional peer: with it installed graxia emits spans,
   without it tracing is off (see [Telemetry](#telemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
@@ -256,7 +256,10 @@ Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/tel
 OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
 validation and operation, and the original exception of an unexpected error. Without the peer,
 nothing is wrapped and nothing runs. A host that already spans the request sets
-`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans.
+`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans: the
+operation's type, name, document id and error count then go on the host's span for a single HTTP
+operation (not for a batch entry, a WebSocket operation or the end of a stream), and `document: true`
+puts the document source on that span, which the host may export.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`
@@ -3508,13 +3511,21 @@ With `operationSpans: false` and a span active when the request arrives (HTTP an
   children of the host's active span. A WebSocket message is handled outside the host's context, so
   graxia keeps the host's `traceparent` from the request (the upgrade, for a socket) and the socket's spans continue
   that trace, under the host's upgrade span;
-- the host's span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`,
-  `graphql.error.count` and, with `document: true`, `graphql.document`. graxia only writes
-  attributes on it (through `activeSpan()` of `@softistx/telemetry` 0.5): it never renames, fails or
-  ends the host's span;
+- the validate span carries `graphql.operation.type`, `graphql.operation.name`, `graxia.document.id`
+  and, with `document: true`, `graphql.document`, as before;
+- **for a single, non-batched HTTP operation, the host's span carries them too**, plus
+  `graphql.error.count` at the operation's end (through `activeSpan()` of `@softistx/telemetry` 0.5,
+  while the request is live). `graphql.error.count` therefore appears on both spans. graxia only
+  writes attributes there: it never renames, fails or ends the host's span;
+- **nothing is written to the host's span** for a batch entry, a WebSocket operation or the end of a
+  streamed (SSE, incremental) operation, and `graxia.events` never is: those keep the step spans
+  and, for a socket, the continuation of the host's trace;
 - the original exception behind each masked error is a failed `graphql.error` span, a child of the
   host's active span, unless a resolver span already recorded it; a timeout or abort makes none;
 - `graxia.events` and the request's attributes (`http.*`, `graxia.refusal.code`) are not recorded.
+
+> `document: true` then puts the document source (which may hold literals) on the host's span too,
+> and the host may export it. Leave it off unless the host's exporter is trusted with it.
 
 This needs `@softistx/telemetry` 0.5 or later (`activeSpan()`).
 
@@ -4907,7 +4918,7 @@ The server answers but your backend shows nothing. In order:
 4. `telemetry: false` is set.
 5. A request outside the GraphQL path (`path`) is not traced.
 6. `operationSpans: false` with a host span active: graxia's `graphql.request` and operation spans
-   are absent by design; see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
+   are absent by design (the operation's attributes go on the host's span for a single HTTP operation only, and `graphql.document` with `document: true`); see [the host already spans the operation](./guide/telemetry.md#the-host-already-spans-the-operation).
 
 ## A resolver span has no child spans of mine
 

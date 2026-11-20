@@ -12,7 +12,7 @@ adapter layer. Pass a schema, get a `fetch` handler that follows the
 
 - [Bun](https://bun.sh) 1.4.4 or later (the `engines` field). No Node or Deno adapter.
 - `graphql` `^17.1.0`, as a peer dependency (17.1.0 is the version the suite runs against).
-- `@softistx/telemetry` `^0.4.1` is an optional peer: with it installed graxia emits spans,
+- `@softistx/telemetry` `^0.5.0` is an optional peer: with it installed graxia emits spans,
   without it tracing is off (see [Telemetry](#telemetry)).
 - `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your
   `tsconfig.json`. `nodenext` resolves the published declarations too (the release build checks
@@ -250,7 +250,10 @@ Install `@softistx/telemetry` (an optional peer) and an exporter (`@softistx/tel
 OTLP backend), then `createTelemetry(...).install()`: graxia emits spans for each request, parse,
 validation and operation, and the original exception of an unexpected error. Without the peer,
 nothing is wrapped and nothing runs. A host that already spans the request sets
-`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans.
+`telemetry: { operationSpans: false }` to keep only graxia's parse, validate and resolver spans: the
+operation's type, name, document id and error count then go on the host's span for a single HTTP
+operation (not for a batch entry, a WebSocket operation or the end of a stream), and `document: true`
+puts the document source on that span, which the host may export.
 
 ```ts
 createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: false`

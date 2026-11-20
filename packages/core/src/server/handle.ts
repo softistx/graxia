@@ -5,6 +5,7 @@ import { sseFormat } from '../http/sse';
 import type { StreamFormat } from '../http/stream';
 import type { StateBag } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
+import { batchedKey } from '../telemetry/spans';
 import { resultKey } from './execute-state';
 import { runOperation } from './operation';
 import type { Outcome } from './outcome';
@@ -105,6 +106,7 @@ async function runBatch(
 	const results: unknown[] = [];
 	for (const params of entries) {
 		const state = call.state.fork();
+		state.set(batchedKey, true);
 		const outcome = await runOperation(rt, { ...call, state, params });
 		if (outcome.kind === 'response') return outcome.response;
 		if (outcome.kind === 'unexpected') {

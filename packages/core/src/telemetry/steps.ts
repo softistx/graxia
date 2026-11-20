@@ -7,6 +7,7 @@ import { settleOutcome } from './operation';
 import { bindResolvers } from './resolvers';
 import {
 	ATTR,
+	batchedKey,
 	documentIdOf,
 	type Env,
 	fail,
@@ -38,13 +39,17 @@ export async function traceOperation(
 	const live =
 		host === undefined
 			? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
-			: hostSpan(env, host);
+			: hostSpan(
+					env,
+					host.scope,
+					() => !host.upgrade && !state.get(batchedKey),
+				);
 	const op: Operation = {
 		live,
 		errors: 0,
 		events: 0,
 		ended: false,
-		...(host === undefined ? {} : { hosted: true as const }),
+		...(host === undefined ? {} : { standIn: {} }),
 	};
 	state.set(operationKey, op);
 	const inContext = <T>(work: () => T) => live.run(work);
@@ -72,11 +77,21 @@ export function describeOperation(
 	const op = state.get(operationKey);
 	if (!op) return;
 	const { operation, source, params } = info;
+	if (op.standIn) {
+		// The host's span is never renamed. The validate span carries the facts, and the host's too when `op.live` writes to it.
+		const facts = op.standIn;
+		facts[ATTR.operationType] = operation.operation;
+		if (operation.name) facts[ATTR.operationName] = operation.name.value;
+		if (env.document) facts[ATTR.document] = source;
+		const id = documentIdOf(params);
+		if (id) facts[ATTR.documentId] = id;
+		for (const [key, value] of Object.entries(facts))
+			op.live.attribute(key, value);
+		return;
+	}
 	const name = operation.name?.value;
 	const span = op.live;
-	// The host's span is never renamed.
-	if (!op.hosted)
-		span.name = name ? `${operation.operation} ${name}` : operation.operation;
+	span.name = name ? `${operation.operation} ${name}` : operation.operation;
 	span.attribute(ATTR.operationType, operation.operation);
 	if (name) span.attribute(ATTR.operationName, name);
 	if (env.document) span.attribute(ATTR.document, source);
@@ -99,6 +114,12 @@ export async function traceStep<R extends StepLike>(
 		{ kind: 'internal' },
 	);
 	try {
+		// Set first, so a validate step that throws keeps them.
+		if (name === 'validate')
+			for (const [key, value] of Object.entries(
+				state.get(operationKey)?.standIn ?? {},
+			))
+				live.attribute(key, value);
 		const result = await run();
 		if (result.cacheHit !== undefined)
 			live.attribute(ATTR.cacheHit, result.cacheHit);

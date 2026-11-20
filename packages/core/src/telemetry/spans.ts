@@ -68,7 +68,14 @@ export const operationKey = createStateKey<Operation>(
 export const quietKey = createStateKey<true>('graxia.telemetry.quiet');
 
 /** @internal The host's active span at the request (`operationSpans: false`): the operation's attributes go on it, and spans started with no active span (a socket's) continue its trace. */
-export const hostKey = createStateKey<HostScope>('graxia.telemetry.host');
+export const hostKey = createStateKey<{
+	scope: HostScope;
+	/** A WebSocket's upgrade: its operations write nothing to the host span. */
+	upgrade: boolean;
+}>('graxia.telemetry.host');
+
+/** @internal Set on the state of each entry of a batch: a batch writes nothing to the host span. */
+export const batchedKey = createStateKey<true>('graxia.telemetry.batched');
 
 /** @internal Causes a resolver span already recorded, so the host stand-in does not record them again. */
 export const recorded = new WeakSet<object>();
@@ -82,8 +89,8 @@ export interface Operation {
 	errors: number;
 	events: number;
 	ended: boolean;
-	/** Set when the operation has no span of its own (`operationSpans: false`): `live` is the host's span, never renamed or ended. */
-	hosted?: true;
+	/** Set when the operation has no span of its own (`operationSpans: false`): what its validate span carries (the host's span gets them too, for a single HTTP operation). `live` is a stand-in for the host's span, never renamed or ended. */
+	standIn?: Record<string, string | number>;
 }
 
 /** Starts a span under `parent` (else under the active one, else a new trace). */
