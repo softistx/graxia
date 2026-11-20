@@ -6,8 +6,8 @@ subscriptions over server-sent events and WebSocket, `@defer` and `@stream`, a t
 key-value cache contract, in-process `execute` and a test client. `@graxia/redis` swaps the PubSub
 and the cache for Redis and adds a shared field rate limit. Trusted documents (manifests, `documentId`, automatic persisted queries, strict mode) are built; telemetry runs on `@softistx/telemetry` (optional peer), and `@graxia/mcp` serves it to agents over MCP (not published yet).
 
-> Status: `@graxia/core` and `@graxia/redis` are public on npm, and `@graxia/graphiql` goes public with
-> core 0.4; the other packages are not published yet. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
+> Status: `@graxia/core`, `@graxia/redis` and `@graxia/graphiql` are public on npm; `@graxia/mcp` and
+> `@graxia/envelop` are not published yet. See the [roadmap](docs/roadmap.md) and the [plan](docs/plan.md).
 
 | package                                 | what it is                                                     |
 | --------------------------------------- | -------------------------------------------------------------- |
@@ -16,5 +16,7 @@ and the cache for Redis and adds a shared field rate limit. Trusted documents (m
 | [`@graxia/graphiql`](packages/graphiql) | GraphiQL and Apollo Sandbox                                    |
 | [`@graxia/mcp`](packages/mcp)           | MCP server (Streamable HTTP, schema, query and mutate tools)   |
 | [`@graxia/envelop`](packages/envelop)   | Envelop plugin adapter                                         |
+
+For agents: [`llms.txt`](llms.txt) indexes the docs of every package, [`llms-full.txt`](llms-full.txt) holds them in full.
 
 Requires Bun 1.4 and `graphql@^17.1`. MIT licensed.
