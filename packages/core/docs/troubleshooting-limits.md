@@ -152,6 +152,10 @@ createGraxia({ schema, batching: true }); // or { limit: 25 }
 
 400. The body does not parse. Send `{ "query": "..." }`.
 
+## Must provide a query string. (`MISSING_QUERY`)
+
+400. The request has no `query` string (an empty one counts), and no `documentId` that resolves to one. Send `{ "query": "..." }`, or a `documentId` when trusted documents are on.
+
 ## Telling refusals apart
 
 Each of these refusals, and the 404, 405, 406 and batch ones, has a stable `extensions.code`: see

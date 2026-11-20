@@ -178,4 +178,10 @@ describe('HTTP-level refusals carry a stable extensions.code', () => {
 			void server.stop(true);
 		}
 	});
+	test('400 MISSING_QUERY', async () => {
+		const res = await post('{}');
+		expect(await refused(res, 400, 'Must provide a query string.')).toBe(
+			'MISSING_QUERY',
+		);
+	});
 });

@@ -64,6 +64,8 @@ export interface GraxiaErrorCodes {
 	INVALID_JSON: true;
 	/** Emitted by core: the request is not `{ query, variables?, operationName? }` shaped (400). */
 	INVALID_PARAMS: true;
+	/** Emitted by core: the request carries no `query` (and no resolvable `documentId`) (400). */
+	MISSING_QUERY: true;
 	/** Emitted by core: a batch that is off, empty, over its limit or holds a bad entry (400). */
 	INVALID_BATCH: true;
 	/** Emitted by core: a batch asked over `text/event-stream` or `multipart/mixed` (400). */

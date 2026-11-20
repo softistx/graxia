@@ -39,18 +39,18 @@ describe('limits.bodyBytes', () => {
 			JSON.stringify({ query: `{ hello }${' '.repeat(200)}` }),
 		);
 		expect(res.status).toBe(413);
-		expect(JSON.stringify(await res.json())).toContain(
-			'The request body is too large.',
-		);
+		const body = JSON.stringify(await res.json());
+		expect(body).toContain('The request body is too large.');
+		expect(body).toContain('"code":"BODY_TOO_LARGE"');
 	});
 	test('(b) a chunked body growing past the limit answers 413', async () => {
 		const piece = new TextEncoder().encode(' '.repeat(40));
 		const head = new TextEncoder().encode('{"query":"{ hello }');
 		const res = await send(chunks([head, piece, piece, piece, piece]));
 		expect(res.status).toBe(413);
-		expect(JSON.stringify(await res.json())).toContain(
-			'The request body is too large.',
-		);
+		const body = JSON.stringify(await res.json());
+		expect(body).toContain('The request body is too large.');
+		expect(body).toContain('"code":"BODY_TOO_LARGE"');
 	});
 	test('(c) a body stream that errors mid-read answers 400', async () => {
 		const body = new ReadableStream<Uint8Array>({
@@ -61,8 +61,8 @@ describe('limits.bodyBytes', () => {
 		});
 		const res = await send(body);
 		expect(res.status).toBe(400);
-		expect(JSON.stringify(await res.json())).toContain(
-			'The request body could not be read.',
-		);
+		const text = JSON.stringify(await res.json());
+		expect(text).toContain('The request body could not be read.');
+		expect(text).toContain('"code":"BODY_UNREADABLE"');
 	});
 });

@@ -149,6 +149,7 @@ client or a test matches the code, never the message. The messages are unchanged
 | `BODY_UNREADABLE`        | 400    | `The request body could not be read.` / `The request body is not valid UTF-8.`        |
 | `INVALID_JSON`           | 400    | `The request body is not valid JSON.`                                                 |
 | `INVALID_PARAMS`         | 400    | the body, URL or multipart `operations` is not `{ query, variables?, … }`             |
+| `MISSING_QUERY`          | 400    | `Must provide a query string.`                                                        |
 | `INVALID_BATCH`          | 400    | a batch that is off, empty, over its limit or holds a bad entry                       |
 | `BATCH_NOT_STREAMABLE`   | 400    | `Batched operations cannot be sent over text/event-stream.` (or `multipart/mixed`)    |
 | `PATH_NOT_FOUND`         | 404    | `Not found.`                                                                          |
