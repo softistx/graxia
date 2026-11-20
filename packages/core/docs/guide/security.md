@@ -82,7 +82,7 @@ definePlugin({
 browser's and passes. A request is same-origin when `Origin` equals the origin of the request URL
 (behind a proxy, graxia must see the public URL, or list that origin) or is in `allowedOrigins`.
 `Origin: null` is always refused. `Sec-Fetch-Site: cross-site` or `same-site` with no `Origin` counts as a
-cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`.
+cross-origin request (it fails closed); `same-origin` and `none` pass. A refusal is 403 `FORBIDDEN_ORIGIN`, unless `onRefused` answers it.
 
 | `crossOrigin`      | A request from another origin                                               |
 | ------------------ | --------------------------------------------------------------------------- |
@@ -103,6 +103,38 @@ createGraxia({
 ```
 
 Each entry of `allowedOrigins` is an origin: scheme, host and optional port, no path.
+
+### Answering a refused origin yourself
+
+`onRefused(request, { reason, websocket })` lets you answer a refused origin with your own
+`Response` (it may be async) in place of the 403 `FORBIDDEN_ORIGIN`. It runs for every refusal,
+never for an allowed request.
+
+- `reason` is `'cross-origin'` (an `Origin` that is not the server's own or allowed),
+  `'null-origin'` (`Origin: null`) or `'no-origin'` (there is no `Origin` header and
+  `Sec-Fetch-Site` is `cross-site` or `same-site`).
+- `websocket` is `true` for a WebSocket upgrade, `false` for an HTTP request. The upgrade's origin
+  check is always on; `onRefused` is read only from a `sameOrigin` object, so with `sameOrigin`
+  off it does not apply to it.
+- Return `undefined` (or anything that is not a `Response`) to keep the default 403: it fails closed.
+- A `Response` with no `cache-control` header gets `cache-control: no-store`; one that sets it keeps it.
+- A throw or a rejection is an unexpected failure: a 500, reported once to `onUnexpected`.
+
+```ts
+createGraxia({
+	schema,
+	csrf: {
+		sameOrigin: {
+			allowedOrigins: ['https://app.example.com'],
+			// hide the endpoint from other sites; defer to the 403 for the rest
+			onRefused: (request, { reason, websocket }) =>
+				reason === 'cross-origin' && !websocket
+					? new Response('Not found', { status: 404 })
+					: undefined,
+		},
+	},
+});
+```
 
 ## WebSocket origin
 

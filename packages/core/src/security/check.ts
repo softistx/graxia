@@ -10,7 +10,7 @@ export function checkRequest(
 	rt: Runtime,
 	request: Request,
 	csrfExempt = false,
-): Response | undefined {
+): Response | Promise<Response> | undefined {
 	const { csrf } = rt.options;
 	if (csrf === false) return undefined;
 	return (
@@ -35,7 +35,7 @@ export function exemptRefusal(
 export function checkUpgrade(
 	rt: Runtime,
 	request: Request,
-): Response | undefined {
+): Response | Promise<Response> | undefined {
 	const { csrf } = rt.options;
 	return csrf === false ? undefined : checkOrigin(request, csrf, true);
 }

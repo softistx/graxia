@@ -50,26 +50,26 @@ example adds a typed host context, headers and cookies, CORS and a graceful shut
 
 ## Options
 
-| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                           |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`                                 | `path` (the full path, or `false` for any path)                                                                                                          |
-| `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                      |
-| Yoga `context`                         | `context: ({ request, serverContext, signal }: ContextInit<Host>) => …`; the host passes `fetch(request, host)`                                          |
-| `maxTokens`, `maxNesting`              | `limits: { tokens, nesting }` ([Limits and caches](./limits-and-caches.md))                                                                              |
-| `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                      |
-| `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                  |
-| `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0` |
-| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
-| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
-| Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
-| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                             |
-| `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
-| `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
-| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |
-| `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin } }` ([Security](./security.md))                                                              |
-| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                           |
-| `cors`                                 | none, see [CORS](#cors)                                                                                                                                  |
-| `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                    |
+| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                                 | `path` (the full path, or `false` for any path)                                                                                                                                                                  |
+| `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                                                                              |
+| Yoga `context`                         | `context: ({ request, serverContext, signal }: ContextInit<Host>) => …`; the host passes `fetch(request, host)`                                                                                                  |
+| `maxTokens`, `maxNesting`              | `limits: { tokens, nesting }` ([Limits and caches](./limits-and-caches.md))                                                                                                                                      |
+| `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                                                                              |
+| `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                                                                          |
+| `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0`                                                         |
+| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                                                                             |
+| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                                                                         |
+| Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                                                                                |
+| Yoga `batching`                        | `batching: true \| { limit }` (`true` is 10)                                                                                                                                                                     |
+| `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                                                                                       |
+| `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                                                                                      |
+| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                                                                         |
+| `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin, onRefused } }`; alxia's `refuse` becomes `onRefused(request, { reason, websocket })` ([Security](./security.md#answering-a-refused-origin-yourself)) |
+| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                                                                                   |
+| `cors`                                 | none, see [CORS](#cors)                                                                                                                                                                                          |
+| `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                                                                            |
 
 ## A host's own body limit
 
