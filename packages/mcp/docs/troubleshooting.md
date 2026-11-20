@@ -98,6 +98,14 @@ Code `INCREMENTAL_NOT_SUPPORTED`. Remove the directive: the tool returns one com
 Code `GRAPHQL_PARSE_FAILED`, raised by the MCP server before `graxia.execute`: correct the syntax at the position the error gives, or
 raise `limits.tokens` on `createGraxia` for a very large document.
 
+## `Maximum call stack size exceeded` (a document nested too deeply)
+
+Code `GRAPHQL_PARSE_FAILED`, fix `Flatten the operation.`: the document is nested so deeply that graphql's parser overflows its stack. The MCP server refuses it (fail closed) before `graxia.execute`. Flatten the operation, for example with fragments. graxia's own `limits.nesting` (30 by default) refuses most such documents earlier with `Document is nested more than N levels deep. Parsing aborted.` (next entry).
+
+## `Document is nested more than N levels deep. Parsing aborted.`
+
+Code `GRAPHQL_PARSE_FAILED`, fix `Flatten the operation or raise limits.nesting.`: graxia's own `limits.nesting` (30 levels by default, set on `createGraxia`) refused the document. Flatten the operation, for example with fragments, or raise `limits.nesting` when the schema really needs deeper selections.
+
 ## `Tool graphql_mutate not found`
 
 It is listed only with `mutations: true` (and, with `auth`, for a token with the write scope).
