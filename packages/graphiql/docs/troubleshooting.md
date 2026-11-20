@@ -37,6 +37,21 @@ GraphiQL reads the schema through introspection. Core turns it off in production
 `NODE_ENV=production` locally, serves nothing; the request falls through to the endpoint's normal
 answer.
 
+The reverse also holds: an **unset `NODE_ENV` serves the page**, since it is not `production`. A host
+whose dev flag is its own keeps the page off outside dev with a function, decided per request:
+
+```ts
+graphiql({ enabled: () => myDevFlag });
+```
+
+Only `true` serves: an `async` function (a `Promise`) keeps the page closed. A function that throws
+answers 403 (no CSRF header) or a masked 500 (with it) and is reported through `onUnexpected`.
+
+### `enabled must be a boolean or a function`
+
+A `GraxiaConfigError` at startup: `enabled` was given something else (a string such as `'false'`, a
+number). Write `enabled: true`, `enabled: false` or `enabled: () => myDevFlag`.
+
 ## Apollo Sandbox
 
 ### The Sandbox page is blank

@@ -4,9 +4,9 @@ import {
 	assertSingleExplorer,
 	explorerName,
 	GRAPHIQL,
-	isEnabled,
 	isPageRequest,
 	pageResponse,
+	resolveEnabled,
 } from './explorer';
 import {
 	clientConfig,
@@ -52,8 +52,8 @@ export function createGraphiQL(
 	options: GraphiQLOptions,
 	source: AssetSource,
 ): GraxiaPlugin {
-	const enabled = isEnabled(options.enabled);
-	if (!enabled) return definePlugin({ name: explorerName(GRAPHIQL, false) });
+	const gate = resolveEnabled(options.enabled);
+	if (!gate.on) return definePlugin({ name: explorerName(GRAPHIQL, false) });
 	let detected: Subscriptions = 'sse';
 	return definePlugin({
 		name: GRAPHIQL,
@@ -64,10 +64,11 @@ export function createGraphiQL(
 		// A browser navigation and the page's own script and style loads carry
 		// no CSRF header: only these GETs are exempt, and `onRequest` answers
 		// them (core refuses an exempt GET that no plugin answers).
-		csrfExempt: (request) => classify(request) !== undefined,
+		csrfExempt: (request) =>
+			classify(request) !== undefined && gate.allows(request),
 		async onRequest({ request, respond }) {
 			const kind = classify(request);
-			if (!kind) return;
+			if (!kind || !gate.allows(request)) return;
 			if ('asset' in kind)
 				return respond(
 					await assetResponse(

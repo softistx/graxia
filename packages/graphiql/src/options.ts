@@ -4,11 +4,13 @@ export type Subscriptions = 'ws' | 'sse' | false;
 /** Options of {@link graphiql}. */
 export interface GraphiQLOptions {
 	/**
-	 * Serve the page. Default: `process.env.NODE_ENV !== 'production'`. `false`
-	 * leaves the plugin without hooks. `true` in production is allowed and is a
-	 * risk (see the guide).
+	 * Serve the page. Default: `process.env.NODE_ENV !== 'production'` (an unset
+	 * `NODE_ENV` serves it). `false` leaves the plugin without hooks. A function
+	 * `(request) => boolean` decides for each request the explorer would answer;
+	 * `false` falls through as a disabled explorer does. `true` in production is
+	 * a risk (see the guide).
 	 */
-	enabled?: boolean;
+	enabled?: boolean | ((request: Request) => boolean);
 	/** The page title. Default `"GraphiQL"`. */
 	title?: string;
 	/** The query the editor starts with. */

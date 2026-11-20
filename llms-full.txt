@@ -934,6 +934,10 @@ An aborted operation answers `{"errors":[{"message":"The operation was aborted."
 with status 499 (the client's request was aborted) or 503 (otherwise: the server is shutting down). It is not an unexpected
 failure: `onUnexpected` is not called.
 
+The same holds for `graxia.execute({ signal })`: an aborted signal, before the call or while a
+resolver runs, resolves to that error result (no rejection, no `data`), and `context.signal` aborts
+([Testing](./testing.md#aborting-with-signal)).
+
 ## `getContext()` for code far below a resolver
 
 The resolver's third argument is the way to reach the context. When a helper or a logger is called
@@ -1949,6 +1953,10 @@ development and off in production, with a CSP that names no external source. Apo
 `apolloSandbox()` plugin, and `sandboxContentSecurityPolicy` is the exact policy it needs. There is
 no `renderSandbox` hook: pass the plugin.
 
+The default is `NODE_ENV !== 'production'`, so an **unset `NODE_ENV` serves the page**. A host that
+follows its own dev flag moves over with a function, decided per request:
+`graphiql({ enabled: () => myDevFlag })`.
+
 ## CORS
 
 graxia has no `cors` option: it never sets an `access-control-*` header and answers `OPTIONS` with
@@ -1974,6 +1982,13 @@ process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
 `dispose()` stops only the servers `graxia.serve()` started; a host that owns `Bun.serve` stops it
 itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
 503 first.
+
+## Aborting an in-process execute
+
+Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` resolves instead, to
+`{ errors: [{ extensions: { code: 'OPERATION_ABORTED' } }] }`, like the HTTP answer. A test that
+expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
+([Testing](./testing.md#aborting-with-signal)).
 
 ## graphql 17
 
@@ -3497,6 +3512,24 @@ await graxia.execute({ document: Greet, variables: { name: 1 } });
 `execute` is exempt from the CSRF and origin checks, and from the `strict` trusted-documents
 refusal (`PERSISTED_QUERY_ONLY`): a document you pass in process is yours. The operation limits
 still apply. To test the refusal itself, go through `fetch` or the test client.
+
+### Aborting with `signal`
+
+An aborted `signal` never makes `execute` reject: it resolves to a result with one error,
+`extensions.code` `OPERATION_ABORTED` (the same answer HTTP gives, status 499), and no `data`. This
+holds when the signal is already aborted before the call (no resolver runs) and when it aborts while
+a resolver runs. The resolver's `context.signal` aborts too, and `execute` does not wait for a
+resolver that ignores it. `onUnexpected` is not called.
+
+```ts
+const result = await graxia.execute({
+	document: '{ report }',
+	signal: AbortSignal.timeout(1_000),
+});
+if (result.errors?.[0]?.extensions?.code === 'OPERATION_ABORTED') {
+	// timed out or cancelled
+}
+```
 
 ### What it does not do
 
@@ -5497,16 +5530,25 @@ other request; a same-origin navigation passes.
 
 > **`headers` are rendered into the HTML**: put no secret in them.
 
+An unset `NODE_ENV` is not `production`, so the page is served. A host with its own dev flag decides
+per request (also on `apolloSandbox()`); only `true` serves, and any other value than a boolean or a
+function throws a `GraxiaConfigError` at startup:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+graphiql({ enabled: () => myDevFlag });
+```
+
 ## Options
 
-| Option                 | Default                     | What                                                                                            |
-| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
-| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk.                           |
-| `title`                | `"GraphiQL"`                | The page title.                                                                                 |
-| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                               |
-| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                               |
-| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                       |
-| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one. |
+| Option                 | Default                     | What                                                                                                                                                              |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`              | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. A function `(request) => boolean` decides per request. `true` in production is a risk. An unset `NODE_ENV` serves the page. |
+| `title`                | `"GraphiQL"`                | The page title.                                                                                                                                                   |
+| `defaultQuery`         | GraphiQL's own              | The query the editor starts with.                                                                                                                                 |
+| `headers`              | none                        | Initial content of the headers editor (an object, shown as JSON).                                                                                                 |
+| `shouldPersistHeaders` | `false`                     | Keep the headers editor in local storage.                                                                                                                         |
+| `subscriptions`        | detected                    | `'ws'` if the instance's WebSocket is on, else `'sse'`, else `false`. Set it only to force one.                                                                   |
 
 ## Content security policy
 
@@ -5579,14 +5621,14 @@ apolloSandbox({
 });
 ```
 
-| Option                        | Default                     | What                                                                  |
-| ----------------------------- | --------------------------- | --------------------------------------------------------------------- |
-| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks, nothing is served. `true` in production is a risk. |
-| `title`                       | `"Apollo Sandbox"`          | The page title.                                                       |
-| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                 |
-| `initialState.variables`      | none                        | The variables (an object).                                            |
-| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                         |
-| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                             |
+| Option                        | Default                     | What                                                                                                      |
+| ----------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `enabled`                     | `NODE_ENV !== 'production'` | `false`: no hooks. A function `(request) => boolean` decides per request. `true` in production is a risk. |
+| `title`                       | `"Apollo Sandbox"`          | The page title.                                                                                           |
+| `initialState.document`       | Sandbox's own               | The operation the editor starts with.                                                                     |
+| `initialState.variables`      | none                        | The variables (an object).                                                                                |
+| `initialState.headers`        | none                        | The request headers (rendered into the HTML).                                                             |
+| `initialState.includeCookies` | `false`                     | Send cookies with the Sandbox's requests.                                                                 |
 
 The endpoint shown in the Sandbox is the page's own URL without its query, and it is not editable.
 Apollo's usage telemetry is switched off (`runTelemetry: false`).
@@ -5672,6 +5714,28 @@ plugins: [
 	apolloSandbox({ enabled: process.env['EXPLORER'] === 'sandbox' }),
 ];
 ```
+
+## Deciding per request
+
+`enabled` also takes a function `(request: Request) => boolean`. It is called for each `GET` the
+explorer would answer (the page and its assets), and `false` falls through to the endpoint's normal
+answer, exactly as `enabled: false` does. Use it when your dev flag is not `NODE_ENV`:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+
+createGraxia({
+	schema,
+	plugins: [apolloSandbox({ enabled: () => myDevFlag })],
+});
+// or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
+```
+
+The function must return `true` to serve: anything else, a `Promise` from an `async` function included, keeps the page closed. A function that throws is an unexpected error: the request answers 403 (no CSRF header) or a masked 500 (with it), and core reports it through `onUnexpected`.
+
+The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
+that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
+enabled for the "two explorers" check, so disable the other one with `false`.
 
 ## Enabling it in production
 
@@ -5788,6 +5852,25 @@ Asset links are relative (`?graphiql-asset=…`), so a sub-path works as long as
 query string and does not rewrite the response's CSP. A proxy that sets its own
 `Content-Security-Policy` can block the page (see [troubleshooting](../troubleshooting.md)).
 
+## Deciding per request
+
+`enabled` also takes a function `(request: Request) => boolean`. It is called for each `GET` the
+explorer would answer (the page and its assets), and `false` falls through to the endpoint's normal
+answer, exactly as `enabled: false` does. Use it when your dev flag is not `NODE_ENV`:
+
+```ts
+const myDevFlag = Bun.env['APP_ENV'] === 'dev';
+
+createGraxia({ schema, plugins: [graphiql({ enabled: () => myDevFlag })] });
+// or per caller: enabled: (request) => request.headers.get('x-staff') === '1'
+```
+
+The function must return `true` to serve: anything else, a `Promise` from an `async` function included, keeps the page closed. A function that throws is an unexpected error: the request answers 403 (no CSRF header) or a masked 500 (with it), and core reports it through `onUnexpected`.
+
+The default stays `NODE_ENV !== 'production'`, so **an unset `NODE_ENV` serves the page**. Any value
+that is neither a boolean nor a function throws a `GraxiaConfigError` at startup. A function counts as
+enabled for the "two explorers" check, so disable the other one with `false`.
+
 ## Enabling it in production
 
 `enabled: true` serves the page whatever `NODE_ENV` is. It is a risk: the page itself is harmless,
@@ -5836,6 +5919,21 @@ GraphiQL reads the schema through introspection. Core turns it off in production
 `enabled` defaults to `NODE_ENV !== 'production'`. A production process, or a host that sets
 `NODE_ENV=production` locally, serves nothing; the request falls through to the endpoint's normal
 answer.
+
+The reverse also holds: an **unset `NODE_ENV` serves the page**, since it is not `production`. A host
+whose dev flag is its own keeps the page off outside dev with a function, decided per request:
+
+```ts
+graphiql({ enabled: () => myDevFlag });
+```
+
+Only `true` serves: an `async` function (a `Promise`) keeps the page closed. A function that throws
+answers 403 (no CSRF header) or a masked 500 (with it) and is reported through `onUnexpected`.
+
+### `enabled must be a boolean or a function`
+
+A `GraxiaConfigError` at startup: `enabled` was given something else (a string such as `'false'`, a
+number). Write `enabled: true`, `enabled: false` or `enabled: () => myDevFlag`.
 
 ## Apollo Sandbox
 
