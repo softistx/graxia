@@ -477,3 +477,36 @@ describe('cancellation', () => {
 		expect(pubsub.subscriberCount('tick')).toBe(0);
 	});
 });
+
+describe('a source that throws', () => {
+	const seen = () => {
+		const chunks: { errors?: readonly { message: string }[] }[] = [];
+		const plugin = definePlugin({
+			name: 'watch',
+			onResultChunk: ({ chunk }) => {
+				chunks.push(chunk as (typeof chunks)[number]);
+			},
+		});
+		return { chunks, plugin };
+	};
+	test('onResultChunk sees the GraphQLError the source threw, over SSE', async () => {
+		const { chunks, plugin } = seen();
+		const text = await (
+			await make({ plugins: [plugin] }).fetch(
+				sse({ query: 'subscription { gqlAfter }' }),
+			)
+		).text();
+		expect(text).toContain('plain-gql');
+		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('plain-gql');
+	});
+	test('onResultChunk sees an Error the source threw, which the client gets masked', async () => {
+		const { chunks, plugin } = seen();
+		const text = await (
+			await make({ plugins: [plugin] }).fetch(
+				sse({ query: 'subscription { plainAfter }' }),
+			)
+		).text();
+		expect(text).toContain('Unexpected error.');
+		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('db down');
+	});
+});

@@ -26,6 +26,13 @@ export async function preparePayload(
 		: chunk;
 }
 
+/** What the source threw, as the error of a chunk: a GraphQLError as is, anything else wrapped so masking reports the original. */
+function asGraphQLError(error: unknown): GraphQLError {
+	if (error instanceof GraphQLError) return error;
+	const original = error instanceof Error ? error : new Error(String(error));
+	return new GraphQLError(original.message, { originalError: original });
+}
+
 /** What ends or silences a stream: the operation's own signals. */
 export interface StreamSignals {
 	/** Aborts when the stream must end now (the client left, the server is closing). */
@@ -66,11 +73,20 @@ export function streamOutcome(
 				throw error;
 			}
 		},
-		fail: (error) => {
+		fail: async (error) => {
 			// An error thrown while iterating a subscription takes the decision of an
-			// execution error: a GraphQLError is exposed, anything else is masked and reported.
-			if (!fromPrepare && error instanceof GraphQLError)
-				return rt.maskResult({ errors: [error] }, state);
+			// execution error, and reaches `onResultChunk` like any payload: what the
+			// source threw is the chunk's `errors`, then masking exposes a GraphQLError
+			// and masks (and reports) anything else.
+			if (!fromPrepare) {
+				try {
+					return await preparePayload(rt, request, state, {
+						errors: [asGraphQLError(error)],
+					});
+				} catch (hookError) {
+					error = hookError;
+				}
+			}
 			rt.unexpected.report(error, state, 'execution');
 			return rt.unexpected.body(state);
 		},

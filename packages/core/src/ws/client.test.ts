@@ -275,4 +275,20 @@ describe('graphql-ws client', () => {
 		await c.dispose();
 		await sleep(0);
 	});
+
+	test('onResultChunk sees what a subscription source threw', async () => {
+		const chunks: { errors?: readonly { message: string }[] }[] = [];
+		const plugin = definePlugin({
+			name: 'watch',
+			onResultChunk: ({ chunk }) => {
+				chunks.push(chunk as (typeof chunks)[number]);
+			},
+		});
+		const { url } = start({ plugins: [plugin] });
+		const c = client(url);
+		const out = await collect(c, 'subscription { plainAfter }');
+		expect(out.at(-1).errors[0].message).toBe('Unexpected error.');
+		expect(chunks.at(-1)?.errors?.[0]?.message).toBe('db down');
+		await c.dispose();
+	});
 });

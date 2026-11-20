@@ -2196,6 +2196,10 @@ final response.
   a mutation, a failure before execution (parse, validation) included. Over WebSocket that failure
   reaches `onResultChunk` as the result that becomes the `error` message, so a hook sees it like it
   sees an SSE `next`;
+- when a subscription's source throws after it has yielded: the last payload, `{ errors: [error] }` with
+  the error as thrown (a `GraphQLError`, or an `Error` wrapped in one), reaches the hook before masking,
+  over SSE and WebSocket alike. Watch `chunk.errors` there to learn that the operation failed; the
+  operation's signal only aborts when the client leaves or the server stops, with no reason;
 - over `multipart/mixed` (see [`@defer` and `@stream`](./incremental.md)): the initial and each
   subsequent payload of an incremental result. A query that is not incremental, over `multipart/mixed`
   or plain JSON, is answered as one plain response and its hooks do not run.
@@ -3269,7 +3273,8 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   `correlationId`); the stream goes on. An error thrown by the source iterator while it iterates (after
   it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
   `GraphQLError` (`exposedError` included) is exposed as is, its message and extensions (and path, when it sets one), and a plain
-  `Error` is masked and reported through `onUnexpected`, like an execution error.
+  `Error` is masked and reported through `onUnexpected`, like an execution error. That last payload goes through
+  `onResultChunk` first (its `errors` hold the error as thrown), so a plugin sees the failure.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown
@@ -4325,7 +4330,7 @@ Parse and validation errors are an `error` message and end the operation. Execut
 `next` with `errors`. Unexpected errors are masked with the correlation id (the connection's
 request id) and reported once through `onUnexpected`, like over HTTP. An error thrown by a
 subscription's source iterator after it has yielded ends the operation with a last `next` carrying
-`errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported.
+`errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported. The last `next` goes through `onResultChunk` first, like over SSE.
 
 # @graxia/core — Troubleshooting: HTTP, execute and testing
 
