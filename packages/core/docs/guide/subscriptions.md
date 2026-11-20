@@ -102,7 +102,10 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   `{ result, setResult }` once the source exists). Every payload, including a query's single one, goes
   through the `onResultChunk` hooks (`setChunk`) and then error masking, in that order.
 - **Masking**: a resolver error inside one event is masked like any other (`Unexpected error.` plus
-  `correlationId`); the stream goes on.
+  `correlationId`); the stream goes on. An error thrown by the source iterator while it iterates (after
+  it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
+  `GraphQLError` (`exposedError` included) is exposed as is, its message and extensions (and path, when it sets one), and a plain
+  `Error` is masked and reported through `onUnexpected`, like an execution error.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown

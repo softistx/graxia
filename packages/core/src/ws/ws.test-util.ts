@@ -1,4 +1,5 @@
 import { afterEach } from 'bun:test';
+import { GraphQLError } from 'graphql';
 import { createPubSub } from '../pubsub/memory';
 import { createSchema } from '../schema/create-schema';
 import { getContext } from '../server/context';
@@ -13,7 +14,7 @@ export const schema = createSchema<{ signal: AbortSignal }>()({
 		type Query { hello: String who: String user: User }
 		type User { name: String slow: String }
 		type Mutation { bump: Int }
-		type Subscription { tick: Int! boom: Int who: String }
+		type Subscription { tick: Int! boom: Int who: String gqlAfter: Int plainAfter: Int }
 	`,
 	resolvers: {
 		Query: {
@@ -43,6 +44,22 @@ export const schema = createSchema<{ signal: AbortSignal }>()({
 				resolve: () => {
 					throw new Error('secret detail');
 				},
+			},
+			gqlAfter: {
+				subscribe: async function* () {
+					yield 1;
+					throw new GraphQLError('plain-gql', {
+						extensions: { code: 'X' },
+					});
+				},
+				resolve: (n: number) => n,
+			},
+			plainAfter: {
+				subscribe: async function* () {
+					yield 1;
+					throw new Error('db down');
+				},
+				resolve: (n: number) => n,
 			},
 			who: {
 				subscribe: () => pubsub.subscribe('tick'),

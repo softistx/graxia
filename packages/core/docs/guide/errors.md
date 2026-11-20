@@ -39,6 +39,11 @@ What is exposed as is, and what is masked:
 | graphql's own errors: validation, variable coercion, non-null violation | unchanged                                                    |
 | a plain `Error`, a thrown string, a library error                       | `Unexpected error.`, `INTERNAL_SERVER_ERROR`, correlation id |
 
+The same decision applies to an error thrown by a subscription's source iterator while it iterates
+(after its first event): a `GraphQLError` reaches the client as is, a plain `Error` is masked and
+reported through `onUnexpected`. A `GraphQLError` wrapping a plain `originalError` and thrown from the
+iterator is masked (stricter than a resolver, where graphql locates and exposes it).
+
 The rule, exactly: an error is **exposed** when it has no `originalError` (graphql's own: validation,
 coercion), when it is a genuine non-null violation, or when its original is a `GraphQLError` of any
 origin (`exposedError` included). Everything else (a plain `Error`, a thrown string, a library error)

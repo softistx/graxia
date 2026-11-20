@@ -1,4 +1,4 @@
-import type { ExecutionResult } from 'graphql';
+import { type ExecutionResult, GraphQLError } from 'graphql';
 import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
@@ -49,6 +49,8 @@ export function streamOutcome(
 ) {
 	const { request, state } = call;
 	const live = outcome.kind === 'stream';
+	// Only what the source threw is exposed; a throw of the hooks in `prepare` stays unexpected.
+	let fromPrepare = false;
 	const once = (async function* () {
 		yield (outcome as { result: ExecutionResult }).result;
 	})();
@@ -56,8 +58,19 @@ export function streamOutcome(
 		format,
 		source: live ? outcome.source : once,
 		scope: outcome.scope ?? ((work) => work()),
-		prepare: (value) => preparePayload(rt, request, state, value),
+		prepare: async (value) => {
+			try {
+				return await preparePayload(rt, request, state, value);
+			} catch (error) {
+				fromPrepare = true;
+				throw error;
+			}
+		},
 		fail: (error) => {
+			// An error thrown while iterating a subscription takes the decision of an
+			// execution error: a GraphQLError is exposed, anything else is masked and reported.
+			if (!fromPrepare && error instanceof GraphQLError)
+				return rt.maskResult({ errors: [error] }, state);
 			rt.unexpected.report(error, state, 'execution');
 			return rt.unexpected.body(state);
 		},

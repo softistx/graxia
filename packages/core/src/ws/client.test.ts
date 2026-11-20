@@ -214,6 +214,52 @@ describe('graphql-ws client', () => {
 		await done;
 	});
 
+	test('a GraphQLError thrown while iterating is exposed as is', async () => {
+		const reported: unknown[] = [];
+		const { url } = start({ onUnexpected: (e: unknown) => reported.push(e) });
+		const c = client(url);
+		const seen: any[] = [];
+		await new Promise<void>((resolve) =>
+			c.subscribe(
+				{ query: 'subscription { gqlAfter }' },
+				{
+					next: (v) => seen.push(v),
+					error: (e) => seen.push({ e }),
+					complete: resolve,
+				},
+			),
+		);
+		const text = JSON.stringify(seen);
+		expect(seen[0]).toEqual({ data: { gqlAfter: 1 } });
+		expect(text).toContain('plain-gql');
+		expect(text).toContain('"code":"X"');
+		expect(text).not.toContain('Unexpected error.');
+		expect(reported).toEqual([]);
+		await c.dispose();
+	});
+
+	test('a plain Error thrown while iterating stays masked and reported', async () => {
+		const reported: unknown[] = [];
+		const { url } = start({ onUnexpected: (e: unknown) => reported.push(e) });
+		const c = client(url);
+		const seen: any[] = [];
+		await new Promise<void>((resolve) =>
+			c.subscribe(
+				{ query: 'subscription { plainAfter }' },
+				{
+					next: (v) => seen.push(v),
+					error: (e) => seen.push({ e }),
+					complete: resolve,
+				},
+			),
+		);
+		const text = JSON.stringify(seen);
+		expect(text).toContain('Unexpected error.');
+		expect(text).not.toContain('db down');
+		expect((reported[0] as Error).message).toBe('db down');
+		await c.dispose();
+	});
+
 	test('getContext() works in a subscription resolver under asyncContext', async () => {
 		const { url } = start({ context: () => ({ who: 'ctx' }) });
 		const c = client(url);
