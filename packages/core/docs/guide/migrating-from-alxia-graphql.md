@@ -124,6 +124,11 @@ const logOperations = definePlugin({
 });
 ```
 
+Over a WebSocket, Yoga's `graphql-ws` `onSubscribe` / `onComplete` observer maps to the same
+plugin: the host's per-connection state goes to `graxia.upgrade(request, server, serverContext)` and
+is read in `args.contextValue`; a subscription's end is its `signal` aborting. See
+[Observe each socket operation](./websocket.md#observe-each-socket-operation).
+
 ## Request id and logs
 
 A client's `x-request-id` is never trusted in either library. alxia turned Yoga's id off; graxia

@@ -119,6 +119,14 @@ Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `se
 wins, and the caller skips the step when `out.document`, `out.errors` or `out.result` is set.
 `addRule` accumulates across plugins.
 
+## Observing operations over WebSocket
+
+`onExecute` and `onSubscribe` run for each operation of a socket, and the host's `serverContext`
+(given to `graxia.upgrade`) is in `args.contextValue`. A query or mutation ends in its after-hook;
+a subscription ends when `args.contextValue.signal` aborts (its after-hook only runs once the
+stream is created). The full start/end snippet is in
+[Observe each socket operation](./websocket.md#observe-each-socket-operation).
+
 ## Exempting a GET from the CSRF header
 
 A plugin field `csrfExempt(request)` (not a hook) lets a plugin serve its own `GET` pages without the
