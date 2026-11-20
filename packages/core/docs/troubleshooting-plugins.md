@@ -22,20 +22,20 @@ createGraxia({
 In development the default logs it with `console.error`; in production nothing is logged until you
 set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
 
-## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
+## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
 
 A type error on the `plugins` option of `createGraxia`. In full:
 
 ```text
 Type '[GraxiaPlugin<{ request: Request; }, {}, "auth">]' is not assignable to type
 'readonly [GraxiaPlugin<…>] & { readonly "graxia: plugin \"auth\" needs context.request, which nothing
-provides (the factory's result, ContextInit<…> on its init, or an earlier plugin)": never; }'.
+provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never; }'.
 ```
 
 The named plugin was built with `definePlugin<{ request: Request }>()`, and neither the `context`
 factory, nor the host type declared on its `init`, nor a plugin before it provides `request`. The
-message names the first plugin that fails (a plain `string` name is quoted by position, `plugin #2`)
-and every field it lacks. Fix it where the field comes from:
+message names the first plugin that fails (a plain `string` name is given by position, `plugin at index 1`, counted from 0)
+and every field nothing provides. A field provided with another type is reported once the missing ones are provided. Fix it where the field comes from:
 
 ```ts
 createGraxia({

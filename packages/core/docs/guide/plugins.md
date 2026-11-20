@@ -290,5 +290,5 @@ The check is skipped for a plugin list that is not a tuple (a `Plugin[]` variabl
 plugin (`GraxiaPlugin<any, any>`, that plugin alone: the plugins after it are still checked), and for
 any call that writes the host type as an explicit type argument, `createGraxia<Host>({ ... })`:
 TypeScript then infers no other type argument. Declare the host on the `context` factory's `init`
-to keep the checks. A plugin whose name is a plain `string` is quoted by its position (`plugin #2`).
+to keep the checks. A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
 Like the schema check, it stops with TS2589 at about 50 chained plugins.

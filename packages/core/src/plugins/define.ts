@@ -57,20 +57,19 @@ export type ContextOf<Plugins extends readonly unknown[]> =
 		? PluginContext<Head> & ContextOf<Tail>
 		: unknown;
 
-/** True for `any`: an untyped plugin's context says nothing, so it is skipped, never trusted. */
+/** @internal True for `any`: an untyped plugin's context says nothing, so it is skipped, never trusted. */
 export type IsAny<T> = 0 extends 1 & T ? true : false;
 
-/** The keys `Req` demands (not optional) that `Available` does not have at all. */
+/** @internal The keys `Req` demands (not optional) that `Available` does not have at all. */
 export type AbsentKeys<Req, Available> = {
 	[K in keyof Req]-?: Empty extends Pick<Req, K>
 		? never
 		: K extends keyof Available
 			? never
 			: K;
-}[keyof Req] &
-	string;
+}[keyof Req];
 
-/** The keys both have, whose type in `Available` does not fit `Req` (an optional key also accepts `undefined`). */
+/** @internal The keys both have, whose type in `Available` does not fit `Req` (an optional key also accepts `undefined`). */
 export type MistypedKeys<Req, Available> = {
 	[K in keyof Req]-?: K extends keyof Available
 		? [Available[K]] extends [
@@ -79,10 +78,9 @@ export type MistypedKeys<Req, Available> = {
 			? never
 			: K
 		: never;
-}[keyof Req] &
-	string;
+}[keyof Req];
 
-/** The keys of `Req` that `Available` fails to meet: absent (and required) or of another type. Never for `any`. */
+/** @internal The keys of `Req` that `Available` fails to meet: absent (and required) or of another type. Never for `any`. */
 export type UnmetKeys<Req, Available> =
 	IsAny<Req> extends true
 		? never

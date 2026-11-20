@@ -75,7 +75,7 @@ createGraxia({ schema, context: () => ({ db: 'x' }), plugins: [optionalDb] });
 // @ts-expect-error `db` is provided as a number
 createGraxia({ schema, context: () => ({ db: 1 }), plugins: [optionalDb] });
 
-// a plugin whose name is a plain `string` is quoted by position (#1)
+// a plugin whose name is a plain `string` is quoted by position (index 1)
 declare function dbPlugin(): GraxiaPlugin<{ db: string }>;
 // @ts-expect-error `db` is provided by nothing
 createGraxia({ schema, plugins: [bare, dbPlugin()] });
@@ -96,7 +96,7 @@ assertType<
 		RequirePluginContext<[typeof auth], CoreContext>,
 		{
 			plugins: {
-				readonly 'graxia: plugin "auth" needs context.request, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)': never;
+				readonly 'graxia: plugin "auth" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
 			};
 		}
 	>
@@ -108,6 +108,55 @@ assertType<
 		}
 			? keyof P
 			: never,
-		'graxia: plugin "needs-two" needs context.a, context.b, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)'
+		'graxia: plugin "needs-two" needs context.a, context.b, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)'
+	>
+>();
+
+// number and symbol keys are checked too
+const needsNumber = definePlugin<{ 0: string }>()({ name: 'needs-number' });
+// @ts-expect-error `0` is provided by nothing
+createGraxia({ schema, plugins: [needsNumber] });
+declare const sym: unique symbol;
+const needsSymbol = definePlugin<{ [sym]: string }>()({ name: 'needs-symbol' });
+// @ts-expect-error the symbol-keyed field is provided by nothing
+createGraxia({ schema, plugins: [needsSymbol] });
+
+// an index signature demands no specific key
+const needsAny = definePlugin<Record<string, string>>()({ name: 'needs-any' });
+createGraxia({ schema, plugins: [needsAny] });
+
+// the exact text of the other messages
+declare function indexed(): GraxiaPlugin<{ db: string }>;
+assertType<
+	Equal<
+		RequirePluginContext<
+			[typeof bare, ReturnType<typeof indexed>],
+			CoreContext
+		>,
+		{
+			plugins: {
+				readonly "graxia: plugin at index 1 needs context.db, which nothing provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never;
+			};
+		}
+	>
+>();
+assertType<
+	Equal<
+		RequirePluginContext<[typeof needsNumber], CoreContext>,
+		{
+			plugins: {
+				readonly 'graxia: plugin "needs-number" needs context.0, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
+			};
+		}
+	>
+>();
+assertType<
+	Equal<
+		RequirePluginContext<[typeof needsSymbol], CoreContext>,
+		{
+			plugins: {
+				readonly 'graxia: plugin "needs-symbol" needs a symbol-keyed field, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)': never;
+			};
+		}
 	>
 >();

@@ -2503,7 +2503,7 @@ The check is skipped for a plugin list that is not a tuple (a `Plugin[]` variabl
 plugin (`GraxiaPlugin<any, any>`, that plugin alone: the plugins after it are still checked), and for
 any call that writes the host type as an explicit type argument, `createGraxia<Host>({ ... })`:
 TypeScript then infers no other type argument. Declare the host on the `context` factory's `init`
-to keep the checks. A plugin whose name is a plain `string` is quoted by its position (`plugin #2`).
+to keep the checks. A plugin whose name is a plain `string` is named by its position (`plugin at index 1`, counted from 0, as in the duplicate-name error). A requirement that is an index signature (`Record<string, string>`) names no key, so it always passes.
 Like the schema check, it stops with TS2589 at about 50 chained plugins.
 
 # @graxia/core — Production
@@ -4908,20 +4908,20 @@ createGraxia({
 In development the default logs it with `console.error`; in production nothing is logged until you
 set `onUnexpected`. To show an error to the client, throw `exposedError`. See [Errors](./guide/errors.md).
 
-## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<…> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
+## Property '"graxia: plugin \"auth\" needs context.request, which nothing provides (the factory\'s result, ContextInit<Host> on its init, or an earlier plugin)"' is missing in type '[GraxiaPlugin<…>]'
 
 A type error on the `plugins` option of `createGraxia`. In full:
 
 ```text
 Type '[GraxiaPlugin<{ request: Request; }, {}, "auth">]' is not assignable to type
 'readonly [GraxiaPlugin<…>] & { readonly "graxia: plugin \"auth\" needs context.request, which nothing
-provides (the factory's result, ContextInit<…> on its init, or an earlier plugin)": never; }'.
+provides (the factory's result, ContextInit<Host> on its init, or an earlier plugin)": never; }'.
 ```
 
 The named plugin was built with `definePlugin<{ request: Request }>()`, and neither the `context`
 factory, nor the host type declared on its `init`, nor a plugin before it provides `request`. The
-message names the first plugin that fails (a plain `string` name is quoted by position, `plugin #2`)
-and every field it lacks. Fix it where the field comes from:
+message names the first plugin that fails (a plain `string` name is given by position, `plugin at index 1`, counted from 0)
+and every field nothing provides. A field provided with another type is reported once the missing ones are provided. Fix it where the field comes from:
 
 ```ts
 createGraxia({
