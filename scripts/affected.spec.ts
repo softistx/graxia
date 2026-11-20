@@ -85,11 +85,28 @@ describe('changedSince', () => {
 	test('a rename across packages lists both paths', async () => {
 		const dir = mkdtempSync(join(tmpdir(), 'affected-'));
 		scratch.push(dir);
-		const git = (...args: string[]) => $`git ${args}`.cwd(dir).quiet();
+		// Nothing here may wait on input: no signing, hook, editor, prompt or
+		// user/system config, and a failing git command throws with its stderr.
+		const env = {
+			...process.env,
+			['GIT_TERMINAL_PROMPT']: '0',
+			['GIT_CONFIG_GLOBAL']: '/dev/null',
+			['GIT_CONFIG_NOSYSTEM']: '1',
+		};
+		const git = async (...args: string[]) => {
+			const result =
+				await $`git -c commit.gpgsign=false -c tag.gpgsign=false -c core.hooksPath=/dev/null -c core.editor=true -c user.name=test -c user.email=test@example.invalid ${args}`
+					.cwd(dir)
+					.env(env)
+					.nothrow()
+					.quiet();
+			if (result.exitCode !== 0) {
+				throw new Error(
+					`git ${args.join(' ')} exited ${result.exitCode}: ${result.stderr.toString()}`,
+				);
+			}
+		};
 		await git('init', '-q', '-b', 'develop');
-		await git('config', 'user.email', 'a@b.c');
-		await git('config', 'user.name', 'x');
-		await git('config', 'commit.gpgsign', 'false');
 		await $`mkdir -p packages/a packages/b`.cwd(dir);
 		writeFileSync(
 			join(dir, 'packages/a/f.ts'),
