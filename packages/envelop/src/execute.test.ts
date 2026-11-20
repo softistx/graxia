@@ -259,6 +259,7 @@ describe('subscriptions', () => {
 		// stream, and core masks every error thrown while iterating a subscription as
 		// "Unexpected error." (even a plain GraphQLError with no Envelop plugin), so the
 		// guide's "onSubscribeError can setError" never reaches the client.
+		// Tracked in #111.
 		test.todo('the client sees the error set by onSubscribeError setError');
 
 		test('an error of the initial subscribe goes through core, not the hook', async () => {
