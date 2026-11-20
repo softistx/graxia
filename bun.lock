@@ -8,7 +8,7 @@
         "@biomejs/biome": "^2.6.8",
         "@changesets/changelog-github": "^1.0.1",
         "@changesets/cli": "^3.0.1",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
         "graphql-sse": "^2.6.4",
         "typescript": "~6.0.3",
       },
@@ -28,7 +28,7 @@
         "@graphql-codegen/typescript": "^7.0.1",
         "@graphql-codegen/typescript-resolvers": "^7.0.1",
         "@softistx/telemetry": "0.4.2",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
         "graphql": "17.1.0",
         "graphql-http": "1.23.1",
         "graphql-ws": "^6.4.3",
@@ -55,7 +55,7 @@
         "@envelop/response-cache": "10.0.1",
         "@graphql-hive/logger": "1.2.0",
         "@graxia/core": "workspace:^",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
         "graphql": "17.1.0",
       },
       "peerDependencies": {
@@ -74,7 +74,7 @@
       "devDependencies": {
         "@graphiql/toolkit": "^1.0.1",
         "@graxia/core": "workspace:^",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "graphiql": "4.1.2",
@@ -101,7 +101,7 @@
       "devDependencies": {
         "@graxia/core": "workspace:^",
         "@modelcontextprotocol/client": "~2.4.0",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
         "graphql": "^17.1.0",
       },
       "peerDependencies": {
@@ -119,7 +119,7 @@
       "devDependencies": {
         "@graxia/core": "workspace:^",
         "@softistx/redis": "^0.24.1",
-        "@types/bun": "^1.4.4",
+        "@types/bun": "^1.4.5",
       },
       "peerDependencies": {
         "@graxia/core": "workspace:^",
@@ -511,7 +511,7 @@
 
     "@tanstack/virtual-core": ["@tanstack/virtual-core@3.19.11", "", {}, "sha512-/5iHb0RHBvj8Di59FDs4ESNm45jls33aZAi4zccVXZjc/6ZvwQP6nzEYeT6weXjTf9E6/vrp2JhYWRyO+ZP13A=="],
 
-    "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
+    "@types/bun": ["@types/bun@1.4.5", "", { "dependencies": { "bun-types": "1.4.5" } }, "sha512-DpgwNI9z0L1S0gtb45QLCWgwCUcMLnsHYMJHQvpNj7erGiCGBvpggltAIeARrtobNMKMuy0UP7i56tKKgwFs/Q=="],
 
     "@types/codemirror": ["@types/codemirror@5.60.18", "", { "dependencies": { "@types/tern": "*" } }, "sha512-aSBOPXH2PXRYixxUpVP1sJ5+S0vEfKDvR+lABZ7Kju/9Qb0SSbZk72NihWaKoQbANyibs92q4DBfYasywxnNkA=="],
 
@@ -563,7 +563,7 @@
 
     "browserslist": ["browserslist@4.29.6", "", { "dependencies": { "baseline-browser-mapping": "^2.11.37", "caniuse-lite": "^1.0.30001826", "electron-to-chromium": "^1.5.486", "node-releases": "^2.0.64", "update-browserslist-db": "^1.4.0" }, "bin": { "browserslist": "cli.js" } }, "sha512-CmVVIQ3RVc5HxYEc9X84GvxK/C8C1wH8TlKAiO7uTxF8PDwt7r8t9Qk3J9NkMOVzX5O/HbLv3yzxZg9HPrnI9w=="],
 
-    "bun-types": ["bun-types@1.4.4", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ=="],
+    "bun-types": ["bun-types@1.4.5", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-ECHn+9dhL3wv0G6u0+7dQvrnaimXiRDxxerYBmhTaLyJEEuvTPWk2Fye3XIf5Y++JIIiHKfQw4Z7V5D8KuiXbg=="],
 
     "cac": ["cac@7.1.0", "", {}, "sha512-LMDU/U2yA4IPIY8KT0NsNPWEYZvAMkbgyspxJ6btJaYV+WMDOHAZCmB0lsTObiHaRS1V/ztKAl7+TSkTqXyeoA=="],
 

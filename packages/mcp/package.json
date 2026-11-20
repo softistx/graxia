@@ -46,7 +46,7 @@
 		]
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.4",
+		"@types/bun": "^1.4.5",
 		"@graxia/core": "workspace:^",
 		"@modelcontextprotocol/client": "~2.4.0",
 		"graphql": "^17.1.0"

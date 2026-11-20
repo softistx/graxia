@@ -52,7 +52,7 @@
 		"@envelop/response-cache": "10.0.1",
 		"@graphql-hive/logger": "1.2.0",
 		"@graxia/core": "workspace:^",
-		"@types/bun": "^1.4.4",
+		"@types/bun": "^1.4.5",
 		"graphql": "17.1.0"
 	},
 	"peerDependencies": {
