@@ -26,8 +26,13 @@ routes: {
 
 `can(request, serverContext, auth)` (`auth` is the verified token, with `auth` set) returns a function `permission => boolean` (it may be async). The
 tools describe and validate against the schema as that caller sees it, so a field behind `@needs`
-they lack is "Cannot query field", exactly as if it did not exist. The `@needs` is also whatever
-your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
+they lack is "Cannot query field": the agent can neither see it nor ask for it. The `@needs` is
+also whatever your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
+
+`can` shapes what the agent sees and may ask for, not the objects a field returns. A union or
+interface field the caller sees can still return objects of a type the view hides: the agent cannot
+name that type in a fragment, but `__typename` and the interface's fields come back. A resolver of
+a union or interface field must itself leave out the objects the caller may not read.
 
 ## Typed tools only
 
@@ -74,6 +79,11 @@ non-local endpoint set the public hostname, without port:
 ```ts
 createMcp(graxia, { name: 'library', allowedHosts: ['mcp.example.com'] });
 ```
+
+Behind a proxy that terminates TLS the request reaches Bun as `http://`, so the endpoint's own
+origin is `http://…`, not the public one: list the public origin in `allowedOrigins`
+(`https://mcp.example.com`) and the hostname in `allowedHosts`. Entries must be exact (a hostname
+without port; an origin as `scheme://host[:port]`): `createMcp` throws on one that can never match.
 
 ## CORS
 

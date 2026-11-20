@@ -608,6 +608,8 @@ const sdl = printSchemaFor(schema, {
 });
 ```
 
+`can` is typed `Can`, exported from `@graxia/core/agent`: `(permission: string) => boolean`.
+
 - A field or type whose `@needs` fails is removed. A type left without fields is removed, and so is
   every field that returns it, until nothing changes. A union loses removed members and goes when none is left.
 - Types no kept root type reaches are dropped (also with no `can`). An object that no longer has the
@@ -5011,6 +5013,8 @@ cost, trusted documents, error masking and rate limits.
 bun add @graxia/mcp @graxia/core graphql
 ```
 
+Requires Bun 1.4.4 or later and `@graxia/core` 0.5 or later.
+
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported.
 
@@ -5063,6 +5067,9 @@ createMcp(graxia, {
 		// an OAuth resource server: see the auth guide
 		resource: 'https://mcp.example.com/mcp',
 		authorizationServers: ['https://auth.example.com'],
+		scopes: { read: 'mcp:read', write: 'mcp:write' }, // default
+		resourceName: 'Library', // shown by the metadata
+		documentation: 'https://docs.example.com/mcp', // `resource_documentation`
 		verifyToken: async (token, request) => verify(token), // McpAuthInfo | Response | undefined
 		audience: 'resource', // default: the info's audience must contain `resource`
 	},
@@ -5440,11 +5447,18 @@ Bun.serve({
 
 `createMcp(graxia, options)` reads the schema and the body limit from the instance
 (`graxia.schema`, `graxia.limits.bodyBytes`, `@graxia/core` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
-`Response` out, and never rejects.
+`Response` out, and never rejects. `mcp.dispose()` stops the handler (in-flight requests are aborted),
+like `graxia.dispose()`.
+
+**In production.** graxia runs trusted documents in `strict` mode there (`NODE_ENV=production`), so
+agents cannot run a document they write: pass `operations: { documents }` to give them your
+persisted operations as tools ([typed tools](./operations.md)), or `createMcp` reports it through
+`onError` at boot. A hand-made host (a test double) must pass `trustedDocuments:
+graxia.trustedDocuments` along with `execute`, `schema` and `limits`.
 
 ## Transport
 
-Streamable HTTP, stateless: every `POST` carries one JSON-RPC message and is answered on its own.
+Streamable HTTP, stateless: every `POST` carries one JSON-RPC message or a batch of them and is answered on its own.
 There is no `Mcp-Session-Id`. `GET` (the optional server-to-client stream) and `DELETE` (closing a
 session) answer 405 with a `fix`, as the spec allows. Only `application/json` bodies are accepted.
 
@@ -5750,8 +5764,13 @@ routes: {
 
 `can(request, serverContext, auth)` (`auth` is the verified token, with `auth` set) returns a function `permission => boolean` (it may be async). The
 tools describe and validate against the schema as that caller sees it, so a field behind `@needs`
-they lack is "Cannot query field", exactly as if it did not exist. The `@needs` is also whatever
-your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
+they lack is "Cannot query field": the agent can neither see it nor ask for it. The `@needs` is
+also whatever your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
+
+`can` shapes what the agent sees and may ask for, not the objects a field returns. A union or
+interface field the caller sees can still return objects of a type the view hides: the agent cannot
+name that type in a fragment, but `__typename` and the interface's fields come back. A resolver of
+a union or interface field must itself leave out the objects the caller may not read.
 
 ## Typed tools only
 
@@ -5798,6 +5817,11 @@ non-local endpoint set the public hostname, without port:
 ```ts
 createMcp(graxia, { name: 'library', allowedHosts: ['mcp.example.com'] });
 ```
+
+Behind a proxy that terminates TLS the request reaches Bun as `http://`, so the endpoint's own
+origin is `http://…`, not the public one: list the public origin in `allowedOrigins`
+(`https://mcp.example.com`) and the hostname in `allowedHosts`. Entries must be exact (a hostname
+without port; an origin as `scheme://host[:port]`): `createMcp` throws on one that can never match.
 
 ## CORS
 
@@ -5892,14 +5916,21 @@ codes. A document that does not parse is refused here (the token limit of graxia
 | a plugin answered with its own response       | the plugin's, when its body has `errors` | the plugin's                                | the plugin's                                                                                |
 | a plugin response with no `errors`, shutdown  | `MCP_EXECUTION_REFUSED`                  | the `graxia.execute` message                | `Retry later; if it persists, the server is shutting down or a plugin refused the request.` |
 
+The typed tools add `MCP_UNKNOWN_ARGUMENT` ([troubleshooting](../troubleshooting.md)), and `auth` adds
+`MCP_UNAUTHORIZED`, `MCP_INSUFFICIENT_SCOPE` and `MCP_TOKEN_IN_URL`
+([troubleshooting auth](../troubleshooting-auth.md)). `McpErrorCode` (an exported type) is the union
+of the codes `@graxia/mcp` emits.
+
 `operationName` picks the operation: only the selected one is checked against the tool's kind, so a
 document holding a query and a mutation runs its query in `graphql_query`.
 
 ## `graphql_mutate`
 
-Listed only with `mutations: true` (and, with `auth`, only for a token with the write scope,
-`mcp:write` by default; a read-only token calling it gets a 403 step-up, see [auth](./auth.md); with `mutations` off the call is `Tool graphql_mutate not found`); same input. A query is refused with a fix pointing to
-`graphql_query`. Without the option the tool does not exist: calling it is a JSON-RPC error.
+Listed only with `mutations: true`; same input. A query is refused with a fix pointing to
+`graphql_query`. With `mutations` off the tool does not exist: calling it is a JSON-RPC error
+(`Tool graphql_mutate not found`). With `auth`, it is listed only for a token with the write scope
+(`mcp:write` by default), and a read-only token calling it gets a 403 step-up
+([auth](./auth.md#scopes-and-step-up)).
 
 ## Results
 
@@ -5922,7 +5953,8 @@ listed**, and a call answers `Only persisted documents are allowed.` with the co
 `PERSISTED_QUERY_ONLY` and a fix naming the typed tools the caller has. `graphql_schema` stays.
 The [typed tools](./operations.md) of `operations` run: they are the documents you persisted.
 Without `operations` a strict server boots with `graphql_schema` alone, so nothing can be run:
-pass `operations`. In `mixed` mode the generic tools are unchanged.
+`createMcp` reports it once through `onError` ("graxia runs trusted documents in strict mode and
+`operations` gives no tool"). Pass `operations`. In `mixed` mode the generic tools are unchanged.
 
 ## Cost of `can`
 
@@ -6002,15 +6034,15 @@ introspection call), as in [the auth guide](./guide/auth.md#verifytoken).
 `verifyToken` resolved a `Response` (a verifier that builds its own refusals): it is sent as is.
 Read that library's documentation for its meaning.
 
-## 403 `error="insufficient_scope", scope="mcp:read"` (`MCP_INSUFFICIENT_SCOPE`)
+## `Forbidden: the token lacks mcp:read.` (`MCP_INSUFFICIENT_SCOPE`)
 
-Message `Forbidden: the token lacks mcp:read.` Ask the authorization server for `mcp:read` (or
-your `scopes.read`).
+A 403 with `error="insufficient_scope", scope="mcp:read"`. Ask the authorization server for
+`mcp:read` (or your `scopes.read`).
 
-## 403 `insufficient_scope`, `scope="mcp:read mcp:write"` on `graphql_mutate` or a mutation tool
+## `Forbidden: graphql_mutate needs the scope mcp:write.` (`MCP_INSUFFICIENT_SCOPE`)
 
-Message `Forbidden: graphql_mutate needs the scope mcp:write.` (it names the tool called, so
-`rename_book needs …` for a typed tool). A read-only token called a tool that writes from a stale
+A 403 with `error="insufficient_scope", scope="mcp:read mcp:write"`. The message names the tool
+called, so a typed tool answers `Forbidden: rename_book needs the scope mcp:write.`. A read-only token called a tool that writes from a stale
 tool list. Re-authorize with both scopes (the challenge's `scope`); these tools are not listed for
 a token without `mcp:write`. With `mutations` off there is no 403: the call gets
 `Tool graphql_mutate not found`. A mutation tool `can` hides from the caller gets no 403 either,
@@ -6114,6 +6146,12 @@ graxia runs trusted documents in `strict` mode it is never listed, like `graphql
 `__schema` and `__type` are refused over MCP: they would show fields `@needs` hides. Call
 `graphql_schema` (no input, `types` or `search`). `__typename` is allowed.
 
+## `No type matches "x".` (or `Empty search.`)
+
+`graphql_schema` with `search` found no type or field of that name in the caller's view (a hidden
+type is not found either); `Empty search.` means `search` was blank. Call `graphql_schema` with
+no input for the type names, then search a word of one of them.
+
 ## `# Unknown type X. Fix: call graphql_schema with no input to list the type names you can use.`
 
 `graphql_schema` was asked for a type the caller cannot see or that does not exist. The `Mutation`
@@ -6178,6 +6216,31 @@ One error lists every problem of `operations`, one per line, each ending with it
 An operation `include` leaves out, a subscription, and a mutation without `mutations: true` is not
 validated and needs no description; every document must still parse and name its operations.
 
+## `createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …`
+
+Reported once through `onError` at boot (not thrown: the same code boots in development). graxia's
+`trustedDocuments` is `strict` (the default under `NODE_ENV=production`), so `graphql_query` and
+`graphql_mutate` are not listed, and with no `operations` there is no typed tool: agents read the
+schema and run nothing. Fix: pass the persisted documents.
+
+```ts
+createMcp(graxia, { name: 'library', operations: { documents: manifest } });
+```
+
+## `createMcp: allowedHosts entry "…" can never match` / `allowedOrigins entry "…" can never match`
+
+Thrown at startup. `allowedHosts` takes hostnames only (`mcp.example.com`, `[::1]`), without
+scheme, port or path; `allowedOrigins` takes exactly `scheme://host[:port]`, with no path and no
+trailing slash. The message gives the corrected value.
+
+```ts
+createMcp(graxia, {
+	name: 'library',
+	allowedHosts: ['mcp.example.com'], // not 'mcp.example.com:3000'
+	allowedOrigins: ['https://app.example'], // not 'https://app.example/'
+});
+```
+
 ## `createMcp: genericTools is false and there is no operations: …`
 
 Pass `operations: { documents: manifest }`, or remove `genericTools: false`.
@@ -6192,9 +6255,10 @@ the arguments it accepts; they are the `properties` of its `inputSchema` in `too
 An argument is missing or has the wrong type: graxia checks the arguments as the operation's
 variables. The fix is `Correct the arguments: see the tool's input schema.`
 
-## 403 `insufficient_scope`, `rename_book needs the scope mcp:write`
+## `Forbidden: rename_book needs the scope mcp:write.` (`MCP_INSUFFICIENT_SCOPE`)
 
-A mutation typed tool was called with a read-only token: the same step-up as `graphql_mutate`.
+A 403 `insufficient_scope`: a mutation typed tool was called with a read-only token, the same
+step-up as `graphql_mutate` ([auth troubleshooting](./troubleshooting-auth.md)).
 
 ## `Only persisted documents are allowed.` (`PERSISTED_QUERY_ONLY`) from `graphql_query`
 

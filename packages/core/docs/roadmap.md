@@ -6,14 +6,13 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 - **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
   `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
-  error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)).
+  error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
+  `@graxia/mcp`, with its own [roadmap](../../mcp/docs/roadmap.md).
 
 ## Later
 
 - **Enforcing `@constraint` and `@needs`** — today they describe; a plugin could refuse an input
   outside its limits and a field the caller lacks the permission for.
-- **Ready for agents** — an MCP server over Streamable HTTP exposing your schema and persisted
-  operations as tools.
 - **Parity and migration** — run Envelop plugins unchanged, multipart uploads, and a parity suite
   so an application on another GraphQL server can move over.
 

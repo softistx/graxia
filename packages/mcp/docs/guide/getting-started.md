@@ -22,11 +22,18 @@ Bun.serve({
 
 `createMcp(graxia, options)` reads the schema and the body limit from the instance
 (`graxia.schema`, `graxia.limits.bodyBytes`, `@graxia/core` 0.5), so nothing is given twice. `mcp.fetch(request, serverContext?)` is a Web `Request` in, a
-`Response` out, and never rejects.
+`Response` out, and never rejects. `mcp.dispose()` stops the handler (in-flight requests are aborted),
+like `graxia.dispose()`.
+
+**In production.** graxia runs trusted documents in `strict` mode there (`NODE_ENV=production`), so
+agents cannot run a document they write: pass `operations: { documents }` to give them your
+persisted operations as tools ([typed tools](./operations.md)), or `createMcp` reports it through
+`onError` at boot. A hand-made host (a test double) must pass `trustedDocuments:
+graxia.trustedDocuments` along with `execute`, `schema` and `limits`.
 
 ## Transport
 
-Streamable HTTP, stateless: every `POST` carries one JSON-RPC message and is answered on its own.
+Streamable HTTP, stateless: every `POST` carries one JSON-RPC message or a batch of them and is answered on its own.
 There is no `Mcp-Session-Id`. `GET` (the optional server-to-client stream) and `DELETE` (closing a
 session) answer 405 with a `fix`, as the spec allows. Only `application/json` bodies are accepted.
 

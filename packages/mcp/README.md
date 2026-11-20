@@ -15,6 +15,8 @@ cost, trusted documents, error masking and rate limits.
 bun add @graxia/mcp @graxia/core graphql
 ```
 
+Requires Bun 1.4.4 or later and `@graxia/core` 0.5 or later.
+
 The packages are ESM, built for Bun, and resolve with `"moduleResolution": "bundler"` in your
 `tsconfig.json`. `nodenext` is not supported.
 
@@ -67,6 +69,9 @@ createMcp(graxia, {
 		// an OAuth resource server: see the auth guide
 		resource: 'https://mcp.example.com/mcp',
 		authorizationServers: ['https://auth.example.com'],
+		scopes: { read: 'mcp:read', write: 'mcp:write' }, // default
+		resourceName: 'Library', // shown by the metadata
+		documentation: 'https://docs.example.com/mcp', // `resource_documentation`
 		verifyToken: async (token, request) => verify(token), // McpAuthInfo | Response | undefined
 		audience: 'resource', // default: the info's audience must contain `resource`
 	},

@@ -60,6 +60,7 @@ export function createToolset(
 	graxia: McpHost<any>,
 	options: McpOptions<any>,
 	mutations: boolean,
+	onError: (error: unknown) => void,
 ): Toolset {
 	const typed = typedTools(graxia, options, mutations);
 	const generic: GenericTools =
@@ -68,6 +69,12 @@ export function createToolset(
 			: graxia.trustedDocuments?.mode === 'strict'
 				? 'refused'
 				: 'on';
+	if (generic === 'refused' && typed.length === 0)
+		onError(
+			new GraxiaConfigError(
+				'createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: agents can read the schema but run nothing. Fix: pass `operations: { documents }`.',
+			),
+		);
 	const visible = createVisibleTools(typed);
 	const writing = new Map(
 		typed.filter((tool) => tool.kind === 'mutation').map((t) => [t.name, t]),

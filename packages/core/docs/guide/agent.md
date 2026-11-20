@@ -99,6 +99,8 @@ const sdl = printSchemaFor(schema, {
 });
 ```
 
+`can` is typed `Can`, exported from `@graxia/core/agent`: `(permission: string) => boolean`.
+
 - A field or type whose `@needs` fails is removed. A type left without fields is removed, and so is
   every field that returns it, until nothing changes. A union loses removed members and goes when none is left.
 - Types no kept root type reaches are dropped (also with no `can`). An object that no longer has the

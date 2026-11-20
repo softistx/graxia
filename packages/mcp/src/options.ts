@@ -1,9 +1,7 @@
 import type { Graxia, ServerContextArg } from '@graxia/core';
+import type { Can } from '@graxia/core/agent';
 import type { McpAuthInfo, McpAuthOptions } from './auth/types';
 import type { McpOperationsOptions } from './operations/types';
-
-/** Whether the caller holds a permission named by `@needs` (what `printSchemaFor`'s `can` takes). */
-export type Can = (permission: string) => boolean;
 
 /** Options of {@link createMcp}. */
 export interface McpOptions<HostCtx extends object = Record<never, never>> {
@@ -14,10 +12,17 @@ export interface McpOptions<HostCtx extends object = Record<never, never>> {
 	/** Server instructions the client shows to the model: what this API is for. */
 	instructions?: string;
 	/**
-	 * The permissions of the caller, from the request (a token, a session) and
-	 * the `serverContext` you passed to `fetch`, and the verified token when
-	 * `auth` is set (`auth` is undefined otherwise). It may be async. Absent:
-	 * every field is visible.
+	 * A factory, called once per request: it returns the permission check
+	 * (`Can`) for that caller, from the request (a token, a session), the
+	 * `serverContext` you passed to `fetch` and the verified token when `auth`
+	 * is set (`auth` is undefined otherwise). It may be async. Absent: every
+	 * field is visible.
+	 *
+	 * @example
+	 * can: async (request) => {
+	 * 	const roles = await rolesOf(request);
+	 * 	return (permission) => roles.has(permission);
+	 * },
 	 */
 	can?: (
 		request: Request,
@@ -106,17 +111,18 @@ export interface Mcp<HostCtx extends object = Record<never, never>> {
 	 * `auth` it answers 404.
 	 */
 	metadata(request: Request): Response;
-	/** Stops the handler: in-flight requests are aborted. */
-	close(): Promise<void>;
+	/** Stops the handler: in-flight requests are aborted (like `graxia.dispose()`). */
+	dispose(): Promise<void>;
 }
 
 /**
  * The graxia instance a server is built over: it runs the operations
  * (`execute`), and gives the schema it serves, the limits it enforces and
- * its trusted documents mode.
+ * its trusted documents mode. A hand-made host must pass
+ * `trustedDocuments: graxia.trustedDocuments`: leaving it out would let
+ * strict trusted documents be switched off without a sign.
  */
 export type McpHost<HostCtx extends object> = Pick<
 	Graxia<HostCtx>,
-	'execute' | 'schema' | 'limits'
-> &
-	Partial<Pick<Graxia<HostCtx>, 'trustedDocuments'>>;
+	'execute' | 'schema' | 'limits' | 'trustedDocuments'
+>;

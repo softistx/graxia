@@ -1,3 +1,4 @@
+export type { Can } from '@graxia/core/agent';
 export { mcpAuth } from './auth/principal';
 export type { McpAuthInfo, McpAuthOptions, McpScopes } from './auth/types';
 export type { McpErrorCode } from './codes';
@@ -6,4 +7,4 @@ export type {
 	McpOperationInfo,
 	McpOperationsOptions,
 } from './operations/types';
-export type { Can, Mcp, McpHost, McpOptions } from './options';
+export type { Mcp, McpHost, McpOptions } from './options';

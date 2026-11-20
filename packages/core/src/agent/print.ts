@@ -26,7 +26,7 @@ import {
 	literal,
 	printArgs,
 } from './sdl';
-import { type View, visibleView } from './visible';
+import { type Can, type View, visibleView } from './visible';
 
 /** Options of {@link printSchemaFor}. */
 export interface PrintSchemaForOptions {
@@ -35,7 +35,7 @@ export interface PrintSchemaForOptions {
 	 * field and type is visible. A `@needs` with `anyOf` is met by one of its
 	 * permissions; repeated `@needs` must all be met.
 	 */
-	can?: (permission: string) => boolean;
+	can?: Can;
 }
 
 type Used = Set<AgentDirectiveName>;

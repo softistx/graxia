@@ -27,7 +27,8 @@ export interface View {
 	placeholder?: string;
 }
 
-type Can = (permission: string) => boolean;
+/** Whether the caller holds a permission named by `@needs`: `(permission) => boolean`. */
+export type Can = (permission: string) => boolean;
 type Composite = Extract<
 	GraphQLNamedType,
 	{ getFields(): unknown; getInterfaces(): unknown }

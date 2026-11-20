@@ -1,6 +1,6 @@
+import type { Can } from '@graxia/core/agent';
 import type { GraphQLSchema } from 'graphql';
 import type { McpAuthInfo } from './auth/types';
-import type { Can } from './options';
 import { buildView, type View } from './view';
 
 /** Builds the caller's view on first use, once per request: `fetch` asks for it only when the request lists or calls tools. */

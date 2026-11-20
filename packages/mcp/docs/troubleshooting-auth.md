@@ -62,15 +62,15 @@ introspection call), as in [the auth guide](./guide/auth.md#verifytoken).
 `verifyToken` resolved a `Response` (a verifier that builds its own refusals): it is sent as is.
 Read that library's documentation for its meaning.
 
-## 403 `error="insufficient_scope", scope="mcp:read"` (`MCP_INSUFFICIENT_SCOPE`)
+## `Forbidden: the token lacks mcp:read.` (`MCP_INSUFFICIENT_SCOPE`)
 
-Message `Forbidden: the token lacks mcp:read.` Ask the authorization server for `mcp:read` (or
-your `scopes.read`).
+A 403 with `error="insufficient_scope", scope="mcp:read"`. Ask the authorization server for
+`mcp:read` (or your `scopes.read`).
 
-## 403 `insufficient_scope`, `scope="mcp:read mcp:write"` on `graphql_mutate` or a mutation tool
+## `Forbidden: graphql_mutate needs the scope mcp:write.` (`MCP_INSUFFICIENT_SCOPE`)
 
-Message `Forbidden: graphql_mutate needs the scope mcp:write.` (it names the tool called, so
-`rename_book needs …` for a typed tool). A read-only token called a tool that writes from a stale
+A 403 with `error="insufficient_scope", scope="mcp:read mcp:write"`. The message names the tool
+called, so a typed tool answers `Forbidden: rename_book needs the scope mcp:write.`. A read-only token called a tool that writes from a stale
 tool list. Re-authorize with both scopes (the challenge's `scope`); these tools are not listed for
 a token without `mcp:write`. With `mutations` off there is no 403: the call gets
 `Tool graphql_mutate not found`. A mutation tool `can` hides from the caller gets no 403 either,

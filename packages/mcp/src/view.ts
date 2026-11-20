@@ -1,4 +1,4 @@
-import { printSchemaFor } from '@graxia/core/agent';
+import { type Can, printSchemaFor } from '@graxia/core/agent';
 import {
 	buildSchema,
 	type DefinitionNode,
@@ -6,7 +6,6 @@ import {
 	Kind,
 	parse,
 } from 'graphql';
-import type { Can } from './options';
 
 /** The schema as one caller may see it, with the SDL of each type ready to hand out. */
 export interface View {

@@ -46,7 +46,7 @@ const mcp = createMcp(createGraxia({ schema }), {
 const server = Bun.serve({ port: 0, fetch: (req) => mcp.fetch(req) });
 afterAll(async () => {
 	await server.stop(true);
-	await mcp.close();
+	await mcp.dispose();
 });
 
 const outputOf = async (name: string) =>

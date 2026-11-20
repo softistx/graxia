@@ -10,6 +10,7 @@ import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
 import type { Mcp, McpHost, McpOptions } from './options';
 import { defaultHosts } from './origin';
+import { checkOriginOptions } from './origin-options';
 import { admit, type PipelineSettings } from './pipeline';
 import { refusal } from './refusal';
 import { serverFactory } from './server';
@@ -17,7 +18,9 @@ import { createToolset } from './toolset';
 import { createViewSource } from './view-cache';
 
 /** The error sink: the option, `console.error` by default, never throwing. */
-function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
+export function sinkOf(
+	option: McpOptions['onError'],
+): (error: unknown) => void {
 	if (option === false) return () => {};
 	const sink =
 		option ??
@@ -64,6 +67,7 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	graxia: McpHost<HostCtx>,
 	options: McpOptions<HostCtx>,
 ): Mcp<HostCtx> {
+	checkOriginOptions(options.allowedHosts, options.allowedOrigins);
 	const onError = sinkOf(options.onError);
 	const settings: PipelineSettings = {
 		allowedOrigins: options.allowedOrigins ?? [],
@@ -74,7 +78,7 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	const mutations = options.mutations ?? false;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
-	const toolset = createToolset(graxia, options, mutations);
+	const toolset = createToolset(graxia, options, mutations, onError);
 	const handler = createMcpHandler(
 		serverFactory({ graxia, options, auth, carrier, toolset, onError }),
 		{
@@ -128,6 +132,6 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 				);
 			}
 		},
-		close: () => handler.close(),
+		dispose: () => handler.close(),
 	};
 }

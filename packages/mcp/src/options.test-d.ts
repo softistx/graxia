@@ -1,5 +1,7 @@
 import { createGraxia, createSchema, type TrustedManifest } from '@graxia/core';
+import type { Can as CoreCan } from '@graxia/core/agent';
 import {
+	type Can,
 	createMcp,
 	type Mcp,
 	type McpAuthInfo,
@@ -175,11 +177,26 @@ void granted;
 		operations: { id: string; body: string }[];
 	} = { format: 'apollo-persisted-query-manifest', version: 1, operations: [] };
 	createMcp(plain, { name: 'x', operations: { documents: imported } });
-	// A host without `trustedDocuments` (an older core, a test double) is still accepted.
+	// A hand-made host must say its trusted documents mode: leaving it out would fail open.
 	createMcp(
+		// @ts-expect-error trustedDocuments is required (a missing mode would switch strict off)
 		{ execute: plain.execute, schema: plain.schema, limits: plain.limits },
 		{ name: 'x', operations: { documents: codegen } },
 	);
+	createMcp(
+		{
+			execute: plain.execute,
+			schema: plain.schema,
+			limits: plain.limits,
+			trustedDocuments: plain.trustedDocuments,
+		},
+		{ name: 'x', operations: { documents: codegen } },
+	);
+	// `can` is a factory returning core's `Can`.
+	const can: Can = (permission) => permission === 'a';
+	createMcp(plain, { name: 'x', can: () => can });
+	// @ts-expect-error the factory returns a predicate, not a boolean
+	createMcp(plain, { name: 'x', can: () => true });
 	const mode: 'strict' | 'mixed' | undefined = plain.trustedDocuments?.mode;
 	void mode;
 	const manifest: TrustedManifest = codegen;
@@ -200,3 +217,7 @@ void granted;
 	// @ts-expect-error genericTools is a boolean
 	createMcp(plain, { name: 'x', genericTools: 'no' });
 }
+
+// The re-export is core's type.
+const same: CoreCan = {} as Can;
+void same;

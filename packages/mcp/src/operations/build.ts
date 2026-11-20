@@ -7,8 +7,8 @@ import {
 	parse,
 	specifiedRules,
 	validate,
-	visit,
 } from 'graphql';
+import { incrementalDirective } from '../tools/operation';
 import { type ManifestEntry, manifestEntries } from './documents';
 import { inputSchemaOf } from './input-schema';
 import { RESERVED_PREFIX, toolNameOf } from './naming';
@@ -75,17 +75,6 @@ function wanted(document: DocumentNode, id: string, build: Build): Wanted[] {
 	return kept;
 }
 
-function incremental(document: DocumentNode): string | undefined {
-	let found: string | undefined;
-	visit(document, {
-		Directive(node) {
-			if (node.name.value === 'defer' || node.name.value === 'stream')
-				found ??= node.name.value;
-		},
-	});
-	return found;
-}
-
 /** The description of an operation: the one of `descriptions`, else its own. */
 function descriptionOf(wanted: Wanted, build: Build): string {
 	const given = build.options.descriptions;
@@ -135,7 +124,7 @@ function addDocument(raw: ManifestEntry, build: Build): void {
 	const operations = wanted(document, entry.id, build);
 	if (operations.length === 0) return;
 	const names = operations.map((o) => o.name);
-	const directive = incremental(document);
+	const directive = incrementalDirective(document);
 	if (directive) {
 		build.problems.push(
 			problem.incremental(names.join(', '), entry.id, directive),

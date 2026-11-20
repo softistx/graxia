@@ -68,6 +68,12 @@ graxia runs trusted documents in `strict` mode it is never listed, like `graphql
 `__schema` and `__type` are refused over MCP: they would show fields `@needs` hides. Call
 `graphql_schema` (no input, `types` or `search`). `__typename` is allowed.
 
+## `No type matches "x".` (or `Empty search.`)
+
+`graphql_schema` with `search` found no type or field of that name in the caller's view (a hidden
+type is not found either); `Empty search.` means `search` was blank. Call `graphql_schema` with
+no input for the type names, then search a word of one of them.
+
 ## `# Unknown type X. Fix: call graphql_schema with no input to list the type names you can use.`
 
 `graphql_schema` was asked for a type the caller cannot see or that does not exist. The `Mutation`
@@ -132,6 +138,31 @@ One error lists every problem of `operations`, one per line, each ending with it
 An operation `include` leaves out, a subscription, and a mutation without `mutations: true` is not
 validated and needs no description; every document must still parse and name its operations.
 
+## `createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …`
+
+Reported once through `onError` at boot (not thrown: the same code boots in development). graxia's
+`trustedDocuments` is `strict` (the default under `NODE_ENV=production`), so `graphql_query` and
+`graphql_mutate` are not listed, and with no `operations` there is no typed tool: agents read the
+schema and run nothing. Fix: pass the persisted documents.
+
+```ts
+createMcp(graxia, { name: 'library', operations: { documents: manifest } });
+```
+
+## `createMcp: allowedHosts entry "…" can never match` / `allowedOrigins entry "…" can never match`
+
+Thrown at startup. `allowedHosts` takes hostnames only (`mcp.example.com`, `[::1]`), without
+scheme, port or path; `allowedOrigins` takes exactly `scheme://host[:port]`, with no path and no
+trailing slash. The message gives the corrected value.
+
+```ts
+createMcp(graxia, {
+	name: 'library',
+	allowedHosts: ['mcp.example.com'], // not 'mcp.example.com:3000'
+	allowedOrigins: ['https://app.example'], // not 'https://app.example/'
+});
+```
+
 ## `createMcp: genericTools is false and there is no operations: …`
 
 Pass `operations: { documents: manifest }`, or remove `genericTools: false`.
@@ -146,9 +177,10 @@ the arguments it accepts; they are the `properties` of its `inputSchema` in `too
 An argument is missing or has the wrong type: graxia checks the arguments as the operation's
 variables. The fix is `Correct the arguments: see the tool's input schema.`
 
-## 403 `insufficient_scope`, `rename_book needs the scope mcp:write`
+## `Forbidden: rename_book needs the scope mcp:write.` (`MCP_INSUFFICIENT_SCOPE`)
 
-A mutation typed tool was called with a read-only token: the same step-up as `graphql_mutate`.
+A 403 `insufficient_scope`: a mutation typed tool was called with a read-only token, the same
+step-up as `graphql_mutate` ([auth troubleshooting](./troubleshooting-auth.md)).
 
 ## `Only persisted documents are allowed.` (`PERSISTED_QUERY_ONLY`) from `graphql_query`
 

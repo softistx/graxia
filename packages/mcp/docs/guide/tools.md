@@ -51,14 +51,21 @@ codes. A document that does not parse is refused here (the token limit of graxia
 | a plugin answered with its own response       | the plugin's, when its body has `errors` | the plugin's                                | the plugin's                                                                                |
 | a plugin response with no `errors`, shutdown  | `MCP_EXECUTION_REFUSED`                  | the `graxia.execute` message                | `Retry later; if it persists, the server is shutting down or a plugin refused the request.` |
 
+The typed tools add `MCP_UNKNOWN_ARGUMENT` ([troubleshooting](../troubleshooting.md)), and `auth` adds
+`MCP_UNAUTHORIZED`, `MCP_INSUFFICIENT_SCOPE` and `MCP_TOKEN_IN_URL`
+([troubleshooting auth](../troubleshooting-auth.md)). `McpErrorCode` (an exported type) is the union
+of the codes `@graxia/mcp` emits.
+
 `operationName` picks the operation: only the selected one is checked against the tool's kind, so a
 document holding a query and a mutation runs its query in `graphql_query`.
 
 ## `graphql_mutate`
 
-Listed only with `mutations: true` (and, with `auth`, only for a token with the write scope,
-`mcp:write` by default; a read-only token calling it gets a 403 step-up, see [auth](./auth.md); with `mutations` off the call is `Tool graphql_mutate not found`); same input. A query is refused with a fix pointing to
-`graphql_query`. Without the option the tool does not exist: calling it is a JSON-RPC error.
+Listed only with `mutations: true`; same input. A query is refused with a fix pointing to
+`graphql_query`. With `mutations` off the tool does not exist: calling it is a JSON-RPC error
+(`Tool graphql_mutate not found`). With `auth`, it is listed only for a token with the write scope
+(`mcp:write` by default), and a read-only token calling it gets a 403 step-up
+([auth](./auth.md#scopes-and-step-up)).
 
 ## Results
 
@@ -81,7 +88,8 @@ listed**, and a call answers `Only persisted documents are allowed.` with the co
 `PERSISTED_QUERY_ONLY` and a fix naming the typed tools the caller has. `graphql_schema` stays.
 The [typed tools](./operations.md) of `operations` run: they are the documents you persisted.
 Without `operations` a strict server boots with `graphql_schema` alone, so nothing can be run:
-pass `operations`. In `mixed` mode the generic tools are unchanged.
+`createMcp` reports it once through `onError` ("graxia runs trusted documents in strict mode and
+`operations` gives no tool"). Pass `operations`. In `mixed` mode the generic tools are unchanged.
 
 ## Cost of `can`
 

@@ -18,7 +18,7 @@ const server = Bun.serve({
 });
 afterAll(async () => {
 	await server.stop(true);
-	await mcp.close();
+	await mcp.dispose();
 });
 
 test('a real client: initialize, tools/list, tools/call', async () => {
@@ -95,6 +95,6 @@ test('a real client: a typed tool is listed with its schemas and runs', async ()
 		await client.close();
 	} finally {
 		await typedServer.stop(true);
-		await typed.mcp.close();
+		await typed.mcp.dispose();
 	}
 });

@@ -5,6 +5,7 @@ import {
 	agentDirectives,
 	agentExtensions,
 	agentTypeDefs,
+	type Can,
 	type Constraint,
 	constraintOf,
 	errorsOf,
@@ -22,6 +23,10 @@ expectTypeOf(agentTypeDefs).toEqualTypeOf<string>();
 expectTypeOf(agentDirectives).toEqualTypeOf<readonly GraphQLDirective[]>();
 expectTypeOf(printSchemaFor(schema)).toEqualTypeOf<string>();
 printSchemaFor(schema, { can: (permission) => permission.startsWith('a:') });
+expectTypeOf<Can>().toEqualTypeOf<(permission: string) => boolean>();
+expectTypeOf<
+	NonNullable<Parameters<typeof printSchemaFor>[1]>['can']
+>().toEqualTypeOf<Can | undefined>();
 // @ts-expect-error `can` takes a permission name
 printSchemaFor(schema, { can: (permission: number) => permission > 1 });
 

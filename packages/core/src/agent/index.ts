@@ -27,3 +27,4 @@ export {
 	type NeedsTarget,
 	needsOf,
 } from './read';
+export type { Can } from './visible';

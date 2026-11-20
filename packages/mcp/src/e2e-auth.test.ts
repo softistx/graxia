@@ -39,7 +39,7 @@ mcp = createMcp(graxia, {
 });
 afterAll(async () => {
 	await server.stop(true);
-	await mcp?.close();
+	await mcp?.dispose();
 });
 
 test('a real client with a bearer header lists tools and calls one', async () => {

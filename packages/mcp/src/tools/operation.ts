@@ -13,6 +13,20 @@ import {
 
 export type Allowed = 'query' | 'mutation';
 
+/** The first `@defer` or `@stream` the document uses, without the `@`. */
+export function incrementalDirective(
+	document: DocumentNode,
+): string | undefined {
+	let found: string | undefined;
+	visit(document, {
+		Directive(node) {
+			if (node.name.value === 'defer' || node.name.value === 'stream')
+				found ??= node.name.value;
+		},
+	});
+	return found;
+}
+
 /** A reason the document may not run here, as the message, code and fix an agent reads. */
 export interface Refusal {
 	message: string;
@@ -113,13 +127,7 @@ export function checkOperations(
 	const operation = selected(document, operationName);
 	if (operation && operation.operation !== allowed)
 		return wrongKind(allowed, operation.operation, writeScope);
-	let incremental: string | undefined;
-	visit(document, {
-		Directive(node) {
-			if (node.name.value === 'defer' || node.name.value === 'stream')
-				incremental ??= node.name.value;
-		},
-	});
+	const incremental = incrementalDirective(document);
 	if (incremental)
 		return {
 			message: `@${incremental} is not available over MCP.`,
