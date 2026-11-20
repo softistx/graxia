@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { definePlugin } from '../plugins/define';
 import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
@@ -68,6 +68,11 @@ function observer(log: Log[]) {
 	});
 }
 
+const stops: (() => Promise<void>)[] = [];
+afterEach(async () => {
+	for (const stop of stops.splice(0)) await stop();
+});
+
 /** A host: Bun.serve upgrading with its own per-connection state as serverContext. */
 function host(log: Log[]) {
 	const graxia = createGraxia({
@@ -80,19 +85,17 @@ function host(log: Log[]) {
 		fetch: (request, srv) => graxia.upgrade(request, srv, { tenant: 'acme' }),
 		websocket: graxia.websocket,
 	});
-	return {
-		url: `ws://localhost:${server.port}/graphql`,
-		stop: async () => {
-			await graxia.dispose({ timeout: 200 });
-			await server.stop(true);
-		},
-	};
+	stops.push(async () => {
+		await graxia.dispose({ timeout: 200 });
+		await server.stop(true);
+	});
+	return { url: `ws://localhost:${server.port}/graphql` };
 }
 
 describe('a host observes each socket operation', () => {
 	test('serverContext reaches the plugin and every operation has an end', async () => {
 		const log: Log[] = [];
-		const { url, stop } = host(log);
+		const { url } = host(log);
 		const s = raw(url);
 		await s.init();
 		const run = async (id: string, query: string, messages: number) => {
@@ -120,6 +123,5 @@ describe('a host observes each socket operation', () => {
 			{ type: 'subscription', tenant: 'acme', end: 'ended' },
 			{ type: 'subscription', tenant: 'acme', end: 'ended' },
 		]);
-		await stop();
 	});
 });

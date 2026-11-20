@@ -4159,7 +4159,9 @@ per-connection state in `args.contextValue`.
 
 ```ts
 import { createGraxia, definePlugin } from '@graxia/core';
+import { schema } from './schema'; // your executable schema
 
+// `signal` is added by graxia per operation: do not pass it in serverContext
 type Connection = { tenant: string; signal: AbortSignal };
 
 const log = (
