@@ -174,7 +174,7 @@ unchanged. Differences:
 - The operation span records the first unexpected error only; `graphql.error.count` still counts
   all of them.
 - The `tracer` option is not ignored: it throws, see
-  [Troubleshooting](../troubleshooting.md#telemetrytracer-was-replaced-by-telemetryinstance).
+  [Troubleshooting](../troubleshooting-rate-limits.md#telemetrytracer-was-replaced-by-telemetryinstance).
 
 An invalid value throws a `GraxiaConfigError` from `createGraxia`, before any plugin's `setup`; see
 [Troubleshooting](../troubleshooting.md).

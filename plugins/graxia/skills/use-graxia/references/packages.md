@@ -36,6 +36,13 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/trusted-documents.md`: Trusted documents and persisted queries
   - `node_modules/@graxia/core/docs/guide/uploads.md`: File uploads
   - `node_modules/@graxia/core/docs/guide/websocket.md`: Subscriptions over WebSocket
+  - `node_modules/@graxia/core/docs/troubleshooting-http.md`: Troubleshooting: HTTP, execute and testing
+  - `node_modules/@graxia/core/docs/troubleshooting-limits.md`: Troubleshooting: request limits
+  - `node_modules/@graxia/core/docs/troubleshooting-plugins.md`: Troubleshooting: plugins and context
+  - `node_modules/@graxia/core/docs/troubleshooting-rate-limits.md`: Troubleshooting: rate limits and telemetry
+  - `node_modules/@graxia/core/docs/troubleshooting-schema.md`: Troubleshooting: schema and resolvers
+  - `node_modules/@graxia/core/docs/troubleshooting-security.md`: Troubleshooting: security
+  - `node_modules/@graxia/core/docs/troubleshooting-subscriptions.md`: Troubleshooting: subscriptions and incremental delivery
   - `node_modules/@graxia/core/docs/troubleshooting-uploads.md`: Troubleshooting: file uploads
   - `node_modules/@graxia/core/docs/troubleshooting.md`: Troubleshooting
 

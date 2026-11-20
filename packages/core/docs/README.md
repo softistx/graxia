@@ -33,6 +33,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Help
 
 - [Troubleshooting](./troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: schema and resolvers](./troubleshooting-schema.md), [plugins and context](./troubleshooting-plugins.md), [request limits](./troubleshooting-limits.md), [subscriptions](./troubleshooting-subscriptions.md), [HTTP, execute and testing](./troubleshooting-http.md), [security](./troubleshooting-security.md), [rate limits and telemetry](./troubleshooting-rate-limits.md): the topic pages.
 - [Troubleshooting: file uploads](./troubleshooting-uploads.md): every upload message and its fix.
 
 ## What is next
