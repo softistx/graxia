@@ -21,10 +21,23 @@ export type FieldResolver<
 	info: GraphQLResolveInfo,
 ) => Result | Promise<Result>;
 
+/**
+ * A field resolver of the loose map. `parent` and `args` are `any`, so a
+ * resolver may annotate a concrete argument type such as
+ * `({ file }: { file: File })`; `ctx` stays checked against the schema's
+ * context.
+ */
+export type MapResolver<Ctx, Result = unknown> = (
+	parent: any,
+	args: any,
+	ctx: Ctx,
+	info: GraphQLResolveInfo,
+) => Result | Promise<Result>;
+
 /** A subscription field: `subscribe` returns the event stream, `resolve` maps each event. */
 export type SubscriptionFieldResolver<Ctx> = {
-	resolve?: FieldResolver<any, Ctx>;
-	subscribe?: FieldResolver<any, Ctx, any, AsyncIterable<unknown>>;
+	resolve?: MapResolver<Ctx>;
+	subscribe?: MapResolver<Ctx, AsyncIterable<unknown>>;
 };
 
 /**
@@ -49,7 +62,7 @@ export type IsTypeOf = (
 /** The resolvers of one object, interface or union type. */
 export type TypeResolvers<Ctx> = {
 	[field: string]:
-		| FieldResolver<any, Ctx>
+		| MapResolver<Ctx>
 		| SubscriptionFieldResolver<Ctx>
 		| undefined;
 } & {

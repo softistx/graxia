@@ -10,7 +10,7 @@
 		"build": "bun run scripts/workspace.ts build",
 		"typecheck": "bun check && bun run typecheck:scripts",
 		"typecheck:scripts": "tsc --noEmit -p scripts/tsconfig.json",
-		"test": "bun run scripts/workspace.ts test && bun test ./scripts/",
+		"test": "bun run scripts/workspace.ts test && bun run --filter './examples/*' test && bun test ./scripts/",
 		"lint": "biome ci",
 		"fix": "biome check --write",
 		"format": "biome format",

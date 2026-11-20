@@ -4,11 +4,14 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
 ## Now
 
-- **Parity and migration** — run Envelop plugins unchanged, multipart uploads, and a parity suite
-  so an application on another GraphQL server can move over.
+- **Parity and migration** — Envelop plugins run through `@graxia/envelop` (not published yet),
+  multipart uploads (ready for the next release, see [File uploads](./guide/uploads.md)), and a
+  parity suite, a host-embedding example and a migration guide from `@alxia/graphql` (all ready for the next release) so an application on another GraphQL server can move over.
 
 ## Later
 
+- **Streaming uploads** — hand each file part to the resolver as it arrives, so a large file is
+  not buffered whole (today the body is buffered up to `uploads.bodyBytes`).
 - **Enforcing `@constraint` and `@needs`** — today they describe; a plugin could refuse an input
   outside its limits and a field the caller lacks the permission for.
 
@@ -25,7 +28,7 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - **Ready for agents, the schema side** — `@graxia/core/agent`: `@needs`, `@constraint` and
   `@errors`, `printSchemaFor` for what a caller may see, `lintDescriptions`, and a `fix` on every
   error graxia emits ([#23](https://github.com/softistx/graxia/issues/23)). The MCP server is
-  `@graxia/mcp`, with its own [roadmap](../../mcp/docs/roadmap.md).
+  `@graxia/mcp`, with its own [roadmap](https://github.com/softistx/graxia/blob/develop/packages/mcp/docs/roadmap.md).
 - **What a host needs to serve agents** — `graxia.schema`, `graxia.limits` and
   `graxia.trustedDocuments` read the resolved configuration, and the shared `Can` type names the
   permission check.

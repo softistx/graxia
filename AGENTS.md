@@ -24,7 +24,7 @@ roadmap `docs/roadmap.md`, the slices are the GitHub issues `S0`..`S29`
 | `@graxia/envelop`  | `fromEnvelop(plugins)` adapter                                                                             |
 
 `@graxia/core` is public since S8 (first publish 0.1.0) and `@graxia/redis` since S13 (first
-publish 0.1.0, released with core 0.2.0), `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0), and `@graxia/mcp` is public since S23 (first publish 0.1.0, in 0.5); the other packages stay `"private": true` until their own slice, and removing it is
+publish 0.1.0, released with core 0.2.0), `@graxia/graphiql` is public from 0.4 (M4, first publish 0.1.0), `@graxia/mcp` is public since S23 (first publish 0.1.0, in 0.5), and `@graxia/envelop` is built in S27 and becomes public at its first publish (0.1.0, in 0.6; flip this line at the release); the other packages stay `"private": true` until their own slice, and removing it is
 a deliberate change, named in its PR.
 
 ## Scripts
@@ -51,7 +51,8 @@ public names from the source of each `exports` entry; the roadmap pages are not 
 
 The release itself is its own step, after the Version PR merges: `bunx changeset git-tag && git push --follow-tags` from an up-to-date `develop`.
 
-At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, then regenerate.
+At a package's first publish, drop its "not published yet" wording from README.md and SKILL.md, and SKILL.md's envelop pointer becomes
+`node_modules/@graxia/envelop/docs/guide/envelop.md`, then regenerate.
 
 ## Invariants
 
@@ -101,5 +102,5 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
 - **`ci.yml`**: one light job on `pull_request` to `develop` and `feat/**`; no
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
-- **No `examples/` yet** (the workspace glob is kept; `examples/host-embedding` lands in S29).
+- **`examples/host-embedding`** is a private workspace member, never published: the root `test` runs it after the packages (`bun run --filter './examples/*' test`), and it needs `bun run build` first (it imports `@graxia/core`'s `dist`). `.changeset/config.json` keeps private packages out of versioning and tags.
 - **`plugins/graxia`** carries a generated package index (see "Generated files").

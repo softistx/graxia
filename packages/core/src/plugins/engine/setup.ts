@@ -12,13 +12,14 @@ export function createSetup(
 	/** Receives each plugin whose `setup` completed (a plugin without `setup` counts). */
 	ready: Set<GraxiaPlugin<any, any>>,
 	transports: SetupApi['transports'],
+	schema: SetupApi['schema'],
 ): () => Promise<void> {
 	let initialised: Promise<void> | undefined;
 	return () => {
 		initialised ??= (async () => {
 			for (const plugin of ordered) {
 				try {
-					await plugin.setup?.({ plugins: names, transports });
+					await plugin.setup?.({ plugins: names, transports, schema });
 					ready.add(plugin);
 				} catch (error) {
 					throw new GraxiaPluginError(plugin.name, error);

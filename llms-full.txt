@@ -264,6 +264,27 @@ createGraxia({ schema, telemetry: { resolverSpans: true } }); // or `telemetry: 
 Setup, the span tree, attributes, every option and the migration from `@opentelemetry/api`:
 [Telemetry](./docs/guide/telemetry.md).
 
+## File uploads
+
+The GraphQL multipart request spec, off by default. Resolvers receive Bun's Web `File`.
+
+```ts
+import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+
+const schema = createSchema()({
+	typeDefs:
+		'scalar File type Query { ok: Boolean } type Mutation { upload(file: File!): String! }',
+	resolvers: {
+		File: GraphQLFile,
+		Mutation: { upload: (_, { file }: { file: File }) => file.name },
+	},
+});
+createGraxia({ schema, uploads: true }).serve(); // 16 MiB body, 8 MiB per file, 10 files
+```
+
+It needs the CSRF header (`x-graphql-csrf: 1`); `createGraxia` refuses `uploads` with the check off.
+Limits, memory cost, batching and clients: [File uploads](./docs/guide/uploads.md).
+
 ## Trusted documents
 
 Let production run only the documents your clients ship: a manifest (Relay, graphql-codegen or
@@ -471,6 +492,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
 |                        | Telemetry: types `TelemetryOptions` (the `telemetry` option) and `TelemetryInstance` (its `instance`, a `Telemetry` from `createTelemetry`); needs the optional peer `@softistx/telemetry`                                                            |
+|                        | Uploads: `GraphQLFile`; type `UploadsOptions`                                                                                                                                                                                                         |
 |                        | Trusted documents: types `TrustedDocumentsOptions`, `TrustedManifest`, `ApolloPersistedQueryManifest`                                                                                                                                                 |
 | `@graxia/core/agent`   | `agentTypeDefs`, `agentDirectives`, `agentExtensions`, `needsOf`, `constraintOf`, `errorsOf`, `printSchemaFor`, `visibleSchema`, `lintDescriptions`; types `Constraint`, `LintIssue`, `LintRule`                                                      |
 | `@graxia/core/testing` | `createTestClient` and `expectNoErrors`, for tests                                                                                                                                                                                                    |
@@ -490,6 +512,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Schema](./docs/guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
 - [`@defer` and `@stream`](./docs/guide/incremental.md): multipart/mixed and SSE, formats, clients, masking.
 - [PubSub](./docs/guide/pubsub.md): typed topics, the in-memory PubSub, filter and map helpers.
+- [File uploads](./docs/guide/uploads.md): the multipart request spec, `GraphQLFile`, limits, CSRF, memory cost.
 - [Limits and caches](./docs/guide/limits-and-caches.md): parse limits and the parse and validation caches.
 - [Rate limiting](./docs/guide/rate-limiting.md): `fieldRateLimit`, stores, keys, `single` fields, 429 answers.
 - [Security](./docs/guide/security.md): CSRF header, `sameOrigin`, WebSocket origin, introspection and suggestions.
@@ -497,6 +520,7 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 - [Trusted documents](./docs/guide/trusted-documents.md): manifests, `documentId`, APQ, strict mode, error codes.
 - [Production](./docs/guide/production.md): what `NODE_ENV=production` changes, a recommended configuration, proxies, shutdown, checklist.
 - [Troubleshooting](./docs/troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: file uploads](./docs/troubleshooting-uploads.md): every upload message and its fix.
 - [Roadmap](./docs/roadmap.md): what ships next.
 
 ## License
@@ -963,6 +987,9 @@ process.on('SIGTERM', async () => {
 4. Waits for the plugins' `setup` to finish, then runs every plugin's `onDispose()` in reverse plugin order. Only the plugins whose `setup` succeeded are
    disposed. Every hook runs even when one throws; the first error is rethrown afterwards.
 
+A host that owns `Bun.serve` stops its server itself after `dispose()` (it stops only the servers `serve()` started); the
+[host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding) shows readiness, `dispose()` and `server.stop()` in order.
+
 A second call returns the same promise. `graxia` also implements `Symbol.asyncDispose`:
 
 ```ts
@@ -1050,6 +1077,11 @@ answer has graphql's message, `extensions.code: "BAD_USER_INPUT"` and a `fix`. A
 already has a code (an `exposedError` thrown by a custom scalar) keeps it. An operation name the
 document does not have, or a missing one when the document holds several operations, is refused by
 graxia with the same code and a `fix` that says to send `operationName`.
+
+## Parse errors with their own code
+
+A parse function (a plugin's `setParseFn`) that throws a `GraphQLError` with its own string `extensions.code` is
+answered as written, with that code; other parse errors get `GRAPHQL_PARSE_FAILED`.
 
 ## Typed codes
 
@@ -1255,6 +1287,8 @@ Bun.serve({
 To serve WebSockets from your own server too, call `graxia.upgrade(request, server)` from `fetch` when `graxia.isUpgrade(request)` and
 pass `graxia.websocket` as `websocket` (see [Subscriptions over WebSocket](./websocket.md)); on the
 same path, `serve()` does it for you.
+A complete host (prefix, typed host context, headers and cookies, CORS, WebSocket and SSE, graceful shutdown) is the
+[host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding).
 
 The second argument is the `serverContext`, merged into every operation's context. With `path: false`
 graxia answers whatever path it is handed.
@@ -1275,6 +1309,7 @@ server) to it. The compiler checks that the context matches your schema's `creat
   [Security](./security.md).
 - **POST** needs `Content-Type: application/json` (a charset, if given, must be UTF-8), otherwise 415.
   The body is `{ query, variables?, operationName?, extensions? }`; `null` means absent.
+- **Multipart**: with `uploads` on, a `multipart/form-data` POST is read as the GraphQL multipart request spec (see [File uploads](./uploads.md)): 413 `UPLOAD_TOO_LARGE` / `UPLOAD_TOO_MANY_FILES` past its limits, 400 `UPLOAD_INVALID` for a malformed request. With `uploads` off it is 415 `UPLOADS_NOT_ENABLED`. It always needs the CSRF header.
 - **GET** reads `query`, `operationName`, and `variables` / `extensions` as URL-encoded JSON. A
   mutation over GET answers 405 with `Allow: POST`, decided right after parsing and before validation.
 - **Accept**: `application/graphql-response+json` or `application/json`. A missing header, `*/*` and
@@ -1573,6 +1608,18 @@ and nesting cases add `extensions.limit` and `extensions.fix`. A parser stack ov
 reported the same way, never thrown and never masked as `Unexpected error.`; it carries `fix` but
 no `limit`, and is not cached.
 
+## Upload limits
+
+With [`uploads`](./uploads.md) on, a multipart request has three more limits, checked before any resolver runs:
+
+| Option              | Default | Meaning                                |
+| ------------------- | ------- | -------------------------------------- |
+| `uploads.bodyBytes` | 16 MiB  | Most bytes of the whole multipart body |
+| `uploads.fileBytes` | 8 MiB   | Most bytes of one file                 |
+| `uploads.files`     | 10      | Most file parts in one request         |
+
+The `operations` field stays under `limits.bodyBytes`.
+
 ## Operation limits
 
 On by default, so an operation over them is refused before it executes. Each is a positive
@@ -1732,6 +1779,226 @@ Validation errors are graphql's own, each with `extensions.code = 'GRAPHQL_VALID
   function, or when the document did not come from a source string.
 - `setDocument` skips parsing and `setResult` skips validation.
 
+# @graxia/core — Migrating from `@alxia/graphql`
+
+Source: packages/core/docs/guide/migrating-from-alxia-graphql.md
+
+# Migrating from `@alxia/graphql`
+
+`@alxia/graphql` mounts GraphQL Yoga on an alxia app. `@graxia/core` is its replacement for a host
+that owns `Bun.serve` (or any `fetch` router): the same protections and transports, on graphql 17,
+with no engine underneath that the host does not see. This page maps each option and says where
+graxia does something different on purpose. A runnable host is in
+[`examples/host-embedding`](https://github.com/softistx/graxia/tree/develop/examples/host-embedding).
+
+## Why a major
+
+The engine changes (Yoga to graxia) and graphql 16 is dropped: every plugin, context type and error
+shape is graxia's. Plan it as a migration, not a bump: the table below is the checklist, and the
+last section proves each line with a spec.
+
+```sh
+bun remove @alxia/graphql graphql-yoga graphql-ws
+bun add @graxia/core graphql@^17.1.0
+```
+
+## Mounting
+
+Before, the endpoint was a route of the alxia app:
+
+```ts
+const app = alxia().plugin((app) =>
+	graphql(app, { schema, path: '/gql', ws: true }),
+);
+```
+
+After, the host builds the instance once and calls it from its own route. One import, one call:
+
+```ts
+import { createGraxia } from '@graxia/core';
+
+const graxia = createGraxia({ schema, path: '/api/gql' });
+
+Bun.serve({
+	routes: {
+		'/api/gql': (request, server) =>
+			graxia.isUpgrade(request)
+				? graxia.upgrade(request, server)
+				: graxia.fetch(request),
+	},
+	websocket: graxia.websocket,
+});
+```
+
+`path` is the whole path the host routes (no prefix is added); `path: false` serves any path. The
+example adds a typed host context, headers and cookies, CORS and a graceful shutdown.
+
+## Options
+
+| `@alxia/graphql`                       | `@graxia/core`                                                                                                                                           |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                                 | `path` (the full path, or `false` for any path)                                                                                                          |
+| `schema`, `GraphQLContext<typeof app>` | `createSchema<Ctx>()({ typeDefs, resolvers })`, with `Ctx = InferContext<typeof context>` ([Context](./context.md))                                      |
+| Yoga `context`                         | `context: ({ request, serverContext, signal }: ContextInit<Host>) => …`; the host passes `fetch(request, host)`                                          |
+| `maxTokens`, `maxNesting`              | `limits: { tokens, nesting }` ([Limits and caches](./limits-and-caches.md))                                                                              |
+| `parseCache`                           | `caches: { parse, validation }`, or `caches: false`                                                                                                      |
+| `bodyLimit`                            | `limits: { bodyBytes }`                                                                                                                                  |
+| `ws: true \| { path?, keepAlive? }`    | `subscriptions: { ws: true \| { keepAliveMs, maxPayloadBytes, onConnect, … } }` and `graxia.upgrade` (same path); `keepAlive: false` is `keepAliveMs: 0` |
+| `ide`, `graphiql`, `sandbox`           | the [`@graxia/graphiql`](https://github.com/softistx/graxia/tree/develop/packages/graphiql#readme) plugin, see [Explorer](#explorer)                     |
+| `plugins` (Envelop, Yoga)              | graxia `plugins` ([Plugins](./plugins.md)); Envelop plugins through `fromEnvelop` from `@graxia/envelop`                                                 |
+| Yoga `maskedErrors`                    | `maskErrors`, `maskError`, `onUnexpected` ([Errors](./errors.md))                                                                                        |
+| Yoga `batching`                        | `batching: true \| { limit }`                                                                                                                            |
+| `requestId`                            | always on, see [Request id and logs](#request-id-and-logs)                                                                                               |
+| `graphqlExecutor`                      | `graxia.execute({ document, variables, signal })` ([Testing](./testing.md))                                                                              |
+| `fieldRateLimit`, `limitFromStore`     | the same names from `@graxia/core` ([Rate limiting](./rate-limiting.md))                                                                                 |
+| `sameOrigin()`                         | `csrf: { sameOrigin: true \| { allowedOrigins, crossOrigin } }` ([Security](./security.md))                                                              |
+| `createTestClient`                     | `createTestClient` from `@graxia/core/testing`                                                                                                           |
+| `cors`                                 | none, see [CORS](#cors)                                                                                                                                  |
+| `logging`                              | none, see [Request id and logs](#request-id-and-logs)                                                                                                    |
+
+## What stays in `@alxia/graphql`
+
+`oncePerRequest`, `freshPerMutation`, `clearRequestCache` and `boundedStream` are conventions of an
+alxia app, not engine features. They keep working beside graxia because each operation has one
+stable context object (`getContext()` and the resolvers' context are the same reference, deferred
+fields included): key a cache on it with a `WeakMap`, as they do.
+
+## Setting a header or a cookie
+
+In `@alxia/graphql` a resolver wrote to `context.set` (`set.headers`, `set.cookies`), a value alxia
+built for it. graxia has no built-in `set`: the host puts its own in `serverContext` and merges it
+after `fetch`, so it stays in control of what a resolver may touch. Keep the name and the resolvers
+do not change.
+
+```ts
+const graxia = createGraxia({
+	schema,
+	context: ({ serverContext }: ContextInit<{ set: Headers }>) => ({
+		set: serverContext.set,
+	}),
+});
+
+const set = new Headers();
+const response = await graxia.fetch(request, { set });
+for (const [name, value] of set) response.headers.append(name, value);
+```
+
+Only a single result is still in the host's hands; a streamed response (SSE, multipart) has left, and
+a socket has none, so `set` is ignored there. The example does it with a header bag and
+`Bun.CookieMap`.
+
+## Reporting operations
+
+Yoga logged operations as lines. graxia reports them as telemetry spans (`graphql.request`, one
+`graphql.operation` per operation, batch and WebSocket included) on the optional
+`@softistx/telemetry` peer ([Telemetry](./telemetry.md)). A host that still wants a log line writes
+a plugin:
+
+```ts
+const logOperations = definePlugin({
+	name: 'log-operations',
+	onExecute: ({ args }) => {
+		const started = performance.now();
+		return ({ result }) => {
+			const failed = result !== undefined && 'errors' in result;
+			console.info(
+				`${args.operationName ?? 'anonymous'} ${failed ? 'failed' : 'ok'} ${Math.round(performance.now() - started)}ms`,
+			);
+		};
+	},
+});
+```
+
+## Request id and logs
+
+A client's `x-request-id` is never trusted in either library. alxia turned Yoga's id off; graxia
+always answers with its own `x-request-id` (the `correlationId` of a masked error), generated per
+request, readable with `getRequestId()`. graxia writes nothing to the console for a request, whatever
+its status. Unexpected failures go to `onUnexpected` (`console.error` by default, silent when
+`NODE_ENV=production`).
+
+## Explorer
+
+`ide`, `graphiql` and `sandbox` are replaced by the `@graxia/graphiql` plugin: `graphiql()` is on in
+development and off in production, with a CSP that names no external source. Apollo Sandbox is the
+`apolloSandbox()` plugin, and `sandboxContentSecurityPolicy` is the exact policy it needs. There is
+no `renderSandbox` hook: pass the plugin.
+
+## CORS
+
+graxia has no `cors` option: it never sets an `access-control-*` header and answers `OPTIONS` with
+405. CORS belongs to the host, which knows its origins, in front of `fetch` (a preflight answered,
+the headers added to the response). The example's `cors.ts` is a working one.
+
+## Peers
+
+Nothing to install beyond `graphql`: the WebSocket protocol is implemented in the package (remove
+`graphql-ws` and `graphql-yoga`), and `@softistx/telemetry` is an optional peer, a no-op without it.
+`@graxia/graphiql` and `@graxia/envelop` are their own packages, installed when used.
+
+## Shutdown
+
+There is no `shutdownSignal` option. Call `graxia.dispose()`: in-flight operations are answered, new
+requests get 503 `SHUTTING_DOWN`, SSE streams `complete`, sockets close with 1001. One line wires a
+signal to it:
+
+```ts
+process.on('SIGTERM', () => graxia.dispose({ timeout: 10_000 }));
+```
+
+`dispose()` stops only the servers `graxia.serve()` started; a host that owns `Bun.serve` stops it
+itself afterwards (`await server.stop()`). The example's `stop()` also turns its readiness route to
+503 first.
+
+## graphql 17
+
+graphql 16 is not supported: the peer is `graphql ^17.1.0`, and `@defer` / `@stream` use graphql
+17's incremental delivery (`incremental: { format: 'legacy' }` still sends the 2022-08 payloads to
+older clients). Upgrade `graphql` first, and any package that still pins 16.
+
+## Parity with @alxia/graphql 0.16.4
+
+The 33 behaviours checked by the parity suite, each proved by a spec. The table is code,
+[`src/parity/checklist.ts`](https://github.com/softistx/graxia/blob/develop/packages/core/src/parity/checklist.ts),
+and `checklist.test.ts` fails when a referenced spec or test title disappears or a difference has
+no section above. `same` means the behaviour is kept; the others link to their section.
+
+| #   | Item                                                                                        | graxia                                                                 |
+| --- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | Host fetch, any path or prefix                                                              | same                                                                   |
+| 2   | Typed host context, context factory, compile check                                          | same                                                                   |
+| 3   | Resolvers set headers and cookies                                                           | differs: [Setting a header or a cookie](#setting-a-header-or-a-cookie) |
+| 4   | 15 000 tokens, 1 000 nesting, stack overflow                                                | same                                                                   |
+| 5   | Weighted parse cache and validation cache                                                   | same                                                                   |
+| 6   | 1 MiB body limit, 413 keeps plugin headers                                                  | same                                                                   |
+| 7   | 415 on a non-JSON body                                                                      | same                                                                   |
+| 8   | CSRF custom headers                                                                         | same                                                                   |
+| 9   | SameOrigin with its full semantics                                                          | same                                                                   |
+| 10  | Persisted operations: strict, sha256, custom key, codes                                     | same                                                                   |
+| 11  | Depth limit                                                                                 | same                                                                   |
+| 12  | Introspection off outside development                                                       | same                                                                   |
+| 13  | Error masking, originalError stripped                                                       | same                                                                   |
+| 14  | Batching off, or with a limit                                                               | same                                                                   |
+| 15  | SSE over GET and POST, 12 s keep-alive                                                      | same                                                                   |
+| 16  | Multipart incremental delivery                                                              | same                                                                   |
+| 17  | Streams ended on shutdown                                                                   | same                                                                   |
+| 18  | WebSocket on the same path through the host upgrade, params, keep-alive or off, 1001, drain | same                                                                   |
+| 19  | Per-operation reporting over HTTP, batch and WebSocket                                      | differs: [Reporting operations](#reporting-operations)                 |
+| 20  | Request id never trusted, quiet logs                                                        | differs: [Request id and logs](#request-id-and-logs)                   |
+| 21  | GraphiQL development only, Sandbox, CSP                                                     | differs: [Explorer](#explorer)                                         |
+| 22  | FieldRateLimit in full                                                                      | same                                                                   |
+| 23  | In-process executor with a signal                                                           | same                                                                   |
+| 24  | Test client                                                                                 | same                                                                   |
+| 25  | CORS left to the host                                                                       | differs: [CORS](#cors)                                                 |
+| 26  | Envelop plugins through an adapter                                                          | same                                                                   |
+| 27  | Multipart uploads                                                                           | same                                                                   |
+| 28  | One stable context per operation                                                            | same                                                                   |
+| 29  | Abort signal reaches subscription resolvers                                                 | same                                                                   |
+| 30  | Configurable WebSocket message limit                                                        | same                                                                   |
+| 31  | Actionable missing-peer errors                                                              | differs: [Peers](#peers)                                               |
+| 32  | Host shutdown signal                                                                        | differs: [Shutdown](#shutdown)                                         |
+| 33  | Graphql 16 dropped                                                                          | differs: [graphql 17](#graphql-17)                                     |
+
 # @graxia/core — Plugins
 
 Source: packages/core/docs/guide/plugins.md
@@ -1842,15 +2109,15 @@ const gate = definePlugin({
 });
 ```
 
-| Stage                      | Payload helpers                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `onRequest`                | `respond(response)` ends the stage; earlier after-hooks still run                                      |
-| `onParams`                 | `setParams(params)`, `respond(response)`                                                               |
-| `onParse`                  | `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                   |
-| `onValidate`               | `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                         |
-| `onExecute`, `onSubscribe` | `setExecuteFn(fn)`, `setResult(result)` (skips execution); the after-hook gets `{ result, setResult }` |
-| `onResultChunk`            | `setChunk(chunk)`                                                                                      |
-| `onResponse`               | `setResponse(response)`                                                                                |
+| Stage                      | Payload helpers                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onRequest`                | `respond(response)` ends the stage; earlier after-hooks still run                                                                                                                     |
+| `onParams`                 | `setParams(params)`, `respond(response)`                                                                                                                                              |
+| `onParse`                  | `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                                                                                                  |
+| `onValidate`               | `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                                                                                                        |
+| `onExecute`, `onSubscribe` | `executeFn` (the function that will run: the last one set, else the engine's), `setExecuteFn(fn)`, `setResult(result)` (skips execution); the after-hook gets `{ result, setResult }` |
+| `onResultChunk`            | `setChunk(chunk)`                                                                                                                                                                     |
+| `onResponse`               | `setResponse(response)`                                                                                                                                                               |
 
 Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `setParseFn`,
 `setValidationFn`, `setResult`, `setChunk`, `setResponse`) leave later hooks running: the last write
@@ -1878,7 +2145,8 @@ the sequence stops there (later plugins do not run `setup`), `graxia.ready` reje
 `GraxiaPluginError` naming the plugin, and the failure is reported once through `onUnexpected`
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
-`setup` receives `{ plugins, transports }`: `plugins` lists the plugin names in execution order, and
+`setup` receives `{ plugins, transports, schema }`: `schema` is the instance's `GraphQLSchema` (so a plugin can
+read it once, at boot, as `@graxia/envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
 `transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
 instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
 that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.
@@ -2658,6 +2926,10 @@ createGraxia({ schema, csrf: { requireHeader: ['x-my-app'] } }); // your own lis
 createGraxia({ schema, csrf: { requireHeader: false } }); // no header check
 createGraxia({ schema, csrf: false }); // no CSRF or origin check at all
 ```
+
+### Uploads
+
+A `multipart/form-data` POST is a simple request, so [uploads](./uploads.md) always need the CSRF header, checked before the body is read. `createGraxia` refuses `uploads` with `csrf: false` or `csrf: { requireHeader: false }` at boot.
 
 ### Client setup
 
@@ -3525,6 +3797,147 @@ document in any mode; a layer that forwards documents from its clients to `execu
 
 See [Troubleshooting](../troubleshooting.md) for each message and the configuration errors.
 
+# @graxia/core — File uploads
+
+Source: packages/core/docs/guide/uploads.md
+
+# File uploads
+
+`@graxia/core` accepts the [GraphQL multipart request spec](https://github.com/jaydenseric/graphql-multipart-request-spec)
+(`operations`, `map`, one part per file). It is off by default.
+
+```ts
+import { createGraxia, createSchema, GraphQLFile } from '@graxia/core';
+
+const schema = createSchema()({
+	typeDefs: `
+		scalar File
+		type Query { ok: Boolean }
+		type Mutation { upload(file: File!): String! }
+	`,
+	resolvers: {
+		File: GraphQLFile,
+		Mutation: {
+			upload: async (_parent, { file }: { file: File }) =>
+				`${file.name}: ${(await file.text()).length}`,
+		},
+	},
+});
+
+createGraxia({ schema, uploads: true }).serve();
+```
+
+```sh
+curl localhost:3000/graphql -H 'x-graphql-csrf: 1' \
+  -F operations='{"query":"mutation($f: File!){ upload(file: $f) }","variables":{"f":null}}' \
+  -F map='{"0":["variables.f"]}' -F 0=@a.txt
+```
+
+## The `File` a resolver gets
+
+Each file reaches the resolver as Bun's Web `File` (`name`, `type`, `size`, `text()`, `arrayBuffer()`,
+`stream()`), set into `variables` at each path the `map` names. One file may fill several paths, in
+lists and nested inputs too. Each file part needs its own field name: two parts with the same name are refused as
+`UPLOAD_INVALID`.
+
+`GraphQLFile` is the scalar to register for `scalar File`. It accepts only a `File`: a JSON request that
+sends a string where a file is due, and an inline literal, are refused with
+`File must be sent as a file part of a multipart request (GraphQL multipart request spec).`
+It is input only. Type the argument with a concrete object, `({ file }: { file: File })`, no cast. With
+graphql-codegen, map the scalar with `scalars: { File: 'File' }` and the generated `Resolvers` types it. A schema that names the scalar `Upload` (Apollo, graphql-upload) wraps it:
+
+```ts
+import { GraphQLScalarType } from 'graphql';
+const Upload = new GraphQLScalarType({
+	...GraphQLFile.toConfig(),
+	name: 'Upload',
+});
+```
+
+## Limits
+
+```ts
+createGraxia({
+	schema,
+	uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 },
+});
+```
+
+| Option              | Default | Refusal                                                    |
+| ------------------- | ------- | ---------------------------------------------------------- |
+| `uploads.bodyBytes` | 16 MiB  | 413 `UPLOAD_TOO_LARGE`, the whole body                     |
+| `uploads.fileBytes` | 8 MiB   | 413 `UPLOAD_TOO_LARGE`, one file (never above `bodyBytes`) |
+| `uploads.files`     | 10      | 413 `UPLOAD_TOO_MANY_FILES`                                |
+
+The `operations` field stays under `limits.bodyBytes` (1 MiB). `Content-Length` is checked first, then
+the stream is counted and cancelled the moment it passes `uploads.bodyBytes`, whatever the header said.
+A refused upload never reaches a resolver.
+
+**Memory.** The body is buffered (up to `uploads.bodyBytes`) and parsed by Bun before the operation runs, so
+peak memory is about twice `bodyBytes` per request in flight (the body, then the parsed parts).
+Size the limits for your concurrency. Streaming each part to disk or S3 without buffering is on the
+[roadmap](../roadmap.md).
+
+## CSRF
+
+A `multipart/form-data` POST is a "simple" request a browser sends cross-site without a preflight, so it
+always needs the CSRF header (`x-graphql-csrf: 1`, or any of `csrf.requireHeader`), checked before the body
+is read. `createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`
+at boot (`GraxiaConfigError`). Apollo's `createUploadLink` and urql's `multipartFetchExchange` take
+`headers: { 'x-graphql-csrf': '1' }`.
+
+## Batching, trusted documents, plugins
+
+- `operations` may be an array when `batching` is on; map paths then start with the entry index
+  (`0.variables.file`).
+- The operations go through `onParams` like a JSON body: `strict` trusted documents refuse an arbitrary
+  query and a multipart `operations` with a `documentId` works. Parse, validation and operation limits apply.
+- WebSocket carries no files. The answer may be JSON, SSE or `multipart/mixed` per `Accept`.
+- `graxia.execute` sends variables as JSON, so it cannot carry a `File`: test uploads through `graxia.fetch`.
+
+## Testing
+
+```ts
+const body = new FormData();
+body.set(
+	'operations',
+	JSON.stringify({
+		query: 'mutation($f: File!){ upload(file: $f) }',
+		variables: { f: null },
+	}),
+);
+body.set('map', JSON.stringify({ 0: ['variables.f'] }));
+body.set('0', new File(['hello'], 'a.txt'));
+const response = await graxia.fetch(
+	new Request('http://x/graphql', {
+		method: 'POST',
+		headers: { 'x-graphql-csrf': '1' },
+		body,
+	}),
+);
+```
+
+## Coming from other servers
+
+- **graphql-yoga**: the same Web `File`; `scalar File` and `GraphQLFile` replace the built-in.
+- **Caching**: `@envelop/response-cache` hashes the variables, and a `File` serialises as `{}`, so a query taking a
+  `File` would answer the first cached result for every file (and for every user with `session: () => null`). Do not
+  cache operations with `File` arguments: use `enabled`, `shouldCacheResult` or `ignoredTypes`
+  (see the [Envelop guide](https://github.com/softistx/graxia/blob/develop/packages/envelop/docs/guide/envelop.md)).
+- **graphql-upload**: there is no `createReadStream`; use `file.stream()`, `file.arrayBuffer()` or `file.text()`.
+
+## Refusals
+
+| Status | Code                    | When                                                             |
+| ------ | ----------------------- | ---------------------------------------------------------------- |
+| 415    | `UPLOADS_NOT_ENABLED`   | multipart body, `uploads` off                                    |
+| 413    | `UPLOAD_TOO_LARGE`      | body, a file or `operations` over its limit                      |
+| 413    | `UPLOAD_TOO_MANY_FILES` | more files than `uploads.files`                                  |
+| 400    | `UPLOAD_INVALID`        | a body or `map` that breaks the spec, a path outside `variables` |
+| 403    | `CSRF_HEADER_REQUIRED`  | no CSRF header                                                   |
+
+See [Troubleshooting: file uploads](../troubleshooting-uploads.md) for each message.
+
 # @graxia/core — Subscriptions over WebSocket
 
 Source: packages/core/docs/guide/websocket.md
@@ -3664,6 +4077,8 @@ missing subprotocol, shutdown), with the request id and the sealed headers. Guar
 `graxia.fetch`, so the hooks run once either way. `serverContext` is typed like `fetch`'s
 (required when the `context` factory's `ContextInit<…>` has required keys, see [the host's `serverContext`](./context.md#the-hosts-servercontext)) and merged into every operation's context.
 
+The [host-embedding example](https://github.com/softistx/graxia/tree/develop/examples/host-embedding) serves WebSocket, SSE and HTTP on one route of its own `Bun.serve`.
+
 `GraxiaSocketData` is the opaque type of `ws.data`; `serve()` returns `Bun.Server<GraxiaSocketData>`.
 You need it only to annotate your own server or `websocket` handler.
 
@@ -3698,6 +4113,121 @@ Parse and validation errors are an `error` message and end the operation. Execut
 `next` with `errors`. Unexpected errors are masked with the correlation id (the connection's
 request id) and reported once through `onUnexpected`, like over HTTP.
 
+# @graxia/core — Troubleshooting: file uploads
+
+Source: packages/core/docs/troubleshooting-uploads.md
+
+# Troubleshooting: file uploads
+
+Every message of [File uploads](./guide/uploads.md), headed by the text the server sends. The rest is in
+[Troubleshooting](./troubleshooting.md).
+
+## uploads.bodyBytes must be a positive integer
+
+`uploads.bodyBytes` is not an integer of at least 1 (`GraxiaConfigError` at boot).
+Pass a size such as `uploads: { bodyBytes: 16 << 20 }`.
+
+## uploads.files must be a positive integer
+
+`uploads.files` is not an integer of at least 1 (`GraxiaConfigError` at boot). Pass a count such as
+`uploads: { files: 10 }`.
+
+## uploads must be a boolean or an object ({ bodyBytes, fileBytes, files })
+
+`uploads` was given something else, such as a string or a number (`GraxiaConfigError` at boot). Use `true`, `false`,
+or an object of limits: `uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20, files: 10 }`.
+
+## uploads.fileBytes must be a positive integer no larger than uploads.bodyBytes
+
+The per-file limit is not an integer of at least 1, or it is above `uploads.bodyBytes`.
+
+```ts
+createGraxia({ schema, uploads: { bodyBytes: 16 << 20, fileBytes: 8 << 20 } });
+```
+
+## uploads need CSRF prevention: a browser can post multipart/form-data cross-site without a preflight. Keep csrf.requireHeader on (the default), or turn uploads off.
+
+`createGraxia` refuses `uploads` together with `csrf: false` or `csrf: { requireHeader: false }`: a browser
+can post `multipart/form-data` cross-site without a preflight. Keep `csrf.requireHeader` on (the default),
+or turn uploads off.
+
+```ts
+createGraxia({ schema, uploads: true }); // the CSRF header is required (default)
+```
+
+## File uploads (multipart/form-data) are not enabled on this server. (`UPLOADS_NOT_ENABLED`)
+
+**Status 415.** A multipart body reached a server without `uploads`. Send JSON, or enable it:
+`createGraxia({ uploads: true })`.
+
+## The request body is larger than uploads.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+
+**Status 413.** The whole multipart body is over `uploads.bodyBytes` (16 MiB by default). Send less, or raise the limit.
+
+## File "0" is larger than uploads.fileBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+
+**Status 413.** One file is over `uploads.fileBytes` (8 MiB by default). `"0"` is the file's field name in `map`.
+Send a smaller file, or raise `uploads.fileBytes` (never above `uploads.bodyBytes`).
+
+## The "operations" field is larger than limits.bodyBytes (N bytes). (`UPLOAD_TOO_LARGE`)
+
+**Status 413.** The JSON `operations` part is over `limits.bodyBytes` (1 MiB by default), however small the files are.
+Send a shorter document (a persisted `documentId` helps), or raise `limits.bodyBytes`.
+
+## The request holds N files; uploads.files allows M. (`UPLOAD_TOO_MANY_FILES`)
+
+**Status 413.** The `fix` says: send fewer files per request, or raise `uploads.files` on the server.
+
+## The multipart body could not be parsed. (`UPLOAD_INVALID`)
+
+**Status 400.** The body is not valid `multipart/form-data`: a missing or wrong boundary in the `Content-Type`, a
+truncated body, or a body that could not be read. Let the HTTP client set the `Content-Type` (with its
+boundary) itself.
+
+## The multipart request has two file parts named "0". (`UPLOAD_INVALID`)
+
+**Status 400.** Two file parts share one field name (`0` here), so the server cannot tell which file a `map` path
+means. Give each file part its own name, as in `map`: `{ "0": ["variables.a"], "1": ["variables.b"] }`, and send the
+parts as `-F 0=@a.txt -F 1=@b.txt`. One file for several paths is one part with several paths in its `map` entry.
+
+## The multipart request has no "operations" field. (`UPLOAD_INVALID`)
+
+**Status 400.** Send `operations` first: a JSON text field holding the GraphQL request (`{ "query", "variables" }`), with
+`null` where each file goes. The same code answers `The multipart request has no "map" field.`.
+
+## The "operations" field is not valid JSON. (`UPLOAD_INVALID`)
+
+**Status 400.** `operations` must be JSON text, not a file part.
+
+## The "map" field must be a JSON object of file field names to arrays of paths. (`UPLOAD_INVALID`)
+
+**Status 400.** `map` is `{ "0": ["variables.file"] }`: each file part's field name and the non-empty list of paths
+that receive it.
+
+## Map entry "0" points at "query"; a file may only go under "variables". (`UPLOAD_INVALID`)
+
+**Status 400.** A path must start with `variables` (`1.variables.file` in a batch, with the entry index). `query`,
+`operationName` and `extensions` are refused.
+
+## Map entry "0" points at "variables.f", which is not null in "operations". (`UPLOAD_INVALID`)
+
+**Status 400.** The slot a path names must exist and be `null` in `operations`: write `"variables": { "f": null }`.
+A path may not go through a value that is not an object or an array.
+
+## Map entry "0" path "variables.`__proto__`" is not allowed. (`UPLOAD_INVALID`)
+
+**Status 400.** `__proto__`, `constructor` and `prototype` are never followed in a path.
+
+## Map entry "0" has no file part. (`UPLOAD_INVALID`)
+
+**Status 400.** `map` names a field that is not a file part of the request (it is missing, or a text field).
+The reverse, `File part "1" is not in "map".`, is the same mistake: every file part needs a `map` entry.
+
+## File must be sent as a file part of a multipart request (GraphQL multipart request spec).
+
+`GraphQLFile` refused a value that is not a `File`: a JSON request sent a string for a `File` argument, or a
+literal was written in the document. Send the file as a multipart part.
+
 # @graxia/core — Troubleshooting
 
 Source: packages/core/docs/troubleshooting.md
@@ -3705,6 +4235,8 @@ Source: packages/core/docs/troubleshooting.md
 # Troubleshooting
 
 The errors a consumer can hit, headed by the message as it appears.
+
+File upload messages are in [Troubleshooting: file uploads](./troubleshooting-uploads.md).
 
 ## Unknown directive "@needs" (or "@constraint", "@errors")
 
@@ -4582,6 +5114,219 @@ your span inside that same telemetry (`withTelemetry(instance, ...)` is already 
 resolver). A span started from another copy of `@softistx/telemetry` is detached; see "No spans
 appear".
 
+# @graxia/envelop — @graxia/envelop
+
+Source: packages/envelop/README.md
+
+# @graxia/envelop
+
+> Not published yet: the first release is 0.1.0.
+
+Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
+
+```ts
+import { createGraxia } from '@graxia/core';
+import { fromEnvelop } from '@graxia/envelop';
+import { useDepthLimit } from '@envelop/depth-limit';
+
+createGraxia({
+	schema,
+	plugins: [fromEnvelop([useDepthLimit({ maxDepth: 10 })])],
+}).serve();
+```
+
+## Install
+
+```sh
+bun add @graxia/envelop @graxia/core @envelop/core graphql
+bun add @envelop/depth-limit # the Envelop plugins you want
+```
+
+## Requirements
+
+- [Bun](https://bun.sh) 1.4.4 or later (the `engines` field) and `graphql@^17.1`.
+- `@graxia/core` and `@envelop/core` (`^5.6.1 || ^6.0.1`) as peer dependencies. `@envelop/core` is a runtime peer (the adapter imports it).
+- `typescript` is an optional peer, for types. Use `"moduleResolution": "bundler"` in your `tsconfig.json`; `nodenext` is not supported.
+
+## What it runs
+
+`fromEnvelop(plugins, { name?, enforce? })` returns one graxia plugin. It honours `onPluginInit`, `onSchemaChange`,
+`onEnveloped`, `onParse`, `onValidate`, `onContextBuilding`, `onExecute` and `onSubscribe`, with their after-hooks and
+`onExecuteDone`, `onSubscribeResult`, `onNext`, `onEnd` and `onSubscribeError`, and `@defer` / `@stream` payloads. Anything
+else (`instrumentation`, a graphql-yoga hook such as `onRequest`, an unknown name, `setSchema`, `replaceSchema`) is refused
+with an error that names what to write instead: at boot, except `setSchema` called in `onEnveloped` (it throws on each
+request) and `replaceSchema` (it fails when `graxia.ready` resolves). Falsy entries are skipped, so `cond && usePlugin()` works.
+
+What the plugins add to the context is typed with a type argument, `fromEnvelop<{ currentUser: User }>([...])`; it is a
+declaration, not a check.
+
+## Tested plugins
+
+`@envelop/depth-limit`, `@envelop/generic-auth`, `@envelop/response-cache` and `@envelop/persisted-operations` run in this
+package's specs on graphql 17.1, over a real `Bun.serve`. Versions and notes are in the
+[guide](./docs/guide/envelop.md#tested-plugins).
+
+## Documentation
+
+See [`docs/`](./docs): the [guide](./docs/guide/envelop.md), [troubleshooting](./docs/troubleshooting.md) and the
+[roadmap](./docs/roadmap.md).
+
+# @graxia/envelop — Running Envelop plugins
+
+Source: packages/envelop/docs/guide/envelop.md
+
+# Running Envelop plugins
+
+```ts
+import { createGraxia } from '@graxia/core';
+import { fromEnvelop } from '@graxia/envelop';
+import { useDepthLimit } from '@envelop/depth-limit';
+
+createGraxia({
+	schema,
+	plugins: [fromEnvelop([useDepthLimit({ maxDepth: 10 })])],
+}).serve();
+```
+
+`fromEnvelop(plugins, options?)` takes the list you would give `envelop()` and returns one graxia plugin. Options: `name`
+(default `envelop`; two adapters in one instance need distinct names) and `enforce` (`'pre'` or `'post'`, where it runs among
+the other plugins).
+
+The plugins are checked when `fromEnvelop` is called, so a plugin graxia cannot run fails at boot, not on the first
+request.
+
+## Hook mapping
+
+| Envelop hook                                                       | Runs at graxia stage | Notes                                                                                             |
+| ------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------- |
+| `onPluginInit`                                                     | `fromEnvelop()` call | `addPlugin` inserts after the adder, recursively. `setSchema` is refused.                         |
+| `onSchemaChange`                                                   | `setup`              | Called once with the schema. `replaceSchema` is refused.                                          |
+| `onEnveloped`                                                      | `onParams`           | Once per operation (once per batch entry).                                                        |
+| `onParse` (`setParsedDocument`, `setParseFn`)                      | `onParse`            | `setParseFn` keeps core's token limit. Its after-hook sees the document, or `null`.               |
+| `onValidate` (`addValidationRule`, `setValidationFn`, `setResult`) | `onValidate`         | Validation errors answer 400. `replaceParseResult` and `setResult` in the after-hook are refused. |
+| `onContextBuilding`                                                | `onContext`          | `extendContext`, `breakContextBuilding` and the after-hook work.                                  |
+| `onExecute`, `onExecuteDone`                                       | `onExecute`          | `setExecuteFn`, `setResultAndStopExecution`, `setResult`.                                         |
+| `onSubscribe`, `onSubscribeResult`                                 | `onSubscribe`        | `onNext`, `onEnd`, and `onSubscribeError` with `setError`.                                        |
+| `instrumentation`, graphql-yoga hooks                              | not run              | Refused at boot, see [troubleshooting](../troubleshooting.md).                                    |
+
+## The context
+
+The context the Envelop hooks build on is `{ request, params, ...your host context }`. Keys the hooks add with
+`extendContext` are merged into graxia's context and reach the resolvers. A `GraphQLError` thrown in
+`onContextBuilding` answers `{ errors }` without running a resolver; any other error is a masked 500 reported to
+`onUnexpected`, after the handlers registered with `registerContextErrorHandler` ran (they may `setError`).
+
+graxia builds one context object per operation, so a plugin that keeps a reference to the context object across
+hooks sees the one it was given at each hook, not an identical object. Known limit: `@envelop/generic-auth`'s
+`extractPolicies` / `@policy` is not supported (it relies on that identity): a `@policy`-protected field is denied, never served. `serverContext` is not part of the early
+context.
+
+### What the resolver context holds
+
+Resolvers receive your own context (the `context` option, plus what other graxia plugins add), then `request` and `params`
+from the adapter, then the keys the Envelop hooks added with `extendContext`. Your own keys win over `request` and
+`params`; keys a hook extended win over your own. `@envelop/core` is a runtime peer of the package.
+
+## What stays in force
+
+- A plugin's `setParsedDocument` skips parsing, so it also skips core's token limit; core's validation rules still run,
+  because the adapter hands core's `rules` to a custom validate function.
+- A plugin whose `setValidationFn` drops `rules` skips them: that is the plugin's own choice.
+
+## Errors
+
+- A `GraphQLError` thrown in a hook is the client's answer and keeps its message and `extensions.code`.
+- A plain `Error` is unexpected: masked, and reported through `onUnexpected`.
+- A `GraphQLError` with its own `extensions.code` thrown in `onParse` keeps it; syntax errors get
+  `GRAPHQL_PARSE_FAILED`.
+- `@envelop/generic-auth` errors keep their code and `extensions.http` but the HTTP status of an execution error stays
+  200 under `application/graphql-response+json`.
+
+## `@defer`, `@stream` and subscriptions
+
+Envelop done-hooks receive an async iterable for incremental results, as in Envelop on graphql 17. `onNext` runs per
+payload (each `@defer` payload over `multipart/mixed` and SSE), `onEnd` once when the stream ends, including when the client
+leaves. Subscriptions use `onSubscribeResult` the same way, and `onSubscribeError` can `setError`. It wraps only errors thrown while iterating the stream; errors of the initial
+subscribe go through core's error handling.
+
+## Migrating from graphql-yoga
+
+1. Move every Envelop plugin from `createYoga({ plugins })` into `fromEnvelop([...])`.
+2. Yoga's own plugins (`onRequest`, `onResultProcess`, ...) are refused: replace them with `definePlugin` from `@graxia/core`.
+3. Pass the schema to `createGraxia({ schema })`; `useSchema` and `setSchema` are not needed.
+4. CORS, GraphiQL and persisted operations have graxia options of their own (`trustedDocuments`, `@graxia/graphiql`).
+
+## Tested plugins
+
+All of them run on graphql 17.1 over a real server in this package's specs.
+
+| Plugin                                 | Result                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@envelop/depth-limit` 8.0.1           | Runs. A too-deep query answers 400.                                                                                                                    |
+| `@envelop/generic-auth` 12.0.1         | Runs in `protect-all`, `protect-granular` and `resolve-only`. Type the user with `fromEnvelop<{ currentUser: User }>`.                                 |
+| `@envelop/response-cache` 10.0.1       | Runs: hits, invalidation by mutation, per-session entries. Needs a request on the context, which graxia provides. Not for `File` arguments, see below. |
+| `@envelop/persisted-operations` 11.0.1 | Runs when the client also sends a placeholder `query` (core rejects a request without one first). Prefer core's `trustedDocuments`.                    |
+
+### response-cache and `File` variables
+
+`@envelop/response-cache` keys an entry on the query and a hash of the variables, and a `File` serialises as `{}`.
+With uploads on, a query that takes a `File` would answer the first cached result for every file, and, with
+`session: () => null`, for every user. Do not cache operations with `File` arguments: make `enabled` return `false` for them (it receives the context, whose
+`params` hold the operation), or use `shouldCacheResult` or `ignoredTypes`. A spec in this package pins the hazard (two
+different files, the same answer) and the `enabled` fix (the resolver runs twice).
+
+# @graxia/envelop — Troubleshooting
+
+Source: packages/envelop/docs/troubleshooting.md
+
+# Troubleshooting
+
+The errors a consumer can hit, headed by the message as it appears. All are a `GraxiaConfigError` thrown by `fromEnvelop`
+at boot, unless said otherwise. Every message starts with `fromEnvelop: envelop plugin N of M (hooks)` or
+`fromEnvelop: entry N of M`; the headings below match from the verb on.
+
+## entry N of M is X, not an Envelop plugin object
+
+`fromEnvelop` was given a string, number or other non-object. Pass a plugin such as `useDepthLimit({ maxDepth: 10 })`, or a
+falsy value (`cond && usePlugin()`) to skip one.
+
+## uses "instrumentation", which graxia cannot run
+
+An Envelop plugin carries `instrumentation`. Remove it, or use `createGraxia({ telemetry })` or a graxia plugin
+(`definePlugin`) instead.
+
+## uses "onRequest": this is a graphql-yoga plugin, not an Envelop one
+
+A plugin uses a graphql-yoga hook (`onRequest`, `onRequestParse`, `onParams`, `onResultProcess`, `onResponse`,
+`onYogaInit`, `onExecutionResult`). They belong to the HTTP layer graxia replaces: rewrite the plugin with `definePlugin`
+from `@graxia/core`.
+
+## uses "onXxx", which is not an Envelop hook graxia knows
+
+The hook name is misspelt or not an Envelop hook. Check the spelling, or write it as a graxia plugin.
+
+## calls setSchema, which graxia does not honour
+
+An Envelop plugin tried `setSchema`. Pass the schema to `createGraxia({ schema })` (`useSchema` is not needed).
+
+## calls replaceSchema, which graxia does not honour
+
+Raised while `graxia.ready` resolves: an instance serves the one schema it was created with. Pass the schema to
+`createGraxia({ schema })`.
+
+## calls replaceParseResult, which graxia does not honour
+
+Use `setParsedDocument` in `onParse`, or throw a `GraphQLError` there.
+
+## calls setResult in the after-hook of onValidate, which graxia does not honour
+
+Call `setResult` in `onValidate` itself, or write a graxia plugin that replaces the errors.
+
+## Must provide a query string.
+
+This is not a `GraxiaConfigError` but an HTTP 400 response. A persisted-operations request with an id and no `query` is refused by core before any plugin runs. Send a placeholder
+`query` with the id, or use core's `trustedDocuments` with `documentId`.
+
 # @graxia/graphiql — @graxia/graphiql
 
 Source: packages/graphiql/README.md
@@ -4862,7 +5607,7 @@ needed.
 - Everything else, a `POST`, a JSON `GET`, a WebSocket upgrade, is untouched.
 
 Browsers send neither request with a CSRF header. The plugin declares `csrfExempt` (see
-[core's Security guide](../../../core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
+[core's Security guide](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/security.md#exempting-a-plugins-own-get-requests)) for
 exactly these two shapes of `GET`, and answers them itself. It needs `@graxia/core` 0.4 or later
 (`api.transports` too). The `Origin` check stays on: with `csrf.sameOrigin`, a cross-site or
 foreign-`Origin` request for the page is refused like any other request, and a same-origin
@@ -4899,7 +5644,7 @@ hash), the right `Content-Type`, `X-Content-Type-Options: nosniff`, and the gzip
 GraphiQL sends `Accept: application/json, multipart/mixed`, and a query with `@defer` or `@stream` streams its
 payloads into the response pane as they arrive. This needs `@graxia/core` 0.4 or later: older versions answered
 `INCREMENTAL_NOT_SUPPORTED` because JSON was listed first. See core's
-[incremental delivery](../../../core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
+[incremental delivery](https://github.com/softistx/graxia/blob/develop/packages/core/docs/guide/incremental.md#which-accept-gets-what). `incremental: false` on
 `createGraxia` turns it off.
 
 ## Subscriptions
@@ -4955,7 +5700,7 @@ run `bun run build`.
 The page `GET` is exempt from the CSRF header only through `csrfExempt`, which needs `@graxia/core` 0.4
 or later, and only with `Accept: text/html` and no `query`. Upgrade core, or check that the request
 is the browser's navigation and not a script. See core's
-[troubleshooting](../../core/docs/troubleshooting.md).
+[troubleshooting](https://github.com/softistx/graxia/blob/develop/packages/core/docs/troubleshooting.md).
 
 ## The page loads but shows no schema
 

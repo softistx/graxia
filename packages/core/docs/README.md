@@ -10,6 +10,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Guides
 
 - [GraphQL over HTTP](./guide/http.md): `createGraxia`, `fetch` / `serve`, status codes, batching, request id.
+- [Migrating from `@alxia/graphql`](./guide/migrating-from-alxia-graphql.md): option mapping, the deliberate differences and the 33-item parity table, with a runnable host.
 - [Plugins](./guide/plugins.md): hooks, ordering, short-circuit, request state, typed context.
 - [Context, cancellation and shutdown](./guide/context.md): `getContext()`, `signal`, `dispose()`.
 - [Schema](./guide/schema.md): `createSchema`, SDL, typed resolvers, codegen resolvers.
@@ -18,6 +19,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 - [Subscriptions over WebSocket](./guide/websocket.md): `graphql-transport-ws`, `connectionParams` and `onConnect`, close codes, own `Bun.serve`.
 - [`@defer` and `@stream`](./guide/incremental.md): multipart/mixed and SSE, formats, clients, masking, cancellation.
 - [PubSub](./guide/pubsub.md): typed topics, `createPubSub` in Yoga's shape, `pipe` / `filter` / `map`, cancellation, coming from Yoga or Apollo.
+- [File uploads](./guide/uploads.md): the multipart request spec, `GraphQLFile`, limits, the CSRF header, memory cost, coming from Yoga or graphql-upload.
 - [Limits and caches](./guide/limits-and-caches.md): parse limits, parse and validation caches, the `KeyValueCache` contract.
 - [Security: CSRF, origins, introspection](./guide/security.md): the CSRF header, `sameOrigin`, WebSocket origin, `introspection` and `suggestions`.
 - [Trusted documents and persisted queries](./guide/trusted-documents.md): manifests (Relay, codegen, Apollo), `documentId`, APQ, strict mode, error codes.
@@ -31,6 +33,7 @@ New here? Read the quick start on the npm page, then [GraphQL over HTTP](./guide
 ## Help
 
 - [Troubleshooting](./troubleshooting.md): every error message, why it happens and the fix.
+- [Troubleshooting: file uploads](./troubleshooting-uploads.md): every upload message and its fix.
 
 ## What is next
 

@@ -7,23 +7,29 @@ export type BodyResult =
 /** Default body limit: 1 MiB. */
 export const DEFAULT_BODY_BYTES = 1 << 20;
 
+/** Outcome of reading a request body as bytes under a limit. */
+export type BytesResult =
+	| { kind: 'bytes'; bytes: Uint8Array }
+	| { kind: 'too-large' }
+	| { kind: 'invalid'; message: string };
+
 /**
- * Reads a request body as UTF-8 text, never holding more than `limit` bytes.
+ * Reads a request body as bytes, never holding more than `limit` of them.
  *
  * `Content-Length` is checked first so an honest oversized request is refused
  * without reading it, but it is never trusted alone: the stream is counted and
  * cancelled the moment it passes `limit`, whatever the header said.
  */
-export async function readBody(
+export async function readBytes(
 	request: Request,
 	limit: number,
-): Promise<BodyResult> {
+): Promise<BytesResult> {
 	const declared = Number(request.headers.get('content-length'));
 	if (Number.isFinite(declared) && declared > limit) {
 		void request.body?.cancel().catch(() => {});
 		return { kind: 'too-large' };
 	}
-	if (request.body === null) return { kind: 'text', text: '' };
+	if (request.body === null) return { kind: 'bytes', bytes: new Uint8Array() };
 	const reader = request.body.getReader();
 	const chunks: Uint8Array[] = [];
 	let total = 0;
@@ -41,21 +47,34 @@ export async function readBody(
 	} catch {
 		return { kind: 'invalid', message: 'The request body could not be read.' };
 	}
+	return { kind: 'bytes', bytes: concat(chunks, total) };
+}
+
+/** Reads a request body as UTF-8 text under `limit` bytes (see {@link readBytes}). */
+export async function readBody(
+	request: Request,
+	limit: number,
+): Promise<BodyResult> {
+	const read = await readBytes(request, limit);
+	if (read.kind !== 'bytes') return read;
 	try {
-		return { kind: 'text', text: decode(chunks, total) };
+		return {
+			kind: 'text',
+			text: new TextDecoder('utf-8', { fatal: true }).decode(read.bytes),
+		};
 	} catch {
 		return { kind: 'invalid', message: 'The request body is not valid UTF-8.' };
 	}
 }
 
-function decode(chunks: Uint8Array[], total: number): string {
+function concat(chunks: Uint8Array[], total: number): Uint8Array {
 	const bytes = new Uint8Array(total);
 	let offset = 0;
 	for (const chunk of chunks) {
 		bytes.set(chunk, offset);
 		offset += chunk.byteLength;
 	}
-	return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+	return bytes;
 }
 
 /**

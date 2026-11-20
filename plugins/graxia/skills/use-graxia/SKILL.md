@@ -23,11 +23,11 @@ documents (manifests, `documentId`, APQ, strict mode), `fieldRateLimit`, and
 spans on `@softistx/telemetry` (optional peer; `createTelemetry(...).install()`
 with an exporter such as `@softistx/telemetry-otlp`). `@graxia/core/agent` adds descriptive `@needs` / `@constraint` / `@errors`
 directives, `printSchemaFor` and `visibleSchema` (the schema one caller may see),
-`lintDescriptions` and readers, and every graxia error carries `extensions.fix`
+`lintDescriptions` and readers, multipart file uploads behind `uploads` (off by default; the `GraphQLFile` scalar gives resolvers a Web `File`; needs the CSRF header), and every graxia error carries `extensions.fix`
 (`node_modules/@graxia/core/docs/guide/errors.md#the-fix-contract`). `@graxia/redis`
 puts the PubSub, the cache and a field rate limit on Redis (`redisPubSub`, `redisCache`,
 `redisFieldLimit`), on `@softistx/redis` (peer, with `@graxia/core`); breaking in 0.2: see
-`node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`.
+`node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`. Coming from `@alxia/graphql`: `node_modules/@graxia/core/docs/guide/migrating-from-alxia-graphql.md`; an app that owns `Bun.serve`: the host-embedding example it links.
 
 The detail lives in the installed packages: `node_modules/@graxia/<package>/README.md` and
 `node_modules/@graxia/<package>/docs/` (guides, troubleshooting, roadmap). `references/packages.md` is the
@@ -70,7 +70,9 @@ For a browser explorer in development, `@graxia/graphiql` (from 0.1.0) adds `gra
 `plugins`: the page is served by the endpoint itself, off under `NODE_ENV=production`, one explorer per server;
 read `node_modules/@graxia/graphiql/docs/`.
 
-To let an agent use the API over MCP, `@graxia/mcp` (from 0.1.0) is
+To run Envelop plugins (depth-limit, generic-auth, response-cache, ...), `@graxia/envelop` (not published yet) is
+`plugins: [fromEnvelop([useDepthLimit({ maxDepth: 10 })])]`; see
+`packages/envelop/docs/guide/envelop.md`. To let an agent use the API over MCP, `@graxia/mcp` (from 0.1.0) is
 `createMcp(graxia, { name })`, mounted on `/mcp` as `'/mcp': (req, server) => mcp.fetch(req, { server })`, with an
 optional OAuth resource server (`auth`) and persisted operations as typed tools (`operations`). Read
 `node_modules/@graxia/mcp/docs/guide/getting-started.md`, `node_modules/@graxia/mcp/docs/guide/auth.md` and

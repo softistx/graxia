@@ -104,15 +104,15 @@ const gate = definePlugin({
 });
 ```
 
-| Stage                      | Payload helpers                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `onRequest`                | `respond(response)` ends the stage; earlier after-hooks still run                                      |
-| `onParams`                 | `setParams(params)`, `respond(response)`                                                               |
-| `onParse`                  | `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                   |
-| `onValidate`               | `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                         |
-| `onExecute`, `onSubscribe` | `setExecuteFn(fn)`, `setResult(result)` (skips execution); the after-hook gets `{ result, setResult }` |
-| `onResultChunk`            | `setChunk(chunk)`                                                                                      |
-| `onResponse`               | `setResponse(response)`                                                                                |
+| Stage                      | Payload helpers                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onRequest`                | `respond(response)` ends the stage; earlier after-hooks still run                                                                                                                     |
+| `onParams`                 | `setParams(params)`, `respond(response)`                                                                                                                                              |
+| `onParse`                  | `setParseFn(fn)`, `setDocument(doc)` (skips parsing)                                                                                                                                  |
+| `onValidate`               | `setValidationFn(fn)`, `addRule(rule)`, `setResult(errors)` (skips validation)                                                                                                        |
+| `onExecute`, `onSubscribe` | `executeFn` (the function that will run: the last one set, else the engine's), `setExecuteFn(fn)`, `setResult(result)` (skips execution); the after-hook gets `{ result, setResult }` |
+| `onResultChunk`            | `setChunk(chunk)`                                                                                                                                                                     |
+| `onResponse`               | `setResponse(response)`                                                                                                                                                               |
 
 Only `respond` stops a stage. The other setters (`setParams`, `setDocument`, `setParseFn`,
 `setValidationFn`, `setResult`, `setChunk`, `setResponse`) leave later hooks running: the last write
@@ -140,7 +140,8 @@ the sequence stops there (later plugins do not run `setup`), `graxia.ready` reje
 `GraxiaPluginError` naming the plugin, and the failure is reported once through `onUnexpected`
 with `phase: "setup"`. Requests then answer a 500 until the process is fixed and restarted.
 
-`setup` receives `{ plugins, transports }`: `plugins` lists the plugin names in execution order, and
+`setup` receives `{ plugins, transports, schema }`: `schema` is the instance's `GraphQLSchema` (so a plugin can
+read it once, at boot, as `@graxia/envelop` does for Envelop's `onSchemaChange`), `plugins` lists the plugin names in execution order, and
 `transports` (`{ sse: boolean, ws: boolean }`, read-only) tells which subscription transports the
 instance has on, from its resolved `subscriptions.sse` and `subscriptions.ws` options. A plugin
 that serves a client (a GraphiQL page, say) uses it to pick the transport without a setting.

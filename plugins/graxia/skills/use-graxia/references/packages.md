@@ -11,7 +11,7 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
 - Install: `bun add @graxia/core graphql`
 - Peers: `@softistx/telemetry` `^0.4.1` (optional), `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
 - Entry points and their public names:
-  - `@graxia/core`: `ApolloPersistedQueryManifest`, `BasePayload`, `BatchingOption`, `CacheSetOptions`, `ComputeCostArgs`, `ContextFactory`, `ContextInit`, `ContextOf`, `CoreContext`, `CostOptions`, `CostlessStore`, `CrossOrigin`, `CsrfOptions`, `DEFAULT_CSRF_HEADERS`, `DEFAULT_LIMIT_CODE`, `DEFAULT_LIST_SIZE`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_COST`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DocumentCacheOptions`, `DocumentCaches`, `DocumentInput`, `DocumentLimits`, `Empty`, `EnumValues`, `ExecuteArgs`, `ExecuteBase`, `ExecuteFn`, `ExecutionOutput`, `ExposedErrorOptions`, `FieldDecision`, `FieldLimit`, `FieldRateLimitOptions`, `FieldResolver`, `FieldRule`, `GraphQLParams`, `Graxia`, `GraxiaConfigError`, `GraxiaError`, `GraxiaErrorCode`, `GraxiaErrorCodes`, `GraxiaExecuteError`, `GraxiaLimits`, `GraxiaOptions`, `GraxiaPlugin`, `GraxiaPluginError`, `GraxiaServeOptions`, `GraxiaSocketData`, `HookReturn`, `HookStage`, `IncrementalOptions`, `InferContext`, `IsTypeOf`, `KeyValueCache`, `MaskError`, `MaskInfo`, `MaybePromise`, `MemoryCacheOptions`, `MemoryFieldLimitOptions`, `MemoryPubSub`, `MemoryPubSubOptions`, `OnContextPayload`, `OnExecuteDone`, `OnExecutePayload`, `OnParamsDone`, `OnParamsPayload`, `OnParseDone`, `OnParsePayload`, `OnRequestDone`, `OnRequestPayload`, `OnResponsePayload`, `OnResultChunkPayload`, `OnSubscribePayload`, `OnUnexpected`, `OnValidateDone`, `OnValidatePayload`, `OperationLimits`, `Operator`, `OptionsArg`, `ParseFn`, `PluginContext`, `PluginRequires`, `PubSub`, `PubSubIterator`, `PubSubPayload`, `PubSubSubscribeArgs`, `PubSubTopics`, `RequestState`, `RequiresContext`, `Resolvers`, `SameOriginOptions`, `SchemaOptions`, `SchemaWithContext`, `ServerContextArg`, `SetupApi`, `StateKey`, `SubscriptionFieldResolver`, `SubscriptionsOptions`, `TelemetryInstance`, `TelemetryOptions`, `TrustedDocumentsOptions`, `TrustedManifest`, `TypeDefs`, `TypeResolver`, `TypeResolvers`, `TypedDocument`, `TypedString`, `UnexpectedInfo`, `UnexpectedPhase`, `ValidationFn`, `WebSocketContext`, `WebSocketOptions`, `WithServerContext`, `computeOperationCost`, `costDirectives`, `createGraxia`, `createMemoryCache`, `createPubSub`, `createSchema`, `createStateKey`, `definePlugin`, `exposedError`, `fieldRateLimit`, `filter`, `getContext`, `getRequestId`, `isGraxiaError`, `limitFromStore`, `map`, `memoryFieldLimit`, `pipe`, `tryGetContext`
+  - `@graxia/core`: `ApolloPersistedQueryManifest`, `BasePayload`, `BatchingOption`, `CacheSetOptions`, `ComputeCostArgs`, `ContextFactory`, `ContextInit`, `ContextOf`, `CoreContext`, `CostOptions`, `CostlessStore`, `CrossOrigin`, `CsrfOptions`, `DEFAULT_CSRF_HEADERS`, `DEFAULT_LIMIT_CODE`, `DEFAULT_LIST_SIZE`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_COST`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DocumentCacheOptions`, `DocumentCaches`, `DocumentInput`, `DocumentLimits`, `Empty`, `EnumValues`, `ExecuteArgs`, `ExecuteBase`, `ExecuteFn`, `ExecutionOutput`, `ExposedErrorOptions`, `FieldDecision`, `FieldLimit`, `FieldRateLimitOptions`, `FieldResolver`, `FieldRule`, `GraphQLFile`, `GraphQLParams`, `Graxia`, `GraxiaConfigError`, `GraxiaError`, `GraxiaErrorCode`, `GraxiaErrorCodes`, `GraxiaExecuteError`, `GraxiaLimits`, `GraxiaOptions`, `GraxiaPlugin`, `GraxiaPluginError`, `GraxiaServeOptions`, `GraxiaSocketData`, `HookReturn`, `HookStage`, `IncrementalOptions`, `InferContext`, `IsTypeOf`, `KeyValueCache`, `MaskError`, `MaskInfo`, `MaybePromise`, `MemoryCacheOptions`, `MemoryFieldLimitOptions`, `MemoryPubSub`, `MemoryPubSubOptions`, `OnContextPayload`, `OnExecuteDone`, `OnExecutePayload`, `OnParamsDone`, `OnParamsPayload`, `OnParseDone`, `OnParsePayload`, `OnRequestDone`, `OnRequestPayload`, `OnResponsePayload`, `OnResultChunkPayload`, `OnSubscribePayload`, `OnUnexpected`, `OnValidateDone`, `OnValidatePayload`, `OperationLimits`, `Operator`, `OptionsArg`, `ParseFn`, `PluginContext`, `PluginRequires`, `PubSub`, `PubSubIterator`, `PubSubPayload`, `PubSubSubscribeArgs`, `PubSubTopics`, `RequestState`, `RequiresContext`, `Resolvers`, `SameOriginOptions`, `SchemaOptions`, `SchemaWithContext`, `ServerContextArg`, `SetupApi`, `StateKey`, `SubscriptionFieldResolver`, `SubscriptionsOptions`, `TelemetryInstance`, `TelemetryOptions`, `TrustedDocumentsOptions`, `TrustedManifest`, `TypeDefs`, `TypeResolver`, `TypeResolvers`, `TypedDocument`, `TypedString`, `UnexpectedInfo`, `UnexpectedPhase`, `UploadsOptions`, `ValidationFn`, `WebSocketContext`, `WebSocketOptions`, `WithServerContext`, `computeOperationCost`, `costDirectives`, `createGraxia`, `createMemoryCache`, `createPubSub`, `createSchema`, `createStateKey`, `definePlugin`, `exposedError`, `fieldRateLimit`, `filter`, `getContext`, `getRequestId`, `isGraxiaError`, `limitFromStore`, `map`, `memoryFieldLimit`, `pipe`, `tryGetContext`
   - `@graxia/core/agent`: `AgentDirectiveName`, `AgentExtensions`, `Can`, `Constraint`, `ConstraintTarget`, `ErrorCodeName`, `LintDescriptionsOptions`, `LintIssue`, `LintRule`, `Need`, `NeedsTarget`, `PrintSchemaForOptions`, `RequiredDescriptions`, `agentDirectives`, `agentExtensions`, `agentTypeDefs`, `constraintOf`, `errorsOf`, `lintDescriptions`, `needsOf`, `printSchemaFor`, `visibleSchema`
   - `@graxia/core/testing`: `TestBatchEntry`, `TestBatchResult`, `TestClient`, `TestClientOptions`, `TestMutateOptions`, `TestOperationOptions`, `TestQueryOptions`, `TestResult`, `createTestClient`, `expectNoErrors`
 - Docs, in the installed package:
@@ -23,6 +23,7 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/http.md`: GraphQL over HTTP
   - `node_modules/@graxia/core/docs/guide/incremental.md`: `@defer` and `@stream`
   - `node_modules/@graxia/core/docs/guide/limits-and-caches.md`: Limits and caches
+  - `node_modules/@graxia/core/docs/guide/migrating-from-alxia-graphql.md`: Migrating from `@alxia/graphql`
   - `node_modules/@graxia/core/docs/guide/plugins.md`: Plugins
   - `node_modules/@graxia/core/docs/guide/production.md`: Production
   - `node_modules/@graxia/core/docs/guide/pubsub.md`: PubSub
@@ -33,8 +34,23 @@ The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HT
   - `node_modules/@graxia/core/docs/guide/telemetry.md`: Telemetry
   - `node_modules/@graxia/core/docs/guide/testing.md`: Testing
   - `node_modules/@graxia/core/docs/guide/trusted-documents.md`: Trusted documents and persisted queries
+  - `node_modules/@graxia/core/docs/guide/uploads.md`: File uploads
   - `node_modules/@graxia/core/docs/guide/websocket.md`: Subscriptions over WebSocket
+  - `node_modules/@graxia/core/docs/troubleshooting-uploads.md`: Troubleshooting: file uploads
   - `node_modules/@graxia/core/docs/troubleshooting.md`: Troubleshooting
+
+## @graxia/envelop
+
+Run Envelop plugins inside graxia with one adapter (not published yet)
+
+- Not on npm yet.
+- Peers: `@envelop/core` `^5.6.1 || ^6.0.1`, `@graxia/core` `^0.5.0`, `graphql` `^17.1.0`, `typescript` `^6.0.3 || ^7.0.0` (optional)
+- Entry points and their public names:
+  - `@graxia/envelop`: `EnvelopPlugin`, `FromEnvelopOptions`, `fromEnvelop`
+- Docs, in the installed package:
+  - `node_modules/@graxia/envelop/README.md`: @graxia/envelop
+  - `node_modules/@graxia/envelop/docs/guide/envelop.md`: Running Envelop plugins
+  - `node_modules/@graxia/envelop/docs/troubleshooting.md`: Troubleshooting
 
 ## @graxia/graphiql
 

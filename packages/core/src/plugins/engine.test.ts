@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { GraphQLError, parse } from 'graphql';
+import { buildSchema, GraphQLError, parse } from 'graphql';
 import { GraxiaConfigError } from '../errors/config-error';
 import { GraxiaPluginError } from '../errors/plugin-error';
 import { definePlugin } from './define';
@@ -484,5 +484,55 @@ describe('after-hook failures', () => {
 		const input = base();
 		await engine.runners.onRequest(input);
 		expect(seen[0]).toBe(input.state.responseHeaders);
+	});
+});
+
+describe('setup schema and executeFn', () => {
+	test('setup receives the instance schema', async () => {
+		const schema = buildSchema('type Query { a: String }');
+		let seen: unknown;
+		const engine = createPluginEngine(
+			[
+				plain({
+					name: 's',
+					setup: (api) => {
+						seen = api.schema;
+					},
+				}),
+			],
+			undefined,
+			schema,
+		);
+		await engine.init();
+		expect(seen).toBe(schema);
+	});
+
+	test('executeFn is the fallback, then the last one set', async () => {
+		const seen: unknown[] = [];
+		const fallback = async () => ({ data: { fallback: true } });
+		const wrapped = async () => ({ data: { wrapped: true } });
+		const engine = createPluginEngine([
+			plain({
+				name: 'a',
+				onExecute: ({ executeFn, setExecuteFn }) => {
+					seen.push(executeFn);
+					setExecuteFn(wrapped);
+				},
+			}),
+			plain({
+				name: 'b',
+				onExecute: ({ executeFn }) => void seen.push(executeFn),
+			}),
+		]);
+		const outcome = await engine.runners.onExecute({
+			...base(),
+			args: {} as never,
+			fallback,
+		});
+		expect(await (seen[0] as () => unknown)()).toEqual({
+			data: { fallback: true },
+		});
+		expect(seen[1]).toBe(wrapped);
+		expect(outcome.out.executeFn).toBe(wrapped);
 	});
 });
