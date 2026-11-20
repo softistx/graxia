@@ -13,6 +13,13 @@
         "typescript": "~6.0.3",
       },
     },
+    "examples/host-embedding": {
+      "name": "@graxia/example-host-embedding",
+      "dependencies": {
+        "@graxia/core": "workspace:^",
+        "graphql": "17.1.0",
+      },
+    },
     "packages/core": {
       "name": "@graxia/core",
       "version": "0.5.0",
@@ -347,6 +354,8 @@
     "@graxia/core": ["@graxia/core@workspace:packages/core"],
 
     "@graxia/envelop": ["@graxia/envelop@workspace:packages/envelop"],
+
+    "@graxia/example-host-embedding": ["@graxia/example-host-embedding@workspace:examples/host-embedding"],
 
     "@graxia/graphiql": ["@graxia/graphiql@workspace:packages/graphiql"],
 

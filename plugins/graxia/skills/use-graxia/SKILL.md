@@ -27,7 +27,7 @@ directives, `printSchemaFor` and `visibleSchema` (the schema one caller may see)
 (`node_modules/@graxia/core/docs/guide/errors.md#the-fix-contract`). `@graxia/redis`
 puts the PubSub, the cache and a field rate limit on Redis (`redisPubSub`, `redisCache`,
 `redisFieldLimit`), on `@softistx/redis` (peer, with `@graxia/core`); breaking in 0.2: see
-`node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`.
+`node_modules/@graxia/redis/docs/guide/redis.md#migrating-from-01`. The peer of core is `graphql ^17.1.0`. Coming from `@alxia/graphql`: `node_modules/@graxia/core/docs/guide/migrating-from-alxia-graphql.md`; an app that owns `Bun.serve`: the host-embedding example it links.
 
 The detail lives in the installed packages: `node_modules/@graxia/<package>/README.md` and
 `node_modules/@graxia/<package>/docs/` (guides, troubleshooting, roadmap). `references/packages.md` is the

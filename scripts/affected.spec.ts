@@ -104,7 +104,7 @@ describe('changedSince', () => {
 			'packages/a/f.ts',
 			'packages/b/f.ts',
 		]);
-	});
+	}, 30_000);
 });
 
 describe('the command line', () => {

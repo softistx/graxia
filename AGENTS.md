@@ -101,5 +101,5 @@ Skeleton copied from nxgt-data (`lay-out-a-library-monorepo`); declared differen
 - **`ci.yml`**: one light job on `pull_request` to `develop` and `feat/**`; no
   service caches (Redis specs, when they land, skip without `REDIS_URL`).
   No `nightly.yml` or `nxgt-versions.yml` yet.
-- **No `examples/` yet** (the workspace glob is kept; `examples/host-embedding` lands in S29).
+- **`examples/host-embedding`** is a private workspace member, never published: the root `test` runs it after the packages (`bun run --filter './examples/*' test`), and it needs `bun run build` first (it imports `@graxia/core`'s `dist`). `.changeset/config.json` keeps private packages out of versioning and tags.
 - **`plugins/graxia`** carries a generated package index (see "Generated files").
