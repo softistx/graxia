@@ -255,12 +255,36 @@ describe('subscriptions', () => {
 			expect(text).not.toContain('iteration failed');
 		});
 
-		// Suspected bug, not fixed here: the replaced GraphQLError is thrown from the
-		// stream, and core masks every error thrown while iterating a subscription as
-		// "Unexpected error." (even a plain GraphQLError with no Envelop plugin), so the
-		// guide's "onSubscribeError can setError" never reaches the client.
-		// Tracked in #111.
-		test.todo('the client sees the error set by onSubscribeError setError');
+		test('the client sees the error set by onSubscribeError setError', async () => {
+			app = boot(
+				[
+					fromEnvelop([
+						{
+							onSubscribe: () => ({
+								onSubscribeError: ({ setError }: any) =>
+									setError(
+										new GraphQLError('replaced', {
+											extensions: { code: 'REPLACED' },
+										}),
+									),
+							}),
+						} as never,
+					]),
+				],
+				{
+					schema: failing(async function* () {
+						yield 1;
+						throw new Error('iteration failed');
+					}) as never,
+				},
+			);
+			const text = await (await app.raw('subscription { tick }', SSE)).text();
+			expect(text).toContain('"tick":1');
+			expect(text).toContain('replaced');
+			expect(text).toContain('REPLACED');
+			expect(text).not.toContain('iteration failed');
+			expect(text).not.toContain('Unexpected error.');
+		});
 
 		test('an error of the initial subscribe goes through core, not the hook', async () => {
 			replacing(

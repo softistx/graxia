@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { GraphQLError } from 'graphql';
 import { createClient } from 'graphql-sse';
 import { definePlugin } from '../plugins/define';
 import { createPubSub } from '../pubsub/memory';
@@ -14,7 +15,7 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 	typeDefs: `
 		type Query { hello: String }
 		type Mutation { bump: Int }
-		type Subscription { tick: Int! bad: Int! who: String! ended: Int! relayed: Int! }
+		type Subscription { tick: Int! bad: Int! who: String! ended: Int! relayed: Int! gqlAfter: Int! plainAfter: Int! }
 	`,
 	resolvers: {
 		Query: { hello: () => 'world' },
@@ -39,6 +40,22 @@ const schema = createSchema<{ signal: AbortSignal }>()({
 				// the signal in the operation context must end it at once
 				subscribe: async function* () {
 					for await (const n of pubsub.subscribe('tick')) yield n;
+				},
+				resolve: (n: number) => n,
+			},
+			gqlAfter: {
+				subscribe: async function* () {
+					yield 1;
+					throw new GraphQLError('plain-gql', {
+						extensions: { code: 'X' },
+					});
+				},
+				resolve: (n: number) => n,
+			},
+			plainAfter: {
+				subscribe: async function* () {
+					yield 1;
+					throw new Error('db down');
 				},
 				resolve: (n: number) => n,
 			},
@@ -268,6 +285,31 @@ describe('subscriptions', () => {
 		expect(text).not.toContain('secret detail');
 		expect((reported[0] as Error).message).toBe('secret detail');
 		await response.body?.cancel();
+	});
+	test('a GraphQLError thrown while iterating is exposed as is', async () => {
+		const reported: unknown[] = [];
+		const graxia = make({ onUnexpected: (e: unknown) => reported.push(e) });
+		const response = await graxia.fetch(
+			sse({ query: 'subscription { gqlAfter }' }),
+		);
+		const text = await response.text();
+		expect(text).toContain('"gqlAfter":1');
+		expect(text).toContain('plain-gql');
+		expect(text).toContain('"code":"X"');
+		expect(text).not.toContain('Unexpected error.');
+		expect(text).toContain('event: complete');
+		expect(reported).toEqual([]);
+	});
+	test('a plain Error thrown while iterating stays masked and reported', async () => {
+		const reported: unknown[] = [];
+		const graxia = make({ onUnexpected: (e: unknown) => reported.push(e) });
+		const response = await graxia.fetch(
+			sse({ query: 'subscription { plainAfter }' }),
+		);
+		const text = await response.text();
+		expect(text).toContain('Unexpected error.');
+		expect(text).not.toContain('db down');
+		expect((reported[0] as Error).message).toBe('db down');
 	});
 	test('onResultChunk setChunk applies before masking, query included', async () => {
 		const order: string[] = [];

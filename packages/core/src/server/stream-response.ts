@@ -1,4 +1,4 @@
-import type { ExecutionResult } from 'graphql';
+import { type ExecutionResult, GraphQLError } from 'graphql';
 import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
@@ -58,6 +58,10 @@ export function streamOutcome(
 		scope: outcome.scope ?? ((work) => work()),
 		prepare: (value) => preparePayload(rt, request, state, value),
 		fail: (error) => {
+			// An error thrown while iterating a subscription takes the decision of an
+			// execution error: a GraphQLError is exposed, anything else is masked and reported.
+			if (error instanceof GraphQLError)
+				return rt.maskResult({ errors: [error] }, state);
 			rt.unexpected.report(error, state, 'execution');
 			return rt.unexpected.body(state);
 		},

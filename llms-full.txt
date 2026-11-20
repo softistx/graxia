@@ -1058,6 +1058,10 @@ What is exposed as is, and what is masked:
 | graphql's own errors: validation, variable coercion, non-null violation | unchanged                                                    |
 | a plain `Error`, a thrown string, a library error                       | `Unexpected error.`, `INTERNAL_SERVER_ERROR`, correlation id |
 
+The same decision applies to an error thrown by a subscription's source iterator while it iterates
+(after its first event): a `GraphQLError` reaches the client as is, a plain `Error` is masked and
+reported through `onUnexpected`.
+
 The rule, exactly: an error is **exposed** when it has no `originalError` (graphql's own: validation,
 coercion), when it is a genuine non-null violation, or when its original is a `GraphQLError` of any
 origin (`exposedError` included). Everything else (a plain `Error`, a thrown string, a library error)
@@ -3147,7 +3151,10 @@ subscriptions: `execute` of a subscription returns that refusal in the result.
   `{ result, setResult }` once the source exists). Every payload, including a query's single one, goes
   through the `onResultChunk` hooks (`setChunk`) and then error masking, in that order.
 - **Masking**: a resolver error inside one event is masked like any other (`Unexpected error.` plus
-  `correlationId`); the stream goes on.
+  `correlationId`); the stream goes on. An error thrown by the source iterator while it iterates (after
+  it has yielded) ends the stream with a last `next` carrying `{ errors }`, then `complete`: a
+  `GraphQLError` (`exposedError` included) is exposed as is, message, path and extensions, and a plain
+  `Error` is masked and reported through `onUnexpected`, like an execution error.
 - **`getContext()`** works in subscription resolvers and for each event (`asyncContext`).
 
 ## Cancellation and shutdown
@@ -4111,7 +4118,9 @@ sources (a memory PubSub's `subscriberCount` drops to 0) and clears its timers.
 
 Parse and validation errors are an `error` message and end the operation. Execution errors are a
 `next` with `errors`. Unexpected errors are masked with the correlation id (the connection's
-request id) and reported once through `onUnexpected`, like over HTTP.
+request id) and reported once through `onUnexpected`, like over HTTP. An error thrown by a
+subscription's source iterator after it has yielded ends the operation with a last `next` carrying
+`errors`, then `complete`: a `GraphQLError` is exposed as is, a plain `Error` is masked and reported.
 
 # @graxia/core — Troubleshooting: HTTP, execute and testing
 
@@ -4950,6 +4959,20 @@ Close code **4400**. The text after the colon says what is wrong: a payload that
 ## Binary messages are not supported
 
 Close code **4400**. Send text frames only.
+
+## The stream ends with `Unexpected error.` after some events
+
+The subscription's source iterator threw a plain `Error` (a database or library failure) after it had
+yielded. The client gets the masked message and a correlation id, the original goes to `onUnexpected`.
+To tell the client why, throw a `GraphQLError` (or `exposedError(...)`) from the iterator: it is exposed
+as is, message, path and extensions, then the stream completes.
+
+```ts
+subscribe: async function* () {
+	yield 1;
+	throw exposedError('UPSTREAM_DOWN', 'The feed is down.');
+}
+```
 
 ## Internal error
 

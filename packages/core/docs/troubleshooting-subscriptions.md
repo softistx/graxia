@@ -91,6 +91,20 @@ Close code **4400**. The text after the colon says what is wrong: a payload that
 
 Close code **4400**. Send text frames only.
 
+## The stream ends with `Unexpected error.` after some events
+
+The subscription's source iterator threw a plain `Error` (a database or library failure) after it had
+yielded. The client gets the masked message and a correlation id, the original goes to `onUnexpected`.
+To tell the client why, throw a `GraphQLError` (or `exposedError(...)`) from the iterator: it is exposed
+as is, message, path and extensions, then the stream completes.
+
+```ts
+subscribe: async function* () {
+	yield 1;
+	throw exposedError('UPSTREAM_DOWN', 'The feed is down.');
+}
+```
+
 ## Internal error
 
 Close code **1011**. `onConnect` or the socket handler threw an unexpected error; it reached
