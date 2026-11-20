@@ -1,4 +1,8 @@
-import type { GraphQLSchema } from 'graphql';
+import type {
+	DocumentNode,
+	GraphQLSchema,
+	OperationDefinitionNode,
+} from 'graphql';
 import {
 	createDocumentPipeline,
 	type DocumentPipeline,
@@ -32,6 +36,13 @@ export interface Runtime {
 	lifecycle: Lifecycle;
 	/** The tracing hooks; the off implementation when tracing is off. */
 	telemetry: Telemetry;
+	/**
+	 * Operations without variables whose cost check passed, per document (the
+	 * cost reads the document's fragments). Per instance: the
+	 * schema and the resolved cost options (numbers, fixed at creation) never
+	 * change, so the answer for the same operation node cannot either.
+	 */
+	costPassed: WeakMap<DocumentNode, WeakSet<OperationDefinitionNode>>;
 	/** Resolves once every plugin's `setup` ran. */
 	ready: Promise<void>;
 }
@@ -83,6 +94,7 @@ export function buildRuntime(
 		context: options.context,
 		lifecycle: parts.lifecycle,
 		telemetry: parts.telemetry,
+		costPassed: new WeakMap(),
 		ready: parts.ready,
 	};
 }

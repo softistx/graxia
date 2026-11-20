@@ -1,5 +1,6 @@
 import type { ExecutionResult, GraphQLFormattedError } from 'graphql';
 import type { MediaType } from './negotiate';
+import { own } from './own-response';
 
 const charset = '; charset=utf-8';
 
@@ -15,7 +16,7 @@ export function jsonResponse(
 	const text = JSON.stringify(body);
 	// Declared so the telemetry can tell a small refusal from a big result without reading it.
 	out.set('content-length', String(Buffer.byteLength(text)));
-	return new Response(text, { status, headers: out });
+	return own(new Response(text, { status, headers: out }));
 }
 
 /** An error body: `{ errors: [{ message, extensions: { code?, fix } }] }`. */

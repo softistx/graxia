@@ -536,3 +536,32 @@ describe('setup schema and executeFn', () => {
 		expect(outcome.out.executeFn).toBe(wrapped);
 	});
 });
+
+describe('a stage without hooks', () => {
+	test('its outcome is not a promise and its runAfter resolves', async () => {
+		const engine = createPluginEngine([]);
+		const outcome = engine.runners.onRequest(base());
+		expect(outcome instanceof Promise).toBe(false);
+		const { runAfter } = outcome as Awaited<typeof outcome>;
+		expect(await runAfter({ response: new Response() })).toBeUndefined();
+	});
+	test('a stage with hooks but no after-hook shares the resolved runAfter', async () => {
+		const engine = createPluginEngine([
+			plain({ name: 'p', onRequest: () => {} }),
+		]);
+		const empty = createPluginEngine([]);
+		const outcome = await engine.runners.onRequest(base());
+		const none = await empty.runners.onRequest(base());
+		expect(outcome.runAfter).toBe(none.runAfter);
+		await outcome.runAfter({ response: new Response() });
+	});
+	test('a zero-hook outcome carries no error for a well-formed input', async () => {
+		// The zero-hook runner calls `spec.init` only: it cannot throw for a well-formed input.
+		const engine = createPluginEngine([]);
+		const outcome = await engine.runners.onResponse({
+			...base(),
+			response: new Response(),
+		});
+		expect(outcome.error).toBeUndefined();
+	});
+});

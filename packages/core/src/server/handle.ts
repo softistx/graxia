@@ -1,11 +1,5 @@
 import { multipartFormat } from '../http/multipart';
-import {
-	acceptsMultipart,
-	type MediaType,
-	negotiate,
-	prefersEventStream,
-	prefersMultipart,
-} from '../http/negotiate';
+import { type MediaType, readAccept } from '../http/negotiate';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
 import { sseFormat } from '../http/sse';
 import type { StreamFormat } from '../http/stream';
@@ -38,13 +32,13 @@ export async function dispatch(
 ): Promise<Response> {
 	try {
 		state.responseHeaders.append('vary', 'Accept');
-		const accept = request.headers.get('accept');
-		const sse = rt.options.sse && prefersEventStream(accept);
+		const reading = readAccept(request.headers.get('accept'));
+		const sse = rt.options.sse && reading.eventStream;
 		const streams = !sse && rt.options.incremental !== false;
-		const preferred = streams && prefersMultipart(accept);
+		const preferred = streams && reading.multipart;
 		// JSON listed first (clients that list JSON first, such as GraphiQL) still streams an incremental operation.
-		const multipart = preferred || (streams && acceptsMultipart(accept));
-		const media = sse || preferred ? 'application/json' : negotiate(accept);
+		const multipart = preferred || (streams && reading.acceptsMultipart);
+		const media = sse || preferred ? 'application/json' : reading.media;
 		if (media === undefined)
 			return refusal(
 				406,

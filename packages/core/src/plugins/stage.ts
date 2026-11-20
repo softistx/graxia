@@ -21,10 +21,15 @@ export interface StageOutcome<Out, Done> {
 	runAfter(done: Done): Promise<void>;
 }
 
+const RESOLVED = Promise.resolve();
+
+/** @internal The `runAfter` of a stage where no after-hook ran: callers compare against it to skip the await. */
+export const NO_AFTER = (): Promise<void> => RESOLVED;
+
 /** A stage runner: takes the stage input, returns the outcome. */
 export type StageRunner<Input, Out, Done> = (
 	input: Input,
-) => Promise<StageOutcome<Out, Done>>;
+) => StageOutcome<Out, Done> | Promise<StageOutcome<Out, Done>>;
 
 /** @internal how one stage turns an input into per-hook payloads. */
 export interface StageSpec<Input, Out> {
@@ -51,9 +56,9 @@ export function createStageRunner<Input, Out, Done>(
 	hooks: readonly { plugin: string; run: AnyHook }[],
 	spec: StageSpec<Input, Out>,
 ): StageRunner<Input, Out, Done> {
-	const noAfter = async () => {};
+	// No hook: nothing to await, the outcome is built synchronously.
 	if (hooks.length === 0) {
-		return async (input) => ({ out: spec.init(input), runAfter: noAfter });
+		return (input) => ({ out: spec.init(input), runAfter: NO_AFTER });
 	}
 	return async (input) => {
 		const out = spec.init(input);
@@ -84,21 +89,28 @@ export function createStageRunner<Input, Out, Done>(
 		return {
 			out,
 			...(failed ? { error } : {}),
-			async runAfter(done) {
-				let first: unknown;
-				let failed = false;
-				for (let i = afters.length - 1; i >= 0; i--) {
-					const after = afters[i] as (done: Done) => MaybePromise<void>;
-					try {
-						const pending = after(done);
-						if (isThenable(pending)) await pending;
-					} catch (thrown) {
-						if (!failed) first = thrown;
-						failed = true;
-					}
-				}
-				if (failed) throw first;
-			},
+			runAfter: afters.length === 0 ? NO_AFTER : afterRunner(afters),
 		};
+	};
+}
+
+/** Runs the after-hooks in reverse order, all of them; rethrows the first error. */
+function afterRunner<Done>(
+	afters: ((done: Done) => MaybePromise<void>)[],
+): (done: Done) => Promise<void> {
+	return async (done) => {
+		let first: unknown;
+		let failed = false;
+		for (let i = afters.length - 1; i >= 0; i--) {
+			const after = afters[i] as (done: Done) => MaybePromise<void>;
+			try {
+				const pending = after(done);
+				if (isThenable(pending)) await pending;
+			} catch (thrown) {
+				if (!failed) first = thrown;
+				failed = true;
+			}
+		}
+		if (failed) throw first;
 	};
 }

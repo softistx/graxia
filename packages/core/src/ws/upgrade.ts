@@ -1,5 +1,7 @@
+import { takeOwn } from '../http/own-response';
 import { REQUEST_ID_HEADER, requestIdKey } from '../http/request-id';
 import { refusal } from '../http/respond';
+import { NO_AFTER } from '../plugins/stage';
 import type { StateBag } from '../plugins/state';
 import { checkUpgrade } from '../security/check';
 import type { Runtime } from '../server/runtime';
@@ -61,6 +63,7 @@ export async function upgradeRequest(
 			return rt.unexpected.respond(entered.error, state);
 		const refused = entered.out.response;
 		if (refused) {
+			if (entered.runAfter !== NO_AFTER) takeOwn(refused);
 			await entered.runAfter({ response: refused });
 			return refused;
 		}

@@ -1,4 +1,5 @@
 import type { ExecutionResult } from 'graphql';
+import { own } from '../http/own-response';
 import { payloadStream, type StreamFormat } from '../http/stream';
 import type { RequestState } from '../plugins/state';
 import { maskPayload } from './masking';
@@ -108,7 +109,7 @@ export function streamResponse(
 	});
 	void rt.lifecycle.track(stream.done);
 	rt.telemetry.hold(call.state, stream.done);
-	return new Response(stream.body, { headers: format.headers() });
+	return own(new Response(stream.body, { headers: format.headers() }));
 }
 
 /**

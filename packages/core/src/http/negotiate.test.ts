@@ -4,6 +4,7 @@ import {
 	negotiate,
 	prefersEventStream,
 	prefersMultipart,
+	readAccept,
 } from './negotiate';
 
 describe('negotiate', () => {
@@ -117,5 +118,53 @@ describe('acceptsMultipart', () => {
 		expect(acceptsMultipart('application/json, multipart/mixed;q=0')).toBe(
 			false,
 		);
+	});
+});
+
+describe('readAccept', () => {
+	const headers = [
+		null,
+		'',
+		'*/*',
+		'application/*',
+		'application/json',
+		'application/graphql-response+json, application/json',
+		'application/json;q=0.5, application/graphql-response+json',
+		'text/event-stream',
+		'text/event-stream, application/json',
+		'application/json, text/event-stream',
+		'multipart/mixed',
+		'application/json, multipart/mixed',
+		'multipart/mixed;q=0, application/json',
+		'text/html',
+		'application/json;q=0',
+	];
+	const expected = (h: string | null) => ({
+		eventStream: prefersEventStream(h),
+		multipart: prefersMultipart(h),
+		acceptsMultipart: acceptsMultipart(h),
+		media: negotiate(h),
+	});
+	test('equals the four functions, first and memoised', () => {
+		for (const h of [...headers, ...headers])
+			expect({ ...readAccept(h) }).toEqual(expected(h));
+	});
+	test('the same text gives the same reading', () => {
+		expect(readAccept('application/json')).toBe(readAccept('application/json'));
+	});
+	test('stays right past the bound of 64 distinct headers', () => {
+		for (let i = 0; i < 200; i++) {
+			const h = `text/x-${i}, application/json;q=0.${(i % 9) + 1}`;
+			expect({ ...readAccept(h) }).toEqual(expected(h));
+		}
+		expect({ ...readAccept('application/json') }).toEqual(
+			expected('application/json'),
+		);
+	});
+	test('a 300-character header answers right and is not stored', () => {
+		const h = `${'x/y, '.repeat(60)}text/event-stream`;
+		expect(h.length).toBeGreaterThan(256);
+		expect({ ...readAccept(h) }).toEqual(expected(h));
+		expect(readAccept(h)).not.toBe(readAccept(h));
 	});
 });

@@ -1,5 +1,5 @@
 import { type ExecutionResult, GraphQLError } from 'graphql';
-import type { StageOutcome } from '../plugins/stage';
+import { NO_AFTER, type StageOutcome } from '../plugins/stage';
 import type { HttpRefusal } from './http-refusal';
 
 /** How one operation ended, before it is encoded as a response. */
@@ -71,7 +71,14 @@ export function unexpected(error: unknown): Outcome {
  * Unwinds a stage's after-hooks and returns the error to report: the hook's
  * own error when it threw, else the one an after-hook threw.
  */
-export async function settle<Done>(
+export function settle<Done>(
+	stage: StageOutcome<unknown, Done>,
+	done: Done,
+): unknown | Promise<unknown> {
+	return stage.runAfter === NO_AFTER ? stage.error : settleAfter(stage, done);
+}
+
+async function settleAfter<Done>(
 	stage: StageOutcome<unknown, Done>,
 	done: Done,
 ): Promise<unknown> {
