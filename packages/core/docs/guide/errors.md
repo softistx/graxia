@@ -53,10 +53,11 @@ compatible). The HTTP status is unchanged (400 with `application/graphql-respons
 
 ## Variable and operation-name errors
 
-What graphql refuses before any field runs (a variable that is missing or has the wrong type, an
-operation name the document does not have) answers with graphql's message,
-`extensions.code: "BAD_USER_INPUT"` and a `fix`. An error that already has a code (an
-`exposedError` thrown by a custom scalar) keeps it.
+A variable that is missing or has the wrong type is refused by graphql before any field runs: the
+answer has graphql's message, `extensions.code: "BAD_USER_INPUT"` and a `fix`. An error that
+already has a code (an `exposedError` thrown by a custom scalar) keeps it. An operation name the
+document does not have, or a missing one when the document holds several operations, is refused by
+graxia with the same code and a `fix` that says to send `operationName`.
 
 ## Typed codes
 
@@ -174,7 +175,8 @@ changes, in development and in production. Messages and codes do not depend on i
 | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | a syntax error, a document over the token or depth limit                                                        | correct the document at the position the error points to                      |
 | a validation failure (unknown field, a limit, introspection off)                                                | change the operation to match the schema                                      |
-| a variable that is missing or invalid, an unknown operation name (`BAD_USER_INPUT`, raised before any field)    | check the operation against the schema                                        |
+| a variable that is missing or invalid (`BAD_USER_INPUT`, raised before any field)                               | check the operation against the schema                                        |
+| an unknown or missing operation name (`BAD_USER_INPUT`)                                                         | send `operationName`, naming one operation of the document                    |
 | an HTTP refusal: 404, 405, 406, 413, 415, invalid JSON or parameters, a batch over its limit, CSRF and `Origin` | what to send instead (a header, a smaller body, one operation)                |
 | a subscription over plain JSON, `@defer` or `@stream` over a transport that cannot stream                       | which transport or `Accept` to use, or to remove the directive                |
 | trusted documents and APQ refusals, a rate limit, a field selected twice, a shutdown, an aborted operation      | the id or hash to send, when to retry, what to remove                         |

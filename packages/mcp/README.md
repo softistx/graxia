@@ -42,11 +42,11 @@ only (`GET` and `DELETE` answer 405).
 
 ## Tools
 
-| tool             | listed            | what it does                                                                              |
-| ---------------- | ----------------- | ----------------------------------------------------------------------------------------- |
-| `graphql_schema` | always            | operations and type names; `{ types }` gives SDL, `{ search }` finds types by a word      |
-| `graphql_query`  | always            | runs a query; mutations, subscriptions, introspection, `@defer` and `@stream` are refused |
-| `graphql_mutate` | `mutations: true` | runs a mutation; a query is refused                                                       |
+| tool             | listed                                                   | what it does                                                                              |
+| ---------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `graphql_schema` | always                                                   | operations and type names; `{ types }` gives SDL, `{ search }` finds types by a word      |
+| `graphql_query`  | always (not in strict trusted-documents mode)            | runs a query; mutations, subscriptions, introspection, `@defer` and `@stream` are refused |
+| `graphql_mutate` | `mutations: true` (not in strict trusted-documents mode) | runs a mutation; a query is refused                                                       |
 
 With `operations`, each persisted operation is one more tool (`book_by_id`), with typed arguments:
 see [typed tools](#typed-tools).
@@ -159,6 +159,7 @@ that throws is a 503, and it may resolve its own `Response`. Bearer only, no DPo
 
 See [`docs/`](./docs): [getting started](./docs/guide/getting-started.md), [auth](./docs/guide/auth.md), [tools](./docs/guide/tools.md),
 [typed tools](./docs/guide/operations.md),
-[security](./docs/guide/security.md), [troubleshooting](./docs/troubleshooting.md) and the
+[security](./docs/guide/security.md), [troubleshooting](./docs/troubleshooting.md)
+([auth errors](./docs/troubleshooting-auth.md)) and the
 [roadmap](./docs/roadmap.md). The schema and the body limit come from the graxia instance
 (`graxia.schema`, `graxia.limits`, core 0.5).

@@ -73,7 +73,8 @@ Message `Forbidden: graphql_mutate needs the scope mcp:write.` (it names the too
 `rename_book needs …` for a typed tool). A read-only token called a tool that writes from a stale
 tool list. Re-authorize with both scopes (the challenge's `scope`); these tools are not listed for
 a token without `mcp:write`. With `mutations` off there is no 403: the call gets
-`Tool graphql_mutate not found`. A mutation tool `can` hides from the caller gets no 403 either.
+`Tool graphql_mutate not found`. A mutation tool `can` hides from the caller gets no 403 either,
+and in strict trusted-documents mode `graphql_mutate` answers `PERSISTED_QUERY_ONLY`, not the 403.
 
 ## `createMcp: auth.resource must be an absolute URL (got "…").`
 

@@ -70,7 +70,7 @@ describe('the fix of an error graphql raised', () => {
 		);
 	});
 
-	test('a missing variable and an unknown operation name get BAD_USER_INPUT', async () => {
+	test('a missing variable gets BAD_USER_INPUT once stamped', async () => {
 		const missing = await execute({
 			schema,
 			document: parse('query($x: Int!) { n(x: $x) }'),
@@ -80,14 +80,48 @@ describe('the fix of an error graphql raised', () => {
 			code: 'BAD_USER_INPUT',
 			fix: GRAPHQL_FIX,
 		});
-		const unknown = await execute({
-			schema,
-			document: parse('query A { __typename }'),
-			operationName: 'B',
-		});
-		expect(extensionsOf(stampRaisedByGraphql(unknown))?.['code']).toBe(
+	});
+
+	test('graxia.execute codes a bad variable and the operation-name errors BAD_USER_INPUT', async () => {
+		const graxia = createGraxia({ schema });
+		const codeOf = async (input: Parameters<typeof graxia.execute>[0]) => {
+			const result = (await graxia.execute(input)) as ExecutionResult;
+			return [result.errors?.[0]?.message, extensionsOf(result)?.['code']];
+		};
+		expect(await codeOf({ document: 'query($x: Int!) { n(x: $x) }' })).toEqual([
+			expect.stringContaining('$x'),
 			'BAD_USER_INPUT',
+		]);
+		expect(
+			await codeOf({ document: 'query A { __typename }', operationName: 'B' }),
+		).toEqual(['Unknown operation named "B".', 'BAD_USER_INPUT']);
+		expect(
+			await codeOf({
+				document: 'query A { __typename } query B { __typename }',
+			}),
+		).toEqual([
+			'Must provide operation name if query contains multiple operations.',
+			'BAD_USER_INPUT',
+		]);
+		await graxia.dispose({ timeout: 10 });
+	});
+
+	test('an unknown operation name is BAD_USER_INPUT over HTTP', async () => {
+		const graxia = createGraxia({ schema });
+		const response = await graxia.fetch(
+			new Request('http://x/graphql', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					query: 'query A { __typename }',
+					operationName: 'B',
+				}),
+			}),
 		);
+		const body = await response.json();
+		await graxia.dispose({ timeout: 10 });
+		expect(body.errors[0].message).toBe('Unknown operation named "B".');
+		expect(body.errors[0].extensions.code).toBe('BAD_USER_INPUT');
 	});
 
 	test('a code the error already has is kept', () => {

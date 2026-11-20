@@ -517,9 +517,10 @@ has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
 
 ## Variable "$id" has invalid value: … (`BAD_USER_INPUT`)
 
-Also `Variable "$id" of required type "ID!" was not provided.` and `Unknown operation named "X".`:
-graphql refused the request before any field ran. Send the variables the operation declares, with
-their types, and an `operationName` the document holds. `extensions.fix` says the same.
+Also `Unknown operation named "X".` and
+`Must provide operation name if query contains multiple operations.`: the request was refused
+before any field ran. Send the variables the operation declares, with their types, and an
+`operationName` the document holds. `extensions.fix` says the same.
 
 ## graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)
 

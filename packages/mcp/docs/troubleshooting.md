@@ -168,4 +168,6 @@ they are (its code and fix, e.g. `UNAUTHENTICATED`), so shape your plugin's refu
 ## `The server failed to run the operation. Fix: retry later.`
 
 An unexpected failure inside the tool (a throwing `can`, a bug); its cause is not sent. It went to
-`onError` and, for the operation itself, to graxia's `onUnexpected`.
+`onError` and, for the operation itself, to graxia's `onUnexpected`. When `can` throws,
+`tools/list` also answers without the typed tools, and a call to one gets this answer: the cause
+is in `onError`.
