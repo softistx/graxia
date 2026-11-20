@@ -156,7 +156,7 @@ Path and method refusals (404, 405) happen before any plugin runs. Every other r
 
 ## Batching
 
-Off by default: a JSON array body answers 400. With `batching: true` (up to 10 entries, Yoga's default) or `batching: { limit: 10 }` an array runs its
+Off by default: a JSON array body answers 400. With `batching: true` (up to 10 entries, Yoga's default) or `batching: { limit: 25 }` an array runs its
 entries **one after the other, in order** (a later entry may rely on an earlier mutation, and one
 request cannot multiply its own concurrency) and answers 200 with an array of results. More than
 `limit` entries, an empty array or a malformed entry answers 400. A hook that throws, or an
