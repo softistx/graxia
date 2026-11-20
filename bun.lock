@@ -23,7 +23,7 @@
     },
     "packages/core": {
       "name": "@graxia/core",
-      "version": "0.13.0",
+      "version": "0.13.1",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
         "@graphql-codegen/typescript": "^7.0.1",
