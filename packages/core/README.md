@@ -461,7 +461,7 @@ for await (const result of client.iterate({
 ### Over WebSocket
 
 `graphql-transport-ws` on Bun's WebSocket is on by default, on the same path, for the `graphql-ws`
-client. `connectionParams` reach `onConnect` and the context; `dispose()` closes sockets with 1001.
+client. `connectionParams` reach `onConnect`, the context (`init.connectionParams` in the `context` factory) and `onParams` (its `connectionParams`); `dispose()` closes sockets with 1001.
 
 ```ts
 const live = createGraxia({

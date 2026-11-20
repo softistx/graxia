@@ -100,7 +100,9 @@ For an operation over a WebSocket, `init.connectionParams` is the client's `conn
 const context = async ({ request, connectionParams }: ContextInit) => ({
 	// HTTP: the header; WebSocket: the token sent in connection_init
 	user: await authenticate(
-		String(connectionParams?.['token'] ?? request.headers.get('authorization')),
+		typeof connectionParams?.['token'] === 'string'
+			? connectionParams['token']
+			: (request.headers.get('authorization') ?? undefined),
 	),
 });
 ```

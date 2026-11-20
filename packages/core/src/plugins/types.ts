@@ -98,6 +98,13 @@ export interface OnRequestDone {
 /** `onParams`: replace the params or answer directly. */
 export interface OnParamsPayload extends BasePayload {
 	params: GraphQLParams;
+	/**
+	 * The client's `connection_init` payload, set only for an operation over a
+	 * WebSocket (never over HTTP or SSE, whatever the request's headers say).
+	 * `undefined` therefore means "not a socket operation" or "the socket
+	 * opened without a payload".
+	 */
+	connectionParams?: Readonly<Record<string, unknown>>;
 	setParams(params: GraphQLParams): void;
 	respond(response: Response): void;
 }

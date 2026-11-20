@@ -69,10 +69,11 @@ context the host gave `graxia.upgrade`, plus `server` and `connectionParams`. `o
 
 ## Every WebSocket operation fails a header check in `onParams`
 
-An `onParams` hook that requires a client header also runs for each operation of a socket, whose upgrade request has no
-custom header. Return early when `request.headers.get('upgrade')?.toLowerCase() === 'websocket'`, and authenticate the
-socket with `connectionParams` (`onConnect`, or `init.connectionParams` in the `context` factory). See
-[Authentication](./guide/websocket.md#authentication).
+An `onParams` hook that requires a client header also runs for each operation of a socket, whose browser upgrade request has
+no custom header. Return early when the payload's `connectionParams` is set (only a socket operation has it), and
+authenticate the socket with `connectionParams` (`onConnect`, or `init.connectionParams` in the `context` factory). Do not
+test the `Upgrade` header: an HTTP client can forge it. See
+[Header checks in onParams](./guide/websocket.md#header-checks-in-onparams).
 
 ## Request state key "x" is required but was not set
 

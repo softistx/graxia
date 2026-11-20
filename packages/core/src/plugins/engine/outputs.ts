@@ -89,7 +89,10 @@ export interface ResponseOut {
 export interface PluginRunners {
 	onRequest: StageRunner<Base & Host, RequestOut, OnRequestDone>;
 	onParams: StageRunner<
-		Base & { params: GraphQLParams },
+		Base & {
+			params: GraphQLParams;
+			connectionParams?: Readonly<Record<string, unknown>>;
+		},
 		ParamsOut,
 		OnParamsDone
 	>;
