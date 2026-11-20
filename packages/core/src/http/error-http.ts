@@ -1,5 +1,10 @@
 import type { ExecutionResult, FormattedExecutionResult } from 'graphql';
+import { createStateKey } from '../plugins/state';
 import type { MediaType } from './negotiate';
+
+/** @internal The headers the errors of the result ask for; `seal` adds them last, for the names still absent. */
+export const errorHeadersKey =
+	createStateKey<Record<string, string>>('errorHeaders');
 
 /** What a GraphQL error's `extensions.http` may ask of the plain JSON response. */
 export interface ErrorHttp {
@@ -58,12 +63,11 @@ function validHeaders(value: unknown): Record<string, string> {
 	return out;
 }
 
-const hasHttp = (error: unknown): boolean =>
-	typeof error === 'object' &&
-	error !== null &&
-	typeof (error as Anyone).extensions === 'object' &&
-	(error as Anyone).extensions !== null &&
-	'http' in (error as Anyone).extensions!;
+const hasHttp = (error: unknown): boolean => {
+	if (typeof error !== 'object' || error === null) return false;
+	const ext = (error as Anyone).extensions;
+	return typeof ext === 'object' && ext !== null && 'http' in ext;
+};
 
 /** An error as a plain formatted object, without `extensions.http`. */
 function withoutHttp(error: unknown): unknown {
@@ -102,13 +106,17 @@ export function stripPayloadHttp<T extends object>(payload: T): T {
 	for (const key of ['incremental', 'completed']) {
 		const entries = out[key];
 		if (!Array.isArray(entries)) continue;
-		const stripped = entries.map((entry) =>
-			typeof entry === 'object' && entry !== null
-				? stripErrorHttp(entry)
-				: entry,
-		);
-		if (stripped.some((entry, i) => entry !== entries[i]))
-			out = { ...out, [key]: stripped };
+		const carries = (entry: unknown) =>
+			typeof entry === 'object' &&
+			entry !== null &&
+			(entry as { errors?: unknown[] }).errors?.some(hasHttp) === true;
+		if (!entries.some(carries)) continue;
+		out = {
+			...out,
+			[key]: entries.map((entry) =>
+				carries(entry) ? stripErrorHttp(entry) : entry,
+			),
+		};
 	}
 	return out as T;
 }

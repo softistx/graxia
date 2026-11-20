@@ -381,4 +381,35 @@ describe('extensions.http on GraphQL errors', () => {
 		expect(JSON.stringify(seen)).toContain('Taken.');
 		expect(JSON.stringify(seen)).not.toContain('"http"');
 	});
+
+	test("an onResponse plugin's header wins over the errors' headers", async () => {
+		const late = createGraxia({
+			schema,
+			onUnexpected: false,
+			plugins: [
+				definePlugin({
+					name: 'late',
+					onResponse({ state }) {
+						state.responseHeaders.set('x-conflict', 'plugin');
+						state.responseHeaders.set('cache-control', 'no-store');
+					},
+				}),
+			],
+		});
+		const res = await send(late, q('{ conflict }'));
+		expect(res.status).toBe(409);
+		expect(res.headers.get('x-conflict')).toBe('plugin');
+		expect(res.headers.get('cache-control')).toBe('no-store');
+	});
+
+	test('a deferred payload has no http in its extensions', async () => {
+		const res = await send(
+			app,
+			q('{ hello ... @defer { conflict } }'),
+			'text/event-stream',
+		);
+		const text = await res.text();
+		expect(text).toContain('Taken.');
+		expect(text).not.toContain('"http"');
+	});
 });

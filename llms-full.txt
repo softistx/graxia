@@ -509,8 +509,8 @@ A client example with `meros` is in the [guide](./docs/guide/incremental.md#a-cl
 |                        | PubSub: `createPubSub`, `pipe`, `filter`, `map`; types `PubSub`, `PubSubTopics`, `PubSubPayload`, `PubSubSubscribeArgs`, `Operator`, `MemoryPubSub`, `MemoryPubSubOptions`                                                                            |
 |                        | Cache: `createMemoryCache`; types `KeyValueCache`, `CacheSetOptions`                                                                                                                                                                                  |
 |                        | Context: `getContext`, `tryGetContext`                                                                                                                                                                                                                |
-|                        | Errors: `exposedError`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                                |
-|                        | Options: `ErrorHttp`, `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                        |
+|                        | Errors: `exposedError`, `ErrorHttp`, `GraxiaError`, `isGraxiaError`, `GraxiaConfigError`, `GraxiaPluginError`, `GraxiaExecuteError`; plus the types of all of these                                                                                   |
+|                        | Options: `SubscriptionsOptions`, `WebSocketOptions`, `WebSocketContext`, `IncrementalOptions`, `GraxiaSocketData`                                                                                                                                     |
 |                        | Security: `DEFAULT_CSRF_HEADERS`; types `CsrfOptions`, `SameOriginOptions`, `CrossOrigin`                                                                                                                                                             |
 |                        | Rate limits: `fieldRateLimit`, `memoryFieldLimit`, `limitFromStore`, `DEFAULT_LIMIT_CODE`; types `FieldRateLimitOptions`, `FieldLimit`, `FieldRule`, `FieldDecision`, `CostlessStore`, `MemoryFieldLimitOptions`                                      |
 |                        | Limits: `costDirectives`, `computeOperationCost`, `DEFAULT_MAX_DEPTH`, `DEFAULT_MAX_ALIASES`, `DEFAULT_MAX_DIRECTIVES`, `DEFAULT_MAX_ROOT_FIELDS`, `DEFAULT_MAX_COST`, `DEFAULT_LIST_SIZE`; types `OperationLimits`, `CostOptions`, `ComputeCostArgs` |
@@ -1133,7 +1133,7 @@ throw exposedError('CONFLICT', 'Email taken.', {
   data (graxia masks it and keeps the media type's rule); a status outside 200 to 599 (ignored);
   and the status and headers on the other transports. A batch (always 200), SSE, WebSocket and
   `multipart/mixed` keep their own status, but `http` is stripped from their payloads too.
-- Stripping happens on the output only: `resultKey` in the request state and the telemetry still see `http`.
+- Stripping happens on the output only: `onResponse` and the telemetry still see `http`.
 - `createGraxia({ errorHttp: false })` turns it all off: the media type decides and `extensions` are untouched.
 
 ## Validation errors
@@ -2150,7 +2150,7 @@ throw new GraphQLError('Email taken.', {
 - A status from 200 to 599 only; anything else is ignored. Under `application/json`, the error's `extensions.http.spec` set to `true` ignores its status (the headers still apply), as in Yoga.
 - Precedence of the status: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
 - `http` is removed from the serialized extensions of every transport. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
-- Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on a batch (always 200), SSE, WebSocket and `multipart/mixed`, which only get `http` stripped.
+- Not copied from Yoga: a result-level `extensions.http`, the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule), and the status and headers on SSE, WebSocket and `multipart/mixed`, which only get `http` stripped. A batch is always 200 here as in Yoga; its entries only lose `http`.
 - Turn it off with `createGraxia({ errorHttp: false })`.
 
 ## graphql 17
@@ -4562,7 +4562,7 @@ Pass a boolean: `createGraxia({ schema, errorHttp: false })`.
 
 ## A GraphQL error has `extensions.http` but the response is 200
 
-The status is read only from a single operation answered as plain JSON, from an integer between 200 and 599, and under
+The status is read only when `errorHttp` is not `false`, from a single operation answered as plain JSON, from an integer between 200 and 599, and under
 `application/json` not when the error's `extensions.http.spec` is `true`. A batch, SSE, WebSocket and multipart answer ignore it, and so does a
 plugin refusal's status (it wins). A masked unexpected error (a plain `Error`) carries no `http`: throw an `exposedError`
 or a `GraphQLError`, or have `maskError` keep it. See [Errors](./guide/errors.md#status-and-headers-from-errors).

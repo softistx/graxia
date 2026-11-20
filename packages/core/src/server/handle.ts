@@ -1,4 +1,8 @@
-import { readErrorHttp, stripErrorHttp } from '../http/error-http';
+import {
+	errorHeadersKey,
+	readErrorHttp,
+	stripErrorHttp,
+} from '../http/error-http';
 import { multipartFormat } from '../http/multipart';
 import { type MediaType, readAccept } from '../http/negotiate';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
@@ -170,6 +174,8 @@ function encode(
 	// Read from the masked result: a masked error carries nothing but what the masker kept.
 	const asked = rt.options.errorHttp ? readErrorHttp(result, media) : undefined;
 	const headers = outcome.headers ?? refusal?.headers;
+	// Added by `seal`, after the plugins' headers (an `onResponse` one included).
+	if (asked?.headers) state.set(errorHeadersKey, asked.headers);
 	return jsonResponse(
 		asked?.result ?? result,
 		outcome.status ??
@@ -177,22 +183,6 @@ function encode(
 			asked?.status ??
 			statusOf(media, result),
 		media,
-		asked?.headers ? withErrorHeaders(headers, asked.headers, state) : headers,
+		headers,
 	);
-}
-
-/**
- * The outcome's or refusal's headers, then the errors' headers for the names
- * neither they nor the plugins (`state.responseHeaders`) set.
- */
-function withErrorHeaders(
-	own: HeadersInit | undefined,
-	asked: Record<string, string>,
-	state: StateBag,
-): Headers {
-	const out = new Headers(own);
-	for (const [name, value] of Object.entries(asked))
-		if (!out.has(name) && !state.responseHeaders.has(name))
-			out.set(name, value);
-	return out;
 }

@@ -1,3 +1,4 @@
+import { errorHeadersKey } from '../http/error-http';
 import { takeOwn } from '../http/own-response';
 import {
 	createRequestId,
@@ -27,6 +28,7 @@ export function seal(response: Response, state: RequestState): Response {
 		try {
 			response.headers.set(REQUEST_ID_HEADER, id); // probe: throws on immutable headers
 			merge(response.headers, state);
+			addErrorHeaders(response.headers, state);
 			response.headers.set(REQUEST_ID_HEADER, id); // a plugin's x-request-id never wins
 			return response;
 		} catch {
@@ -36,6 +38,7 @@ export function seal(response: Response, state: RequestState): Response {
 	// Rebuilt rather than mutated: a Response from `fetch` or `Response.redirect` is immutable.
 	const headers = new Headers(response.headers);
 	merge(headers, state);
+	addErrorHeaders(headers, state);
 	headers.set(REQUEST_ID_HEADER, id);
 	return new Response(response.body, {
 		status: response.status,
@@ -52,4 +55,10 @@ function merge(headers: Headers, state: RequestState): void {
 	}
 	for (const cookie of state.responseHeaders.getSetCookie())
 		headers.append('set-cookie', cookie);
+}
+
+/** The headers the result's errors ask for, last, for the names nothing else set. */
+function addErrorHeaders(headers: Headers, state: RequestState): void {
+	for (const [name, value] of Object.entries(state.get(errorHeadersKey) ?? {}))
+		if (!headers.has(name)) headers.set(name, value);
 }
