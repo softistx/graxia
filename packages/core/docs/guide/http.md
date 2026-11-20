@@ -30,7 +30,7 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 | `plugins`          | `[]`                                              | see [Plugins](./plugins.md)                                                                                                                                                  |
 | `limits`           | `tokens` 15000, `nesting` 1000, `bodyBytes` 1 MiB | document limits and body size, plus the operation limits `depth` 12, `aliases` 30, `directives` 50, `rootFields` 20 and `cost` (5 000), see [Limits](./limits-and-caches.md) |
 | `caches`           | on                                                | parse and validation caches, or `false`                                                                                                                                      |
-| `batching`         | `false`                                           | `false`, or `{ limit: n }`                                                                                                                                                   |
+| `batching`         | `false`                                           | `false`, `true` (10 at most) or `{ limit: n }`                                                                                                                                             |
 | `csrf`             | on                                                | CSRF header and `Origin` checks, `false` to turn off, see [Security](./security.md)                                                                                          |
 | `trustedDocuments` | absent                                            | manifest, `documentId` and APQ, see [Trusted documents](./trusted-documents.md)                                                                                              |
 | `telemetry`        | on when `@softistx/telemetry` is installed        | spans on `@softistx/telemetry`, or `false`, see [Telemetry](./telemetry.md)                                                                                                  |
@@ -42,7 +42,7 @@ error of the first one that failed; `await graxia.ready` at startup to fail fast
 
 The context of an operation is `{ ...serverContext, ...(await context(...)) }`, then the `onContext`
 hooks extend it. CORS is not handled: the host owns it. Invalid options (`limits.bodyBytes` or
-`batching.limit` not a positive integer, a `path` not starting with `/`) throw a `GraxiaConfigError`
+`batching` not `true`, `false` or `{ limit: <positive integer> }`, a `path` not starting with `/`) throw a `GraxiaConfigError`
 naming the option when `createGraxia` is called.
 
 ## `serve` or your own `Bun.serve`
@@ -156,7 +156,7 @@ Path and method refusals (404, 405) happen before any plugin runs. Every other r
 
 ## Batching
 
-Off by default: a JSON array body answers 400. With `batching: { limit: 10 }` an array runs its
+Off by default: a JSON array body answers 400. With `batching: true` (up to 10 entries, Yoga's default) or `batching: { limit: 10 }` an array runs its
 entries **one after the other, in order** (a later entry may rely on an earlier mutation, and one
 request cannot multiply its own concurrency) and answers 200 with an array of results. More than
 `limit` entries, an empty array or a malformed entry answers 400. A hook that throws, or an
