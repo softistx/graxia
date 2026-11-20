@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 /**
  * The part of `@softistx/telemetry` graxia uses, described structurally so
  * the published declarations never import the optional peer. The real
- * `startSpan`, `currentSpan` and `withTelemetry` satisfy it.
+ * `startSpan`, `currentSpan`, `activeSpan` and `withTelemetry` satisfy it.
  */
 export interface SpanLike {
 	/** Writable: the operation span is renamed once the operation is chosen. */
@@ -19,6 +19,13 @@ export interface SpanLike {
 	end(): void;
 	/** Runs `fn` with this span current, so spans started inside are its children. */
 	run<T>(fn: () => T): T;
+}
+
+/** The part of a `SpanScope` graxia uses on a span it does not own: it only annotates it. */
+export interface HostScope {
+	attribute(name: string, value: unknown): void;
+	/** The header that continues this span's trace. */
+	traceparent(): string;
 }
 
 /**
@@ -41,7 +48,8 @@ export interface StartOptions {
 export interface TelemetryApi {
 	startSpan(name: string, options?: StartOptions): SpanLike;
 	currentSpan(): unknown;
-	currentTraceparent(): string | undefined;
+	/** The open span's writable side, `undefined` when none is open or it is not recording. */
+	activeSpan(): HostScope | undefined;
 	withTelemetry<T>(telemetry: TelemetryInstance, fn: () => T): T;
 }
 

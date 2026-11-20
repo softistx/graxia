@@ -74,7 +74,7 @@ describe('operationSpans over HTTP', () => {
 		expect(parentId(one('graphql.resolve hello'))).toBe(idOf(one('host')));
 	});
 
-	test('false under a host span: the validate span carries the operation facts and the document', async () => {
+	test('false under a host span: the host span carries the operation facts and the document', async () => {
 		const graxia = make({ telemetry: { ...off, document: true } });
 		await hosted(() =>
 			graxia.fetch(
@@ -85,13 +85,16 @@ describe('operationSpans over HTTP', () => {
 			),
 		);
 		await instance.flush();
-		expect(one('graphql.validate').attributes).toMatchObject({
+		expect(one('host').attributes).toMatchObject({
 			'graphql.operation.type': 'query',
 			'graphql.operation.name': 'Hi',
 			'graphql.document': 'query Hi { hello }',
 			'graxia.document.id': 'abc',
 		});
-		expect(one('graphql.parse').attributes['graphql.document']).toBeUndefined();
+		expect(one('host').name).toBe('host');
+		expect(
+			one('graphql.validate').attributes['graphql.document'],
+		).toBeUndefined();
 	});
 
 	test('false under a host span: the cause of a masked error is a failed graphql.error span', async () => {

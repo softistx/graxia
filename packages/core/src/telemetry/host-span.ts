@@ -1,3 +1,4 @@
+import type { HostScope } from './api';
 import { type Env, fail, recorded, SPAN, type StandIn, start } from './spans';
 
 /** An abort or a timeout: a shutdown or a client leaving, not a failure worth a span of its own. */
@@ -8,19 +9,18 @@ const isCancellation = (cause: unknown) =>
 /**
  * The stand-in for the operation span when `operationSpans` is `false` and a host span is active:
  * it makes no span of its own and runs work as is, so the spans started inside hang under the
- * host's active span (or, with no active span, under `traceparent`, the host's span at the request).
- *
- * Temporary, until nxgt-telemetry#62: `currentSpan()` is read-only, so the operation attributes
- * go on the validate span and the cause of a masked error is a short failed `graphql.error` span,
- * unless a resolver span already recorded it.
+ * host's active span (or, with no active span, under the host's span at the request, by its
+ * `traceparent`). Attributes go on the host's span; it is never renamed, failed or ended. The
+ * cause of a masked error is a short failed `graphql.error` span, unless a resolver span already
+ * recorded it.
  */
-export function hostSpan(env: Env, traceparent: string): StandIn {
+export function hostSpan(env: Env, host: HostScope): StandIn {
 	const standIn: StandIn = {
 		name: '',
 		status: 'ok',
 		context: { sampled: true },
-		traceparent,
-		attribute: () => {},
+		traceparent: host.traceparent(),
+		attribute: (name, value) => host.attribute(name, value),
 		event: () => {},
 		fail: (cause) => {
 			if (isCancellation(cause)) return;

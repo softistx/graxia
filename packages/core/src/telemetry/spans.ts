@@ -1,5 +1,6 @@
 import { createStateKey, type RequestState } from '../plugins/state';
 import type {
+	HostScope,
 	SpanLike,
 	StartOptions,
 	TelemetryApi,
@@ -66,13 +67,13 @@ export const operationKey = createStateKey<Operation>(
 /** @internal Set when the request span is not recording (no SDK, or sampled out): the rest of the request is untraced. */
 export const quietKey = createStateKey<true>('graxia.telemetry.quiet');
 
-/** @internal The host's `traceparent` (`operationSpans: false`, a host span was active at the request): spans started with no active span continue its trace. */
-export const hostTraceKey = createStateKey<string>('graxia.telemetry.host');
+/** @internal The host's active span at the request (`operationSpans: false`): the operation's attributes go on it, and spans started with no active span (a socket's) continue its trace. */
+export const hostKey = createStateKey<HostScope>('graxia.telemetry.host');
 
-/** @internal Causes a resolver span already recorded, so a stand-in does not record them again. */
+/** @internal Causes a resolver span already recorded, so the host stand-in does not record them again. */
 export const recorded = new WeakSet<object>();
 
-/** @internal A stand-in for the operation span: a {@link Live} that carries the host's `traceparent`. */
+/** @internal The operation span of an operation the host spans: a {@link Live} that writes to the host's span and carries its `traceparent`. */
 export type StandIn = Live & { traceparent?: string };
 
 /** @internal The state of an operation span. */
@@ -81,8 +82,8 @@ export interface Operation {
 	errors: number;
 	events: number;
 	ended: boolean;
-	/** Set when the operation has no span of its own (`operationSpans: false`): what its validate span carries instead. */
-	standIn?: Record<string, string | number>;
+	/** Set when the operation has no span of its own (`operationSpans: false`): `live` is the host's span, never renamed or ended. */
+	hosted?: true;
 }
 
 /** Starts a span under `parent` (else under the active one, else a new trace). */

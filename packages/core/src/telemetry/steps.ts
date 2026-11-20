@@ -10,7 +10,7 @@ import {
 	documentIdOf,
 	type Env,
 	fail,
-	hostTraceKey,
+	hostKey,
 	type Operation,
 	operationKey,
 	parentOf,
@@ -34,7 +34,7 @@ export async function traceOperation(
 	run: () => Promise<Outcome>,
 ): Promise<Outcome> {
 	if (state.get(quietKey)) return run();
-	const host = state.get(hostTraceKey);
+	const host = state.get(hostKey);
 	const live =
 		host === undefined
 			? start(env, SPAN.operation, parentOf(state), { kind: 'internal' })
@@ -44,7 +44,7 @@ export async function traceOperation(
 		errors: 0,
 		events: 0,
 		ended: false,
-		...(host === undefined ? {} : { standIn: {} }),
+		...(host === undefined ? {} : { hosted: true as const }),
 	};
 	state.set(operationKey, op);
 	const inContext = <T>(work: () => T) => live.run(work);
@@ -72,18 +72,11 @@ export function describeOperation(
 	const op = state.get(operationKey);
 	if (!op) return;
 	const { operation, source, params } = info;
-	if (op.standIn) {
-		const facts = op.standIn;
-		facts[ATTR.operationType] = operation.operation;
-		if (operation.name) facts[ATTR.operationName] = operation.name.value;
-		if (env.document) facts[ATTR.document] = source;
-		const id = documentIdOf(params);
-		if (id) facts[ATTR.documentId] = id;
-		return;
-	}
 	const name = operation.name?.value;
 	const span = op.live;
-	span.name = name ? `${operation.operation} ${name}` : operation.operation;
+	// The host's span is never renamed.
+	if (!op.hosted)
+		span.name = name ? `${operation.operation} ${name}` : operation.operation;
 	span.attribute(ATTR.operationType, operation.operation);
 	if (name) span.attribute(ATTR.operationName, name);
 	if (env.document) span.attribute(ATTR.document, source);
@@ -106,12 +99,6 @@ export async function traceStep<R extends StepLike>(
 		{ kind: 'internal' },
 	);
 	try {
-		// Set first, so a validate step that throws keeps them.
-		if (name === 'validate')
-			for (const [key, value] of Object.entries(
-				state.get(operationKey)?.standIn ?? {},
-			))
-				live.attribute(key, value);
 		const result = await run();
 		if (result.cacheHit !== undefined)
 			live.attribute(ATTR.cacheHit, result.cacheHit);
