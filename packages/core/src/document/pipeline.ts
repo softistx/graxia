@@ -63,6 +63,7 @@ export interface DocumentPipeline {
 		source: string;
 		state: RequestState;
 		request: Request;
+		serverContext: Readonly<Record<string, unknown>>;
 		/** A document already parsed (`graxia.execute`): used instead of parsing `source`, after `onParse` ran. */
 		document?: DocumentNode | undefined;
 	}): Promise<StepResult>;
@@ -77,6 +78,7 @@ export interface DocumentPipeline {
 		cacheKey?: string | undefined;
 		state: RequestState;
 		request: Request;
+		serverContext: Readonly<Record<string, unknown>>;
 	}): Promise<StepResult>;
 }
 
@@ -129,13 +131,15 @@ async function runParse(
 		source: string;
 		state: RequestState;
 		request: Request;
+		serverContext: Readonly<Record<string, unknown>>;
 		document?: DocumentNode | undefined;
 	},
 ): Promise<StepResult> {
-	const { source, state, request } = input;
+	const { source, state, request, serverContext } = input;
 	const outcome = await ctx.engine.runners.onParse({
 		request,
 		state,
+		serverContext,
 		params: { query: source },
 	});
 	const { out, error } = outcome;
@@ -187,12 +191,14 @@ async function runValidate(
 		cacheKey?: string | undefined;
 		state: RequestState;
 		request: Request;
+		serverContext: Readonly<Record<string, unknown>>;
 	},
 ): Promise<StepResult> {
-	const { document, cacheKey, state, request } = input;
+	const { document, cacheKey, state, request, serverContext } = input;
 	const outcome = await ctx.engine.runners.onValidate({
 		request,
 		state,
+		serverContext,
 		schema: ctx.schema,
 		document,
 	});

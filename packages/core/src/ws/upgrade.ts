@@ -59,7 +59,11 @@ export async function upgradeRequest(
 	if (forbidden) return forbidden;
 	try {
 		await rt.ready;
-		const entered = await rt.engine.runners.onRequest({ request, state });
+		const entered = await rt.engine.runners.onRequest({
+			request,
+			state,
+			serverContext,
+		});
 		if (entered.error !== undefined)
 			return rt.unexpected.respond(entered.error, state);
 		const refused = entered.out.response;

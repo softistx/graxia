@@ -10,6 +10,7 @@ import type { GraxiaPlugin } from './types';
 const base = () => ({
 	request: new Request('http://localhost/graphql'),
 	state: new StateBag(),
+	serverContext: {},
 });
 const plain = definePlugin();
 

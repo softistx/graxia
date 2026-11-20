@@ -73,8 +73,17 @@ export interface BasePayload {
 	responseHeaders: Headers;
 }
 
+/**
+ * The host context of a request: what the host passed to `fetch` (or to
+ * `serve({ serverContext })`), and over a WebSocket the context its upgrade
+ * was given, the same object for every operation of the socket. Read-only.
+ */
+export interface WithServerContext {
+	readonly serverContext: Readonly<Record<string, unknown>>;
+}
+
 /** `onRequest`: `respond` ends the stage; later hooks are skipped. */
-export interface OnRequestPayload extends BasePayload {
+export interface OnRequestPayload extends BasePayload, WithServerContext {
 	respond(response: Response): void;
 }
 /** After-hook of `onRequest`. */
@@ -94,7 +103,7 @@ export interface OnParamsDone {
 }
 
 /** `onParse`: swap the parser or provide the document (skips parsing). */
-export interface OnParsePayload extends BasePayload {
+export interface OnParsePayload extends BasePayload, WithServerContext {
 	params: GraphQLParams;
 	setParseFn(fn: ParseFn): void;
 	setDocument(document: DocumentNode): void;
@@ -105,7 +114,7 @@ export interface OnParseDone {
 }
 
 /** `onValidate`: swap the validator, add a rule, or provide the errors (skips validation). */
-export interface OnValidatePayload extends BasePayload {
+export interface OnValidatePayload extends BasePayload, WithServerContext {
 	schema: GraphQLSchema;
 	document: DocumentNode;
 	setValidationFn(fn: ValidationFn): void;

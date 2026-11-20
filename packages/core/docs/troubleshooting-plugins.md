@@ -26,6 +26,13 @@ set `onUnexpected`. To show an error to the client, throw `exposedError`. See [E
 
 Two plugins in `plugins` share a `name`. Names are unique; rename one, or remove the duplicate.
 
+## A validation failure cannot be tied to its WebSocket
+
+A document that fails validation never reaches `onExecute`, so `args.contextValue` is out of reach.
+Read `serverContext` in the `onValidate` payload (or its after-hook's closure): it is the object
+the host gave `graxia.upgrade`. `onRequest` and `onParse` carry it too. See
+[Reading the host context before onExecute](./guide/plugins.md#reading-the-host-context-before-onexecute).
+
 ## Request state key "x" is required but was not set
 
 `state.require(key)` ran before any hook set the key. Set it in an earlier hook (an `onRequest` of a

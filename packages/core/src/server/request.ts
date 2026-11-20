@@ -106,7 +106,11 @@ async function answer(
 		);
 	const forbidden = inProcess ? undefined : checkRequest(rt, request, exempt);
 	if (forbidden) return forbidden;
-	const entered = await rt.engine.runners.onRequest({ request, state });
+	const entered = await rt.engine.runners.onRequest({
+		request,
+		state,
+		serverContext,
+	});
 	// An exempt request is answered by a plugin or refused as it would have
 	// been: it never reaches the dispatch.
 	let response =
