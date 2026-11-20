@@ -1,6 +1,6 @@
 {
 	"name": "@graxia/core",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"description": "The Bun-native GraphQL server engine: typed plugins, graphql 17, GraphQL over HTTP, error masking, subscriptions over SSE and WebSocket, @defer and @stream, a typed PubSub, in-process execute and a test client",
 	"license": "MIT",
 	"type": "module",

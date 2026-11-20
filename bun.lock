@@ -22,7 +22,7 @@
     },
     "packages/core": {
       "name": "@graxia/core",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
         "@graphql-codegen/typescript": "^7.0.1",
@@ -115,7 +115,7 @@
     },
     "packages/redis": {
       "name": "@graxia/redis",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "devDependencies": {
         "@graxia/core": "workspace:^",
         "@softistx/redis": "^0.24.1",

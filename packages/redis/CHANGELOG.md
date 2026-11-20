@@ -1,5 +1,13 @@
 # @graxia/redis
 
+## 0.2.3
+
+### Patch Changes
+
+- [#106](https://github.com/softistx/graxia/pull/106) [`84f41e3`](https://github.com/softistx/graxia/commit/84f41e3b97fde67d3255e8a8938d891a31634020) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Requires `@softistx/redis` 0.24.1 or later: queue workers re-open their blocking connection after a Redis restart.
+- Updated dependencies [[`e9b0f4a`](https://github.com/softistx/graxia/commit/e9b0f4acfc411bf1d347d49c894ae7206bdf75c8)]:
+  - @graxia/core@0.6.1
+
 ## 0.2.2
 
 ### Patch Changes
