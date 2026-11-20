@@ -6216,7 +6216,7 @@ One error lists every problem of `operations`, one per line, each ending with it
 An operation `include` leaves out, a subscription, and a mutation without `mutations: true` is not
 validated and needs no description; every document must still parse and name its operations.
 
-## `createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …`
+## ``createMcp: graxia runs trusted documents in strict mode and `operations` gives no tool: …``
 
 Reported once through `onError` at boot (not thrown: the same code boots in development). graxia's
 `trustedDocuments` is `strict` (the default under `NODE_ENV=production`), so `graphql_query` and
