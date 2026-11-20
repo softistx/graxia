@@ -1,3 +1,4 @@
+import { errorHttp } from '../http/error-http';
 import { multipartFormat } from '../http/multipart';
 import { type MediaType, readAccept } from '../http/negotiate';
 import { jsonResponse, refusal, statusOf } from '../http/respond';
@@ -162,10 +163,26 @@ function encode(
 	const result = rt.maskResult(outcome.result, state);
 	state.set(resultKey, result);
 	const { refusal } = outcome;
+	// Read from the masked result: a masked error carries nothing but what the masker kept.
+	const asked = rt.options.errorStatus ? errorHttp(result, media) : undefined;
+	const headers = outcome.headers ?? refusal?.headers;
 	return jsonResponse(
-		result,
-		outcome.status ?? refusal?.status ?? statusOf(media, result),
+		asked?.result ?? result,
+		outcome.status ??
+			refusal?.status ??
+			asked?.status ??
+			statusOf(media, result),
 		media,
-		outcome.headers ?? refusal?.headers,
+		asked?.headers ? mergeHeaders(asked.headers, headers) : headers,
 	);
+}
+
+/** The errors' headers, then the outcome's or the refusal's over them. */
+function mergeHeaders(
+	base: Record<string, string>,
+	over: HeadersInit | undefined,
+): Headers {
+	const out = new Headers(base);
+	for (const [name, value] of new Headers(over)) out.set(name, value);
+	return out;
 }

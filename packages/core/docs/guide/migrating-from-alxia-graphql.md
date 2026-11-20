@@ -222,6 +222,30 @@ Yoga's executor rejects when its signal aborts. `graxia.execute({ signal })` res
 expected a rejection checks `result.errors?.[0]?.extensions?.code` instead
 ([Testing](./testing.md#aborting-with-signal)).
 
+## Status and headers from errors
+
+Like GraphQL Yoga, graxia reads `extensions.http` of the GraphQL errors of a single operation
+answered as plain JSON (`application/json` or `application/graphql-response+json`). `@alxia/graphql`
+before 0.17 and Yoga answered the status below; graxia used to answer 200.
+
+```ts
+throw new GraphQLError('Email taken.', {
+	extensions: {
+		code: 'EMAIL_TAKEN',
+		http: { status: 409, headers: { 'x-reason': 'dup' } },
+	},
+});
+// HTTP 409, header x-reason: dup, data kept, and the error's extensions are { code: 'EMAIL_TAKEN' }
+```
+
+- The highest `http.status` among the errors wins; `http.headers` are merged (a later error wins on a clash).
+- A status from 200 to 599 only; anything else is ignored. Under `application/json`, `http: { spec: true }` ignores the status (the headers still apply), as in Yoga.
+- Precedence: a plugin's answer (rate limit, `onParams` refusal) wins, then the errors' status, then the media type's rule (200, or 400 without `data`).
+- `http` is removed from the serialized extensions. The status is read from the masked result: a masked unexpected error carries nothing, unless your `maskError` puts `http` on its error.
+- Not copied from Yoga: a result-level `extensions.http`, and the 500 for an unexpected error without data (graxia masks it and keeps the media type's rule).
+- A batch, SSE, WebSocket and `multipart/mixed` ignore it: a batch is always 200 and its entries keep `extensions.http` as sent.
+- Turn it off with `createGraxia({ http: { errorStatus: false } })`.
+
 ## graphql 17
 
 graphql 16 is not supported: the peer is `graphql ^17.1.0`, and `@defer` / `@stream` use graphql
@@ -230,43 +254,44 @@ older clients). Upgrade `graphql` first, and any package that still pins 16.
 
 ## Parity with @alxia/graphql 0.16.4
 
-The 33 behaviours checked by the parity suite, each proved by a spec. The table is code,
+The 34 behaviours checked by the parity suite, each proved by a spec. The table is code,
 [`src/parity/checklist.ts`](https://github.com/softistx/graxia/blob/develop/packages/core/src/parity/checklist.ts),
 and `checklist.test.ts` fails when a referenced spec or test title disappears or a difference has
 no section above. `same` means the behaviour is kept; the others link to their section.
 
-| #   | Item                                                                                        | graxia                                                                 |
-| --- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 1   | Host fetch, any path or prefix                                                              | same                                                                   |
-| 2   | Typed host context, context factory, compile check                                          | same                                                                   |
-| 3   | Resolvers set headers and cookies                                                           | differs: [Setting a header or a cookie](#setting-a-header-or-a-cookie) |
-| 4   | 15 000 tokens, 1 000 nesting, stack overflow                                                | same                                                                   |
-| 5   | Weighted parse cache and validation cache                                                   | same                                                                   |
-| 6   | 1 MiB body limit, 413 keeps plugin headers                                                  | same                                                                   |
-| 7   | 415 on a non-JSON body                                                                      | same                                                                   |
-| 8   | CSRF custom headers                                                                         | same                                                                   |
-| 9   | SameOrigin with its full semantics                                                          | same                                                                   |
-| 10  | Persisted operations: strict, sha256, custom key, codes                                     | same                                                                   |
-| 11  | Depth limit                                                                                 | same                                                                   |
-| 12  | Introspection off outside development                                                       | same                                                                   |
-| 13  | Error masking, originalError stripped                                                       | same                                                                   |
-| 14  | Batching off, or with a limit                                                               | same                                                                   |
-| 15  | SSE over GET and POST, 12 s keep-alive                                                      | same                                                                   |
-| 16  | Multipart incremental delivery                                                              | same                                                                   |
-| 17  | Streams ended on shutdown                                                                   | same                                                                   |
-| 18  | WebSocket on the same path through the host upgrade, params, keep-alive or off, 1001, drain | same                                                                   |
-| 19  | Per-operation reporting over HTTP, batch and WebSocket                                      | differs: [Reporting operations](#reporting-operations)                 |
-| 20  | Request id never trusted, quiet logs                                                        | differs: [Request id and logs](#request-id-and-logs)                   |
-| 21  | GraphiQL development only, Sandbox, CSP                                                     | differs: [Explorer](#explorer)                                         |
-| 22  | FieldRateLimit in full                                                                      | same                                                                   |
-| 23  | In-process executor with a signal                                                           | same                                                                   |
-| 24  | Test client                                                                                 | same                                                                   |
-| 25  | CORS left to the host                                                                       | differs: [CORS](#cors)                                                 |
-| 26  | Envelop plugins through an adapter                                                          | same                                                                   |
-| 27  | Multipart uploads                                                                           | same                                                                   |
-| 28  | One stable context per operation                                                            | same                                                                   |
-| 29  | Abort signal reaches subscription resolvers                                                 | same                                                                   |
-| 30  | Configurable WebSocket message limit                                                        | same                                                                   |
-| 31  | Actionable missing-peer errors                                                              | differs: [Peers](#peers)                                               |
-| 32  | Host shutdown signal                                                                        | differs: [Shutdown](#shutdown)                                         |
-| 33  | Graphql 16 dropped                                                                          | differs: [graphql 17](#graphql-17)                                     |
+| #   | Item                                                                                        | graxia                                                                     |
+| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | Host fetch, any path or prefix                                                              | same                                                                       |
+| 2   | Typed host context, context factory, compile check                                          | same                                                                       |
+| 3   | Resolvers set headers and cookies                                                           | differs: [Setting a header or a cookie](#setting-a-header-or-a-cookie)     |
+| 4   | 15 000 tokens, 1 000 nesting, stack overflow                                                | same                                                                       |
+| 5   | Weighted parse cache and validation cache                                                   | same                                                                       |
+| 6   | 1 MiB body limit, 413 keeps plugin headers                                                  | same                                                                       |
+| 7   | 415 on a non-JSON body                                                                      | same                                                                       |
+| 8   | CSRF custom headers                                                                         | same                                                                       |
+| 9   | SameOrigin with its full semantics                                                          | same                                                                       |
+| 10  | Persisted operations: strict, sha256, custom key, codes                                     | same                                                                       |
+| 11  | Depth limit                                                                                 | same                                                                       |
+| 12  | Introspection off outside development                                                       | same                                                                       |
+| 13  | Error masking, originalError stripped                                                       | same                                                                       |
+| 14  | Batching off, or with a limit                                                               | same                                                                       |
+| 15  | SSE over GET and POST, 12 s keep-alive                                                      | same                                                                       |
+| 16  | Multipart incremental delivery                                                              | same                                                                       |
+| 17  | Streams ended on shutdown                                                                   | same                                                                       |
+| 18  | WebSocket on the same path through the host upgrade, params, keep-alive or off, 1001, drain | same                                                                       |
+| 19  | Per-operation reporting over HTTP, batch and WebSocket                                      | differs: [Reporting operations](#reporting-operations)                     |
+| 20  | Request id never trusted, quiet logs                                                        | differs: [Request id and logs](#request-id-and-logs)                       |
+| 21  | GraphiQL development only, Sandbox, CSP                                                     | differs: [Explorer](#explorer)                                             |
+| 22  | FieldRateLimit in full                                                                      | same                                                                       |
+| 23  | In-process executor with a signal                                                           | same                                                                       |
+| 24  | Test client                                                                                 | same                                                                       |
+| 25  | CORS left to the host                                                                       | differs: [CORS](#cors)                                                     |
+| 26  | Envelop plugins through an adapter                                                          | same                                                                       |
+| 27  | Multipart uploads                                                                           | same                                                                       |
+| 28  | One stable context per operation                                                            | same                                                                       |
+| 29  | Abort signal reaches subscription resolvers                                                 | same                                                                       |
+| 30  | Configurable WebSocket message limit                                                        | same                                                                       |
+| 31  | Actionable missing-peer errors                                                              | differs: [Peers](#peers)                                                   |
+| 32  | Host shutdown signal                                                                        | differs: [Shutdown](#shutdown)                                             |
+| 33  | Graphql 16 dropped                                                                          | differs: [graphql 17](#graphql-17)                                         |
+| 34  | `extensions.http` status and headers on errors                                              | differs: [Status and headers from errors](#status-and-headers-from-errors) |

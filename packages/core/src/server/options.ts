@@ -70,6 +70,20 @@ export interface IncrementalOptions {
 	format?: 'graphql17' | 'legacy';
 }
 
+/** The `http` option of {@link createGraxia}: how the plain JSON response is built. */
+export interface HttpOptions {
+	/**
+	 * Honours `extensions.http` of a GraphQL error on the plain JSON response
+	 * (one operation, `application/json` or `application/graphql-response+json`),
+	 * as GraphQL Yoga does: the highest `http.status` becomes the HTTP status, the
+	 * `http.headers` of the errors are merged into the response, and `http` is
+	 * removed from the serialized extensions. `true` by default; `false` keeps
+	 * the status of the media type and leaves `extensions` as the resolver made
+	 * them. Batches, SSE, WebSocket and multipart ignore it either way.
+	 */
+	errorStatus?: boolean;
+}
+
 /** What `Plugins` defaults to when `plugins` is not given: any list of plugins, marked so the context check knows none was passed. */
 export type NoPlugins = readonly GraxiaPlugin<any, any>[] & {
 	readonly '~none'?: true;
@@ -118,6 +132,8 @@ export interface GraxiaOptions<
 	plugins?: Plugins;
 	/** Document and body limits. */
 	limits?: GraxiaLimits;
+	/** How the plain JSON response is built (`errorStatus`). */
+	http?: HttpOptions;
 	/** Parse and validation caches, or `false` to disable both. */
 	caches?: DocumentCaches;
 	/** Batched operations (a JSON array body): off by default (`false`), `true` for up to 10, or `{ limit }`. */
@@ -198,6 +214,8 @@ export interface ResolvedOptions {
 	uploads: ResolvedUploads | false;
 	asyncContext: boolean;
 	shutdownTimeout: number;
+	/** Whether `extensions.http` of an error sets the plain JSON response's status and headers. */
+	errorStatus: boolean;
 	sse: boolean;
 	keepAliveMs: number;
 	/** The WebSocket settings, or `false` when it is off. */

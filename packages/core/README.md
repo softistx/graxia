@@ -140,6 +140,16 @@ createGraxia({
 });
 ```
 
+An error's `extensions.http` sets the HTTP status and headers of a plain JSON answer, as in
+Yoga (the highest status wins, `http` is stripped); `http: { errorStatus: false }` turns it off:
+
+```ts
+throw exposedError('EMAIL_TAKEN', 'Email taken.', {
+	fix: 'Sign in instead.',
+	extensions: { http: { status: 409 } }, // HTTP 409, data kept
+});
+```
+
 See [Errors](./docs/guide/errors.md).
 
 ## Limits and caches

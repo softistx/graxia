@@ -50,6 +50,32 @@ coercion), when it is a genuine non-null violation, or when its original is a `G
 origin (`exposedError` included). Everything else (a plain `Error`, a thrown string, a library error)
 is **masked**. `path` and `locations` are always kept. `originalError` and stacks are never serialized.
 
+## Status and headers from errors
+
+Like GraphQL Yoga, a single operation answered as plain JSON (`application/json` or
+`application/graphql-response+json`) takes its HTTP status and headers from `extensions.http` of
+its errors. `http` is removed from the serialized extensions.
+
+```ts
+import { exposedError } from '@graxia/core';
+
+throw exposedError('EMAIL_TAKEN', 'Email taken.', {
+	fix: 'Sign in instead.',
+	extensions: { http: { status: 409, headers: { 'x-reason': 'duplicate' } } },
+});
+// HTTP 409, `x-reason: duplicate`, `data` kept; the error's extensions are { code, fix }
+```
+
+- The **highest** `http.status` (an integer from 200 to 599) among the errors wins; `http.headers`
+  are merged, a later error winning on a clash. Other values are ignored.
+- Under `application/json`, `http: { spec: true }` ignores the status (the headers still apply), as in Yoga.
+- Precedence: an operation-level answer (a rate limit's 429, a plugin refusal) wins, then the errors'
+  status, then the media type's rule ([Status codes](./http.md#status-codes)).
+- Read from the **masked** result: a masked unexpected error carries nothing, so a plain `Error`
+  cannot choose a status. A `maskError` that puts `http` on the error it returns does.
+- A batch (always 200), SSE, WebSocket and `multipart/mixed` ignore it, and leave `extensions.http` as sent.
+- `createGraxia({ http: { errorStatus: false } })` turns it off: the media type decides and `extensions` are untouched.
+
 ## Validation errors
 
 A document that parses but does not validate against the schema answers with graphql's own

@@ -1,6 +1,6 @@
 /**
  * The 33 items of `docs/plan.md` §5 (what `@alxia/graphql` 0.16.4 gives a
- * host), each with the specs that prove graxia covers it. `checklist.test.ts`
+ * host) and item 34 (what GraphQL Yoga gives and `@alxia/graphql` 0.17 kept), each with the specs that prove graxia covers it. `checklist.test.ts`
  * fails when a file is gone, a test title no longer appears in its file, or a
  * divergence has no section in the migration guide: rename a referenced test
  * and this table follows.
@@ -451,5 +451,22 @@ export const PARITY: readonly ParityItem[] = [
 			'graphql 16 is outside the peer range, 17.1 inside',
 		),
 		differs: 'graphql 17',
+	},
+	{
+		n: 34,
+		item: 'extensions.http status and headers on errors',
+		specs: core(
+			'server/error-http.test.ts',
+			'a field error with status 409 answers 409 with its data',
+			'the highest of several statuses wins',
+			'the headers of the errors are merged',
+			'http is stripped from the serialized extensions',
+			'spec: true ignores the status under application/json only, headers still apply',
+			'a masked unexpected error carrying http has no effect',
+			'a plugin refusal wins over the status of the errors, their headers merge under its own',
+			'a batch is unaffected',
+			'http: { errorStatus: false } turns it off',
+		),
+		differs: 'Status and headers from errors',
 	},
 ];

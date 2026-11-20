@@ -128,7 +128,11 @@ server) to it. The compiler checks that the context matches your schema's `creat
 | APQ hash: `PERSISTED_QUERY_NOT_FOUND`, `_NOT_SUPPORTED`, `_VERSION_NOT_SUPPORTED`, `PROVIDED_SHA_DOESNT_MATCH` | 400                                                                                       | 200 (the retry protocol) |
 | client left, or shutdown past its timeout (`OPERATION_ABORTED`)                                                | 499 / 503                                                                                 | same                     |
 | `dispose()` started (`SHUTTING_DOWN`)                                                                          | 503 (`connection: close`)                                                                 | same                     |
+| a field error with `extensions.http.status` (the highest), `application/json` or `+json` alike                 | that status                                                                               | same                     |
 | plugin hook threw, `context` threw, `execute` threw                                                            | 500 `{ errors: [{ message: "Unexpected error.", extensions: { code, correlationId } }] }` | same                     |
+
+An error's `extensions.http` sets the status and headers of a single-operation JSON answer (see
+[Status and headers from errors](./errors.md#status-and-headers-from-errors)); `http: { errorStatus: false }` turns it off.
 
 Unexpected failures never leak their message. The body is generic whatever the cause
 (`INTERNAL_SERVER_ERROR` and a `correlationId` equal to the `x-request-id` header); the original
@@ -207,7 +211,7 @@ request cannot multiply its own concurrency) and answers 200 with an array of re
 executor that throws, in entry _n_ becomes that entry's generic `Unexpected error.` body (with the request's `correlationId`)
 in the array and the batch carries on (earlier mutations already ran, later entries still run). A
 plugin that short-circuits with `respond` (in `onRequest`, or in an entry's `onParams`) is a decision
-about the request and answers the whole request.
+about the request and answers the whole request. A batch ignores `extensions.http` of its entries' errors: it is always 200.
 
 Each entry runs on its own forked [state](./plugins.md#per-request-state): writes in one entry are
 not seen by the next, reads fall through to what `onRequest` set.

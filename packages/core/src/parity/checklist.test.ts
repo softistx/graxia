@@ -6,9 +6,9 @@ const GUIDE = 'packages/core/docs/guide/migrating-from-alxia-graphql.md';
 const read = (path: string) => Bun.file(new URL(path, root));
 
 describe('parity with @alxia/graphql 0.16.4', () => {
-	test('the table has the 33 items of docs/plan.md §5', () => {
+	test('the table has the 33 items of docs/plan.md §5 and item 34', () => {
 		expect(PARITY.map((row) => row.n)).toEqual(
-			Array.from({ length: 33 }, (_, i) => i + 1),
+			Array.from({ length: 34 }, (_, i) => i + 1),
 		);
 		for (const row of PARITY) expect(row.specs.length).toBeGreaterThan(0);
 	});
