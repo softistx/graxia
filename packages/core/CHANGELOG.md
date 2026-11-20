@@ -1,5 +1,11 @@
 # @graxia/core
 
+## 0.14.0
+
+### Minor Changes
+
+- [#164](https://github.com/softistx/graxia/pull/164) [`f5ef13f`](https://github.com/softistx/graxia/commit/f5ef13fec198d0af098c94b97904a0e2e3053840) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `ContextInit` and the `onParams` payload carry `connectionParams`, the client's `connection_init` payload, for an operation over a WebSocket only (undefined over HTTP and SSE, whatever the request's headers say). A `context` factory reads it without a cast, and an `onParams` check skips socket operations with it instead of a forgeable `Upgrade` header. It stays in `serverContext` and the resolver context too.
+
 ## 0.13.1
 
 ### Patch Changes

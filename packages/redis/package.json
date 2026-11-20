@@ -1,6 +1,6 @@
 {
 	"name": "@graxia/redis",
-	"version": "0.2.10",
+	"version": "0.2.11",
 	"description": "Redis PubSub, cache and field rate limit adapters for graxia, on @softistx/redis",
 	"license": "MIT",
 	"type": "module",
