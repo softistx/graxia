@@ -131,8 +131,8 @@ stream is created). The full start/end snippet is in
 
 `onRequest`, `onParse` and `onValidate` payloads carry a read-only `serverContext`: a copy graxia made of
 what the host passed to `fetch`, `graxia.upgrade` or `serve({ serverContext })`, with `server` added and,
-over a WebSocket, `connectionParams`. Before this, only `onExecute` saw it, through `args.contextValue`, so a
-document that failed validation never reached a hook that could tie it to its socket.
+over a WebSocket, `connectionParams`. `onExecute` sees it too, through `args.contextValue`. Reading it in
+`onValidate` ties a document that fails validation to its socket, which `onExecute` never sees.
 
 ```ts
 import { definePlugin } from '@graxia/core';
