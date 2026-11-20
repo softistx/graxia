@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # `scripts/affected.ts` and `changeset status` diff against the base.
           fetch-depth: 0
