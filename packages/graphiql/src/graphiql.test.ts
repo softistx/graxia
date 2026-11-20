@@ -148,3 +148,89 @@ describe('disabled', () => {
 		}
 	});
 });
+
+describe('enabled as a function', () => {
+	const seen: Request[] = [];
+	const allow = (answer: boolean) => (request: Request) => {
+		seen.push(request);
+		return answer;
+	};
+
+	test('true serves the page, and is called with the Request', async () => {
+		seen.length = 0;
+		const response = await host(
+			createGraphiQL({ enabled: allow(true) }, fakeAssets),
+		).fetch(browser());
+		expect(response.status).toBe(200);
+		expect(seen.length).toBeGreaterThan(0);
+		expect(seen[0]).toBeInstanceOf(Request);
+		expect(seen.every((request) => request === seen[0])).toBe(true);
+	});
+
+	test('false falls through like a disabled explorer', async () => {
+		const response = await host(
+			createGraphiQL({ enabled: allow(false) }, fakeAssets),
+		).fetch(browser());
+		expect(response.status).toBe(403);
+	});
+
+	test('false also refuses the assets', async () => {
+		const response = await host(
+			createGraphiQL({ enabled: () => false }, fakeAssets),
+		).fetch(browser('?graphiql-asset=main-abc.js'));
+		expect(response.status).toBe(403);
+	});
+
+	test('is decided for each request', async () => {
+		let open = false;
+		const app = host(createGraphiQL({ enabled: () => open }, fakeAssets));
+		expect((await app.fetch(browser())).status).toBe(403);
+		open = true;
+		expect((await app.fetch(browser())).status).toBe(200);
+		open = false;
+		expect((await app.fetch(browser())).status).toBe(403);
+	});
+
+	test('is not called for a request the explorer would not answer', async () => {
+		seen.length = 0;
+		const app = host(createGraphiQL({ enabled: allow(true) }, fakeAssets));
+		await app.fetch(
+			new Request('http://localhost/graphql', { method: 'POST', body: '{}' }),
+		);
+		expect(seen).toHaveLength(0);
+	});
+
+	test('an async function never opens it: only `true` serves', async () => {
+		const enabled = (async () => true) as never;
+		const response = await host(createGraphiQL({ enabled }, fakeAssets)).fetch(
+			browser(),
+		);
+		expect(response.status).toBe(403);
+	});
+
+	test('a function that throws: 403 without the CSRF header, masked 500 with it', async () => {
+		const reported: unknown[] = [];
+		const app = host(
+			createGraphiQL(
+				{
+					enabled: () => {
+						throw new Error('flag store down');
+					},
+				},
+				fakeAssets,
+			),
+			{ onUnexpected: (error: unknown) => reported.push(error) },
+		);
+		expect((await app.fetch(browser())).status).toBe(403);
+		expect(reported).toHaveLength(1);
+		const withHeader = await app.fetch(browser('', { 'x-graphql-csrf': '1' }));
+		expect(withHeader.status).toBe(500);
+		expect(await withHeader.text()).not.toContain('flag store down');
+	});
+
+	test('another value is a config error naming the accepted forms', () => {
+		expect(() =>
+			createGraphiQL({ enabled: 'yes' as never }, fakeAssets),
+		).toThrow(/boolean or a function.*enabled: \(\) => myDevFlag/s);
+	});
+});

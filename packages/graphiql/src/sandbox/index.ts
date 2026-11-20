@@ -3,9 +3,9 @@ import { type AssetSource, assetResponse, bundledAssets } from '../assets';
 import {
 	assertSingleExplorer,
 	explorerName,
-	isEnabled,
 	isPageRequest,
 	pageResponse,
+	resolveEnabled,
 	SANDBOX,
 } from '../explorer';
 import { detectSubscriptions } from '../options';
@@ -24,8 +24,8 @@ export function createApolloSandbox(
 	options: ApolloSandboxOptions,
 	source: AssetSource,
 ): GraxiaPlugin {
-	const enabled = isEnabled(options.enabled);
-	if (!enabled) return definePlugin({ name: explorerName(SANDBOX, false) });
+	const gate = resolveEnabled(options.enabled);
+	if (!gate.on) return definePlugin({ name: explorerName(SANDBOX, false) });
 	let ws = false;
 	const asset = (request: Request) =>
 		request.method === 'GET'
@@ -39,8 +39,12 @@ export function createApolloSandbox(
 			ws = detectSubscriptions(transports) === 'ws';
 		},
 		// The page and its bootstrap load carry no CSRF header; `onRequest` answers both.
-		csrfExempt: (request) => asset(request) !== null || isPageRequest(request),
+		csrfExempt: (request) =>
+			(asset(request) !== null || isPageRequest(request)) &&
+			gate.allows(request),
 		async onRequest({ request, respond }) {
+			if (asset(request) === null && !isPageRequest(request)) return;
+			if (!gate.allows(request)) return;
 			const name = asset(request);
 			if (name !== null)
 				return respond(

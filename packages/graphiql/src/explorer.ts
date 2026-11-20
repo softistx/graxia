@@ -4,9 +4,45 @@ import { GraxiaConfigError } from '@graxia/core';
 export const GRAPHIQL = 'graphiql';
 export const SANDBOX = 'apollo-sandbox';
 
-/** Whether `enabled` is on: explicit, else `NODE_ENV !== 'production'`. */
-export function isEnabled(enabled: boolean | undefined): boolean {
-	return enabled ?? process.env['NODE_ENV'] !== 'production';
+/** The `enabled` option: a flag, or a function that decides for each request. */
+export type Enabled = boolean | ((request: Request) => boolean);
+
+/** What `enabled` resolved to: whether the plugin installs, and whether it answers one request. */
+export interface Gate {
+	readonly on: boolean;
+	readonly allows: (request: Request) => boolean;
+}
+
+/**
+ * Resolve `enabled`: explicit, else `NODE_ENV !== 'production'`. A function
+ * installs the plugin and is called once per request the explorer would
+ * answer (the answer is kept for that request, so the CSRF check and the
+ * handler agree). Any other value is a configuration error.
+ */
+export function resolveEnabled(enabled: unknown): Gate {
+	if (typeof enabled === 'function') {
+		const decide = enabled as (request: Request) => boolean;
+		const seen = new WeakMap<Request, boolean>();
+		return {
+			on: true,
+			allows(request) {
+				let answer = seen.get(request);
+				if (answer === undefined) {
+					answer = decide(request) === true;
+					seen.set(request, answer);
+				}
+				return answer;
+			},
+		};
+	}
+	if (enabled !== undefined && typeof enabled !== 'boolean')
+		throw new GraxiaConfigError(
+			`enabled must be a boolean or a function (request: Request) => boolean, got ${typeof enabled}. Write enabled: true, enabled: false or enabled: () => myDevFlag.`,
+		);
+	return {
+		on: enabled ?? process.env['NODE_ENV'] !== 'production',
+		allows: () => true,
+	};
 }
 
 /**
