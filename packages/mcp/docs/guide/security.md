@@ -5,7 +5,8 @@
 Set `auth` and `@graxia/mcp` is an OAuth resource server: bearer tokens, scopes, protected
 resource metadata ([the auth guide](./auth.md)). Every request then needs a token your
 `verifyToken` accepts, issued for this resource (the audience is checked by default), and
-`graphql_mutate` needs the write scope.
+`graphql_mutate` and the typed tools of mutations need the write scope (a 403 naming the tool
+called; with `mutations` off they are `Tool … not found`).
 
 Without `auth` nothing authenticates: mount the endpoint behind your own auth (a reverse proxy, a
 check in the `Bun.serve` route before `mcp.fetch`) and treat it as you would `/graphql`. Keep
@@ -27,6 +28,34 @@ routes: {
 tools describe and validate against the schema as that caller sees it, so a field behind `@needs`
 they lack is "Cannot query field", exactly as if it did not exist. The `@needs` is also whatever
 your own resolvers or plugins enforce at run time: `can` is the view, not the lock.
+
+## Typed tools only
+
+`graphql_query` lets an agent write any operation the caller may see. To let it run only
+operations you have reviewed, give them as [typed tools](./operations.md) and turn the generic
+ones off:
+
+```ts
+createMcp(graxia, {
+	name: 'library',
+	operations: { documents: manifest },
+	genericTools: false,
+});
+```
+
+The agent then chooses a tool and gives its variables; it never sends a document. A typed tool is
+listed only when its operation is valid in the caller's view, and a mutation tool needs
+`mutations: true` and, with `auth`, the write scope. `operations.documents` is trusted like your
+own code: build it from your repository, never from a request.
+
+## Strict trusted documents
+
+`graxia.execute` runs in process and skips the trusted-documents check (it is your own code
+calling). `@graxia/mcp` forwards documents written by an agent, so it applies the mode itself:
+when `graxia.trustedDocuments.mode` is `strict` (the default under `NODE_ENV=production`),
+`graphql_query` and `graphql_mutate` are not listed and a call answers `PERSISTED_QUERY_ONLY`
+without running anything. Only the typed tools run, each a document you gave at boot. In `mixed`
+mode the generic tools run any document the caller's view allows, as `/graphql` does.
 
 ## Origin, Host and DNS rebinding
 
@@ -78,5 +107,6 @@ auth headers work from an allowed origin.
 
 ## What graxia still enforces
 
-Every operation goes through `graxia.execute`: depth and alias limits, cost, trusted documents,
-masking of resolver errors, field rate limits, and your `context`. MCP does not bypass any of them.
+Every operation goes through `graxia.execute`: depth and alias limits, cost, masking of resolver
+errors, field rate limits, and your `context`. MCP does not bypass any of them, and it refuses
+agent-written documents itself in `strict` trusted-documents mode (above).

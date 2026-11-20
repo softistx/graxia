@@ -91,11 +91,29 @@ export async function runOperation(
 				},
 			})),
 		});
+	return execute(context, {
+		document: input.query,
+		variables: input.variables,
+		operationName: input.operationName,
+	});
+}
+
+/** Runs a document through `graxia.execute` with the caller's headers and `serverContext`; graxia's refusals keep their code and fix. */
+export async function execute(
+	context: ExecuteContext,
+	operation: {
+		document: string;
+		variables?: Record<string, unknown> | undefined;
+		operationName?: string | undefined;
+	},
+): Promise<CallToolResult> {
 	try {
 		const result = await context.graxia.execute({
-			document: input.query,
-			...(input.variables ? { variables: input.variables } : {}),
-			...(input.operationName ? { operationName: input.operationName } : {}),
+			document: operation.document,
+			...(operation.variables ? { variables: operation.variables } : {}),
+			...(operation.operationName
+				? { operationName: operation.operationName }
+				: {}),
 			headers: context.headers,
 			...(context.signal ? { signal: context.signal } : {}),
 			serverContext: context.serverContext,

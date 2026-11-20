@@ -64,6 +64,11 @@ The request's own headers (an `Authorization`, a cookie) are forwarded to `graxi
 serverContext never travels in a header: a client cannot forge it), so a `context`
 that reads them works the same over MCP and HTTP.
 
+## Typed tools
+
+To give agents your persisted operations as tools with typed arguments, see
+[persisted operations as typed tools](./operations.md).
+
 ## Server instructions
 
 `instructions` is shown to the model when it connects: say what the API is for in two or three

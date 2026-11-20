@@ -12,10 +12,10 @@ Where `@graxia/mcp` is going, as what you get. A direction, not a commitment.
   challenges, `verifyToken`, `mcp:read` and `mcp:write` scopes with step-up, and the principal in
   `can` and `mcpAuth()`.
 
-## Next
-
-- **Persisted operations as typed tools** — an agent calls named tools with typed arguments instead
-  of sending documents, which also works under strict trusted documents.
+- **Persisted operations as typed tools** — `operations: { documents: manifest }` turns each
+  persisted query (and mutation, on request) into a tool with a JSON Schema for its arguments and
+  its result; under strict trusted documents they are the only tools that run operations, and
+  `genericTools: false` offers nothing else.
 
 ## Not planned
 

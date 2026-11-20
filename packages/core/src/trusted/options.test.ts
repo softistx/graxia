@@ -50,6 +50,19 @@ describe('trustedDocuments options', () => {
 		expect(make(value)).toThrow(message);
 	});
 
+	test('graxia.trustedDocuments is the mode in force, undefined without the option', () => {
+		expect(createGraxia({ schema }).trustedDocuments).toBeUndefined();
+		expect(
+			createGraxia({ schema, trustedDocuments: { manifest: {} } })
+				.trustedDocuments,
+		).toEqual({ mode: 'mixed' });
+		process.env['NODE_ENV'] = 'production';
+		expect(
+			createGraxia({ schema, trustedDocuments: { manifest: {} } })
+				.trustedDocuments,
+		).toEqual({ mode: 'strict' });
+	});
+
 	test('the mode follows NODE_ENV, read at creation', () => {
 		process.env['NODE_ENV'] = 'production';
 		expect(resolveTrusted({ manifest: {} })?.mode).toBe('strict');

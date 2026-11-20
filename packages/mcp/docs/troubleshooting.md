@@ -1,6 +1,7 @@
 # Troubleshooting
 
-Each entry is headed by the message or code you see.
+Each entry is headed by the message or code you see. The 401, 403 and 503 answers of `auth` and its
+boot errors are in [troubleshooting auth](./troubleshooting-auth.md).
 
 ## 403 `Origin https://… is not allowed.`
 
@@ -57,104 +58,10 @@ Reported with `extensions.code` `GRAPHQL_VALIDATION_FAILED`.
 The field is behind `@needs` and `can` says the caller lacks the permission, or `can` is not what
 you meant: the view is built from `can`'s answer. Check it with `graphql_schema` as that caller.
 
-## 401 `Unauthorized: no bearer token.` (`MCP_UNAUTHORIZED`)
-
-Header: `WWW-Authenticate: Bearer resource_metadata="…", scope="mcp:read"`.
-
-`auth` is set and the request has no `Authorization: Bearer <token>`. A client with OAuth support
-follows `resource_metadata` to the authorization server; otherwise send the token yourself. Another
-scheme is not read: `Authorization: DPoP …` gets this answer too (DPoP is not supported).
-
-## 401 `Unauthorized: the access token is invalid.` (`MCP_UNAUTHORIZED`)
-
-Header: `WWW-Authenticate: Bearer error="invalid_token", …`, as for the next five entries.
-
-`verifyToken` resolved `undefined`: it does not know the token (a bad signature, another issuer,
-revoked). Get a new token from the authorization server.
-
-## 401 `Unauthorized: the access token has expired.`
-
-The `expiresAt` your verifier returned is in the past. Refresh the token.
-
-## 401 `Unauthorized: the access token was issued for another resource.`
-
-The `audience` your verifier returned does not contain `auth.resource` (a fragment and one trailing
-slash are ignored). The client must ask for a token for the same URL as `auth.resource` (the
-`resource` parameter, RFC 8707). Check the `aud` claim of the token first.
-
-## 401 `Unauthorized: the access token carries no audience.`
-
-`verifyToken` returned no `audience`, and the audience is checked by default. Return the token's
-`aud`, or, when your verifier already refuses tokens issued for another resource, opt out with
-`audience: 'verifier'` ([the auth guide](./guide/auth.md#audience)).
-
-## 401 `Unauthorized: the verifier returned an unusable expiry (expiresAt is in seconds).`
-
-`onError` got `createMcp: verifyToken returned expiresAt …, and expiresAt is in seconds since the
-epoch`. `expiresAt` is not a finite number or is above 1e11, which is a date in milliseconds.
-Return the `exp` claim as is, or `Math.floor(date.getTime() / 1000)`; leave it out when the token
-has no expiry.
-
-## 401 `Unauthorized: the verifier returned no scopes.`
-
-`onError` got `createMcp: verifyToken must return scopes`. The info has no `scopes` array: return
-`{ scopes: [...] }`, an empty list for a token with none.
-
-## 503 `The access token could not be verified: the token verifier failed.`
-
-With `Retry-After: 5`. `verifyToken` threw (an introspection endpoint or a key store is down); the
-error went to `onError`. A throw is an outage, never a 401: resolve `undefined` for a bad token.
-
-**Every expired token answers 503: your verifier throws on a bad token.** A JWT library that
-rejects an expired, badly signed or wrong-audience token by throwing (jose's `jwtVerify`) turns
-each of them into a 503 the client retries instead of refreshing its token. Catch the library's
-invalid-token errors in `verifyToken` and resolve `undefined`; rethrow the rest (a JWKS fetch, an
-introspection call), as in [the auth guide](./guide/auth.md#verifytoken).
-
-## A 401 or 503 whose body is not JSON-RPC
-
-`verifyToken` resolved a `Response` (a verifier that builds its own refusals): it is sent as is.
-Read that library's documentation for its meaning.
-
-## 403 `error="insufficient_scope", scope="mcp:read"` (`MCP_INSUFFICIENT_SCOPE`)
-
-Message `Forbidden: the token lacks mcp:read.` Ask the authorization server for `mcp:read` (or
-your `scopes.read`).
-
-## 403 `insufficient_scope`, `scope="mcp:read mcp:write"` on `graphql_mutate`
-
-Message `Forbidden: graphql_mutate needs the scope mcp:write.` A read-only token called
-`graphql_mutate` from a stale tool list. Re-authorize with both scopes (the challenge's `scope`);
-the tool is not listed for a token without `mcp:write`. With `mutations` off there is no 403: the
-call gets `Tool graphql_mutate not found`.
-
-## `createMcp: auth.resource must be an absolute URL (got "…").`
-
-Thrown by `createMcp` at startup. Pass the public URL of the MCP endpoint, scheme included:
-`resource: 'https://api.example.com/mcp'`.
-
-## `createMcp: auth.resource must have no query and no fragment (got "…").`
-
-Thrown at startup. A resource identifier is the endpoint's URL alone (RFC 8707): remove the `?…`
-and the `#…`.
-
-## `createMcp: auth.authorizationServers is empty.`
-
-Thrown at startup. List the issuer URL of the authorization server that issues the tokens:
-`authorizationServers: ['https://auth.example.com']`.
-
-## `createMcp: auth.authorizationServers must hold absolute URLs (got "…").`
-
-Thrown at startup. Every entry is an issuer URL with its scheme (`https://auth.example.com`, not
-`auth.example.com`).
-
-## 400 `The access token is in the query string.` (`MCP_TOKEN_IN_URL`)
-
-`?access_token=…` is refused (OAuth 2.1). Send `Authorization: Bearer <token>`.
-
 ## `graphql_mutate` is missing from the list with `mutations: true`
 
-With `auth`, it is listed only for a token with the write scope (`mcp:write` by default).
+With `auth`, it is listed only for a token with the write scope (`mcp:write` by default). When
+graxia runs trusted documents in `strict` mode it is never listed, like `graphql_query`.
 
 ## `GraphQL introspection has been disabled…` / `Use graphql_schema to read the schema.`
 
@@ -188,12 +95,67 @@ raise `limits.tokens` on `createGraxia` for a very large document.
 ## `Tool graphql_mutate not found`
 
 It is listed only with `mutations: true` (and, with `auth`, for a token with the write scope).
+`Tool graphql_query not found`: `genericTools` is `false`; call a typed tool.
 
-## Every query is refused with a trusted-documents error
+## `Tool book_by_id not found` for an operation of the manifest
 
-`trustedDocuments` is `strict` (the default under `NODE_ENV=production`): graxia refuses any
-document outside the manifest (`PERSISTED_QUERY_ONLY`), so an agent cannot send arbitrary queries.
-Persisted operations as typed tools are on the [roadmap](./roadmap.md).
+The tool is not offered to this caller: its operation uses a field `can` hides from them, it is a
+mutation without `mutations: true`, `include` left it out, or it is a subscription. The answer is
+the same as for a tool that does not exist. Call `graphql_schema` for the typed tools you have.
+
+## `createMcp: operations has 1 problem:` (or `N problems:`)
+
+One error lists every problem of `operations`, one per line, each ending with its fix:
+
+- `document "a1" holds an anonymous operation: a tool needs a name.` Name it and regenerate.
+- `BookById (document "a1") has no description: …` Write `"""…"""` above the operation, or set
+  `operations.descriptions.BookById`. A toolchain that drops descriptions needs the option.
+- `operations.descriptions.bookById matches no operation of operations.documents (there is
+  BookById: names are case-sensitive).` Rename or remove the key.
+- `BookById (document "a1") and Book_by_id (document "a2") both give the tool name book_by_id.`
+  Rename one, or leave one out with `include`.
+- `GraphqlQuery (document "a1") gives the tool name graphql_query, and graphql_* names are the
+  generic tools'.` Rename the operation, or leave it out.
+- `… gives a tool name of 140 characters, and MCP allows 128.` Rename the operation.
+- `document "a1" does not parse: Syntax Error: …` Regenerate the manifest.
+- `BookById (document "a1") is not valid against the schema: Cannot query field …` The manifest is
+  older than the schema (or belongs to another server): regenerate it.
+- `Types (document "a1") selects __schema or __type: introspection is not offered over MCP, …`
+  Leave the operation out with `include`: an agent reads the schema with `graphql_schema`.
+- `BookById (document "a1") uses @defer, which is not available over MCP: …` (or `@stream`).
+- `document "a1" is not a GraphQL source string.` Map every id to the text of its document.
+- `operations.documents is not a manifest.` Pass a `Map`, an object of id to source, or an Apollo
+  persisted query manifest.
+- `genericTools is false and operations gives no tool: …` Without the generic tools an agent needs
+  at least one typed tool: check `documents` and `include` (mutations need `mutations: true`).
+
+An operation `include` leaves out, a subscription, and a mutation without `mutations: true` is not
+validated and needs no description; every document must still parse and name its operations.
+
+## `createMcp: genericTools is false and there is no operations: …`
+
+Pass `operations: { documents: manifest }`, or remove `genericTools: false`.
+
+## `book_by_id does not take the argument extra.` (`MCP_UNKNOWN_ARGUMENT`)
+
+A typed tool was called with an argument that is not a variable of its operation. The fix names
+the arguments it accepts; they are the `properties` of its `inputSchema` in `tools/list`.
+
+## A typed tool answers `Variable "$id" …` (`BAD_USER_INPUT`)
+
+An argument is missing or has the wrong type: graxia checks the arguments as the operation's
+variables. The fix is `Correct the arguments: see the tool's input schema.`
+
+## 403 `insufficient_scope`, `rename_book needs the scope mcp:write`
+
+A mutation typed tool was called with a read-only token: the same step-up as `graphql_mutate`.
+
+## `Only persisted documents are allowed.` (`PERSISTED_QUERY_ONLY`) from `graphql_query`
+
+graxia's `trustedDocuments` is `strict` (the default under `NODE_ENV=production`), so the server
+runs no document an agent writes: `graphql_query` and `graphql_mutate` are not listed and a call
+answers this refusal, whose fix names the typed tools the caller has. Give the agent
+[typed tools](./guide/operations.md) (`operations`); without them only `graphql_schema` is there.
 
 ## `graxia.execute: the request ended with an HTTP … response instead of a result; see error.response.`
 
@@ -206,4 +168,6 @@ they are (its code and fix, e.g. `UNAUTHENTICATED`), so shape your plugin's refu
 ## `The server failed to run the operation. Fix: retry later.`
 
 An unexpected failure inside the tool (a throwing `can`, a bug); its cause is not sent. It went to
-`onError` and, for the operation itself, to graxia's `onUnexpected`.
+`onError` and, for the operation itself, to graxia's `onUnexpected`. When `can` throws,
+`tools/list` also answers without the typed tools, and a call to one gets this answer: the cause
+is in `onError`.

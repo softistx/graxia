@@ -1,5 +1,12 @@
-import { createGraxia, createSchema } from '@graxia/core';
-import { createMcp, type Mcp, type McpAuthInfo, mcpAuth } from './index';
+import { createGraxia, createSchema, type TrustedManifest } from '@graxia/core';
+import {
+	createMcp,
+	type Mcp,
+	type McpAuthInfo,
+	type McpOperationInfo,
+	type McpOperationsOptions,
+	mcpAuth,
+} from './index';
 
 const schema = createSchema()({
 	typeDefs: 'type Query { a: Int }',
@@ -133,3 +140,63 @@ createMcp(plain, {
 const principal: McpAuthInfo | undefined = mcpAuth();
 const granted: readonly string[] = principal?.scopes ?? [];
 void granted;
+
+// operations: core's TrustedManifest in its three formats, include and descriptions typed.
+{
+	const codegen: Record<string, string> = { a: 'query A { a }' };
+	createMcp(plain, { name: 'x', operations: { documents: codegen } });
+	createMcp(plain, {
+		name: 'x',
+		genericTools: false,
+		operations: {
+			documents: new Map([['a', 'query A { a }']]),
+			include: (operation) => {
+				const kind: 'query' | 'mutation' = operation.kind;
+				const text: string = operation.name + operation.id;
+				return kind === 'query' && text !== '';
+			},
+			descriptions: { A: 'Reads a.' },
+		},
+	});
+	createMcp(plain, {
+		name: 'x',
+		operations: {
+			documents: {
+				format: 'apollo-persisted-query-manifest',
+				version: 1,
+				operations: [{ id: 'a', body: 'query A { a }' }],
+			},
+		},
+	});
+	// An Apollo manifest imported from JSON: `format` is a string and `version` a number there.
+	const imported: {
+		format: string;
+		version: number;
+		operations: { id: string; body: string }[];
+	} = { format: 'apollo-persisted-query-manifest', version: 1, operations: [] };
+	createMcp(plain, { name: 'x', operations: { documents: imported } });
+	// A host without `trustedDocuments` (an older core, a test double) is still accepted.
+	createMcp(
+		{ execute: plain.execute, schema: plain.schema, limits: plain.limits },
+		{ name: 'x', operations: { documents: codegen } },
+	);
+	const mode: 'strict' | 'mixed' | undefined = plain.trustedDocuments?.mode;
+	void mode;
+	const manifest: TrustedManifest = codegen;
+	const options: McpOperationsOptions = { documents: manifest };
+	createMcp(plain, { name: 'x', operations: options });
+	// @ts-expect-error documents is required
+	createMcp(plain, { name: 'x', operations: {} });
+	// @ts-expect-error documents is a manifest, not a list
+	createMcp(plain, { name: 'x', operations: { documents: ['query A { a }'] } });
+	createMcp(plain, {
+		name: 'x',
+		operations: {
+			documents: codegen,
+			// @ts-expect-error include returns a boolean
+			include: (o: McpOperationInfo) => o.name,
+		},
+	});
+	// @ts-expect-error genericTools is a boolean
+	createMcp(plain, { name: 'x', genericTools: 'no' });
+}

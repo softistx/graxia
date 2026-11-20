@@ -1,10 +1,16 @@
 import type { KeyValueCache } from '../cache/types';
 import type { GraphQLParams } from '../plugins/types';
 
-/** The Apollo persisted query manifest (`generate-persisted-query-manifest`). */
+/**
+ * The Apollo persisted query manifest (`generate-persisted-query-manifest`):
+ * `format` is `'apollo-persisted-query-manifest'` and `version` is `1`. They
+ * are typed `string` and `number` so that a manifest imported from JSON
+ * (`import manifest from './manifest.json'`) type-checks; the values are
+ * checked when the manifest is read.
+ */
 export interface ApolloPersistedQueryManifest {
-	format: 'apollo-persisted-query-manifest';
-	version: 1;
+	format: string;
+	version: number;
 	operations: readonly {
 		id: string;
 		body: string;

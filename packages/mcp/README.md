@@ -42,11 +42,14 @@ only (`GET` and `DELETE` answer 405).
 
 ## Tools
 
-| tool             | listed            | what it does                                                                              |
-| ---------------- | ----------------- | ----------------------------------------------------------------------------------------- |
-| `graphql_schema` | always            | operations and type names; `{ types }` gives SDL, `{ search }` finds types by a word      |
-| `graphql_query`  | always            | runs a query; mutations, subscriptions, introspection, `@defer` and `@stream` are refused |
-| `graphql_mutate` | `mutations: true` | runs a mutation; a query is refused                                                       |
+| tool             | listed                                                   | what it does                                                                              |
+| ---------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `graphql_schema` | always                                                   | operations and type names; `{ types }` gives SDL, `{ search }` finds types by a word      |
+| `graphql_query`  | always (not in strict trusted-documents mode)            | runs a query; mutations, subscriptions, introspection, `@defer` and `@stream` are refused |
+| `graphql_mutate` | `mutations: true` (not in strict trusted-documents mode) | runs a mutation; a query is refused                                                       |
+
+With `operations`, each persisted operation is one more tool (`book_by_id`), with typed arguments:
+see [typed tools](#typed-tools).
 
 Every tool answers with the GraphQL result as `structuredContent` (and its JSON as text); every
 error carries `extensions.code` and `extensions.fix`. Details: [the tools guide](./docs/guide/tools.md).
@@ -67,12 +70,43 @@ createMcp(graxia, {
 		verifyToken: async (token, request) => verify(token), // McpAuthInfo | Response | undefined
 		audience: 'resource', // default: the info's audience must contain `resource`
 	},
-	mutations: true, // list graphql_mutate, default false
+	mutations: true, // list graphql_mutate and the mutation typed tools, default false
+	operations: {
+		// persisted operations as typed tools: see the operations guide
+		documents: manifest, // core's TrustedManifest: codegen or Relay object, Apollo manifest, Map
+		include: (operation) => operation.kind === 'query', // { name, kind, id } => boolean
+		descriptions: { BookById: 'Find a book by its id.' }, // by operation name; wins over the document's
+	},
+	genericTools: false, // only graphql_schema and the typed tools, default true
 	allowedOrigins: ['https://app.example'], // browser origins: CORS and the origin check
 	allowedHosts: ['mcp.example.com'], // hostnames of the endpoint, default localhost
 	onError: (error) => logger.error(error), // default console.error
 });
 ```
+
+## Typed tools
+
+```ts
+import { createGraxia } from '@graxia/core';
+import { createMcp } from '@graxia/mcp';
+import manifest from './persisted-documents.json';
+
+// In the manifest: """Find a book by its id.""" query BookById($id: ID!) { book(id: $id) { id title } }
+const graxia = createGraxia({ schema, trustedDocuments: { manifest } });
+const mcp = createMcp(graxia, {
+	name: 'library',
+	operations: { documents: manifest },
+});
+```
+
+Each named query of the manifest is a tool (`BookById` → `book_by_id`; mutations with
+`mutations: true`; subscriptions are skipped) whose input schema comes from the operation's
+variables (types, defaults, `@constraint`) and whose output schema comes from its selection set. The
+agent sends arguments, not GraphQL. With trusted documents in `strict` mode these are the only tools
+that run operations: `graphql_query` and `graphql_mutate` are not listed and refuse a call. Every
+operation needs a description (`"""…"""` above it, or `descriptions`); `createMcp` throws one error
+listing every problem of the manifest, each with its fix. See
+[the operations guide](./docs/guide/operations.md).
 
 ## OAuth
 
@@ -116,7 +150,7 @@ Bun.serve({
 ```
 
 A request without a valid bearer token with `mcp:read` is a 401 with a `WWW-Authenticate`
-challenge pointing at the metadata; `graphql_mutate` needs `mcp:write`. The token's audience is
+challenge pointing at the metadata; `graphql_mutate` and the mutation typed tools need `mcp:write`. The token's audience is
 checked against `resource` unless `audience: 'verifier'` says your verifier did it; a verifier
 that throws is a 503, and it may resolve its own `Response`. Bearer only, no DPoP. See
 [the auth guide](./docs/guide/auth.md).
@@ -124,6 +158,8 @@ that throws is a 503, and it may resolve its own `Response`. Bearer only, no DPo
 ## Documentation
 
 See [`docs/`](./docs): [getting started](./docs/guide/getting-started.md), [auth](./docs/guide/auth.md), [tools](./docs/guide/tools.md),
-[security](./docs/guide/security.md), [troubleshooting](./docs/troubleshooting.md) and the
+[typed tools](./docs/guide/operations.md),
+[security](./docs/guide/security.md), [troubleshooting](./docs/troubleshooting.md)
+([auth errors](./docs/troubleshooting-auth.md)) and the
 [roadmap](./docs/roadmap.md). The schema and the body limit come from the graxia instance
 (`graxia.schema`, `graxia.limits`, core 0.5).

@@ -6,8 +6,8 @@ Where graxia is going, as what you get. A direction, not a commitment.
 
 - **Ready for agents** (M5) — a schema printer that shows an agent what it may do
   (`@graxia/core/agent`, done), an MCP server over Streamable HTTP with schema, query
-  and mutation tools (`@graxia/mcp`, in progress), then OAuth, persisted operations
-  as typed tools, `llms.txt` and a Claude Code plugin.
+  and mutation tools, an OAuth resource server and persisted operations as typed tools
+  (`@graxia/mcp`, in progress), then `llms.txt` and a Claude Code plugin.
 
 ## Later
 

@@ -3,6 +3,7 @@ import type {
 	ExecutionArgs,
 	OperationDefinitionNode,
 } from 'graphql';
+import { GRAPHQL_CODE } from '../errors/fixes';
 import { costRefusal } from '../limits/operation-cost';
 import type { RequestState } from '../plugins/state';
 import type { GraphQLParams } from '../plugins/types';
@@ -76,6 +77,7 @@ async function prepare(
 	const operation = selectOperation(parsed.document, final.operationName);
 	if (typeof operation === 'string')
 		return failure(operation, {
+			code: GRAPHQL_CODE,
 			fix: 'Send operationName when the document holds several operations, and name one of them.',
 		});
 	const { cost } = rt.options.operationLimits;

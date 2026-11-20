@@ -5,6 +5,7 @@ import { runAs } from './auth/principal';
 import { resolveAuth } from './auth/resolve';
 import { writeStepUp } from './auth/scopes';
 import type { McpAuthOptions } from './auth/types';
+import { toolCallsOf } from './calls';
 import { createContextCarrier } from './context';
 import { corsOrigin, withCors } from './cors';
 import type { Mcp, McpHost, McpOptions } from './options';
@@ -12,6 +13,7 @@ import { defaultHosts } from './origin';
 import { admit, type PipelineSettings } from './pipeline';
 import { refusal } from './refusal';
 import { serverFactory } from './server';
+import { createToolset } from './toolset';
 import { createViewSource } from './view-cache';
 
 /** The error sink: the option, `console.error` by default, never throwing. */
@@ -37,7 +39,10 @@ function sinkOf(option: McpOptions['onError']): (error: unknown) => void {
  * with the generic tools `graphql_schema`, `graphql_query` and (with
  * `mutations: true`) `graphql_mutate`. Every operation runs through
  * `graxia.execute`, so limits, cost, trusted documents, masking and rate
- * limits apply; the schema and the body limit come from `graxia`. Without
+ * limits apply; the schema and the body limit come from `graxia`. With
+ * `operations`, each persisted operation is also a typed tool. When graxia
+ * runs trusted documents in `strict` mode, `graphql_query` and
+ * `graphql_mutate` are not offered: only the typed tools run. Without
  * `auth` there is no authentication here: put the endpoint behind your own,
  * and use `can` for permissions. With `auth` it is an OAuth resource server
  * (bearer tokens, scopes, protected resource metadata), and `metadataPath`
@@ -69,8 +74,9 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 	const mutations = options.mutations ?? false;
 	const carrier = createContextCarrier();
 	const views = createViewSource(graxia.schema, options.can);
+	const toolset = createToolset(graxia, options, mutations);
 	const handler = createMcpHandler(
-		serverFactory({ graxia, options, auth, carrier, views, onError }),
+		serverFactory({ graxia, options, auth, carrier, toolset, onError }),
 		{
 			maxRequestBodySize: settings.maxBody,
 			onerror: (error) => onError(error),
@@ -89,13 +95,24 @@ export function createMcp<HostCtx extends object = Record<never, never>>(
 				);
 				if (admitted instanceof Response) return withCors(admitted, cors);
 				const principal = admitted.gated;
-				// With mutations off no scope opens graphql_mutate: the SDK answers tool-not-found.
+				const serverContext = (rest[0] ?? {}) as object;
+				const state = {
+					serverContext,
+					calls: await toolCallsOf(admitted.request),
+					view: views(admitted.request, serverContext, principal),
+				};
+				// With mutations off no scope opens a writing tool: the SDK answers tool-not-found.
 				if (auth && principal && mutations) {
-					const stepUp = await writeStepUp(admitted.request, auth, principal);
+					const stepUp = await writeStepUp(
+						auth,
+						principal,
+						state.calls.called,
+						(name) => toolset.writes(name, state.view),
+					);
 					if (stepUp) return withCors(stepUp, cors);
 				}
 				// authInfo is not passed to the SDK (mcpAuth() carries the principal), so its tool scopeChallenge is unused.
-				const response = await carrier.run((rest[0] ?? {}) as object, () =>
+				const response = await carrier.run(state, () =>
 					runAs(principal, () => handler.fetch(admitted.request)),
 				);
 				return withCors(response, cors);

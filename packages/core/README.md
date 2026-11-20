@@ -308,7 +308,7 @@ example) instead of a result. See [Testing](./docs/guide/testing.md).
 
 The instance also exposes `graxia.schema` (the schema it serves) and `graxia.limits`
 (`{ bodyBytes, tokens }`, defaults applied), so a layer in front of it, such as an MCP server,
-needs neither passed twice.
+needs neither passed twice, and `graxia.trustedDocuments` (`{ mode }` in force, or `undefined`).
 
 ## Testing client
 

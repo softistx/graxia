@@ -1,8 +1,10 @@
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import type { GenericTools } from '../toolset';
 import { type ExecuteContext, runOperation } from './execute';
-import { textResult } from './result';
+import { guarded } from './guard';
 import { overview, SEARCH_LIMIT, searchSdl, typesSdl } from './schema';
+import { registerStrictRefusals } from './strict';
 
 const operationInput = z.object({
 	query: z.string().describe('The GraphQL document (one operation).'),
@@ -32,11 +34,18 @@ const schemaInput = z.object({
 export interface ToolsInput {
 	context: ExecuteContext;
 	mutations: boolean;
+	/** How `graphql_query` and `graphql_mutate` stand. */
+	generic: GenericTools;
+	/** The request lists the tools: what is registered is what is advertised. */
+	listing: boolean;
+	/** The names of the typed tools this caller is offered, for the overview. */
+	typed: readonly string[];
 }
 
 /** Registers the generic tools on a per-request server. */
 export function registerTools(server: McpServer, input: ToolsInput): void {
-	const { context, mutations } = input;
+	const { context, mutations, generic, typed } = input;
+	const note = typedNote(typed, generic);
 	server.registerTool(
 		'graphql_schema',
 		{
@@ -53,9 +62,12 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 					return typesSdl(view, args.types, mutations);
 				if (args.search !== undefined)
 					return searchSdl(view, args.search, mutations);
-				return overview(view, mutations);
+				return overview(view, mutations, note);
 			}),
 	);
+	if (generic === 'refused' && !input.listing)
+		registerStrictRefusals(server, typed);
+	if (generic !== 'on') return;
 	server.registerTool(
 		'graphql_query',
 		{
@@ -81,18 +93,13 @@ export function registerTools(server: McpServer, input: ToolsInput): void {
 	);
 }
 
-/** An unexpected failure goes to `onError` with its cause; the agent gets a generic message, nothing about the server leaks. */
-async function guarded(
-	context: ExecuteContext,
-	run: () => Promise<CallToolResult>,
-): Promise<CallToolResult> {
-	try {
-		return await run();
-	} catch (error) {
-		context.onError(error);
-		return textResult(
-			'The server failed to run the operation. Fix: retry later.',
-			true,
-		);
-	}
+/** What the overview says about the typed tools, when the caller has some. */
+function typedNote(typed: readonly string[], generic: GenericTools): string {
+	if (typed.length === 0)
+		return generic === 'refused'
+			? 'No tool runs operations here: this server runs trusted documents only and offers you no typed tool.'
+			: '';
+	return generic === 'on'
+		? `Typed tools: ${typed.join(', ')}. Prefer the typed tools: each runs one reviewed operation and takes typed arguments; use graphql_query for anything else.`
+		: `Typed tools: ${typed.join(', ')}. They are the only way to run operations here.`;
 }

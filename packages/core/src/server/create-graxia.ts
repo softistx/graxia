@@ -119,6 +119,14 @@ export interface Graxia<HostCtx extends object = Record<never, never>> {
 		/** The most tokens of a document (`limits.tokens`, 15 000 by default). */
 		readonly tokens: number | false;
 	};
+	/**
+	 * The trusted-documents mode in force (the `NODE_ENV` default applied), or
+	 * `undefined` without `trustedDocuments`. A layer that runs documents
+	 * through {@link Graxia.execute} on a client's behalf (an MCP server) reads
+	 * it: `execute` is in process and runs any document, so in `strict` that
+	 * layer must not take documents from its clients.
+	 */
+	readonly trustedDocuments: { readonly mode: 'strict' | 'mixed' } | undefined;
 	/** `await using graxia = createGraxia(...)` calls {@link Graxia.dispose}. */
 	[Symbol.asyncDispose](): Promise<void>;
 }
@@ -223,6 +231,7 @@ export function createGraxia<
 			bodyBytes: resolved.bodyBytes,
 			tokens: documentLimits.tokens,
 		},
+		trustedDocuments: trusted && { mode: trusted.mode },
 		ready,
 		execute,
 		fetch: entry.fetch,

@@ -515,6 +515,13 @@ Pass the headers the plugin expects (`headers: { authorization: … }`). See
 has started, as `fetch` answers 503. Stop sending work after `dispose()`; see
 [Context, cancellation and shutdown](./guide/context.md).
 
+## Variable "$id" has invalid value: … (`BAD_USER_INPUT`)
+
+Also `Unknown operation named "X".` and
+`Must provide operation name if query contains multiple operations.`: the request was refused
+before any field ran. Send the variables the operation declares, with their types, and an
+`operationName` the document holds. `extensions.fix` says the same.
+
 ## graxia.execute: variables must be JSON-serializable (no BigInt, no cycles)
 
 `execute` throws this `TypeError` because `variables` travel as JSON, like over HTTP. Remove `BigInt`s and cycles, or convert them (a `BigInt`
