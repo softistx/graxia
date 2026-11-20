@@ -1,5 +1,19 @@
 # @graxia/core
 
+## 0.6.0
+
+### Minor Changes
+
+- [#103](https://github.com/softistx/graxia/pull/103) [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Plugin support for the Envelop adapter: `setup` receives the instance's `schema`, `onExecute` and `onSubscribe` payloads expose `executeFn` (the last one set, else the engine's), and a `GraphQLError` with its own `extensions.code` thrown by a parse function keeps it instead of becoming `GRAPHQL_PARSE_FAILED`.
+
+- [#103](https://github.com/softistx/graxia/pull/103) [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Multipart file uploads (the GraphQL multipart request spec), behind a new `uploads` option that is off by default: `createGraxia({ schema, uploads: true })` reads `operations`, `map` and one part per file, under `uploads.bodyBytes` (16 MiB), `uploads.fileBytes` (8 MiB) and `uploads.files` (10), and hands resolvers Bun's Web `File` through the new `GraphQLFile` scalar. A multipart request always needs the CSRF header, and `createGraxia` refuses `uploads` with that check off. New error codes `UPLOADS_NOT_ENABLED`, `UPLOAD_TOO_LARGE`, `UPLOAD_TOO_MANY_FILES` and `UPLOAD_INVALID`. A server without `uploads` is unchanged, except that a multipart POST now answers 415 `UPLOADS_NOT_ENABLED` instead of an untyped 415 (it was a 403 without the CSRF header, as before).
+
+  A resolver can annotate concrete argument types, such as `({ file }: { file: File })`: unannotated resolver `args` are now `any` (was `Record<string, unknown>`), and `ctx` stays checked.
+
+### Patch Changes
+
+- [#103](https://github.com/softistx/graxia/pull/103) [`33ef321`](https://github.com/softistx/graxia/commit/33ef3215c1efaabcb615c1484134d720a0310a11) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Docs: a migration guide from `@alxia/graphql` and a host-embedding example, linked from the HTTP, WebSocket and context guides.
+
 ## 0.5.0
 
 ### Minor Changes

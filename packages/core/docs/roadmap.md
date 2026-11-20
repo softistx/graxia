@@ -2,12 +2,6 @@
 
 Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 
-## Now
-
-- **Parity and migration** — Envelop plugins run through `@graxia/envelop` (not published yet),
-  multipart uploads (ready for the next release, see [File uploads](./guide/uploads.md)), and a
-  parity suite, a host-embedding example and a migration guide from `@alxia/graphql` (all ready for the next release) so an application on another GraphQL server can move over.
-
 ## Later
 
 - **Streaming uploads** — hand each file part to the resolver as it arrives, so a large file is
@@ -22,6 +16,12 @@ Where `@graxia/core` is going, as what you get. A direction, not a commitment.
 - A code-first schema builder in v1: bring any `GraphQLSchema`, or use SDL with typed resolvers.
 
 ## Shipped
+
+### 0.6.0
+
+- **Parity and migration** — Envelop plugins run through `@graxia/envelop`, multipart uploads
+  (see [File uploads](./guide/uploads.md)), and a parity suite, a host-embedding example and a
+  migration guide from `@alxia/graphql` so an application on another GraphQL server can move over.
 
 ### 0.5.0
 

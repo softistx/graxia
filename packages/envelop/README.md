@@ -1,7 +1,5 @@
 # @graxia/envelop
 
-> Not published yet: the first release is 0.1.0.
-
 Run [Envelop](https://the-guild.dev/graphql/envelop) plugins inside graxia with one import and one call.
 
 ```ts
