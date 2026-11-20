@@ -27,13 +27,17 @@ import type { Empty, GraxiaPlugin } from './types';
 export function definePlugin<
 	_NoTypeArgument extends never = never,
 	Added extends object = Empty,
->(plugin: GraxiaPlugin<Empty, Added>): GraxiaPlugin<Empty, Added>;
-export function definePlugin<In = Empty>(): <Added extends object = Empty>(
-	plugin: GraxiaPlugin<In, Added>,
-) => GraxiaPlugin<In, Added>;
-export function definePlugin(plugin?: GraxiaPlugin<unknown, object>) {
+	const Name extends string = string,
+>(plugin: GraxiaPlugin<Empty, Added, Name>): GraxiaPlugin<Empty, Added, Name>;
+export function definePlugin<In = Empty>(): <
+	Added extends object = Empty,
+	const Name extends string = string,
+>(
+	plugin: GraxiaPlugin<In, Added, Name>,
+) => GraxiaPlugin<In, Added, Name>;
+export function definePlugin(plugin?: GraxiaPlugin<unknown, object, string>) {
 	return plugin === undefined
-		? (p: GraxiaPlugin<unknown, object>) => p
+		? (p: GraxiaPlugin<unknown, object, string>) => p
 		: plugin;
 }
 

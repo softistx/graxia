@@ -75,7 +75,7 @@ afterEach(async () => {
 
 /** A host: Bun.serve upgrading with its own per-connection state as serverContext. */
 function host(log: Log[]) {
-	const graxia = createGraxia({
+	const graxia = createGraxia<{ tenant: string }>({
 		schema,
 		onUnexpected: false,
 		plugins: [observer(log)],

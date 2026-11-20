@@ -3,6 +3,7 @@ import { createSchema } from '../schema/create-schema';
 import { createGraxia } from '../server/create-graxia';
 import { raw } from '../ws/ws.test-util';
 import { definePlugin } from './define';
+import type { GraxiaPlugin } from './types';
 
 type Hook = 'onRequest' | 'onParse' | 'onValidate';
 type Host = { tenant: string; signal: AbortSignal };
@@ -31,8 +32,8 @@ afterEach(async () => {
 });
 
 /** A host upgrading sockets with its own serverContext. */
-function socketHost(plugin: ReturnType<typeof spy>) {
-	const graxia = createGraxia({
+function socketHost(plugin: GraxiaPlugin<Host>) {
+	const graxia = createGraxia<{ tenant: string }>({
 		schema,
 		onUnexpected: false,
 		plugins: [plugin],
@@ -60,7 +61,7 @@ describe('over HTTP, each hook sees the host serverContext', () => {
 	for (const hook of ['onRequest', 'onParse', 'onValidate'] as const) {
 		test(hook, async () => {
 			const seen: Record<string, unknown[]> = {};
-			const graxia = createGraxia({
+			const graxia = createGraxia<{ tenant: string }>({
 				schema,
 				onUnexpected: false,
 				plugins: [spy(seen)],
